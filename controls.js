@@ -19,7 +19,7 @@ class PlayerController {
     
     this.keys = {};
     this.isMobile = false;
-    this.canJump = true;
+    this.canJump = true; // Flaga zapobiegająca spamowaniu skokami przez przytrzymanie klawisza
     this.joystickDirection = new THREE.Vector2();
 
     this.setupInput();
@@ -38,12 +38,24 @@ class PlayerController {
   setupInput() {
     this.cleanupInput();
 
-    this.handleKeyDown = (e) => { this.keys[e.code] = true; };
+    // POPRAWKA: Przeniesienie logiki skoku do event handlerów
+    this.handleKeyDown = (e) => {
+      this.keys[e.code] = true;
+      // Wykonaj skok tylko przy PIERWSZYM naciśnięciu klawisza
+      if (e.code === 'Space' && this.canJump) {
+        this.jump();
+        this.canJump = false; // Zablokuj możliwość ponownego skoku aż do puszczenia klawisza
+      }
+    };
+
     this.handleKeyUp = (e) => {
       this.keys[e.code] = false;
-      // POPRAWKA: Usunięto resetowanie canJump tutaj.
-      // Możliwość skoku powinna odnawiać się tylko po wylądowaniu.
+      // Odblokuj możliwość skoku dopiero po puszczeniu klawisza
+      if (e.code === 'Space') {
+        this.canJump = true;
+      }
     };
+
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
     
@@ -63,20 +75,16 @@ class PlayerController {
   }
   
   jump() {
+    // Ta funkcja sprawdza tylko, czy pozostały jeszcze jakieś skoki
     if (this.jumpsRemaining > 0) {
         this.velocity.y = this.jumpForce;
         this.jumpsRemaining--;
         this.isOnGround = false;
-        this.canJump = false;
     }
   }
   
   update(deltaTime, cameraRotation) {
-    // Sprawdzamy stan klawiszy w każdej klatce. Skok jest możliwy, jeśli klawisz
-    // jest wciśnięty i flaga canJump jest prawdziwa.
-    if (this.keys['Space'] && this.canJump) {
-      this.jump();
-    }
+    // POPRAWKA: Usunięto logikę skoku z pętli update. Jest teraz obsługiwana przez zdarzenia.
     
     if (!this.isOnGround) {
       this.velocity.y -= this.gravity * deltaTime;
@@ -114,7 +122,6 @@ class PlayerController {
     const halfDepth = this.playerDimensions.z / 2;
     const epsilon = 0.001;
 
-    // --- KROK 1: KOLIZJA NA OSI Y (GÓRA/DÓŁ) ---
     const verticalMovement = this.velocity.y * deltaTime;
     this.player.position.y += verticalMovement;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -124,26 +131,22 @@ class PlayerController {
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
         if (playerBox.intersectsBox(objectBox)) {
-            if (verticalMovement < 0) { // Spadanie
+            if (verticalMovement < 0) {
                 this.player.position.y = objectBox.max.y + halfHeight;
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
-                this.canJump = true; // Odnów możliwość skoku po wylądowaniu
+                this.canJump = true;
                 landedOnBlock = true;
-            } else if (verticalMovement > 0) { // Skakanie w górę
-                // KLUCZOWA POPRAWKA: Wykrywaj uderzenie w sufit tylko wtedy,
-                // gdy blok jest FAKTYCZNIE nad środkiem gracza.
+            } else if (verticalMovement > 0) {
                 if (objectBox.min.y > this.player.position.y) {
                     this.player.position.y = objectBox.min.y - halfHeight - epsilon;
                     this.velocity.y = 0;
                 }
             }
-            // Nie przerywamy pętli, aby poprawnie obsłużyć wszystkie kolizje
         }
     }
     
-    // --- KROK 2: KOLIZJA NA OSI X (LEWO/PRAWO) ---
     const horizontalMovementX = this.velocity.x * deltaTime;
     this.player.position.x += horizontalMovementX;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -161,7 +164,6 @@ class PlayerController {
         }
     }
 
-    // --- KROK 3: KOLIZJA NA OSI Z (PRZÓD/TYŁ) ---
     const horizontalMovementZ = this.velocity.z * deltaTime;
     this.player.position.z += horizontalMovementZ;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -179,7 +181,6 @@ class PlayerController {
         }
     }
 
-    // --- OSTATECZNA KONTROLA PODŁOGI ---
     if (this.player.position.y <= this.groundRestingY) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY;
@@ -187,7 +188,7 @@ class PlayerController {
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
-                this.canJump = true; // Odnów możliwość skoku po wylądowaniu
+                this.canJump = true;
             }
         }
     } else {
@@ -204,11 +205,14 @@ class PlayerController {
     if (jumpButton) {
         this.handleMobileJumpStart = (e) => {
             e.preventDefault();
-            if (this.canJump) this.jump();
+            if (this.canJump) {
+                this.jump();
+                this.canJump = false;
+            }
         };
-        // POPRAWKA: Usunięto resetowanie canJump tutaj.
         this.handleMobileJumpEnd = (e) => {
             e.preventDefault();
+            this.canJump = true;
         };
         jumpButton.addEventListener('touchstart', this.handleMobileJumpStart, { passive: false });
         jumpButton.addEventListener('touchend', this.handleMobileJumpEnd, { passive: false });
@@ -225,4 +229,4 @@ class ThirdPersonCameraController {
   destroy() { this.cleanupControls(); }
 }
 class FirstPersonCameraController {}
-export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };
+export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };```
