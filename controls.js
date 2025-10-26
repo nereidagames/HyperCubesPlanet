@@ -9,9 +9,6 @@ class PlayerController {
     this.gravity = options.gravity || 25;
     this.groundRestingY = options.groundRestingY || 0.6;
 
-    // POPRAWKA: Definicja skrzynki kolizyjnej gracza.
-    // Dostosuj te wartości, jeśli modele postaci znacznie się zmienią.
-    // Wysokość (height) jest najważniejsza.
     this.playerDimensions = new THREE.Vector3(0.8, 2.4, 0.8);
 
     this.velocity = new THREE.Vector3();
@@ -32,7 +29,6 @@ class PlayerController {
     this.isMobile = isMobile;
     this.setupInput();
     
-    // Pokaż/ukryj przycisk skoku w zależności od platformy
     const mobileControls = document.getElementById('mobile-game-controls');
     if (mobileControls) {
         mobileControls.style.display = isMobile ? 'block' : 'none';
@@ -45,9 +41,8 @@ class PlayerController {
     this.handleKeyDown = (e) => { this.keys[e.code] = true; };
     this.handleKeyUp = (e) => {
       this.keys[e.code] = false;
-      if (e.code === 'Space') {
-        this.canJump = true;
-      }
+      // POPRAWKA: Usunięto resetowanie canJump tutaj.
+      // Możliwość skoku powinna odnawiać się tylko po wylądowaniu.
     };
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
@@ -77,11 +72,12 @@ class PlayerController {
   }
   
   update(deltaTime, cameraRotation) {
+    // Sprawdzamy stan klawiszy w każdej klatce. Skok jest możliwy, jeśli klawisz
+    // jest wciśnięty i flaga canJump jest prawdziwa.
     if (this.keys['Space'] && this.canJump) {
       this.jump();
     }
     
-    // Grawitacja działa zawsze, chyba że jesteśmy na ziemi
     if (!this.isOnGround) {
       this.velocity.y -= this.gravity * deltaTime;
     }
@@ -110,14 +106,13 @@ class PlayerController {
     this.applyMovementAndCollisions(deltaTime);
   }
 
-  // --- NOWA, ROZBUDOWANA METODA KOLIZJI ---
   applyMovementAndCollisions(deltaTime) {
     const playerBox = new THREE.Box3();
     const objectBox = new THREE.Box3();
     const halfHeight = this.playerDimensions.y / 2;
     const halfWidth = this.playerDimensions.x / 2;
     const halfDepth = this.playerDimensions.z / 2;
-    const epsilon = 0.001; // Mała wartość, aby uniknąć "zakleszczenia"
+    const epsilon = 0.001;
 
     // --- KROK 1: KOLIZJA NA OSI Y (GÓRA/DÓŁ) ---
     const verticalMovement = this.velocity.y * deltaTime;
@@ -134,13 +129,17 @@ class PlayerController {
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
-                this.canJump = true;
+                this.canJump = true; // Odnów możliwość skoku po wylądowaniu
                 landedOnBlock = true;
             } else if (verticalMovement > 0) { // Skakanie w górę
-                this.player.position.y = objectBox.min.y - halfHeight - epsilon;
-                this.velocity.y = 0;
+                // KLUCZOWA POPRAWKA: Wykrywaj uderzenie w sufit tylko wtedy,
+                // gdy blok jest FAKTYCZNIE nad środkiem gracza.
+                if (objectBox.min.y > this.player.position.y) {
+                    this.player.position.y = objectBox.min.y - halfHeight - epsilon;
+                    this.velocity.y = 0;
+                }
             }
-            break; // Po znalezieniu kolizji na osi Y, przerywamy pętlę dla tej osi
+            // Nie przerywamy pętli, aby poprawnie obsłużyć wszystkie kolizje
         }
     }
     
@@ -152,9 +151,9 @@ class PlayerController {
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
         if (playerBox.intersectsBox(objectBox)) {
-            if (horizontalMovementX > 0) { // Ruch w prawo
+            if (horizontalMovementX > 0) {
                 this.player.position.x = objectBox.min.x - halfWidth - epsilon;
-            } else if (horizontalMovementX < 0) { // Ruch w lewo
+            } else if (horizontalMovementX < 0) {
                 this.player.position.x = objectBox.max.x + halfWidth + epsilon;
             }
             this.velocity.x = 0;
@@ -170,9 +169,9 @@ class PlayerController {
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
         if (playerBox.intersectsBox(objectBox)) {
-            if (horizontalMovementZ > 0) { // Ruch do tyłu (względem świata)
+            if (horizontalMovementZ > 0) {
                 this.player.position.z = objectBox.min.z - halfDepth - epsilon;
-            } else if (horizontalMovementZ < 0) { // Ruch do przodu (względem świata)
+            } else if (horizontalMovementZ < 0) {
                 this.player.position.z = objectBox.max.z + halfDepth + epsilon;
             }
             this.velocity.z = 0;
@@ -181,21 +180,17 @@ class PlayerController {
     }
 
     // --- OSTATECZNA KONTROLA PODŁOGI ---
-    // Sprawdza, czy gracz spadł poniżej głównej podłogi.
-    // Działa jako zabezpieczenie.
-    if (this.player.position.y - halfHeight <= 0.1) { // 0.1 to FLOOR_TOP_Y
-        // Jeśli nie wylądowaliśmy na bloku, ale jesteśmy na głównej podłodze
+    if (this.player.position.y <= this.groundRestingY) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY;
             if (!this.isOnGround) {
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
-                this.canJump = true;
+                this.canJump = true; // Odnów możliwość skoku po wylądowaniu
             }
         }
     } else {
-        // Jeśli jesteśmy w powietrzu i nie wylądowaliśmy na żadnym bloku
         if (!landedOnBlock) {
             this.isOnGround = false;
         }
@@ -211,14 +206,13 @@ class PlayerController {
             e.preventDefault();
             if (this.canJump) this.jump();
         };
+        // POPRAWKA: Usunięto resetowanie canJump tutaj.
         this.handleMobileJumpEnd = (e) => {
             e.preventDefault();
-            this.canJump = true;
         };
         jumpButton.addEventListener('touchstart', this.handleMobileJumpStart, { passive: false });
         jumpButton.addEventListener('touchend', this.handleMobileJumpEnd, { passive: false });
     }
-    // W przyszłości można tu dodać logikę joysticka
   }
 }
 
