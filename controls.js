@@ -214,7 +214,6 @@ class PlayerController {
   }
 }
 
-// POPRAWKA: Poniższa klasa została w pełni sformatowana, aby uniknąć błędów kopiowania.
 class ThirdPersonCameraController {
     constructor(camera, target, domElement, options = {}) {
         this.camera = camera;
