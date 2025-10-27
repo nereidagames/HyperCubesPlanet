@@ -7,7 +7,10 @@ import { UIManager } from './ui.js';
 import { MultiplayerManager } from './multiplayer.js';
 import { BuildManager } from './BuildManager.js';
 import { WorldStorage } from './WorldStorage.js';
-import { CoinManager } from './CoinManager.js'; // POPRAWKA: Dodano import CoinManagera
+import { CoinManager } from './CoinManager.js';
+// Nowe importy
+import { SkinBuilderManager } from './SkinBuilderManager.js';
+import { SkinStorage } from './SkinStorage.js';
 
 class BlockStarPlanetGame {
   constructor() {
@@ -18,9 +21,10 @@ class BlockStarPlanetGame {
     this.playerController = null;
     this.characterManager = null;
     this.cameraController = null;
-    this.coinManager = null; // POPRAWKA: Dodano właściwość dla CoinManagera
+    this.coinManager = null;
     this.gameState = 'MainMenu';
     this.buildManager = null;
+    this.skinBuilderManager = null; // Nowy manager
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
     this.setupRenderer();
@@ -60,24 +64,31 @@ class BlockStarPlanetGame {
 
   async setupManagers() {
     this.uiManager = new UIManager(
-      (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); },
-      async (modelType) => {
-        await this.characterManager.changeCharacter(modelType);
-        if(this.playerController) {
-          this.playerController.groundRestingY = this.characterManager.currentGroundRestingY;
-          this.playerController.player = this.characterManager.character;
-        }
-        if(this.cameraController) this.cameraController.target = this.characterManager.character;
-      }
+      (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); }
     );
     this.uiManager.initialize(this.isMobile);
+    // Nowe podpięcia przycisków
     this.uiManager.onBuildClick = () => this.switchToBuildMode();
-    this.uiManager.onDiscoverClick = () => this.showDiscoverPanel();
+    this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
+    this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
+    this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
+
     this.buildManager = new BuildManager(this);
+    this.skinBuilderManager = new SkinBuilderManager(this);
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
+    
+    // Nowa logika ładowania postaci
     this.characterManager = new CharacterManager(this.scene);
-    await this.characterManager.loadCharacter('cube');
+    this.characterManager.loadCharacter();
+    
+    // Wczytaj ostatnio używany skin
+    const lastSkinName = SkinStorage.getLastUsedSkin();
+    if (lastSkinName) {
+        const skinData = SkinStorage.loadSkin(lastSkinName);
+        this.characterManager.applySkin(skinData);
+    }
+
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
       distance: 15, height: 7, rotationSpeed: 0.005
@@ -85,40 +96,47 @@ class BlockStarPlanetGame {
     this.cameraController.setIsMobile(this.isMobile);
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager);
     await this.multiplayerManager.initialize();
-    
-    // POPRAWKA: Inicjalizacja CoinManagera
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
   }
   
   switchToBuildMode() {
-    if (this.gameState === 'BuildMode') return;
+    if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
-    if(this.playerController) { this.playerController.destroy(); this.playerController = null; }
-    if(this.cameraController) { this.cameraController.destroy(); this.cameraController = null; }
-    document.querySelector('.ui-overlay').style.display = 'none';
+    this.toggleMainUI(false);
     this.buildManager.enterBuildMode();
+  }
+
+  switchToSkinBuilderMode() {
+    if (this.gameState !== 'MainMenu') return;
+    this.gameState = 'SkinBuilderMode';
+    this.toggleMainUI(false);
+    this.skinBuilderManager.enterBuildMode();
   }
   
   switchToMainMenu() {
     if (this.gameState === 'MainMenu') return;
-    if (this.gameState === 'BuildMode') this.buildManager.exitBuildMode();
-    else if (this.gameState === 'ExploreMode') {
-      if(this.playerController) this.playerController.destroy();
-      this.playerController = null;
-      this.exploreScene = null;
+    
+    if (this.gameState === 'BuildMode') {
+        this.buildManager.exitBuildMode();
+    } else if (this.gameState === 'SkinBuilderMode') {
+        this.skinBuilderManager.exitBuildMode();
+    } else if (this.gameState === 'ExploreMode') {
       this.scene.add(this.characterManager.character);
     }
+
     this.gameState = 'MainMenu';
-    document.querySelector('.ui-overlay').style.display = 'block';
+    this.toggleMainUI(true);
+    
+    // Odśwież postać i kontrolery
     this.recreatePlayerController(this.sceneManager.collidableObjects);
-    if (!this.cameraController) {
-        this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
-            distance: 15, height: 7, rotationSpeed: 0.005
-        });
-        this.cameraController.setIsMobile(this.isMobile);
-    } else {
-        this.cameraController.target = this.characterManager.character;
-    }
+    this.cameraController.target = this.characterManager.character;
+  }
+  
+  toggleMainUI(visible) {
+      document.querySelector('.ui-overlay').style.display = visible ? 'block' : 'none';
+      if(this.playerController) this.playerController.destroy();
+      this.playerController = null;
+      if(this.cameraController) this.cameraController.enabled = visible;
   }
   
   recreatePlayerController(collidables) {
@@ -130,23 +148,49 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
-  showDiscoverPanel() {
+  showDiscoverPanel(type) { // 'worlds' or 'skins'
     const panel = document.getElementById('discover-panel');
     const list = document.getElementById('discover-list');
+    const title = document.getElementById('discover-panel-title');
     const closeButton = document.getElementById('discover-close-button');
     list.innerHTML = '';
-    const savedWorlds = WorldStorage.getSavedWorldsList();
-    if (savedWorlds.length === 0) {
-      list.innerHTML = '<p style="text-align: center;">Nie masz zapisanych światów!</p>';
-    } else {
-      savedWorlds.forEach(worldName => {
-        const item = document.createElement('div');
-        item.className = 'world-item';
-        item.textContent = worldName;
-        item.onclick = () => { panel.style.display = 'none'; this.loadAndExploreWorld(worldName); };
-        list.appendChild(item);
-      });
+    
+    if (type === 'worlds') {
+        title.textContent = 'Wybierz Świat';
+        const savedWorlds = WorldStorage.getSavedWorldsList();
+        if (savedWorlds.length === 0) {
+            list.innerHTML = '<p style="text-align: center;">Nie masz zapisanych światów!</p>';
+        } else {
+            savedWorlds.forEach(worldName => {
+                const item = document.createElement('div');
+                item.className = 'world-item';
+                item.textContent = worldName;
+                item.onclick = () => { panel.style.display = 'none'; this.loadAndExploreWorld(worldName); };
+                list.appendChild(item);
+            });
+        }
+    } else if (type === 'skins') {
+        title.textContent = 'Wybierz Skina';
+        const savedSkins = SkinStorage.getSavedSkinsList();
+        if (savedSkins.length === 0) {
+            list.innerHTML = '<p style="text-align: center;">Nie masz zapisanych skinów!</p>';
+        } else {
+            savedSkins.forEach(skinName => {
+                const item = document.createElement('div');
+                item.className = 'world-item';
+                item.textContent = skinName;
+                item.onclick = () => {
+                    panel.style.display = 'none';
+                    const skinData = SkinStorage.loadSkin(skinName);
+                    this.characterManager.applySkin(skinData);
+                    SkinStorage.setLastUsedSkin(skinName);
+                    this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
+                };
+                list.appendChild(item);
+            });
+        }
     }
+
     closeButton.onclick = () => { panel.style.display = 'none'; };
     panel.style.display = 'flex';
   }
@@ -154,21 +198,16 @@ class BlockStarPlanetGame {
   loadAndExploreWorld(worldName) {
     const worldData = WorldStorage.loadWorld(worldName);
     if (!worldData) { alert(`Nie udało się wczytać świata: ${worldName}`); return; }
-    if(this.playerController) { this.playerController.destroy(); this.playerController = null; }
-    if(this.cameraController) { this.cameraController.destroy(); this.cameraController = null; }
-
+    
     this.gameState = 'ExploreMode';
+    this.toggleMainUI(false);
     this.exploreScene = new THREE.Scene();
     this.exploreScene.background = new THREE.Color(0x87CEEB);
-    
-    // POPRAWKA: Dodanie oświetlenia do sceny eksploracji
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     this.exploreScene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(20, 30, 20);
     directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
     this.exploreScene.add(directionalLight);
 
     const worldBlocks = [];
@@ -190,11 +229,8 @@ class BlockStarPlanetGame {
         }
         const block = new THREE.Mesh(geometry, material);
         block.position.set(blockData.x, blockData.y, blockData.z);
-        
-        // POPRAWKA: Włączenie cieni dla załadowanych bloków
         block.castShadow = true;
         block.receiveShadow = true;
-        
         this.exploreScene.add(block);
         worldBlocks.push(block);
       }
@@ -203,35 +239,36 @@ class BlockStarPlanetGame {
     this.exploreScene.add(this.characterManager.character);
     this.characterManager.character.position.set(0, 5, 0);
     this.recreatePlayerController(worldBlocks);
-    
-    this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
-        distance: 15, height: 7, rotationSpeed: 0.005
-    });
-    this.cameraController.setIsMobile(this.isMobile);
-
-    document.querySelector('.ui-overlay').style.display = 'none';
+    this.cameraController.enabled = true;
   }
 
   animate() {
     requestAnimationFrame(() => this.animate());
-    const deltaTime = 0.016;
+    const deltaTime = 0.016; // Stały deltaTime dla uproszczenia
     
-    if (this.gameState === 'MainMenu' && this.playerController && this.cameraController) {
-      const rot = this.cameraController.update(deltaTime);
-      this.playerController.update(deltaTime, this.cameraController.rotation.y || rot);
-      if (this.characterManager) this.characterManager.update(deltaTime);
-      if (this.multiplayerManager) this.multiplayerManager.update(deltaTime, this.characterManager.character);
-      if (this.coinManager) this.coinManager.update(deltaTime); // POPRAWKA: Aktualizacja CoinManagera
-      this.renderer.render(this.scene, this.camera);
-      this.css2dRenderer.render(this.scene, this.camera);
-    } else if (this.gameState === 'BuildMode' && this.buildManager) {
-      this.buildManager.update(deltaTime);
-      this.renderer.render(this.buildManager.scene, this.camera);
-    } else if (this.gameState === 'ExploreMode' && this.playerController && this.cameraController) {
-      const rot = this.cameraController.update(deltaTime);
-      this.playerController.update(deltaTime, this.cameraController.rotation.y || rot);
-      if (this.characterManager) this.characterManager.update(deltaTime);
-      this.renderer.render(this.exploreScene, this.camera);
+    if (this.gameState === 'MainMenu') {
+        if(this.playerController && this.cameraController) {
+            const rot = this.cameraController.update(deltaTime);
+            this.playerController.update(deltaTime, this.cameraController.rotation || rot);
+        }
+        if (this.characterManager) this.characterManager.update(deltaTime);
+        if (this.multiplayerManager) this.multiplayerManager.update(deltaTime, this.characterManager.character);
+        if (this.coinManager) this.coinManager.update(deltaTime);
+        this.renderer.render(this.scene, this.camera);
+        this.css2dRenderer.render(this.scene, this.camera);
+    } else if (this.gameState === 'BuildMode') {
+        this.buildManager.update(deltaTime);
+        this.renderer.render(this.buildManager.scene, this.camera);
+    } else if (this.gameState === 'SkinBuilderMode') {
+        this.skinBuilderManager.update(deltaTime);
+        this.renderer.render(this.skinBuilderManager.scene, this.camera);
+    } else if (this.gameState === 'ExploreMode') {
+        if (this.playerController && this.cameraController) {
+            const rot = this.cameraController.update(deltaTime);
+            this.playerController.update(deltaTime, this.cameraController.rotation || rot);
+        }
+        if (this.characterManager) this.characterManager.update(deltaTime);
+        this.renderer.render(this.exploreScene, this.camera);
     }
   }
   

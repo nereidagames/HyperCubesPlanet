@@ -1,10 +1,12 @@
 export class UIManager {
   constructor(onSendMessage, onChangeCharacter) {
     this.onSendMessage = onSendMessage;
-    this.onChangeCharacter = onChangeCharacter;
+    // onChangeCharacter nie jest już potrzebne w starym stylu
     this.isMobile = false;
     this.onBuildClick = null;
-    this.onDiscoverClick = null;
+    this.onDiscoverClick = null; // Będzie używane do wyboru skinów
+    this.onPlayClick = null; // Do wyboru światów
+    this.onSkinBuilderClick = null; // Do edytora skinów
   }
   
   initialize(isMobile) {
@@ -34,16 +36,7 @@ export class UIManager {
     });
     const chatInput = document.querySelector('.chat-input');
     if (chatInput) chatInput.addEventListener('click', () => this.handleChatClick());
-    const charButtons = document.querySelectorAll('.char-btn');
-    charButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const modelType = button.dataset.model;
-        if (this.onChangeCharacter) {
-          this.onChangeCharacter(modelType);
-          this.showMessage('Zmieniono postać!', 'success');
-        }
-      });
-    });
+    // Usunięto event listenery dla starych przycisków
   }
 
   getButtonType(button) {
@@ -51,7 +44,7 @@ export class UIManager {
     if (button.classList.contains('btn-buduj')) return 'buduj';
     if (button.classList.contains('btn-kup')) return 'kup';
     if (button.classList.contains('btn-odkryj')) return 'odkryj';
-    if (button.classList.contains('btn-wiecej')) return 'wiecej';
+    if (button.classList.contains('btn-tworz')) return 'tworz';
     return 'unknown';
   }
 
@@ -59,31 +52,28 @@ export class UIManager {
     buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
     setTimeout(() => { buttonElement.style.transform = ''; }, 150);
 
-    // Przycisk "Buduj" nadal wchodzi do trybu budowania
-    if (buttonType === 'buduj' && this.onBuildClick) { 
-        this.showMessage('Wchodzenie do trybu budowania...', 'info'); 
-        this.onBuildClick(); 
-        return; 
+    if (buttonType === 'buduj' && this.onBuildClick) {
+        this.showMessage('Wchodzenie do trybu budowania świata...', 'info');
+        this.onBuildClick();
+        return;
     }
-
-    // --- POPRAWKA: ZAMIANA FUNKCJONALNOŚCI ---
-    // Przycisk "Zagraj" teraz otwiera panel odkrywania światów
-    if (buttonType === 'zagraj' && this.onDiscoverClick) { 
-        this.onDiscoverClick(); 
-        return; 
+    if (buttonType === 'tworz' && this.onSkinBuilderClick) {
+        this.showMessage('Wchodzenie do edytora skinów...', 'info');
+        this.onSkinBuilderClick();
+        return;
+    }
+    if (buttonType === 'zagraj' && this.onPlayClick) {
+        this.onPlayClick();
+        return;
+    }
+    if (buttonType === 'odkryj' && this.onDiscoverClick) {
+        this.onDiscoverClick();
+        return;
     }
     
-    // Pozostałe przyciski
     switch (buttonType) {
-      // Przycisk "Odkryj" teraz pokazuje komunikat, który wcześniej pokazywał przycisk "Zagraj"
-      case 'odkryj': 
-        this.showMessage('Otwieranie trybu gier...', 'success'); 
-        break;
       case 'kup': 
         this.showMessage('Otwieranie sklepu...', 'success'); 
-        break;
-      case 'wiecej': 
-        this.showMessage('Więcej opcji...', 'info'); 
         break;
     }
   }
