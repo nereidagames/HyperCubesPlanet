@@ -1,13 +1,11 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// POPRAWKA: Eksportujemy tę funkcję, aby multiplayer.js mógł jej używać.
 export function createBaseCharacter() {
     const baseGroup = new THREE.Group();
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
-    // Lewa Noga
     const leftLegGeo = new THREE.BoxGeometry(0.4, 0.8, 0.4);
     const leftLeg = new THREE.Mesh(leftLegGeo, legMaterial);
     leftLeg.position.set(-0.25, 0.4, 0);
@@ -18,7 +16,6 @@ export function createBaseCharacter() {
     leftBoot.position.set(-0.25, -0.1, 0.05);
     baseGroup.add(leftBoot);
 
-    // Prawa Noga
     const rightLegGeo = new THREE.BoxGeometry(0.4, 0.8, 0.4);
     const rightLeg = new THREE.Mesh(rightLegGeo, legMaterial);
     rightLeg.position.set(0.25, 0.4, 0);
@@ -50,7 +47,13 @@ export class CharacterManager {
     this.character = new THREE.Group();
     const baseModel = createBaseCharacter();
     this.character.add(baseModel);
-    this.skinContainer.position.y = 1.0;
+
+    // --- KLUCZOWA POPRAWKA ---
+    // 1. Zmniejszamy cały kontener na skin, aby zbudowana postać była proporcjonalna.
+    this.skinContainer.scale.setScalar(0.25);
+    // 2. Ustawiamy pozycję, aby skin znajdował się na "biodrach" nóg.
+    this.skinContainer.position.y = 0.8; 
+    
     this.character.add(this.skinContainer);
     this.character.position.set(0, this.currentGroundRestingY, 0);
     this.scene.add(this.character);
@@ -116,7 +119,10 @@ export class CharacterManager {
     div.textContent = message;
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
     const chatBubble = new CSS2DObject(div);
-    chatBubble.position.set(0, 4, 0);
+    
+    // POPRAWKA: Obniżamy pozycję dymka, aby pasowała do mniejszej postaci
+    chatBubble.position.set(0, 2.5, 0); 
+    
     this.character.add(chatBubble);
     this.character.chatBubble = chatBubble;
     setTimeout(() => {
