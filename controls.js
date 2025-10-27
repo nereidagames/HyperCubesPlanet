@@ -19,7 +19,7 @@ class PlayerController {
     
     this.keys = {};
     this.isMobile = false;
-    this.canJump = true; // Flaga zapobiegająca spamowaniu skokami przez przytrzymanie klawisza
+    this.canJump = true;
     this.joystickDirection = new THREE.Vector2();
 
     this.setupInput();
@@ -214,13 +214,92 @@ class PlayerController {
   }
 }
 
+// POPRAWKA: Poniższa klasa została w pełni sformatowana, aby uniknąć błędów kopiowania.
 class ThirdPersonCameraController {
-  constructor(camera, target, domElement, options = {}) { this.camera = camera; this.target = target; this.domElement = domElement; this.distance = options.distance || 15; this.height = options.height || 7; this.rotationSpeed = options.rotationSpeed || 0.005; this.rotation = 0; this.isDragging = false; this.mousePosition = { x: 0, y: 0 }; this.enabled = true; this.pitch = 0.5; this.minPitch = 0.1; this.maxPitch = Math.PI / 2 - 0.2; this.isMobile = false; this.setupControls(); }
-  setIsMobile(isMobile) { this.isMobile = isMobile; this.cleanupControls(); this.setupControls(); }
-  setupControls() { this.handleStart = (e) => { if (this.isMobile && e.target.closest('#mobile-game-controls')) return; if (!this.enabled) return; if (!this.isMobile && e.target.closest('.ui-element')) return; this.isDragging = true; this.mousePosition = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY }; if(this.isMobile) e.preventDefault(); }; this.handleEnd = () => { this.isDragging = false; }; this.handleMove = (e) => { if (!this.enabled || !this.isDragging) return; const clientX = e.clientX || e.touches[0].clientX; const clientY = e.clientY || e.touches[0].clientY; const deltaX = clientX - this.mousePosition.x; const deltaY = clientY - this.mousePosition.y; const sensitivity = this.isMobile ? this.rotationSpeed * 2.5 : this.rotationSpeed; this.rotation -= deltaX * sensitivity; this.pitch += deltaY * sensitivity; this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch)); this.mousePosition = { x: clientX, y: clientY }; if(this.isMobile) e.preventDefault(); }; this.domElement.addEventListener('mousedown', this.handleStart); document.addEventListener('mouseup', this.handleEnd); document.addEventListener('mousemove', this.handleMove); this.domElement.addEventListener('touchstart', this.handleStart, { passive: false }); document.addEventListener('touchend', this.handleEnd, { passive: false }); document.addEventListener('touchmove', this.handleMove, { passive: false }); }
-  cleanupInput() { this.domElement.removeEventListener('mousedown', this.handleStart); document.removeEventListener('mouseup', this.handleEnd); document.removeEventListener('mousemove', this.handleMove); this.domElement.removeEventListener('touchstart', this.handleStart); document.removeEventListener('touchend', this.handleEnd); document.removeEventListener('touchmove', this.handleMove); }
-  update() { if (!this.enabled || !this.target) return 0; const horizontalDistance = this.distance * Math.cos(this.pitch); const verticalDistance = this.distance * Math.sin(this.pitch); const offset = new THREE.Vector3(Math.sin(this.rotation) * horizontalDistance, verticalDistance, Math.cos(this.rotation) * horizontalDistance); this.camera.position.copy(this.target.position).add(offset); this.camera.lookAt(this.target.position.x, this.target.position.y + 1, this.target.position.z); return this.rotation; }
-  destroy() { this.cleanupControls(); }
+    constructor(camera, target, domElement, options = {}) {
+        this.camera = camera;
+        this.target = target;
+        this.domElement = domElement;
+        this.distance = options.distance || 15;
+        this.height = options.height || 7;
+        this.rotationSpeed = options.rotationSpeed || 0.005;
+        this.rotation = 0;
+        this.isDragging = false;
+        this.mousePosition = { x: 0, y: 0 };
+        this.enabled = true;
+        this.pitch = 0.5;
+        this.minPitch = 0.1;
+        this.maxPitch = Math.PI / 2 - 0.2;
+        this.isMobile = false;
+        this.setupControls();
+    }
+
+    setIsMobile(isMobile) {
+        this.isMobile = isMobile;
+        this.cleanupControls();
+        this.setupControls();
+    }
+
+    setupControls() {
+        this.handleStart = (e) => {
+            if (this.isMobile && e.target.closest('#mobile-game-controls')) return;
+            if (!this.enabled) return;
+            if (!this.isMobile && e.target.closest('.ui-element')) return;
+            this.isDragging = true;
+            this.mousePosition = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY };
+            if (this.isMobile) e.preventDefault();
+        };
+
+        this.handleEnd = () => {
+            this.isDragging = false;
+        };
+
+        this.handleMove = (e) => {
+            if (!this.enabled || !this.isDragging) return;
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            const deltaX = clientX - this.mousePosition.x;
+            const deltaY = clientY - this.mousePosition.y;
+            const sensitivity = this.isMobile ? this.rotationSpeed * 2.5 : this.rotationSpeed;
+            this.rotation -= deltaX * sensitivity;
+            this.pitch += deltaY * sensitivity;
+            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+            this.mousePosition = { x: clientX, y: clientY };
+            if (this.isMobile) e.preventDefault();
+        };
+
+        this.domElement.addEventListener('mousedown', this.handleStart);
+        document.addEventListener('mouseup', this.handleEnd);
+        document.addEventListener('mousemove', this.handleMove);
+        this.domElement.addEventListener('touchstart', this.handleStart, { passive: false });
+        document.addEventListener('touchend', this.handleEnd, { passive: false });
+        document.addEventListener('touchmove', this.handleMove, { passive: false });
+    }
+
+    cleanupControls() {
+        this.domElement.removeEventListener('mousedown', this.handleStart);
+        document.removeEventListener('mouseup', this.handleEnd);
+        document.removeEventListener('mousemove', this.handleMove);
+        this.domElement.removeEventListener('touchstart', this.handleStart);
+        document.removeEventListener('touchend', this.handleEnd);
+        document.removeEventListener('touchmove', this.handleMove);
+    }
+
+    update() {
+        if (!this.enabled || !this.target) return 0;
+        const horizontalDistance = this.distance * Math.cos(this.pitch);
+        const verticalDistance = this.distance * Math.sin(this.pitch);
+        const offset = new THREE.Vector3(Math.sin(this.rotation) * horizontalDistance, verticalDistance, Math.cos(this.rotation) * horizontalDistance);
+        this.camera.position.copy(this.target.position).add(offset);
+        this.camera.lookAt(this.target.position.x, this.target.position.y + 1, this.target.position.z);
+        return this.rotation;
+    }
+
+    destroy() {
+        this.cleanupControls();
+    }
 }
+
 class FirstPersonCameraController {}
+
 export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };
