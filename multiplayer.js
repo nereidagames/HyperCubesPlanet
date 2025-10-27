@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { createPlayerModel } from './character.js'; // POPRAWKA: Import wspólnej funkcji
+import { createBaseCharacter } from './character.js'; // POPRAWKA: Import nowej funkcji
 
 export class MultiplayerManager {
   constructor(scene, uiManager) {
     this.scene = scene;
     this.uiManager = uiManager;
     this.otherPlayers = new Map();
-    this.playerModels = ['cube', 'astronaut', 'swat'];
     this.chatMessages = [
       'Co za wspaniały dzień!',
       'Ktoś chce pograć w minigry?',
@@ -16,37 +15,25 @@ export class MultiplayerManager {
       'Widzieliście nowy sklep?',
       'Zbieram na nowy strój.',
     ];
-    this.FLOOR_TOP_Y = 0.1;
-    this.PLAYER_OFFSETS = {
-      cube: -0.5,
-      astronaut: -1.0,
-      swat: -1.2
-    };
+    // POPRAWKA: Używamy stałej wartości Y dla wszystkich botów, zgodnej z CharacterManager
+    this.PLAYER_RESTING_Y = 0.8;
     this.MAP_SIZE = 64; 
   }
 
   async initialize() {
     console.log('Multiplayer Manager initialized');
-    await this.addOtherPlayer('Astronaut_Andy', {
-      position: new THREE.Vector3(5, this.FLOOR_TOP_Y - this.PLAYER_OFFSETS.astronaut, 5),
-      modelType: 'astronaut'
-    });
-    await this.addOtherPlayer('Swat_Steve', {
-      position: new THREE.Vector3(-5, this.FLOOR_TOP_Y - this.PLAYER_OFFSETS.swat, 5),
-      modelType: 'swat'
-    });
-    await this.addOtherPlayer('Cube_Carl', {
-      position: new THREE.Vector3(5, this.FLOOR_TOP_Y - this.PLAYER_OFFSETS.cube, -5),
-      modelType: 'cube'
-    });
+    // POPRAWKA: Tworzymy boty z nową pozycją Y
+    await this.addOtherPlayer('Player_One', { position: new THREE.Vector3(5, this.PLAYER_RESTING_Y, 5) });
+    await this.addOtherPlayer('Player_Two', { position: new THREE.Vector3(-5, this.PLAYER_RESTING_Y, 5) });
+    await this.addOtherPlayer('Player_Three', { position: new THREE.Vector3(5, this.PLAYER_RESTING_Y, -5) });
   }
 
   async addOtherPlayer(id, data) {
     if (this.otherPlayers.has(id)) return;
 
     try {
-      const modelType = data.modelType || this.playerModels[Math.floor(Math.random() * this.playerModels.length)];
-      const playerMesh = createPlayerModel(modelType); // POPRAWKA: Użycie wspólnej funkcji
+      // POPRAWKA: Używamy nowej funkcji do tworzenia bazy postaci
+      const playerMesh = createBaseCharacter();
       
       playerMesh.userData.playerId = id;
       playerMesh.position.copy(data.position);
@@ -65,23 +52,19 @@ export class MultiplayerManager {
       const playerData = {
         id: id,
         mesh: playerMesh,
-        modelType: modelType,
         targetPosition: new THREE.Vector3().copy(data.position),
         movementSpeed: 2 + Math.random() * 2,
         chatCooldown: 10 + Math.random() * 20,
         animationState: 'idle',
         originalY: data.position.y,
-        playerBaseOffset: this.PLAYER_OFFSETS[modelType] 
       };
 
       this.otherPlayers.set(id, playerData);
-      console.log(`Added other player: ${id} (${modelType})`);
+      console.log(`Added other player: ${id}`);
     } catch (error) {
       console.error(`Failed to create player ${id}:`, error);
     }
   }
-
-  // POPRAWKA: Usunięto zduplikowaną metodę createLocalPlayerModel
 
   displayPlayerName(id) {
     const playerData = this.otherPlayers.get(id);
@@ -98,7 +81,8 @@ export class MultiplayerManager {
     div.style.pointerEvents = 'none';
     
     const nameLabel = new CSS2DObject(div);
-    nameLabel.position.set(0, 2.2, 0);
+    // POPRAWKA: Obniżamy etykietę, aby pasowała do niższej postaci
+    nameLabel.position.set(0, 1.5, 0); 
     
     playerData.mesh.add(nameLabel);
     playerData.nameLabel = nameLabel;
@@ -135,7 +119,8 @@ export class MultiplayerManager {
     `;
     
     const chatBubble = new CSS2DObject(div);
-    chatBubble.position.set(0, 2.5, 0);
+    // POPRAWKA: Obniżamy dymek czatu
+    chatBubble.position.set(0, 1.8, 0);
     
     playerData.mesh.add(chatBubble);
     playerData.chatBubble = chatBubble;
@@ -159,12 +144,12 @@ export class MultiplayerManager {
 
   update(deltaTime, localPlayer) {
     this.otherPlayers.forEach((playerData, id) => {
-      const { mesh, targetPosition, movementSpeed, playerBaseOffset } = playerData;
+      const { mesh, targetPosition } = playerData;
       
       if (mesh.position.distanceTo(targetPosition) < 0.5) {
         targetPosition.set(
           (Math.random() - 0.5) * (this.MAP_SIZE - 5),
-          this.FLOOR_TOP_Y - playerBaseOffset,
+          this.PLAYER_RESTING_Y, // Utrzymuj na poziomie podłoża
           (Math.random() - 0.5) * (this.MAP_SIZE - 5)
         );
       }
@@ -178,7 +163,6 @@ export class MultiplayerManager {
         const direction = new THREE.Vector3().subVectors(targetPosition, mesh.position).normalize();
         if (direction.lengthSq() > 0.001) {
           const targetRotation = Math.atan2(direction.x, direction.z);
-          const qStart = new THREE.Quaternion().copy(mesh.quaternion);
           const qEnd = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetRotation, 0));
           mesh.quaternion.slerp(qEnd, 0.1);
         }
@@ -200,9 +184,9 @@ export class MultiplayerManager {
   }
 
   animatePlayer(playerData, deltaTime) {
-    const { mesh, animationState, playerBaseOffset } = playerData;
+    const { mesh, animationState } = playerData;
     mesh.scale.y = 1;
-    mesh.position.y = (this.FLOOR_TOP_Y - playerBaseOffset);
+    mesh.position.y = this.PLAYER_RESTING_Y;
     
     switch (animationState) {
       case 'walk':
