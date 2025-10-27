@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// Tworzy tylko dolną część postaci (nogi/buty)
-function createBaseCharacter() {
+// POPRAWKA: Eksportujemy tę funkcję, aby multiplayer.js mógł jej używać.
+export function createBaseCharacter() {
     const baseGroup = new THREE.Group();
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
@@ -37,12 +37,9 @@ export class CharacterManager {
     this.scene = scene;
     this.character = null;
     this.shadow = null;
-    this.skinContainer = new THREE.Group(); // Kontener na bloki skina
+    this.skinContainer = new THREE.Group();
     this.textureLoader = new THREE.TextureLoader();
     this.materialsCache = {};
-    
-    // Ustawiamy Y, na którym "stopy" postaci (czyli jej punkt 0,0,0) spoczywają na ziemi.
-    // Domyślne nogi mają wysokość ok. 1 bloku.
     this.currentGroundRestingY = 0.8;
   }
   
@@ -50,42 +47,29 @@ export class CharacterManager {
     if (this.character) {
         this.scene.remove(this.character);
     }
-
-    // Stwórz główny kontener dla postaci
     this.character = new THREE.Group();
-
-    // Stwórz i dodaj bazę (nogi)
     const baseModel = createBaseCharacter();
     this.character.add(baseModel);
-
-    // Dodaj pusty kontener na skin, który będzie wypełniany później
-    this.skinContainer.position.y = 1.0; // Przesuwamy kontener skina w górę, aby był nad nogami
+    this.skinContainer.position.y = 1.0;
     this.character.add(this.skinContainer);
-    
     this.character.position.set(0, this.currentGroundRestingY, 0);
-    
     this.scene.add(this.character);
     this.setupShadow();
     console.log("Base character loaded.");
   }
   
-  // Nowa funkcja do budowania skina z bloków
   applySkin(skinData) {
-    // 1. Wyczyść stary skin
     while(this.skinContainer.children.length > 0){ 
         this.skinContainer.remove(this.skinContainer.children[0]); 
     }
-
     if (!skinData) {
         console.log("Applying default skin (empty).");
-        return; // Jeśli nie ma danych, skin pozostaje pusty
+        return;
     }
     
-    // 2. Zbuduj nowy skin
     skinData.forEach(blockData => {
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         let material;
-
         if (this.materialsCache[blockData.texturePath]) {
             material = this.materialsCache[blockData.texturePath];
         } else {
@@ -95,7 +79,6 @@ export class CharacterManager {
             material = new THREE.MeshLambertMaterial({ map: texture });
             this.materialsCache[blockData.texturePath] = material;
         }
-
         const block = new THREE.Mesh(geometry, material);
         block.position.set(blockData.x, blockData.y, blockData.z);
         block.castShadow = true;
@@ -107,7 +90,7 @@ export class CharacterManager {
 
   setupShadow() {
       if (this.shadow) this.scene.remove(this.shadow);
-      const shadowGeometry = new THREE.CircleGeometry(0.8, 32); // Większy cień
+      const shadowGeometry = new THREE.CircleGeometry(0.8, 32);
       const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 });
       this.shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
       this.shadow.rotation.x = -Math.PI / 2;
@@ -133,8 +116,7 @@ export class CharacterManager {
     div.textContent = message;
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
     const chatBubble = new CSS2DObject(div);
-    // Pozycja dymka musi być wyżej, zależnie od wysokości skina
-    chatBubble.position.set(0, 4, 0); // Ustawiamy wyżej
+    chatBubble.position.set(0, 4, 0);
     this.character.add(chatBubble);
     this.character.chatBubble = chatBubble;
     setTimeout(() => {
