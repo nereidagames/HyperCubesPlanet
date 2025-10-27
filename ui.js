@@ -58,12 +58,33 @@ export class UIManager {
   handleButtonClick(buttonType, buttonElement) {
     buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
     setTimeout(() => { buttonElement.style.transform = ''; }, 150);
-    if (buttonType === 'buduj' && this.onBuildClick) { this.showMessage('Wchodzenie do trybu budowania...', 'info'); this.onBuildClick(); return; }
-    if (buttonType === 'odkryj' && this.onDiscoverClick) { this.onDiscoverClick(); return; }
+
+    // Przycisk "Buduj" nadal wchodzi do trybu budowania
+    if (buttonType === 'buduj' && this.onBuildClick) { 
+        this.showMessage('Wchodzenie do trybu budowania...', 'info'); 
+        this.onBuildClick(); 
+        return; 
+    }
+
+    // --- POPRAWKA: ZAMIANA FUNKCJONALNOŚCI ---
+    // Przycisk "Zagraj" teraz otwiera panel odkrywania światów
+    if (buttonType === 'zagraj' && this.onDiscoverClick) { 
+        this.onDiscoverClick(); 
+        return; 
+    }
+    
+    // Pozostałe przyciski
     switch (buttonType) {
-      case 'zagraj': this.showMessage('Otwieranie trybu gier...', 'success'); break;
-      case 'kup': this.showMessage('Otwieranie sklepu...', 'success'); break;
-      case 'wiecej': this.showMessage('Więcej opcji...', 'info'); break;
+      // Przycisk "Odkryj" teraz pokazuje komunikat, który wcześniej pokazywał przycisk "Zagraj"
+      case 'odkryj': 
+        this.showMessage('Otwieranie trybu gier...', 'success'); 
+        break;
+      case 'kup': 
+        this.showMessage('Otwieranie sklepu...', 'success'); 
+        break;
+      case 'wiecej': 
+        this.showMessage('Więcej opcji...', 'info'); 
+        break;
     }
   }
 
