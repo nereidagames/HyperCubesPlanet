@@ -33,7 +33,15 @@
       #chat-form { display: none; position: absolute; bottom: 70px; left: 20px; width: 350px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
       #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; }
       #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; }
-      .right-ui { position: absolute; top: 100px; right: 20px; width: 300px; display: flex; flex-direction: column; gap: 15px; }
+      .right-ui { 
+        position: absolute; 
+        top: 100px; 
+        right: 20px; 
+        width: 390px; /* POPRAWKA: Zwiększono szerokość kontenera */
+        display: flex; 
+        flex-direction: column; 
+        gap: 15px; 
+      }
       .game-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
       .game-btn { width: 70px; height: 70px; border-radius: 12px; border: 3px solid #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; color: white; box-shadow: 0 6px 12px rgba(0,0,0,0.4); transition: transform 0.2s; }
       .game-btn:hover { transform: translateY(-3px); }
@@ -67,7 +75,6 @@
       .world-item:hover { background: #4c8cff; }
       #discover-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
 
-      /* --- NOWE STYLE RESPONSYWNE DLA URZĄDZEŃ MOBILNYCH --- */
       @media (max-width: 768px) {
         .top-bar {
           height: 60px;
@@ -78,11 +85,9 @@
           width: 45px;
           height: 45px;
         }
-        /* Ukryj tekst obok ikon na górnym pasku, aby zaoszczędzić miejsce */
         .top-bar .player-name {
           display: none;
         }
-        /* Ale pokaż nazwę głównego gracza */
         .top-bar .player-name:first-of-type {
             display: block;
             font-size: 12px;
@@ -96,7 +101,6 @@
         }
         .game-buttons {
           gap: 5px;
-          /* Upewnij się, że przyciski mogą się zawijać, jeśli jest mało miejsca */
           justify-content: flex-end;
           max-width: 120px; 
         }
@@ -119,12 +123,11 @@
             font-size: 20px;
         }
         
-        /* Dostosowanie czatu */
         .chat-area {
             width: 95%;
             max-width: 300px;
             height: 100px;
-            bottom: 150px; /* Wyżej, aby zrobić miejsce na kontrolki */
+            bottom: 150px;
             left: 50%;
             transform: translateX(-50%);
         }
@@ -144,7 +147,6 @@
             transform: translateX(-50%);
         }
 
-        /* Panele */
         #discover-panel, #block-selection-panel {
             width: 90%;
         }
