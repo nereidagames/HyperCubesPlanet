@@ -37,7 +37,7 @@
         position: absolute; 
         top: 100px; 
         right: 20px; 
-        width: 390px; /* POPRAWKA: Zwiększono szerokość kontenera */
+        width: 390px;
         display: flex; 
         flex-direction: column; 
         gap: 15px; 
@@ -49,7 +49,7 @@
       .btn-buduj { background: linear-gradient(45deg, #4ecdc4, #44a08d); }
       .btn-kup { background: linear-gradient(45deg, #45b7d1, #3498db); }
       .btn-odkryj { background: linear-gradient(45deg, #96ceb4, #85c1a5); }
-      .btn-tworz { background: linear-gradient(45deg, #feca57, #ff9ff3); }
+      .btn-wiecej { background: linear-gradient(45deg, #feca57, #ff9ff3); }
       .btn-icon { font-size: 20px; margin-bottom: 2px; }
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
       .coin-icon { font-size: 24px; }
@@ -68,88 +68,29 @@
       #block-selection-panel { position: absolute; bottom: 90px; left: 20px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-wrap: wrap; gap: 10px; width: 250px; pointer-events: auto; }
       .block-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; }
       .block-item:hover { transform: scale(1.1); border-color: #00ff00; }
-      #discover-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; max-height: 80vh; background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; z-index: 10001; display: none; flex-direction: column; align-items: center; box-shadow: 0 10px 30px #0008; color: white; font-family: Arial, sans-serif; }
-      #discover-panel h2 { margin-bottom: 20px; font-family: 'Arial Black', Gadget, sans-serif; }
-      #discover-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-      .world-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: bold; transition: background-color 0.2s ease; }
-      .world-item:hover { background: #4c8cff; }
-      #discover-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+      .panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; max-height: 80vh; background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; z-index: 10001; display: none; flex-direction: column; align-items: center; box-shadow: 0 10px 30px #0008; color: white; font-family: Arial, sans-serif; }
+      .panel h2 { margin-bottom: 20px; font-family: 'Arial Black', Gadget, sans-serif; }
+      .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+      .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: bold; transition: background-color 0.2s ease; }
+      .panel-item:hover { background: #4c8cff; }
+      .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
 
       @media (max-width: 768px) {
-        .top-bar {
-          height: 60px;
-          gap: 8px;
-          padding: 8px;
-        }
-        .player-avatar {
-          width: 45px;
-          height: 45px;
-        }
-        .top-bar .player-name {
-          display: none;
-        }
-        .top-bar .player-name:first-of-type {
-            display: block;
-            font-size: 12px;
-        }
-
-        .right-ui {
-          top: 80px;
-          right: 10px;
-          width: auto;
-          gap: 10px;
-        }
-        .game-buttons {
-          gap: 5px;
-          justify-content: flex-end;
-          max-width: 120px; 
-        }
-        .game-btn {
-          width: 55px;
-          height: 55px;
-          font-size: 9px;
-        }
-        .btn-icon {
-          font-size: 18px;
-        }
-        #coin-counter {
-          padding: 8px;
-          gap: 5px;
-        }
-        #coin-value {
-          font-size: 16px;
-        }
-        .coin-icon {
-            font-size: 20px;
-        }
-        
-        .chat-area {
-            width: 95%;
-            max-width: 300px;
-            height: 100px;
-            bottom: 150px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        .chat-input {
-            width: 95%;
-            max-width: 300px;
-            bottom: 100px;
-            height: 35px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        #chat-form {
-            width: 95%;
-            max-width: 300px;
-            bottom: 145px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        #discover-panel, #block-selection-panel {
-            width: 90%;
-        }
+        .top-bar { height: 60px; gap: 8px; padding: 8px; }
+        .player-avatar { width: 45px; height: 45px; }
+        .top-bar .player-name { display: none; }
+        .top-bar .player-name:first-of-type { display: block; font-size: 12px; }
+        .right-ui { top: 80px; right: 10px; width: auto; gap: 10px; }
+        .game-buttons { gap: 5px; justify-content: flex-end; max-width: 180px; }
+        .game-btn { width: 55px; height: 55px; font-size: 9px; }
+        .btn-icon { font-size: 18px; }
+        #coin-counter { padding: 8px; gap: 5px; }
+        #coin-value { font-size: 16px; }
+        .coin-icon { font-size: 20px; }
+        .chat-area { width: 95%; max-width: 300px; height: 100px; bottom: 150px; left: 50%; transform: translateX(-50%); }
+        .chat-input { width: 95%; max-width: 300px; bottom: 100px; height: 35px; left: 50%; transform: translateX(-50%); }
+        #chat-form { width: 95%; max-width: 300px; bottom: 145px; left: 50%; transform: translateX(-50%); }
+        .panel, #block-selection-panel { width: 90%; }
       }
     </style>
   </head>
@@ -180,11 +121,11 @@
             
             <div class="right-ui ui-element">
                 <div class="game-buttons">
-                    <div class="game-btn btn-zagraj"><div class="btn-icon">🎮</div><div>Graj</div></div>
-                    <div class="game-btn btn-odkryj"><div class="btn-icon">👕</div><div>Skiny</div></div>
+                    <div class="game-btn btn-zagraj"><div class="btn-icon">🎮</div><div>Zagraj</div></div>
                     <div class="game-btn btn-buduj"><div class="btn-icon">🔨</div><div>Buduj</div></div>
-                    <div class="game-btn btn-tworz"><div class="btn-icon">🎨</div><div>Twórz Skina</div></div>
                     <div class="game-btn btn-kup"><div class="btn-icon">🛒</div><div>Kup</div></div>
+                    <div class="game-btn btn-odkryj"><div class="btn-icon">🔍</div><div>Odkryj</div></div>
+                    <div class="game-btn btn-wiecej"><div class="btn-icon">⚙️</div><div>Więcej</div></div>
                 </div>
                 
                 <div id="coin-counter">
@@ -208,10 +149,20 @@
       <div id="block-selection-panel"></div>
     </div>
     
-    <div id="discover-panel">
+    <div id="discover-panel" class="panel">
         <h2 id="discover-panel-title">Wybierz Świat</h2>
-        <div id="discover-list"></div>
-        <div id="discover-close-button">Zamknij</div>
+        <div id="discover-list" class="panel-list"></div>
+        <div id="discover-close-button" class="panel-close-button">Zamknij</div>
+    </div>
+
+    <!-- NOWY PANEL WYBORU BUDOWANIA -->
+    <div id="build-choice-panel" class="panel">
+        <h2>Co chcesz zbudować?</h2>
+        <div class="panel-list">
+            <div id="build-choice-world" class="panel-item">Świat</div>
+            <div id="build-choice-skin" class="panel-item">Skina</div>
+        </div>
+        <div id="build-choice-close" class="panel-close-button">Anuluj</div>
     </div>
 
     <script type="module" src="main.js"></script>
