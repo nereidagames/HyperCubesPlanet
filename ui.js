@@ -1,12 +1,11 @@
 export class UIManager {
-  constructor(onSendMessage, onChangeCharacter) {
+  constructor(onSendMessage) {
     this.onSendMessage = onSendMessage;
-    // onChangeCharacter nie jest już potrzebne w starym stylu
     this.isMobile = false;
     this.onBuildClick = null;
-    this.onDiscoverClick = null; // Będzie używane do wyboru skinów
-    this.onPlayClick = null; // Do wyboru światów
-    this.onSkinBuilderClick = null; // Do edytora skinów
+    this.onDiscoverClick = null;
+    this.onPlayClick = null;
+    this.onSkinBuilderClick = null;
   }
   
   initialize(isMobile) {
@@ -29,14 +28,40 @@ export class UIManager {
   }
 
   setupButtonHandlers() {
+    // Główne przyciski interfejsu
     const buttons = document.querySelectorAll('.game-btn');
     buttons.forEach(button => {
       const buttonType = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
+
+    // Czat
     const chatInput = document.querySelector('.chat-input');
     if (chatInput) chatInput.addEventListener('click', () => this.handleChatClick());
-    // Usunięto event listenery dla starych przycisków
+
+    // --- POPRAWKA: Logika dla nowego panelu wyboru budowania ---
+    const buildChoicePanel = document.getElementById('build-choice-panel');
+    const buildChoiceWorldBtn = document.getElementById('build-choice-world');
+    const buildChoiceSkinBtn = document.getElementById('build-choice-skin');
+    const buildChoiceCloseBtn = document.getElementById('build-choice-close');
+
+    if (buildChoiceWorldBtn) {
+      buildChoiceWorldBtn.onclick = () => {
+        buildChoicePanel.style.display = 'none';
+        if (this.onBuildClick) this.onBuildClick();
+      };
+    }
+    if (buildChoiceSkinBtn) {
+      buildChoiceSkinBtn.onclick = () => {
+        buildChoicePanel.style.display = 'none';
+        if (this.onSkinBuilderClick) this.onSkinBuilderClick();
+      };
+    }
+    if (buildChoiceCloseBtn) {
+      buildChoiceCloseBtn.onclick = () => {
+        buildChoicePanel.style.display = 'none';
+      };
+    }
   }
 
   getButtonType(button) {
@@ -44,7 +69,7 @@ export class UIManager {
     if (button.classList.contains('btn-buduj')) return 'buduj';
     if (button.classList.contains('btn-kup')) return 'kup';
     if (button.classList.contains('btn-odkryj')) return 'odkryj';
-    if (button.classList.contains('btn-tworz')) return 'tworz';
+    if (button.classList.contains('btn-wiecej')) return 'wiecej'; // Nowy przycisk
     return 'unknown';
   }
 
@@ -52,28 +77,30 @@ export class UIManager {
     buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
     setTimeout(() => { buttonElement.style.transform = ''; }, 150);
 
-    if (buttonType === 'buduj' && this.onBuildClick) {
-        this.showMessage('Wchodzenie do trybu budowania świata...', 'info');
-        this.onBuildClick();
-        return;
-    }
-    if (buttonType === 'tworz' && this.onSkinBuilderClick) {
-        this.showMessage('Wchodzenie do edytora skinów...', 'info');
-        this.onSkinBuilderClick();
-        return;
-    }
+    // --- POPRAWKA: Nowa logika przycisków ---
     if (buttonType === 'zagraj' && this.onPlayClick) {
         this.onPlayClick();
         return;
     }
+    if (buttonType === 'buduj') {
+        // Zamiast budować, pokazujemy panel wyboru
+        const panel = document.getElementById('build-choice-panel');
+        if (panel) panel.style.display = 'flex';
+        return;
+    }
     if (buttonType === 'odkryj' && this.onDiscoverClick) {
+        // Przycisk "Odkryj" teraz pokazuje skiny
         this.onDiscoverClick();
         return;
     }
     
+    // Pozostałe przyciski
     switch (buttonType) {
       case 'kup': 
         this.showMessage('Otwieranie sklepu...', 'success'); 
+        break;
+      case 'wiecej':
+        this.showMessage('Więcej opcji...', 'info');
         break;
     }
   }
