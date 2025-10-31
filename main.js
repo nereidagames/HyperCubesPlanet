@@ -27,7 +27,8 @@ class BlockStarPlanetGame {
     this.skinBuilderManager = null;
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
-    
+    this.clock = new THREE.Clock(); // <--- POPRAWKA: Dodano zegar Three.js
+
     // NOWE WŁAŚCIWOŚCI
     this.stats = null;
     this.isFPSEnabled = false;
@@ -277,7 +278,7 @@ class BlockStarPlanetGame {
     // Zawsze aktualizuj licznik FPS, jeśli jest włączony
     if (this.isFPSEnabled) this.stats.update();
 
-    const deltaTime = 0.016;
+    const deltaTime = this.clock.getDelta(); // <--- POPRAWKA: Dynamicznie pobierany czas
     
     if (this.gameState === 'MainMenu') {
         if(this.playerController && this.cameraController) {
