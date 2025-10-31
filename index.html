@@ -10,7 +10,8 @@
         "imports": { 
           "three": "https://esm.sh/three@0.160.0?dev", 
           "three/": "https://esm.sh/three@0.160.0&dev/",
-          "nipplejs": "https://esm.sh/nipplejs"
+          "nipplejs": "https://esm.sh/nipplejs",
+          "three/addons/libs/stats.module.js": "https://esm.sh/three@0.160.0/examples/jsm/libs/stats.module.js"
         } 
       }
     </script>
@@ -155,7 +156,6 @@
         <div id="discover-close-button" class="panel-close-button">Zamknij</div>
     </div>
 
-    <!-- NOWY PANEL WYBORU BUDOWANIA -->
     <div id="build-choice-panel" class="panel">
         <h2>Co chcesz zbudować?</h2>
         <div class="panel-list">
@@ -163,6 +163,17 @@
             <div id="build-choice-skin" class="panel-item">Skina</div>
         </div>
         <div id="build-choice-close" class="panel-close-button">Anuluj</div>
+    </div>
+
+    <!-- NOWY PANEL DLA PRZYCISKU "WIĘCEJ" -->
+    <div id="more-options-panel" class="panel">
+        <h2>Opcje</h2>
+        <div class="panel-list">
+            <div id="toggle-fps-btn" class="panel-item">
+                Licznik FPS: <span id="fps-status">Wyłączony</span>
+            </div>
+        </div>
+        <div id="more-options-close" class="panel-close-button">Zamknij</div>
     </div>
 
     <script type="module" src="main.js"></script>
