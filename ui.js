@@ -6,6 +6,7 @@ export class UIManager {
     this.onDiscoverClick = null;
     this.onPlayClick = null;
     this.onSkinBuilderClick = null;
+    this.onToggleFPS = null; // Nowy callback
   }
   
   initialize(isMobile) {
@@ -15,6 +16,14 @@ export class UIManager {
     console.log('UI Manager initialized');
   }
   
+  // NOWA METODA do aktualizacji tekstu na przycisku FPS
+  updateFPSToggleText(isEnabled) {
+    const fpsStatus = document.getElementById('fps-status');
+    if (fpsStatus) {
+      fpsStatus.textContent = isEnabled ? 'Włączony' : 'Wyłączony';
+    }
+  }
+
   updateCoinCounter(amount) {
     const coinValueElement = document.getElementById('coin-value');
     if (coinValueElement) {
@@ -28,40 +37,31 @@ export class UIManager {
   }
 
   setupButtonHandlers() {
-    // Główne przyciski interfejsu
     const buttons = document.querySelectorAll('.game-btn');
     buttons.forEach(button => {
       const buttonType = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
 
-    // Czat
     const chatInput = document.querySelector('.chat-input');
     if (chatInput) chatInput.addEventListener('click', () => this.handleChatClick());
 
-    // --- POPRAWKA: Logika dla nowego panelu wyboru budowania ---
     const buildChoicePanel = document.getElementById('build-choice-panel');
     const buildChoiceWorldBtn = document.getElementById('build-choice-world');
     const buildChoiceSkinBtn = document.getElementById('build-choice-skin');
     const buildChoiceCloseBtn = document.getElementById('build-choice-close');
 
-    if (buildChoiceWorldBtn) {
-      buildChoiceWorldBtn.onclick = () => {
-        buildChoicePanel.style.display = 'none';
-        if (this.onBuildClick) this.onBuildClick();
-      };
-    }
-    if (buildChoiceSkinBtn) {
-      buildChoiceSkinBtn.onclick = () => {
-        buildChoicePanel.style.display = 'none';
-        if (this.onSkinBuilderClick) this.onSkinBuilderClick();
-      };
-    }
-    if (buildChoiceCloseBtn) {
-      buildChoiceCloseBtn.onclick = () => {
-        buildChoicePanel.style.display = 'none';
-      };
-    }
+    if (buildChoiceWorldBtn) buildChoiceWorldBtn.onclick = () => { buildChoicePanel.style.display = 'none'; if (this.onBuildClick) this.onBuildClick(); };
+    if (buildChoiceSkinBtn) buildChoiceSkinBtn.onclick = () => { buildChoicePanel.style.display = 'none'; if (this.onSkinBuilderClick) this.onSkinBuilderClick(); };
+    if (buildChoiceCloseBtn) buildChoiceCloseBtn.onclick = () => { buildChoicePanel.style.display = 'none'; };
+    
+    // NOWA OBSŁUGA PANELU OPCJI
+    const moreOptionsPanel = document.getElementById('more-options-panel');
+    const toggleFPSBtn = document.getElementById('toggle-fps-btn');
+    const moreOptionsCloseBtn = document.getElementById('more-options-close');
+
+    if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
+    if (moreOptionsCloseBtn) moreOptionsCloseBtn.onclick = () => { moreOptionsPanel.style.display = 'none'; };
   }
 
   getButtonType(button) {
@@ -69,7 +69,7 @@ export class UIManager {
     if (button.classList.contains('btn-buduj')) return 'buduj';
     if (button.classList.contains('btn-kup')) return 'kup';
     if (button.classList.contains('btn-odkryj')) return 'odkryj';
-    if (button.classList.contains('btn-wiecej')) return 'wiecej'; // Nowy przycisk
+    if (button.classList.contains('btn-wiecej')) return 'wiecej';
     return 'unknown';
   }
 
@@ -77,37 +77,24 @@ export class UIManager {
     buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
     setTimeout(() => { buttonElement.style.transform = ''; }, 150);
 
-    // --- POPRAWKA: Nowa logika przycisków ---
-    if (buttonType === 'zagraj' && this.onPlayClick) {
-        this.onPlayClick();
-        return;
-    }
-    if (buttonType === 'buduj') {
-        // Zamiast budować, pokazujemy panel wyboru
-        const panel = document.getElementById('build-choice-panel');
-        if (panel) panel.style.display = 'flex';
-        return;
-    }
-    if (buttonType === 'odkryj' && this.onDiscoverClick) {
-        // Przycisk "Odkryj" teraz pokazuje skiny
-        this.onDiscoverClick();
+    if (buttonType === 'zagraj' && this.onPlayClick) { this.onPlayClick(); return; }
+    if (buttonType === 'buduj') { document.getElementById('build-choice-panel').style.display = 'flex'; return; }
+    if (buttonType === 'odkryj' && this.onDiscoverClick) { this.onDiscoverClick(); return; }
+    
+    // Zaktualizowana obsługa przycisku "Więcej"
+    if (buttonType === 'wiecej') {
+        document.getElementById('more-options-panel').style.display = 'flex';
         return;
     }
     
-    // Pozostałe przyciski
     switch (buttonType) {
       case 'kup': 
         this.showMessage('Otwieranie sklepu...', 'success'); 
         break;
-      case 'wiecej':
-        this.showMessage('Więcej opcji...', 'info');
-        break;
     }
   }
 
-  setupChatSystem() {
-    this.setupChatInput();
-  }
+  setupChatSystem() { this.setupChatInput(); }
   
   addChatMessage(message) {
     const chatArea = document.querySelector('.chat-area');
