@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import nipplejs from 'nipplejs';
 
 class PlayerController {
   constructor(player, collidableObjects, options = {}) {
@@ -21,18 +22,18 @@ class PlayerController {
     this.isMobile = false;
     this.canJump = true;
     this.joystickDirection = new THREE.Vector2();
-
-    this.setupInput();
+    this.joystick = null;
   }
 
   setIsMobile(isMobile) {
     this.isMobile = isMobile;
-    this.setupInput();
     
     const mobileControls = document.getElementById('mobile-game-controls');
-    if (mobileControls) {
-        mobileControls.style.display = isMobile ? 'block' : 'none';
-    }
+    const joystickZone = document.getElementById('joystick-zone');
+    if (mobileControls) mobileControls.style.display = isMobile ? 'block' : 'none';
+    if (joystickZone) joystickZone.style.display = isMobile ? 'block' : 'none';
+
+    this.setupInput();
   }
 
   setupInput() {
@@ -68,6 +69,10 @@ class PlayerController {
     if (jumpButton && this.handleMobileJumpStart) {
         jumpButton.removeEventListener('touchstart', this.handleMobileJumpStart);
         jumpButton.removeEventListener('touchend', this.handleMobileJumpEnd);
+    }
+    if (this.joystick) {
+        this.joystick.destroy();
+        this.joystick = null;
     }
   }
   
@@ -211,6 +216,28 @@ class PlayerController {
         jumpButton.addEventListener('touchstart', this.handleMobileJumpStart, { passive: false });
         jumpButton.addEventListener('touchend', this.handleMobileJumpEnd, { passive: false });
     }
+
+    const joystickZone = document.getElementById('joystick-zone');
+    if (joystickZone) {
+        const options = {
+            zone: joystickZone,
+            mode: 'static',
+            position: { left: '50%', top: '50%' },
+            color: 'white',
+            size: 100,
+        };
+        this.joystick = nipplejs.create(options);
+
+        this.joystick.on('move', (evt, data) => {
+            if (data.vector) {
+                this.joystickDirection.set(data.vector.x, data.vector.y);
+            }
+        });
+
+        this.joystick.on('end', () => {
+            this.joystickDirection.set(0, 0);
+        });
+    }
   }
 }
 
@@ -241,7 +268,7 @@ class ThirdPersonCameraController {
 
     setupControls() {
         this.handleStart = (e) => {
-            if (this.isMobile && e.target.closest('#mobile-game-controls')) return;
+            if (this.isMobile && (e.target.closest('#joystick-zone') || e.target.closest('#jump-button'))) return;
             if (!this.enabled) return;
             if (!this.isMobile && e.target.closest('.ui-element')) return;
             this.isDragging = true;
