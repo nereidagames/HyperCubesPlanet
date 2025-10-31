@@ -8,9 +8,9 @@ import { MultiplayerManager } from './multiplayer.js';
 import { BuildManager } from './BuildManager.js';
 import { WorldStorage } from './WorldStorage.js';
 import { CoinManager } from './CoinManager.js';
-// Nowe importy
 import { SkinBuilderManager } from './SkinBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
+import Stats from 'three/addons/libs/stats.module.js'; // NOWY IMPORT
 
 class BlockStarPlanetGame {
   constructor() {
@@ -24,9 +24,14 @@ class BlockStarPlanetGame {
     this.coinManager = null;
     this.gameState = 'MainMenu';
     this.buildManager = null;
-    this.skinBuilderManager = null; // Nowy manager
+    this.skinBuilderManager = null;
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
+    
+    // NOWE WŁAŚCIWOŚCI
+    this.stats = null;
+    this.isFPSEnabled = false;
+
     this.setupRenderer();
     this.init();
   }
@@ -63,26 +68,42 @@ class BlockStarPlanetGame {
   }
 
   async setupManagers() {
+    // --- Konfiguracja UI ---
     this.uiManager = new UIManager(
       (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); }
     );
     this.uiManager.initialize(this.isMobile);
-    // Nowe podpięcia przycisków
     this.uiManager.onBuildClick = () => this.switchToBuildMode();
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
+    this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); // Podpięcie nowej funkcji
 
+    // --- Konfiguracja licznika FPS ---
+    this.stats = new Stats();
+    this.stats.dom.style.left = '10px'; // Ustawiamy pozycję
+    this.stats.dom.style.top = '100px';
+    this.stats.dom.style.display = 'none'; // Domyślnie ukryty
+    document.getElementById('gameContainer').appendChild(this.stats.dom);
+
+    // Wczytaj preferencje licznika FPS
+    const savedFPSPref = localStorage.getItem('bsp_clone_fps_enabled');
+    if (savedFPSPref === 'true') {
+        this.isFPSEnabled = true;
+        this.stats.dom.style.display = 'block';
+    }
+    this.uiManager.updateFPSToggleText(this.isFPSEnabled);
+
+
+    // --- Reszta managerów ---
     this.buildManager = new BuildManager(this);
     this.skinBuilderManager = new SkinBuilderManager(this);
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
     
-    // Nowa logika ładowania postaci
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
-    // Wczytaj ostatnio używany skin
     const lastSkinName = SkinStorage.getLastUsedSkin();
     if (lastSkinName) {
         const skinData = SkinStorage.loadSkin(lastSkinName);
@@ -99,6 +120,15 @@ class BlockStarPlanetGame {
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
   }
   
+  // NOWA METODA do włączania/wyłączania licznika FPS
+  toggleFPSCounter() {
+    this.isFPSEnabled = !this.isFPSEnabled;
+    this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none';
+    this.uiManager.updateFPSToggleText(this.isFPSEnabled);
+    // Zapisz wybór w pamięci
+    localStorage.setItem('bsp_clone_fps_enabled', this.isFPSEnabled.toString());
+  }
+
   switchToBuildMode() {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
@@ -127,7 +157,6 @@ class BlockStarPlanetGame {
     this.gameState = 'MainMenu';
     this.toggleMainUI(true);
     
-    // Odśwież postać i kontrolery
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController.target = this.characterManager.character;
   }
@@ -148,7 +177,7 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
-  showDiscoverPanel(type) { // 'worlds' or 'skins'
+  showDiscoverPanel(type) {
     const panel = document.getElementById('discover-panel');
     const list = document.getElementById('discover-list');
     const title = document.getElementById('discover-panel-title');
@@ -163,7 +192,7 @@ class BlockStarPlanetGame {
         } else {
             savedWorlds.forEach(worldName => {
                 const item = document.createElement('div');
-                item.className = 'world-item';
+                item.className = 'panel-item';
                 item.textContent = worldName;
                 item.onclick = () => { panel.style.display = 'none'; this.loadAndExploreWorld(worldName); };
                 list.appendChild(item);
@@ -177,7 +206,7 @@ class BlockStarPlanetGame {
         } else {
             savedSkins.forEach(skinName => {
                 const item = document.createElement('div');
-                item.className = 'world-item';
+                item.className = 'panel-item';
                 item.textContent = skinName;
                 item.onclick = () => {
                     panel.style.display = 'none';
@@ -244,7 +273,11 @@ class BlockStarPlanetGame {
 
   animate() {
     requestAnimationFrame(() => this.animate());
-    const deltaTime = 0.016; // Stały deltaTime dla uproszczenia
+    
+    // Zawsze aktualizuj licznik FPS, jeśli jest włączony
+    if (this.isFPSEnabled) this.stats.update();
+
+    const deltaTime = 0.016;
     
     if (this.gameState === 'MainMenu') {
         if(this.playerController && this.cameraController) {
