@@ -10,7 +10,7 @@ import { WorldStorage } from './WorldStorage.js';
 import { CoinManager } from './CoinManager.js';
 import { SkinBuilderManager } from './SkinBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
-import Stats from 'three/addons/libs/stats.module.js'; // NOWY IMPORT
+import Stats from 'three/addons/libs/stats.module.js';
 
 class BlockStarPlanetGame {
   constructor() {
@@ -27,9 +27,8 @@ class BlockStarPlanetGame {
     this.skinBuilderManager = null;
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
-    this.clock = new THREE.Clock(); // <--- POPRAWKA: Dodano zegar Three.js
+    this.clock = new THREE.Clock(); 
 
-    // NOWE WŁAŚCIWOŚCI
     this.stats = null;
     this.isFPSEnabled = false;
 
@@ -69,7 +68,6 @@ class BlockStarPlanetGame {
   }
 
   async setupManagers() {
-    // --- Konfiguracja UI ---
     this.uiManager = new UIManager(
       (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); }
     );
@@ -78,25 +76,24 @@ class BlockStarPlanetGame {
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
-    this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); // Podpięcie nowej funkcji
+    this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); 
 
-    // --- Konfiguracja licznika FPS ---
     this.stats = new Stats();
-    this.stats.dom.style.left = '10px'; // Ustawiamy pozycję
+    this.stats.dom.style.left = '10px';
     this.stats.dom.style.top = '100px';
-    this.stats.dom.style.display = 'none'; // Domyślnie ukryty
+    this.stats.dom.style.display = 'none';
     document.getElementById('gameContainer').appendChild(this.stats.dom);
 
-    // Wczytaj preferencje licznika FPS
     const savedFPSPref = localStorage.getItem('bsp_clone_fps_enabled');
     if (savedFPSPref === 'true') {
         this.isFPSEnabled = true;
         this.stats.dom.style.display = 'block';
     }
     this.uiManager.updateFPSToggleText(this.isFPSEnabled);
+    
+    // <--- POPRAWKA: Pokaż kontrolki na starcie, jeśli jest to urządzenie mobilne
+    this.toggleMobileControls(true);
 
-
-    // --- Reszta managerów ---
     this.buildManager = new BuildManager(this);
     this.skinBuilderManager = new SkinBuilderManager(this);
     this.sceneManager = new SceneManager(this.scene);
@@ -121,12 +118,10 @@ class BlockStarPlanetGame {
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
   }
   
-  // NOWA METODA do włączania/wyłączania licznika FPS
   toggleFPSCounter() {
     this.isFPSEnabled = !this.isFPSEnabled;
     this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none';
     this.uiManager.updateFPSToggleText(this.isFPSEnabled);
-    // Zapisz wybór w pamięci
     localStorage.setItem('bsp_clone_fps_enabled', this.isFPSEnabled.toString());
   }
 
@@ -134,6 +129,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
+    this.toggleMobileControls(false); // <--- POPRAWKA: Ukryj kontrolki mobilne
     this.buildManager.enterBuildMode();
   }
 
@@ -141,6 +137,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'SkinBuilderMode';
     this.toggleMainUI(false);
+    this.toggleMobileControls(false); // <--- POPRAWKA: Ukryj kontrolki mobilne
     this.skinBuilderManager.enterBuildMode();
   }
   
@@ -157,6 +154,7 @@ class BlockStarPlanetGame {
 
     this.gameState = 'MainMenu';
     this.toggleMainUI(true);
+    this.toggleMobileControls(true); // <--- POPRAWKA: Pokaż kontrolki mobilne po powrocie do menu
     
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController.target = this.characterManager.character;
@@ -167,6 +165,15 @@ class BlockStarPlanetGame {
       if(this.playerController) this.playerController.destroy();
       this.playerController = null;
       if(this.cameraController) this.cameraController.enabled = visible;
+  }
+
+  // <--- POPRAWKA: Nowa funkcja do zarządzania widocznością kontrolek mobilnych
+  toggleMobileControls(visible) {
+      if (!this.isMobile) return;
+      const mobileControls = document.getElementById('mobile-game-controls');
+      if (mobileControls) {
+          mobileControls.style.display = visible ? 'block' : 'none';
+      }
   }
   
   recreatePlayerController(collidables) {
@@ -231,6 +238,8 @@ class BlockStarPlanetGame {
     
     this.gameState = 'ExploreMode';
     this.toggleMainUI(false);
+    this.toggleMobileControls(true); // <--- POPRAWKA: Pokaż kontrolki mobilne w trybie eksploracji
+    
     this.exploreScene = new THREE.Scene();
     this.exploreScene.background = new THREE.Color(0x87CEEB);
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -275,10 +284,9 @@ class BlockStarPlanetGame {
   animate() {
     requestAnimationFrame(() => this.animate());
     
-    // Zawsze aktualizuj licznik FPS, jeśli jest włączony
     if (this.isFPSEnabled) this.stats.update();
 
-    const deltaTime = this.clock.getDelta(); // <--- POPRAWKA: Dynamicznie pobierany czas
+    const deltaTime = this.clock.getDelta();
     
     if (this.gameState === 'MainMenu') {
         if(this.playerController && this.cameraController) {
