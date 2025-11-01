@@ -6,7 +6,6 @@
     <title>BlockStarPlanet Clone</title>
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
 
-    <!-- POPRAWKA: Import czcionki Titan One z Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
@@ -23,7 +22,6 @@
     </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      /* POPRAWKA: Zmiana domyślnej czcionki dla całej gry */
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; }
       #loading-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; transition: opacity 0.5s ease-out; overflow: hidden; }
       #loading-logo { font-size: 4em; text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.2); }
@@ -34,7 +32,7 @@
       .ui-element { pointer-events: auto; }
       .top-bar { position: absolute; top: 10px; left: 10px; right: 10px; height: 80px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; display: flex; align-items: center; padding: 10px; gap: 15px; }
       .player-avatar { width: 60px; height: 60px; background: linear-gradient(45deg, #4a90e2, #357abd); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; border: 2px solid #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-      .player-name { color: white; font-size: 14px; font-weight: normal; } /* Usunięto bold */
+      .player-name { color: white; font-size: 14px; font-weight: normal; }
       .chat-area { position: absolute; bottom: 120px; left: 20px; width: 350px; height: 120px; background: rgba(135, 206, 235, 0.9); border-radius: 15px; padding: 10px; border: 3px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); }
       .chat-message { color: #333; font-size: 13px; margin: 2px 0; }
       .chat-input { position: absolute; bottom: 20px; left: 20px; width: 300px; height: 40px; background: #90EE90; border: 3px solid #fff; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-weight: normal; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
@@ -58,7 +56,23 @@
       .btn-kup { background: linear-gradient(45deg, #45b7d1, #3498db); }
       .btn-odkryj { background: linear-gradient(45deg, #96ceb4, #85c1a5); }
       .btn-wiecej { background: linear-gradient(45deg, #feca57, #ff9ff3); }
-      .btn-icon { font-size: 20px; margin-bottom: 2px; }
+      
+      /* --- POPRAWKA: Style dla nowych ikon --- */
+      .btn-icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 3px;
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      .btn-zagraj .btn-icon { background-image: url('icons/icon-play.png'); }
+      .btn-buduj .btn-icon { background-image: url('icons/icon-build.png'); }
+      .btn-kup .btn-icon { background-image: url('icons/icon-shop.png'); }
+      .btn-odkryj .btn-icon { background-image: url('icons/icon-discover.png'); }
+      .btn-wiecej .btn-icon { background-image: url('icons/icon-more.png'); }
+      /* --- Koniec poprawki --- */
+
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
       .coin-icon { font-size: 24px; }
       #coin-value { color: #ffd700; font-size: 22px; text-shadow: 1px 1px 2px #000; }
@@ -116,7 +130,13 @@
         .right-ui { top: 80px; right: 10px; width: auto; gap: 10px; }
         .game-buttons { gap: 5px; justify-content: flex-end; max-width: 180px; }
         .game-btn { width: 55px; height: 55px; font-size: 9px; }
-        .btn-icon { font-size: 18px; }
+        
+        /* --- POPRAWKA: Mniejsza ikona na urządzeniach mobilnych --- */
+        .btn-icon {
+          width: 30px;
+          height: 30px;
+        }
+
         #coin-counter { padding: 8px; gap: 5px; }
         #coin-value { font-size: 16px; }
         .coin-icon { font-size: 20px; }
@@ -154,11 +174,12 @@
             
             <div class="right-ui ui-element">
                 <div class="game-buttons">
-                    <div class="game-btn btn-zagraj"><div class="btn-icon">🎮</div><div>Zagraj</div></div>
-                    <div class="game-btn btn-buduj"><div class="btn-icon">🔨</div><div>Buduj</div></div>
-                    <div class="game-btn btn-kup"><div class="btn-icon">🛒</div><div>Kup</div></div>
-                    <div class="game-btn btn-odkryj"><div class="btn-icon">🔍</div><div>Odkryj</div></div>
-                    <div class="game-btn btn-wiecej"><div class="btn-icon">⚙️</div><div>Więcej</div></div>
+                    <!-- POPRAWKA: Usunięcie starych ikon (emoji) -->
+                    <div class="game-btn btn-zagraj"><div class="btn-icon"></div><div>Zagraj</div></div>
+                    <div class="game-btn btn-buduj"><div class="btn-icon"></div><div>Buduj</div></div>
+                    <div class="game-btn btn-kup"><div class="btn-icon"></div><div>Kup</div></div>
+                    <div class="game-btn btn-odkryj"><div class="btn-icon"></div><div>Odkryj</div></div>
+                    <div class="game-btn btn-wiecej"><div class="btn-icon"></div><div>Więcej</div></div>
                 </div>
                 
                 <div id="coin-counter">
