@@ -48,29 +48,34 @@
         flex-direction: column; 
         gap: 15px; 
       }
-      .game-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-      .game-btn { width: 70px; height: 70px; border-radius: 12px; border: 3px solid #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; color: white; box-shadow: 0 6px 12px rgba(0,0,0,0.4); transition: transform 0.2s; }
-      .game-btn:hover { transform: translateY(-3px); }
-      .btn-zagraj { background: linear-gradient(45deg, #ff6b6b, #ee5a5a); }
-      .btn-buduj { background: linear-gradient(45deg, #4ecdc4, #44a08d); }
-      .btn-kup { background: linear-gradient(45deg, #45b7d1, #3498db); }
-      .btn-odkryj { background: linear-gradient(45deg, #96ceb4, #85c1a5); }
-      .btn-wiecej { background: linear-gradient(45deg, #feca57, #ff9ff3); }
-      
-      /* --- POPRAWKA: Style dla nowych ikon --- */
-      .btn-icon {
-        width: 40px;
-        height: 40px;
-        margin-bottom: 3px;
+      .game-buttons { display: flex; gap: 15px; align-items: center; }
+
+      /* --- POPRAWKA: Całkowita zmiana stylów przycisków --- */
+      .game-btn {
+        width: 64px; /* Rozmiar ikony */
+        height: 64px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        background-color: transparent;
         background-size: contain;
         background-position: center;
         background-repeat: no-repeat;
+        /* Usunięcie starych stylów: tła, cieni, obramowań */
+        border: none;
       }
-      .btn-zagraj .btn-icon { background-image: url('icons/icon-play.png'); }
-      .btn-buduj .btn-icon { background-image: url('icons/icon-build.png'); }
-      .btn-kup .btn-icon { background-image: url('icons/icon-shop.png'); }
-      .btn-odkryj .btn-icon { background-image: url('icons/icon-discover.png'); }
-      .btn-wiecej .btn-icon { background-image: url('icons/icon-more.png'); }
+      .game-btn:hover {
+        transform: scale(1.1); /* Efekt lekkiego powiększenia */
+      }
+      .game-btn:active {
+        transform: scale(0.95); /* Efekt wciśnięcia */
+      }
+      
+      /* Przypisanie obrazów do odpowiednich przycisków */
+      .btn-zagraj { background-image: url('icons/icon-play.png'); }
+      .btn-buduj { background-image: url('icons/icon-build.png'); }
+      .btn-kup { background-image: url('icons/icon-shop.png'); }
+      .btn-odkryj { background-image: url('icons/icon-discover.png'); }
+      .btn-wiecej { background-image: url('icons/icon-more.png'); }
       /* --- Koniec poprawki --- */
 
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -128,13 +133,12 @@
         .top-bar .player-name { display: none; }
         .top-bar .player-name:first-of-type { display: block; font-size: 12px; }
         .right-ui { top: 80px; right: 10px; width: auto; gap: 10px; }
-        .game-buttons { gap: 5px; justify-content: flex-end; max-width: 180px; }
-        .game-btn { width: 55px; height: 55px; font-size: 9px; }
+        .game-buttons { gap: 8px; }
         
-        /* --- POPRAWKA: Mniejsza ikona na urządzeniach mobilnych --- */
-        .btn-icon {
-          width: 30px;
-          height: 30px;
+        /* POPRAWKA: Mniejszy rozmiar ikon na urządzeniach mobilnych */
+        .game-btn {
+          width: 50px;
+          height: 50px;
         }
 
         #coin-counter { padding: 8px; gap: 5px; }
@@ -174,12 +178,12 @@
             
             <div class="right-ui ui-element">
                 <div class="game-buttons">
-                    <!-- POPRAWKA: Usunięcie starych ikon (emoji) -->
-                    <div class="game-btn btn-zagraj"><div class="btn-icon"></div><div>Zagraj</div></div>
-                    <div class="game-btn btn-buduj"><div class="btn-icon"></div><div>Buduj</div></div>
-                    <div class="game-btn btn-kup"><div class="btn-icon"></div><div>Kup</div></div>
-                    <div class="game-btn btn-odkryj"><div class="btn-icon"></div><div>Odkryj</div></div>
-                    <div class="game-btn btn-wiecej"><div class="btn-icon"></div><div>Więcej</div></div>
+                    <!-- POPRAWKA: Uproszczona struktura przycisków - teraz to tylko jeden div na przycisk -->
+                    <div class="game-btn btn-zagraj"></div>
+                    <div class.="game-btn btn-buduj"></div>
+                    <div class="game-btn btn-kup"></div>
+                    <div class="game-btn btn-odkryj"></div>
+                    <div class="game-btn btn-wiecej"></div>
                 </div>
                 
                 <div id="coin-counter">
