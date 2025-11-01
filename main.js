@@ -78,6 +78,9 @@ class BlockStarPlanetGame {
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); 
 
+    // POPRAWKA: Dodanie obsługi przycisku wyjścia z eksploracji
+    document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
+
     this.stats = new Stats();
     this.stats.dom.style.left = '10px';
     this.stats.dom.style.top = '100px';
@@ -91,7 +94,6 @@ class BlockStarPlanetGame {
     }
     this.uiManager.updateFPSToggleText(this.isFPSEnabled);
     
-    // <--- POPRAWKA: Pokaż kontrolki na starcie, jeśli jest to urządzenie mobilne
     this.toggleMobileControls(true);
 
     this.buildManager = new BuildManager(this);
@@ -129,7 +131,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); // <--- POPRAWKA: Ukryj kontrolki mobilne
+    this.toggleMobileControls(false); 
     this.buildManager.enterBuildMode();
   }
 
@@ -137,7 +139,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'SkinBuilderMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); // <--- POPRAWKA: Ukryj kontrolki mobilne
+    this.toggleMobileControls(false); 
     this.skinBuilderManager.enterBuildMode();
   }
   
@@ -150,11 +152,13 @@ class BlockStarPlanetGame {
         this.skinBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
       this.scene.add(this.characterManager.character);
+      // POPRAWKA: Ukryj przycisk wyjścia po powrocie do menu
+      document.getElementById('explore-exit-button').style.display = 'none';
     }
 
     this.gameState = 'MainMenu';
     this.toggleMainUI(true);
-    this.toggleMobileControls(true); // <--- POPRAWKA: Pokaż kontrolki mobilne po powrocie do menu
+    this.toggleMobileControls(true); 
     
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController.target = this.characterManager.character;
@@ -167,7 +171,6 @@ class BlockStarPlanetGame {
       if(this.cameraController) this.cameraController.enabled = visible;
   }
 
-  // <--- POPRAWKA: Nowa funkcja do zarządzania widocznością kontrolek mobilnych
   toggleMobileControls(visible) {
       if (!this.isMobile) return;
       const mobileControls = document.getElementById('mobile-game-controls');
@@ -238,7 +241,9 @@ class BlockStarPlanetGame {
     
     this.gameState = 'ExploreMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(true); // <--- POPRAWKA: Pokaż kontrolki mobilne w trybie eksploracji
+    this.toggleMobileControls(true);
+    // POPRAWKA: Pokaż przycisk wyjścia z eksploracji
+    document.getElementById('explore-exit-button').style.display = 'flex';
     
     this.exploreScene = new THREE.Scene();
     this.exploreScene.background = new THREE.Color(0x87CEEB);
