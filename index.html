@@ -75,7 +75,17 @@
       .btn-wiecej { background-image: url('icons/icon-more.png'); }
 
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
-      .coin-icon { font-size: 24px; }
+      
+      /* --- POPRAWKA: Style dla nowej ikony monet --- */
+      .coin-icon {
+        width: 30px;
+        height: 30px;
+        background-image: url('icons/icon-coin.png');
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      
       #coin-value { color: #ffd700; font-size: 22px; text-shadow: 1px 1px 2px #000; }
       #mobile-game-controls { display: none; pointer-events: auto; }
       #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(0, 200, 0, 0.7); border-radius: 50%; color: white; font-size: 24px; border: 3px solid white; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1001;}
@@ -138,7 +148,13 @@
 
         #coin-counter { padding: 8px; gap: 5px; }
         #coin-value { font-size: 16px; }
-        .coin-icon { font-size: 20px; }
+        
+        /* --- POPRAWKA: Mniejszy rozmiar ikony monet na mobile --- */
+        .coin-icon {
+          width: 24px;
+          height: 24px;
+        }
+        
         .chat-area { width: 95%; max-width: 300px; height: 100px; bottom: 150px; left: 50%; transform: translateX(-50%); }
         .chat-input { width: 95%; max-width: 300px; bottom: 100px; height: 35px; left: 50%; transform: translateX(-50%); }
         #chat-form { width: 95%; max-width: 300px; bottom: 145px; left: 50%; transform: translateX(-50%); }
@@ -174,7 +190,6 @@
             <div class="right-ui ui-element">
                 <div class="game-buttons">
                     <div class="game-btn btn-zagraj"></div>
-                    <!-- POPRAWKA: Naprawiono literówkę z "class." na "class=" -->
                     <div class="game-btn btn-buduj"></div>
                     <div class="game-btn btn-kup"></div>
                     <div class="game-btn btn-odkryj"></div>
@@ -182,7 +197,8 @@
                 </div>
                 
                 <div id="coin-counter">
-                    <div class="coin-icon">💰</div>
+                    <!-- POPRAWKA: Usunięto emoji z tego diva -->
+                    <div class="coin-icon"></div>
                     <div id="coin-value">0</div>
                 </div>
             </div>
@@ -226,7 +242,7 @@
                 Licznik FPS: <span id="fps-status">Wyłączony</span>
             </div>
         </div>
-        <div id="more-options-close" class="panel-close-button">Zamknij</div>
+        <div id="more-options-close" class="panel-close-button">Anuluj</div>
     </div>
 
     <script type="module" src="main.js"></script>
