@@ -76,7 +76,6 @@
 
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
       
-      /* --- POPRAWKA: Style dla nowej ikony monet --- */
       .coin-icon {
         width: 30px;
         height: 30px;
@@ -86,6 +85,12 @@
         background-repeat: no-repeat;
       }
       
+      /* --- POPRAWKA: Style dla nowej ikony "Przyjaciele" --- */
+      .btn-friends {
+        background: url('icons/icon-friends.png') center center / contain no-repeat;
+        cursor: pointer;
+      }
+
       #coin-value { color: #ffd700; font-size: 22px; text-shadow: 1px 1px 2px #000; }
       #mobile-game-controls { display: none; pointer-events: auto; }
       #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(0, 200, 0, 0.7); border-radius: 50%; color: white; font-size: 24px; border: 3px solid white; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1001;}
@@ -149,7 +154,6 @@
         #coin-counter { padding: 8px; gap: 5px; }
         #coin-value { font-size: 16px; }
         
-        /* --- POPRAWKA: Mniejszy rozmiar ikony monet na mobile --- */
         .coin-icon {
           width: 24px;
           height: 24px;
@@ -172,7 +176,8 @@
                 <div class="player-name">player</div>
                 <div class="player-avatar" style="background: linear-gradient(45deg, #27ae60, #2ecc71);">📧</div>
                 <div class="player-name">Poczta</div>
-                <div class="player-avatar" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">👥</div>
+                <!-- POPRAWKA: Usunięto emoji i styl inline, dodano klasę .btn-friends -->
+                <div class="player-avatar btn-friends"></div>
                 <div class="player-name">Przyjaciele</div>
             </div>
             
@@ -197,7 +202,6 @@
                 </div>
                 
                 <div id="coin-counter">
-                    <!-- POPRAWKA: Usunięto emoji z tego diva -->
                     <div class="coin-icon"></div>
                     <div id="coin-value">0</div>
                 </div>
@@ -242,7 +246,7 @@
                 Licznik FPS: <span id="fps-status">Wyłączony</span>
             </div>
         </div>
-        <div id="more-options-close" class="panel-close-button">Anuluj</div>
+        <div id="more-options-close" class="panel-close-button">Zamknij</div>
     </div>
 
     <script type="module" src="main.js"></script>
