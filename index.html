@@ -40,7 +40,6 @@
       #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: 'Titan One', cursive; }
       #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: 'Titan One', cursive; }
       
-      /* --- POPRAWKA: Wyrównanie do prawej --- */
       .right-ui { 
         position: absolute; 
         top: 100px; 
@@ -49,14 +48,13 @@
         display: flex; 
         flex-direction: column; 
         gap: 15px; 
-        align-items: flex-end; /* To wypycha zawartość do prawej */
+        align-items: flex-end;
       }
 
       .game-buttons { display: flex; gap: 15px; align-items: center; }
       
-      /* --- POPRAWKA: Zmiana rozmiaru i usunięcie animacji --- */
       .game-btn {
-        width: 75px; /* Powiększona ikona */
+        width: 75px;
         height: 75px;
         cursor: pointer;
         transition: transform 0.2s ease;
@@ -66,9 +64,8 @@
         background-repeat: no-repeat;
         border: none;
       }
-      /* Usunięto regułę .game-btn:hover */
       .game-btn:active {
-        transform: scale(0.95); /* Efekt wciśnięcia zostaje */
+        transform: scale(0.95);
       }
       
       .btn-zagraj { background-image: url('icons/icon-play.png'); }
@@ -134,7 +131,6 @@
         .right-ui { top: 80px; right: 10px; width: auto; }
         .game-buttons { gap: 8px; }
         
-        /* --- POPRAWKA: Mniejszy rozmiar ikon na urządzeniach mobilnych --- */
         .game-btn {
           width: 60px;
           height: 60px;
@@ -178,6 +174,7 @@
             <div class="right-ui ui-element">
                 <div class="game-buttons">
                     <div class="game-btn btn-zagraj"></div>
+                    <!-- POPRAWKA: Naprawiono literówkę z "class." na "class=" -->
                     <div class="game-btn btn-buduj"></div>
                     <div class="game-btn btn-kup"></div>
                     <div class="game-btn btn-odkryj"></div>
