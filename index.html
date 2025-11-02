@@ -3,9 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- POPRAWKA: Zmiana tytułu strony -->
     <title>HyperCubesPlanet</title>
-    <!-- POPRAWKA: Dodanie ikony (favicon) -->
     <link rel="icon" type="image/png" href="icons/favicon.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +24,15 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; }
       #loading-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; transition: opacity 0.5s ease-out; overflow: hidden; }
-      #loading-logo { font-size: 4em; text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.2); }
+      
+      /* --- POPRAWKA: Style dla logo na ekranie ładowania --- */
+      #loading-logo {
+        width: 50vw;
+        max-width: 600px;
+        height: auto; /* Zachowuje proporcje obrazu */
+        filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3));
+      }
+
       #gameContainer { position: relative; width: 100vw; height: 100vh; }
       canvas { display: block; cursor: grab; }
       canvas:active { cursor: grabbing; }
@@ -181,7 +187,10 @@
     </style>
   </head>
   <body>
-    <div id="loading-screen"><h1 id="loading-logo">HyperCubesPlanet</h1></div>
+    <!-- POPRAWKA: Zastąpienie h1 tagiem img z logo -->
+    <div id="loading-screen">
+      <img id="loading-logo" src="icons/favicon.png" alt="HyperCubesPlanet Logo">
+    </div>
     
     <div id="gameContainer">
         <div class="ui-overlay">
