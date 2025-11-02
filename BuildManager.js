@@ -3,7 +3,8 @@ import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
 
 export class BuildManager {
-  constructor(game) {
+  // --- POPRAWKA: Dodajemy loadingManager do konstruktora ---
+  constructor(game, loadingManager) {
     this.game = game;
     this.scene = new THREE.Scene();
     this.isActive = false;
@@ -22,7 +23,8 @@ export class BuildManager {
       { name: 'Piasek', texturePath: 'textures/piasek.png' }
     ];
     this.selectedBlockType = this.blockTypes[0];
-    this.textureLoader = new THREE.TextureLoader();
+    // --- POPRAWKA: Przekazujemy manager do TextureLoadera ---
+    this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
@@ -52,7 +54,7 @@ export class BuildManager {
     this.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     directionalLight.position.set(50, 50, 50);
-    directionalLight.castShadow = true; // Światło w trybie budowania też rzuca cień
+    directionalLight.castShadow = true; 
     this.scene.add(directionalLight);
     this.createBuildPlatform();
     this.createPreviewBlock();
@@ -66,7 +68,7 @@ export class BuildManager {
     const material = new THREE.MeshLambertMaterial({ color: 0x559022 });
     this.platform = new THREE.Mesh(geometry, material);
     this.platform.position.y = -0.5;
-    this.platform.receiveShadow = true; // POPRAWKA: Platforma odbiera cienie
+    this.platform.receiveShadow = true;
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     const edges = new THREE.EdgesGeometry(geometry);
@@ -162,7 +164,6 @@ export class BuildManager {
     newBlock.userData.texturePath = this.selectedBlockType.texturePath;
     newBlock.position.copy(this.previewBlock.position);
     
-    // POPRAWKA: Nowe bloki rzucają i odbierają cienie
     newBlock.castShadow = true;
     newBlock.receiveShadow = true;
 
