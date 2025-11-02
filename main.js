@@ -12,6 +12,17 @@ import { SkinBuilderManager } from './SkinBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
 import Stats from 'three/addons/libs/stats.module.js';
 
+// --- POPRAWKA: Tablica z tekstami ładowania ---
+const LOADING_TEXTS = [
+    "Dziurkowanie Kawałków Sera...",
+    "Wprowadzanie Przycisku Skoku...",
+    "Naprawianie Błędów...",
+    "Ustawianie Grawitacji...",
+    "Generowanie Sześciennych Światów...",
+    "Karmienie Chomików w Serwerowni...",
+    "Wczytywanie - Proszę czekać..."
+];
+
 class BlockStarPlanetGame {
   constructor() {
     this.scene = new THREE.Scene();
@@ -22,7 +33,7 @@ class BlockStarPlanetGame {
     this.characterManager = null;
     this.cameraController = null;
     this.coinManager = null;
-    this.gameState = 'MainMenu';
+    this.gameState = 'Loading'; // Zaczynamy od stanu ładowania
     this.buildManager = null;
     this.skinBuilderManager = null;
     this.exploreScene = null;
@@ -32,24 +43,87 @@ class BlockStarPlanetGame {
     this.stats = null;
     this.isFPSEnabled = false;
 
+    // --- POPRAWKA: Implementacja LoadingManager ---
+    this.loadingManager = null;
+    this.loadingTextInterval = null;
+
     this.setupRenderer();
     this.init();
   }
 
   async init() {
     try {
-      await this.setupManagers();
-      this.animate();
-      console.log('Game initialized successfully!');
-      const loadingScreen = document.getElementById('loading-screen');
-      if (loadingScreen) {
-        loadingScreen.style.opacity = '0';
-        setTimeout(() => { loadingScreen.style.display = 'none'; }, 500);
-      }
+      this.setupLoadingManager();
+      await this.preloadInitialAssets(); // Czekamy na załadowanie zasobów
+      // Reszta managerów inicjuje się po załadowaniu
     } catch (error) {
       console.error('CRITICAL: Error initializing game:', error);
       this.showError('Krytyczny błąd podczas ładowania gry.');
     }
+  }
+
+  // --- POPRAWKA: Nowa metoda do konfiguracji LoadingManagera ---
+  setupLoadingManager() {
+    const loadingScreen = document.getElementById('loading-screen');
+    const progressBarFill = document.getElementById('progress-bar-fill');
+    const loadingText = document.getElementById('loading-text');
+
+    this.loadingManager = new THREE.LoadingManager();
+
+    this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+        const progress = (itemsLoaded / itemsTotal) * 100;
+        progressBarFill.style.width = `${progress}%`;
+    };
+
+    this.loadingManager.onLoad = () => {
+        // Zatrzymujemy losowanie tekstów
+        clearInterval(this.loadingTextInterval);
+        loadingText.textContent = "Gotowe!";
+        
+        // Czekamy chwilę, aby gracz zobaczył "Gotowe!"
+        setTimeout(() => {
+            if (loadingScreen) {
+                loadingScreen.style.opacity = '0';
+                // Ukrywamy ekran ładowania po zakończeniu animacji zanikania
+                setTimeout(() => { 
+                    loadingScreen.style.display = 'none'; 
+                    this.gameState = 'MainMenu'; // Przechodzimy do gry
+                }, 500);
+            }
+        }, 500);
+    };
+
+    // Rozpoczynamy losowanie tekstów
+    this.loadingTextInterval = setInterval(() => {
+        const randomIndex = Math.floor(Math.random() * LOADING_TEXTS.length);
+        loadingText.textContent = LOADING_TEXTS[randomIndex];
+    }, 2000);
+  }
+
+  // --- POPRAWKA: Nowa metoda do ładowania kluczowych zasobów na start ---
+  async preloadInitialAssets() {
+    const textureLoader = new THREE.TextureLoader(this.loadingManager);
+    
+    const blockTypes = [
+        { name: 'Trawa', texturePath: 'textures/trawa.png' },
+        { name: 'Ziemia', texturePath: 'textures/ziemia.png' },
+        { name: 'Drewno', texturePath: 'textures/drewno.png' },
+        { name: 'Beton', texturePath: 'textures/beton.png' },
+        { name: 'Piasek', texturePath: 'textures/piasek.png' }
+    ];
+
+    // Funkcja do ładowania tekstur w sposób, który manager może śledzić
+    const loadTexture = (path) => new Promise(resolve => textureLoader.load(path, resolve));
+
+    const texturePromises = blockTypes.map(block => loadTexture(block.texturePath));
+    
+    // Równoległe ładowanie wszystkich tekstur
+    await Promise.all(texturePromises);
+    
+    // Po załadowaniu tekstur inicjujemy resztę gry
+    await this.setupManagers();
+    this.animate();
+    console.log('Game initialized successfully!');
   }
 
   detectMobileDevice() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
@@ -78,7 +152,6 @@ class BlockStarPlanetGame {
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); 
 
-    // POPRAWKA: Dodanie obsługi przycisku wyjścia z eksploracji
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
 
     this.stats = new Stats();
@@ -96,8 +169,10 @@ class BlockStarPlanetGame {
     
     this.toggleMobileControls(true);
 
-    this.buildManager = new BuildManager(this);
-    this.skinBuilderManager = new SkinBuilderManager(this);
+    // Przekazujemy LoadingManager do managerów, które ładują zasoby
+    this.buildManager = new BuildManager(this, this.loadingManager);
+    this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager);
+
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
     
@@ -152,7 +227,6 @@ class BlockStarPlanetGame {
         this.skinBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
       this.scene.add(this.characterManager.character);
-      // POPRAWKA: Ukryj przycisk wyjścia po powrocie do menu
       document.getElementById('explore-exit-button').style.display = 'none';
     }
 
@@ -242,7 +316,6 @@ class BlockStarPlanetGame {
     this.gameState = 'ExploreMode';
     this.toggleMainUI(false);
     this.toggleMobileControls(true);
-    // POPRAWKA: Pokaż przycisk wyjścia z eksploracji
     document.getElementById('explore-exit-button').style.display = 'flex';
     
     this.exploreScene = new THREE.Scene();
@@ -255,7 +328,7 @@ class BlockStarPlanetGame {
     this.exploreScene.add(directionalLight);
 
     const worldBlocks = [];
-    const textureLoader = new THREE.TextureLoader();
+    const textureLoader = new THREE.TextureLoader(this.loadingManager); // Używamy managera
     const loadedMaterials = {};
 
     worldData.forEach(blockData => {
@@ -293,6 +366,9 @@ class BlockStarPlanetGame {
 
     const deltaTime = this.clock.getDelta();
     
+    // Nie renderujemy nic, dopóki gra się nie załaduje
+    if (this.gameState === 'Loading') return;
+
     if (this.gameState === 'MainMenu') {
         if(this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
@@ -327,4 +403,5 @@ class BlockStarPlanetGame {
   }
 }
 
+// Zmieniamy inicjalizację, aby poczekać na DOM
 document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
