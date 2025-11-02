@@ -125,9 +125,7 @@ class PlayerController {
     this.player.position.y += verticalMovement;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
     
-    // --- POPRAWKA: Usunięcie błędnej flagi 'landedOnBlock' ---
-    // Zamiast flagi, będziemy bezpośrednio sprawdzać, czy postać jest na ziemi na końcu funkcji.
-    let onAnyObject = false; 
+    let landedOnBlock = false;
 
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
@@ -138,7 +136,7 @@ class PlayerController {
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
                 this.canJump = true;
-                onAnyObject = true; // Zaznaczamy, że wylądowaliśmy
+                landedOnBlock = true;
             } else if (verticalMovement > 0) {
                 if (objectBox.min.y > this.player.position.y) {
                     this.player.position.y = objectBox.min.y - halfHeight - epsilon;
@@ -182,29 +180,21 @@ class PlayerController {
         }
     }
 
-    // --- POPRAWKA: Usunięcie błędnej logiki, która resetowała isOnGround ---
-    // Sprawdzamy lądowanie na głównej podłodze tylko wtedy, gdy NIE wylądowaliśmy na żadnym bloku.
-    if (!onAnyObject && this.player.position.y <= this.groundRestingY) {
-        this.player.position.y = this.groundRestingY;
-        if (!this.isOnGround) {
-            this.velocity.y = 0;
-            this.isOnGround = true;
-            this.jumpsRemaining = this.maxJumps;
-            this.canJump = true;
+    if (this.player.position.y <= this.groundRestingY) {
+        if (!landedOnBlock) {
+            this.player.position.y = this.groundRestingY;
+            if (!this.isOnGround) {
+                this.velocity.y = 0;
+                this.isOnGround = true;
+                this.jumpsRemaining = this.maxJumps;
+                this.canJump = true;
+            }
+        }
+    } else {
+        if (!landedOnBlock) {
+            this.isOnGround = false;
         }
     }
-    
-    /* 
-      USUNIĘTY FRAGMENT POWODUJĄCY BŁĄD:
-
-      if (this.player.position.y <= this.groundRestingY) {
-          // ...
-      } else {
-          if (!landedOnBlock) {
-              this.isOnGround = false; // Ta linia powodowała problem!
-          }
-      }
-    */
   }
   
   destroy() { this.cleanupInput(); }
