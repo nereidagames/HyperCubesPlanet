@@ -24,7 +24,6 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; }
       
-      /* --- POPRAWKA: Nowe, zaawansowane style dla ekranu ładowania --- */
       #loading-screen {
         position: fixed;
         top: 0;
@@ -47,7 +46,7 @@
         flex-direction: column;
         align-items: center;
         gap: 40px;
-        z-index: 2; /* Treść nad chmurami */
+        z-index: 2;
       }
 
       #loading-logo {
@@ -71,7 +70,7 @@
       }
 
       #progress-bar-fill {
-        width: 0%; /* Zaczyna pusty */
+        width: 0%;
         height: 100%;
         background: linear-gradient(to right, #2ed573, #7bed9f);
         border-radius: 20px;
@@ -89,19 +88,17 @@
         white-space: nowrap;
       }
       
-      /* Animacja "oddychania" dla logo */
       @keyframes logo-breath {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.05); }
       }
       
-      /* Kontener na animowane chmury */
       .clouds-container {
         position: absolute;
         top: 0; left: 0;
         width: 100%; height: 100%;
         overflow: hidden;
-        z-index: 1; /* Chmury pod treścią */
+        z-index: 1;
       }
       
       .cloud {
@@ -138,7 +135,6 @@
         from { transform: translateX(-250px); }
         to { transform: translateX(105vw); }
       }
-      /* --- Koniec stylów ekranu ładowania --- */
 
       #gameContainer { position: relative; width: 100vw; height: 100vh; }
       canvas { display: block; cursor: grab; }
@@ -265,27 +261,50 @@
       #explore-exit-button:active { transform: scale(0.95); }
 
 
+      /* --- POPRAWKA: Zmiany w Media Query dla urządzeń mobilnych --- */
       @media (max-width: 768px) {
-        .top-bar { height: 60px; gap: 8px; padding: 8px; }
-        .player-avatar { width: 45px; height: 45px; }
+        .top-bar {
+          height: 50px; /* Zmniejszona wysokość paska */
+          padding: 5px; /* Mniejszy padding */
+          gap: 5px;
+        }
+        .player-avatar {
+          width: 40px; /* Mniejsze awatary */
+          height: 40px;
+        }
         .top-bar .player-name { display: none; }
         .top-bar .player-name:first-of-type { display: block; font-size: 12px; }
-        .right-ui { top: 80px; right: 10px; width: auto; }
-        .game-buttons { gap: 8px; }
+        
+        .right-ui {
+          top: 70px; /* Przesunięcie UI wyżej */
+          right: 10px;
+          width: auto;
+        }
+        .game-buttons { gap: 5px; }
         
         .game-btn {
-          width: 60px;
-          height: 60px;
+          width: 50px; /* Znacznie mniejsze przyciski */
+          height: 50px;
         }
 
-        #coin-counter { padding: 8px; gap: 5px; }
-        #coin-value { font-size: 16px; }
-        
-        .coin-icon {
-          width: 24px;
-          height: 24px;
+        #coin-counter {
+          padding: 6px; /* Mniejszy licznik monet */
+          gap: 8px;
+        }
+        #coin-value {
+          font-size: 14px; /* Mniejsza czcionka monet */
         }
         
+        .coin-icon {
+          width: 20px; /* Mniejsza ikona monety */
+          height: 20px;
+        }
+        
+        #jump-button {
+          width: 70px; /* Mniejszy przycisk skoku */
+          height: 70px;
+        }
+
         .chat-area { width: 95%; max-width: 300px; height: 100px; bottom: 150px; left: 50%; transform: translateX(-50%); }
         .chat-input { width: 95%; max-width: 300px; bottom: 100px; height: 35px; left: 50%; transform: translateX(-50%); }
         #chat-form { width: 95%; max-width: 300px; bottom: 145px; left: 50%; transform: translateX(-50%); }
@@ -294,7 +313,6 @@
     </style>
   </head>
   <body>
-    <!-- POPRAWKA: Nowa struktura ekranu ładowania -->
     <div id="loading-screen">
       <div class="clouds-container">
         <div class="cloud cloud1"></div>
