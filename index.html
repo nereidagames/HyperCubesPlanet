@@ -3,8 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BlockStarPlanet Clone</title>
-    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+    <!-- POPRAWKA: Zmiana tytułu strony -->
+    <title>HyperCubesPlanet</title>
+    <!-- POPRAWKA: Dodanie ikony (favicon) -->
+    <link rel="icon" type="image/png" href="icons/favicon.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -100,15 +102,14 @@
       .build-ui-button:hover { background-color: #4c8cff; }
       .build-ui-button:active { transform: scale(0.95); }
       
-      /* --- POPRAWKA: Zmiana ikony przycisku wyjścia z budowania --- */
       #build-exit-button {
         background: url('icons/icon-back.png') center center / contain no-repeat;
         border: none;
         box-shadow: none;
       }
       #build-exit-button:hover {
-        background-color: transparent; /* Usunięcie zmiany tła z klasy nadrzędnej */
-        filter: brightness(1.2); /* Efekt rozjaśnienia */
+        background-color: transparent;
+        filter: brightness(1.2);
       }
       
       #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
@@ -124,7 +125,6 @@
       .panel-item:hover { background: #4c8cff; }
       .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
 
-      /* --- POPRAWKA: Zmiana ikony przycisku wyjścia z eksploracji --- */
       #explore-exit-button {
         position: absolute;
         top: 20px;
@@ -136,7 +136,6 @@
         cursor: pointer;
         transition: filter 0.2s ease, transform 0.1s ease;
         z-index: 2500;
-        /* Usunięcie niepotrzebnych stylów tekstowych i tła */
         font-size: initial;
         color: initial;
         text-shadow: none;
@@ -148,7 +147,7 @@
         box-shadow: none;
       }
       #explore-exit-button:hover {
-        filter: brightness(1.2); /* Efekt rozjaśnienia */
+        filter: brightness(1.2);
       }
       #explore-exit-button:active { transform: scale(0.95); }
 
@@ -229,7 +228,6 @@
     </div>
     
     <div id="build-ui-container">
-      <!-- POPRAWKA: Usunięto tekst strzałki -->
       <div id="build-exit-button" class="build-ui-button"></div>
       <div id="build-save-button" class="build-ui-button">Zapisz</div>
       <div id="build-mode-button" class="build-ui-button">Łatwy</div>
@@ -237,7 +235,6 @@
       <div id="block-selection-panel"></div>
     </div>
     
-    <!-- POPRAWKA: Usunięto tekst strzałki -->
     <div id="explore-exit-button" style="display: none;"></div>
 
     <div id="discover-panel" class="panel">
