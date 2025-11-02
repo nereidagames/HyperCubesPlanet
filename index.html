@@ -24,17 +24,11 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; }
       
-      /* --- POPRAWKA: Globalny styl dla obwódki tekstu --- */
       .text-outline {
         text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
       }
 
-      #loading-screen {
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999;
-        display: flex; justify-content: center; align-items: center; flex-direction: column;
-        color: white; transition: opacity 0.5s ease-out; overflow: hidden;
-      }
+      #loading-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; transition: opacity 0.5s ease-out; overflow: hidden; }
       .loading-content { display: flex; flex-direction: column; align-items: center; gap: 40px; z-index: 2; }
       #loading-logo { width: 50vw; max-width: 600px; height: auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3)); animation: logo-breath 4s ease-in-out infinite; }
       #progress-bar { width: 80vw; max-width: 500px; height: 35px; background-color: rgba(0, 0, 0, 0.2); border: 3px solid white; border-radius: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; position: relative; }
@@ -44,14 +38,10 @@
       .clouds-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1; }
       .cloud { position: absolute; background: white; border-radius: 50%; opacity: 0.8; filter: blur(2px); animation: move-cloud linear infinite; }
       .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
-      .cloud1 { width: 150px; height: 150px; top: 10%; animation-duration: 40s; }
-      .cloud1::before { width: 100px; height: 100px; top: -50px; left: 20px; } .cloud1::after { width: 120px; height: 120px; top: -30px; right: 10px; }
-      .cloud2 { width: 200px; height: 200px; top: 30%; animation-duration: 30s; animation-delay: -5s; }
-      .cloud2::before { width: 120px; height: 120px; top: -80px; left: 40px; } .cloud2::after { width: 150px; height: 150px; top: -50px; right: 20px; }
-      .cloud3 { width: 120px; height: 120px; top: 60%; animation-duration: 50s; animation-delay: -15s; }
-      .cloud3::before { width: 80px; height: 80px; top: -40px; left: 10px; } .cloud3::after { width: 90px; height: 90px; top: -20px; right: 5px; }
-      .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; }
-      .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
+      .cloud1 { width: 150px; height: 150px; top: 10%; animation-duration: 40s; } .cloud1::before { width: 100px; height: 100px; top: -50px; left: 20px; } .cloud1::after { width: 120px; height: 120px; top: -30px; right: 10px; }
+      .cloud2 { width: 200px; height: 200px; top: 30%; animation-duration: 30s; animation-delay: -5s; } .cloud2::before { width: 120px; height: 120px; top: -80px; left: 40px; } .cloud2::after { width: 150px; height: 150px; top: -50px; right: 20px; }
+      .cloud3 { width: 120px; height: 120px; top: 60%; animation-duration: 50s; animation-delay: -15s; } .cloud3::before { width: 80px; height: 80px; top: -40px; left: 10px; } .cloud3::after { width: 90px; height: 90px; top: -20px; right: 5px; }
+      .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
       @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
 
       #gameContainer { position: relative; width: 100vw; height: 100vh; }
@@ -60,13 +50,19 @@
       .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
       .ui-element { pointer-events: auto; }
       
-      /* --- POPRAWKA: Nowy układ górnego paska --- */
-      .top-left-ui {
+      /* --- POPRAWKA: Przywrócenie i restyling górnego paska --- */
+      .top-bar {
         position: absolute;
-        top: 10px;
-        left: 10px;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: rgba(0, 0, 0, 0.9);
         display: flex;
+        align-items: center;
+        padding: 5px 15px;
         gap: 15px;
+        border-radius: 0; /* Usunięcie zaokrągleń */
       }
       .top-bar-item {
         display: flex;
@@ -75,67 +71,33 @@
         gap: 2px;
         cursor: pointer;
       }
-      .player-avatar { width: 60px; height: 60px; background: linear-gradient(45deg, #4a90e2, #357abd); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; border: 2px solid #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-      .player-name { color: white; font-size: 12px; }
-      
-      /* --- POPRAWKA: Przeniesienie i restyling czatu --- */
-      .chat-container {
-        position: absolute;
-        top: 85px;
-        left: 10px;
-        display: flex;
-        align-items: flex-start;
-        gap: 5px;
-      }
-      .chat-area {
-        position: static; /* Usunięcie starego pozycjonowania */
-        width: 300px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.4);
-        border-radius: 10px;
-        padding: 8px;
-        border: none; /* Usunięcie starej ramki */
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      }
-      .chat-message {
-        color: white;
-        font-size: 13px;
-        margin: 2px 0;
-      }
-      #chat-toggle-button {
-        width: 35px;
-        height: 35px;
-        background: #fff;
+      .player-avatar {
+        width: 45px;
+        height: 45px;
+        background-color: #4a90e2;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        font-size: 20px;
+        color: white;
       }
-
-      /* --- POPRAWKA: Pole do pisania na dole ekranu --- */
-      #chat-form {
-        display: none;
-        position: absolute;
-        bottom: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 400px;
-        height: 45px;
-        background: rgba(0, 0, 0, 0.7);
-        border-radius: 10px;
-        padding: 5px;
-        z-index: 1001;
+      .player-name {
+        color: white;
+        font-size: 10px;
       }
+      
+      .chat-container { position: absolute; top: 70px; left: 10px; display: flex; align-items: flex-start; gap: 5px; }
+      .chat-area { position: static; width: 300px; height: 100px; background: rgba(255, 255, 255, 0.4); border-radius: 10px; padding: 8px; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+      .chat-message { color: white; font-size: 13px; margin: 2px 0; }
+      #chat-toggle-button { width: 35px; height: 35px; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 20px; }
+      #chat-form { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
       #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: 'Titan One', cursive; }
       #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: 'Titan One', cursive; }
       
+      /* --- POPRAWKA: Przeniesienie prawego UI pod górny pasek --- */
       .right-ui { 
         position: absolute; 
-        top: 10px; /* Przesunięcie do góry */
+        top: 70px;
         right: 20px; 
         display: flex; 
         flex-direction: column; 
@@ -177,17 +139,16 @@
       #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
       #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
 
-      /* --- POPRAWKA: Znaczne zmiany w Media Query --- */
       @media (max-width: 768px) {
-        .top-left-ui { gap: 8px; }
-        .player-avatar { width: 45px; height: 45px; }
-        .player-name { font-size: 10px; }
+        .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
+        .player-avatar { width: 40px; height: 40px; }
+        .player-name { font-size: 9px; }
         
-        .chat-container { top: 70px; }
+        .chat-container { top: 60px; }
         .chat-area { width: 200px; height: 80px; }
         #chat-toggle-button { width: 30px; height: 30px; font-size: 16px; }
 
-        .right-ui { top: 10px; right: 10px; gap: 10px; }
+        .right-ui { top: 60px; right: 10px; }
         .game-buttons { gap: 5px; }
         .game-btn { width: 48px; height: 48px; }
         
@@ -218,14 +179,14 @@
     
     <div id="gameContainer">
         <div class="ui-overlay">
-          <!-- POPRAWKA: Nowa struktura HTML dla górnego paska i czatu -->
-          <div class="top-left-ui ui-element">
+          <!-- POPRAWKA: Nowa struktura HTML dla górnego paska -->
+          <div class="top-bar ui-element">
             <div class="top-bar-item">
               <div class="player-avatar">👤</div>
               <div class="player-name text-outline">player</div>
             </div>
             <div class="top-bar-item">
-              <div class="player-avatar" style="background: linear-gradient(45deg, #27ae60, #2ecc71);"></div>
+              <div class="player-avatar" style="background-image: none; background-color: #27ae60;"></div>
               <div class="player-name text-outline">Poczta</div>
             </div>
             <div class="top-bar-item">
