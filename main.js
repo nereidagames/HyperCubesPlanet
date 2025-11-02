@@ -12,7 +12,6 @@ import { SkinBuilderManager } from './SkinBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
 import Stats from 'three/addons/libs/stats.module.js';
 
-// --- POPRAWKA: Tablica z tekstami ładowania ---
 const LOADING_TEXTS = [
     "Dziurkowanie Kawałków Sera...",
     "Wprowadzanie Przycisku Skoku...",
@@ -33,7 +32,7 @@ class BlockStarPlanetGame {
     this.characterManager = null;
     this.cameraController = null;
     this.coinManager = null;
-    this.gameState = 'Loading'; // Zaczynamy od stanu ładowania
+    this.gameState = 'Loading';
     this.buildManager = null;
     this.skinBuilderManager = null;
     this.exploreScene = null;
@@ -43,7 +42,6 @@ class BlockStarPlanetGame {
     this.stats = null;
     this.isFPSEnabled = false;
 
-    // --- POPRAWKA: Implementacja LoadingManager ---
     this.loadingManager = null;
     this.loadingTextInterval = null;
 
@@ -54,15 +52,13 @@ class BlockStarPlanetGame {
   async init() {
     try {
       this.setupLoadingManager();
-      await this.preloadInitialAssets(); // Czekamy na załadowanie zasobów
-      // Reszta managerów inicjuje się po załadowaniu
+      await this.preloadInitialAssets();
     } catch (error) {
       console.error('CRITICAL: Error initializing game:', error);
       this.showError('Krytyczny błąd podczas ładowania gry.');
     }
   }
 
-  // --- POPRAWKA: Nowa metoda do konfiguracji LoadingManagera ---
   setupLoadingManager() {
     const loadingScreen = document.getElementById('loading-screen');
     const progressBarFill = document.getElementById('progress-bar-fill');
@@ -76,31 +72,26 @@ class BlockStarPlanetGame {
     };
 
     this.loadingManager.onLoad = () => {
-        // Zatrzymujemy losowanie tekstów
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        // Czekamy chwilę, aby gracz zobaczył "Gotowe!"
         setTimeout(() => {
             if (loadingScreen) {
                 loadingScreen.style.opacity = '0';
-                // Ukrywamy ekran ładowania po zakończeniu animacji zanikania
                 setTimeout(() => { 
                     loadingScreen.style.display = 'none'; 
-                    this.gameState = 'MainMenu'; // Przechodzimy do gry
+                    this.gameState = 'MainMenu';
                 }, 500);
             }
         }, 500);
     };
 
-    // Rozpoczynamy losowanie tekstów
     this.loadingTextInterval = setInterval(() => {
         const randomIndex = Math.floor(Math.random() * LOADING_TEXTS.length);
         loadingText.textContent = LOADING_TEXTS[randomIndex];
     }, 2000);
   }
 
-  // --- POPRAWKA: Nowa metoda do ładowania kluczowych zasobów na start ---
   async preloadInitialAssets() {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     
@@ -112,15 +103,12 @@ class BlockStarPlanetGame {
         { name: 'Piasek', texturePath: 'textures/piasek.png' }
     ];
 
-    // Funkcja do ładowania tekstur w sposób, który manager może śledzić
     const loadTexture = (path) => new Promise(resolve => textureLoader.load(path, resolve));
 
     const texturePromises = blockTypes.map(block => loadTexture(block.texturePath));
     
-    // Równoległe ładowanie wszystkich tekstur
     await Promise.all(texturePromises);
     
-    // Po załadowaniu tekstur inicjujemy resztę gry
     await this.setupManagers();
     this.animate();
     console.log('Game initialized successfully!');
@@ -169,7 +157,6 @@ class BlockStarPlanetGame {
     
     this.toggleMobileControls(true);
 
-    // Przekazujemy LoadingManager do managerów, które ładują zasoby
     this.buildManager = new BuildManager(this, this.loadingManager);
     this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager);
 
@@ -328,7 +315,7 @@ class BlockStarPlanetGame {
     this.exploreScene.add(directionalLight);
 
     const worldBlocks = [];
-    const textureLoader = new THREE.TextureLoader(this.loadingManager); // Używamy managera
+    const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const loadedMaterials = {};
 
     worldData.forEach(blockData => {
@@ -366,7 +353,6 @@ class BlockStarPlanetGame {
 
     const deltaTime = this.clock.getDelta();
     
-    // Nie renderujemy nic, dopóki gra się nie załaduje
     if (this.gameState === 'Loading') return;
 
     if (this.gameState === 'MainMenu') {
@@ -403,5 +389,8 @@ class BlockStarPlanetGame {
   }
 }
 
-// Zmieniamy inicjalizację, aby poczekać na DOM
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
+// --- POPRAWKA: Globalna flaga zapobiegająca wielokrotnej inicjalizacji ---
+if (!window.gameInitialized) {
+    window.gameInitialized = true;
+    document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
+}
