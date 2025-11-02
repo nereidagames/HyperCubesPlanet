@@ -3,7 +3,8 @@ import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
 
 export class SkinBuilderManager {
-  constructor(game) {
+  // --- POPRAWKA: Dodajemy loadingManager do konstruktora ---
+  constructor(game, loadingManager) {
     this.game = game;
     this.scene = new THREE.Scene();
     this.isActive = false;
@@ -22,7 +23,8 @@ export class SkinBuilderManager {
       { name: 'Piasek', texturePath: 'textures/piasek.png' }
     ];
     this.selectedBlockType = this.blockTypes[0];
-    this.textureLoader = new THREE.TextureLoader();
+    // --- POPRAWKA: Przekazujemy manager do TextureLoadera ---
+    this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
@@ -45,7 +47,7 @@ export class SkinBuilderManager {
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
-    this.scene.background = new THREE.Color(0x34495e); // Ciemniejsze tło dla lepszego kontrastu
+    this.scene.background = new THREE.Color(0x34495e);
     this.scene.fog = new THREE.Fog(0x34495e, 20, 100);
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     this.scene.add(ambientLight);
@@ -55,12 +57,12 @@ export class SkinBuilderManager {
     this.createBuildPlatform();
     this.createPreviewBlock();
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
-    this.cameraController.distance = 25; // Przybliżamy kamerę
+    this.cameraController.distance = 25;
     this.setupBuildEventListeners();
   }
 
   createBuildPlatform() {
-    const platformSize = 16; // Mniejsza platforma
+    const platformSize = 16;
     const geometry = new THREE.BoxGeometry(platformSize, 1, platformSize);
     const material = new THREE.MeshLambertMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.5 });
     this.platform = new THREE.Mesh(geometry, material);
@@ -68,7 +70,6 @@ export class SkinBuilderManager {
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
-    // Siatka pomocnicza
     const gridHelper = new THREE.GridHelper(platformSize, platformSize);
     gridHelper.position.y = 0.01;
     this.scene.add(gridHelper);
@@ -98,7 +99,6 @@ export class SkinBuilderManager {
   }
   
   populateBlockSelectionPanel() {
-      // Ta funkcja jest taka sama jak w BuildManager, więc ją tu zostawiamy
       const panel = document.getElementById('block-selection-panel');
       panel.innerHTML = '';
       this.blockTypes.forEach(blockType => {
@@ -135,7 +135,6 @@ export class SkinBuilderManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
-    // ... reszta taka sama
     document.getElementById('build-exit-button').onclick = null;
     document.getElementById('build-mode-button').onclick = null;
     document.getElementById('build-add-button').onclick = null;
@@ -228,7 +227,6 @@ export class SkinBuilderManager {
       const snappedPosition = new THREE.Vector3().copy(intersect.point)
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
         
-      // Ogranicz wysokość budowania
       if (snappedPosition.y > 16) snappedPosition.y = 16.5;
 
       this.previewBlock.position.copy(snappedPosition);
