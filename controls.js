@@ -328,4 +328,5 @@ class ThirdPersonCameraController {
 
 class FirstPersonCameraController {}
 
-export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };```
+export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };
+
