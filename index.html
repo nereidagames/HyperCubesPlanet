@@ -23,15 +23,122 @@
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; }
-      #loading-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; transition: opacity 0.5s ease-out; overflow: hidden; }
       
-      /* --- POPRAWKA: Style dla logo na ekranie ładowania --- */
+      /* --- POPRAWKA: Nowe, zaawansowane style dla ekranu ładowania --- */
+      #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(to bottom, #87CEEB, #B0E0E6);
+        z-index: 99999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        color: white;
+        transition: opacity 0.5s ease-out;
+        overflow: hidden;
+      }
+      
+      .loading-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 40px;
+        z-index: 2; /* Treść nad chmurami */
+      }
+
       #loading-logo {
         width: 50vw;
         max-width: 600px;
-        height: auto; /* Zachowuje proporcje obrazu */
+        height: auto;
         filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3));
+        animation: logo-breath 4s ease-in-out infinite;
       }
+      
+      #progress-bar {
+        width: 80vw;
+        max-width: 500px;
+        height: 35px;
+        background-color: rgba(0, 0, 0, 0.2);
+        border: 3px solid white;
+        border-radius: 20px;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        overflow: hidden;
+        position: relative;
+      }
+
+      #progress-bar-fill {
+        width: 0%; /* Zaczyna pusty */
+        height: 100%;
+        background: linear-gradient(to right, #2ed573, #7bed9f);
+        border-radius: 20px;
+        transition: width 0.3s ease-out;
+      }
+      
+      #loading-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 16px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        white-space: nowrap;
+      }
+      
+      /* Animacja "oddychania" dla logo */
+      @keyframes logo-breath {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+      
+      /* Kontener na animowane chmury */
+      .clouds-container {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        overflow: hidden;
+        z-index: 1; /* Chmury pod treścią */
+      }
+      
+      .cloud {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        opacity: 0.8;
+        filter: blur(2px);
+        animation: move-cloud linear infinite;
+      }
+      .cloud::before, .cloud::after {
+        content: '';
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+      }
+      .cloud1 { width: 150px; height: 150px; top: 10%; animation-duration: 40s; }
+      .cloud1::before { width: 100px; height: 100px; top: -50px; left: 20px; }
+      .cloud1::after { width: 120px; height: 120px; top: -30px; right: 10px; }
+      
+      .cloud2 { width: 200px; height: 200px; top: 30%; animation-duration: 30s; animation-delay: -5s; }
+      .cloud2::before { width: 120px; height: 120px; top: -80px; left: 40px; }
+      .cloud2::after { width: 150px; height: 150px; top: -50px; right: 20px; }
+      
+      .cloud3 { width: 120px; height: 120px; top: 60%; animation-duration: 50s; animation-delay: -15s; }
+      .cloud3::before { width: 80px; height: 80px; top: -40px; left: 10px; }
+      .cloud3::after { width: 90px; height: 90px; top: -20px; right: 5px; }
+      
+      .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; }
+      .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; }
+      .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
+
+      @keyframes move-cloud {
+        from { transform: translateX(-250px); }
+        to { transform: translateX(105vw); }
+      }
+      /* --- Koniec stylów ekranu ładowania --- */
 
       #gameContainer { position: relative; width: 100vw; height: 100vh; }
       canvas { display: block; cursor: grab; }
@@ -187,9 +294,21 @@
     </style>
   </head>
   <body>
-    <!-- POPRAWKA: Zastąpienie h1 tagiem img z logo -->
+    <!-- POPRAWKA: Nowa struktura ekranu ładowania -->
     <div id="loading-screen">
-      <img id="loading-logo" src="icons/favicon.png" alt="HyperCubesPlanet Logo">
+      <div class="clouds-container">
+        <div class="cloud cloud1"></div>
+        <div class="cloud cloud2"></div>
+        <div class="cloud cloud3"></div>
+        <div class="cloud cloud4"></div>
+      </div>
+      <div class="loading-content">
+        <img id="loading-logo" src="icons/favicon.png" alt="HyperCubesPlanet Logo">
+        <div id="progress-bar">
+          <div id="progress-bar-fill"></div>
+          <div id="loading-text">Wczytywanie - Proszę czekać...</div>
+        </div>
+      </div>
     </div>
     
     <div id="gameContainer">
