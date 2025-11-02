@@ -56,31 +56,8 @@
       .player-name { color: white; font-size: 10px; }
       
       .chat-container { position: absolute; top: 70px; left: 10px; display: flex; align-items: flex-start; gap: 5px; }
-      
-      /* --- POPRAWKA: Dodanie przewijania i stylów paska przewijania --- */
-      .chat-area {
-        position: static;
-        width: 300px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.4);
-        border-radius: 10px;
-        padding: 8px;
-        border: none;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        overflow-y: auto; /* Włączenie paska przewijania w pionie */
-      }
-      .chat-area::-webkit-scrollbar {
-        width: 5px;
-      }
-      .chat-area::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .chat-area::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.5);
-        border-radius: 10px;
-      }
-      /* --- Koniec poprawki --- */
-      
+      .chat-area { position: static; width: 300px; height: 100px; background: rgba(255, 255, 255, 0.4); border-radius: 10px; padding: 8px; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); overflow-y: auto; }
+      .chat-area::-webkit-scrollbar { width: 5px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.5); border-radius: 10px; }
       .chat-message { color: white; font-size: 13px; margin: 2px 0; }
       #chat-toggle-button { width: 35px; height: 35px; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 20px; }
       #chat-form { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
@@ -99,7 +76,31 @@
       #coin-value { color: #ffd700; font-size: 22px; }
 
       #mobile-game-controls { display: none; pointer-events: auto; }
-      #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(0, 200, 0, 0.7); border-radius: 50%; color: white; font-size: 24px; border: 3px solid white; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1001;}
+      
+      /* --- POPRAWKA: Zmiana wyglądu przycisku skoku na ikonę --- */
+      #jump-button {
+        position: absolute;
+        bottom: 30px;
+        right: 30px;
+        width: 80px;
+        height: 80px;
+        background-color: transparent;
+        background-image: url('icons/icon-jump.png');
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+        border: none;
+        cursor: pointer;
+        z-index: 1001;
+        /* Usunięcie niepotrzebnych stylów */
+        border-radius: 0;
+        box-shadow: none;
+        display: block;
+      }
+      #jump-button:active {
+        transform: scale(0.95);
+      }
+      
       #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
       
       #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; display: none; }
@@ -208,7 +209,8 @@
 
         <div id="mobile-game-controls">
             <div id="joystick-zone"></div>
-            <button id="jump-button" class="text-outline">SKOK</button>
+            <!-- POPRAWKA: Usunięcie tekstu "SKOK" -->
+            <button id="jump-button"></button>
         </div>
     </div>
     
@@ -249,4 +251,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-</html>
+  </html>
