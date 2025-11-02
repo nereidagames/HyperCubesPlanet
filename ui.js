@@ -6,7 +6,7 @@ export class UIManager {
     this.onDiscoverClick = null;
     this.onPlayClick = null;
     this.onSkinBuilderClick = null;
-    this.onToggleFPS = null; // Nowy callback
+    this.onToggleFPS = null;
   }
   
   initialize(isMobile) {
@@ -16,7 +16,6 @@ export class UIManager {
     console.log('UI Manager initialized');
   }
   
-  // NOWA METODA do aktualizacji tekstu na przycisku FPS
   updateFPSToggleText(isEnabled) {
     const fpsStatus = document.getElementById('fps-status');
     if (fpsStatus) {
@@ -43,8 +42,9 @@ export class UIManager {
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
 
-    const chatInput = document.querySelector('.chat-input');
-    if (chatInput) chatInput.addEventListener('click', () => this.handleChatClick());
+    // --- POPRAWKA: Przycisk do otwierania czatu ma teraz inne ID ---
+    const chatToggle = document.getElementById('chat-toggle-button');
+    if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
     const buildChoicePanel = document.getElementById('build-choice-panel');
     const buildChoiceWorldBtn = document.getElementById('build-choice-world');
@@ -55,7 +55,6 @@ export class UIManager {
     if (buildChoiceSkinBtn) buildChoiceSkinBtn.onclick = () => { buildChoicePanel.style.display = 'none'; if (this.onSkinBuilderClick) this.onSkinBuilderClick(); };
     if (buildChoiceCloseBtn) buildChoiceCloseBtn.onclick = () => { buildChoicePanel.style.display = 'none'; };
     
-    // NOWA OBSŁUGA PANELU OPCJI
     const moreOptionsPanel = document.getElementById('more-options-panel');
     const toggleFPSBtn = document.getElementById('toggle-fps-btn');
     const moreOptionsCloseBtn = document.getElementById('more-options-close');
@@ -81,7 +80,6 @@ export class UIManager {
     if (buttonType === 'buduj') { document.getElementById('build-choice-panel').style.display = 'flex'; return; }
     if (buttonType === 'odkryj' && this.onDiscoverClick) { this.onDiscoverClick(); return; }
     
-    // Zaktualizowana obsługa przycisku "Więcej"
     if (buttonType === 'wiecej') {
         document.getElementById('more-options-panel').style.display = 'flex';
         return;
@@ -100,10 +98,13 @@ export class UIManager {
     const chatArea = document.querySelector('.chat-area');
     if (!chatArea) return;
     const messageElement = document.createElement('div');
-    messageElement.className = 'chat-message';
+    messageElement.className = 'chat-message text-outline'; // Dodajemy klasę obwódki
     messageElement.textContent = message;
     chatArea.appendChild(messageElement);
-    if (chatArea.children.length > 6) chatArea.removeChild(chatArea.children[0]);
+    
+    // --- POPRAWKA: Usunięcie limitu wiadomości ---
+    // if (chatArea.children.length > 6) chatArea.removeChild(chatArea.children[0]);
+    
     chatArea.scrollTop = chatArea.scrollHeight;
   }
   
@@ -133,6 +134,7 @@ export class UIManager {
   showMessage(text, type = 'info') {
     const messageDiv = document.createElement('div');
     messageDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: ${type === 'success' ? '#27ae60' : '#3498db'}; color: white; padding: 15px 25px; border-radius: 10px; font-weight: bold; z-index: 10000; box-shadow: 0 6px 12px rgba(0,0,0,0.4); opacity: 0; transition: all 0.3s ease;`;
+    messageDiv.classList.add('text-outline'); // Dodajemy klasę obwódki
     messageDiv.textContent = text;
     document.body.appendChild(messageDiv);
     setTimeout(() => {
