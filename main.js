@@ -44,6 +44,9 @@ class BlockStarPlanetGame {
 
     this.loadingManager = null;
     this.loadingTextInterval = null;
+    
+    // --- POPRAWKA: Flaga zapobiegająca ponownemu wywołaniu onLoad ---
+    this.initialLoadComplete = false;
 
     this.setupRenderer();
     this.init();
@@ -72,6 +75,11 @@ class BlockStarPlanetGame {
     };
 
     this.loadingManager.onLoad = () => {
+        // --- POPRAWKA: Upewniamy się, że ta funkcja wykona się tylko raz ---
+        if (this.initialLoadComplete) {
+            return; 
+        }
+
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
@@ -81,6 +89,8 @@ class BlockStarPlanetGame {
                 setTimeout(() => { 
                     loadingScreen.style.display = 'none'; 
                     this.gameState = 'MainMenu';
+                    // --- POPRAWKA: Ustawiamy flagę po zakończeniu pierwszego ładowania ---
+                    this.initialLoadComplete = true; 
                 }, 500);
             }
         }, 500);
