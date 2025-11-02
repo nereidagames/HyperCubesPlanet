@@ -24,138 +24,119 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; }
       
+      /* --- POPRAWKA: Globalny styl dla obwódki tekstu --- */
+      .text-outline {
+        text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
+      }
+
       #loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: linear-gradient(to bottom, #87CEEB, #B0E0E6);
-        z-index: 99999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        color: white;
-        transition: opacity 0.5s ease-out;
-        overflow: hidden;
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999;
+        display: flex; justify-content: center; align-items: center; flex-direction: column;
+        color: white; transition: opacity 0.5s ease-out; overflow: hidden;
       }
-      
-      .loading-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 40px;
-        z-index: 2;
-      }
-
-      #loading-logo {
-        width: 50vw;
-        max-width: 600px;
-        height: auto;
-        filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3));
-        animation: logo-breath 4s ease-in-out infinite;
-      }
-      
-      #progress-bar {
-        width: 80vw;
-        max-width: 500px;
-        height: 35px;
-        background-color: rgba(0, 0, 0, 0.2);
-        border: 3px solid white;
-        border-radius: 20px;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        overflow: hidden;
-        position: relative;
-      }
-
-      #progress-bar-fill {
-        width: 0%;
-        height: 100%;
-        background: linear-gradient(to right, #2ed573, #7bed9f);
-        border-radius: 20px;
-        transition: width 0.3s ease-out;
-      }
-      
-      #loading-text {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: white;
-        font-size: 16px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-        white-space: nowrap;
-      }
-      
-      @keyframes logo-breath {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-      }
-      
-      .clouds-container {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        overflow: hidden;
-        z-index: 1;
-      }
-      
-      .cloud {
-        position: absolute;
-        background: white;
-        border-radius: 50%;
-        opacity: 0.8;
-        filter: blur(2px);
-        animation: move-cloud linear infinite;
-      }
-      .cloud::before, .cloud::after {
-        content: '';
-        position: absolute;
-        background: white;
-        border-radius: 50%;
-      }
+      .loading-content { display: flex; flex-direction: column; align-items: center; gap: 40px; z-index: 2; }
+      #loading-logo { width: 50vw; max-width: 600px; height: auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3)); animation: logo-breath 4s ease-in-out infinite; }
+      #progress-bar { width: 80vw; max-width: 500px; height: 35px; background-color: rgba(0, 0, 0, 0.2); border: 3px solid white; border-radius: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; position: relative; }
+      #progress-bar-fill { width: 0%; height: 100%; background: linear-gradient(to right, #2ed573, #7bed9f); border-radius: 20px; transition: width 0.3s ease-out; }
+      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 16px; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); white-space: nowrap; }
+      @keyframes logo-breath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      .clouds-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1; }
+      .cloud { position: absolute; background: white; border-radius: 50%; opacity: 0.8; filter: blur(2px); animation: move-cloud linear infinite; }
+      .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
       .cloud1 { width: 150px; height: 150px; top: 10%; animation-duration: 40s; }
-      .cloud1::before { width: 100px; height: 100px; top: -50px; left: 20px; }
-      .cloud1::after { width: 120px; height: 120px; top: -30px; right: 10px; }
-      
+      .cloud1::before { width: 100px; height: 100px; top: -50px; left: 20px; } .cloud1::after { width: 120px; height: 120px; top: -30px; right: 10px; }
       .cloud2 { width: 200px; height: 200px; top: 30%; animation-duration: 30s; animation-delay: -5s; }
-      .cloud2::before { width: 120px; height: 120px; top: -80px; left: 40px; }
-      .cloud2::after { width: 150px; height: 150px; top: -50px; right: 20px; }
-      
+      .cloud2::before { width: 120px; height: 120px; top: -80px; left: 40px; } .cloud2::after { width: 150px; height: 150px; top: -50px; right: 20px; }
       .cloud3 { width: 120px; height: 120px; top: 60%; animation-duration: 50s; animation-delay: -15s; }
-      .cloud3::before { width: 80px; height: 80px; top: -40px; left: 10px; }
-      .cloud3::after { width: 90px; height: 90px; top: -20px; right: 5px; }
-      
+      .cloud3::before { width: 80px; height: 80px; top: -40px; left: 10px; } .cloud3::after { width: 90px; height: 90px; top: -20px; right: 5px; }
       .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; }
-      .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; }
-      .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
-
-      @keyframes move-cloud {
-        from { transform: translateX(-250px); }
-        to { transform: translateX(105vw); }
-      }
+      .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
+      @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
 
       #gameContainer { position: relative; width: 100vw; height: 100vh; }
       canvas { display: block; cursor: grab; }
       canvas:active { cursor: grabbing; }
       .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
       .ui-element { pointer-events: auto; }
-      .top-bar { position: absolute; top: 10px; left: 10px; right: 10px; height: 80px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; display: flex; align-items: center; padding: 10px; gap: 15px; }
+      
+      /* --- POPRAWKA: Nowy układ górnego paska --- */
+      .top-left-ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        display: flex;
+        gap: 15px;
+      }
+      .top-bar-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        cursor: pointer;
+      }
       .player-avatar { width: 60px; height: 60px; background: linear-gradient(45deg, #4a90e2, #357abd); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; border: 2px solid #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-      .player-name { color: white; font-size: 14px; font-weight: normal; }
-      .chat-area { position: absolute; bottom: 120px; left: 20px; width: 350px; height: 120px; background: rgba(135, 206, 235, 0.9); border-radius: 15px; padding: 10px; border: 3px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); }
-      .chat-message { color: #333; font-size: 13px; margin: 2px 0; }
-      .chat-input { position: absolute; bottom: 20px; left: 20px; width: 300px; height: 40px; background: #90EE90; border: 3px solid #fff; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-weight: normal; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-      #chat-form { display: none; position: absolute; bottom: 70px; left: 20px; width: 350px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
+      .player-name { color: white; font-size: 12px; }
+      
+      /* --- POPRAWKA: Przeniesienie i restyling czatu --- */
+      .chat-container {
+        position: absolute;
+        top: 85px;
+        left: 10px;
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+      }
+      .chat-area {
+        position: static; /* Usunięcie starego pozycjonowania */
+        width: 300px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 10px;
+        padding: 8px;
+        border: none; /* Usunięcie starej ramki */
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      }
+      .chat-message {
+        color: white;
+        font-size: 13px;
+        margin: 2px 0;
+      }
+      #chat-toggle-button {
+        width: 35px;
+        height: 35px;
+        background: #fff;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        font-size: 20px;
+      }
+
+      /* --- POPRAWKA: Pole do pisania na dole ekranu --- */
+      #chat-form {
+        display: none;
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 400px;
+        height: 45px;
+        background: rgba(0, 0, 0, 0.7);
+        border-radius: 10px;
+        padding: 5px;
+        z-index: 1001;
+      }
       #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: 'Titan One', cursive; }
       #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: 'Titan One', cursive; }
       
       .right-ui { 
         position: absolute; 
-        top: 100px; 
+        top: 10px; /* Przesunięcie do góry */
         right: 20px; 
-        width: 390px;
         display: flex; 
         flex-direction: column; 
         gap: 15px; 
@@ -163,151 +144,60 @@
       }
 
       .game-buttons { display: flex; gap: 15px; align-items: center; }
+      .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
+      .game-btn:active { transform: scale(0.95); }
+      .btn-zagraj { background-image: url('icons/icon-play.png'); } .btn-buduj { background-image: url('icons/icon-build.png'); } .btn-kup { background-image: url('icons/icon-shop.png'); } .btn-odkryj { background-image: url('icons/icon-discover.png'); } .btn-wiecej { background-image: url('icons/icon-more.png'); }
       
-      .game-btn {
-        width: 75px;
-        height: 75px;
-        cursor: pointer;
-        transition: transform 0.2s ease;
-        background-color: transparent;
-        background-size: contain;
-        background-position: center;
-        background-repeat: no-repeat;
-        border: none;
-      }
-      .game-btn:active {
-        transform: scale(0.95);
-      }
-      
-      .btn-zagraj { background-image: url('icons/icon-play.png'); }
-      .btn-buduj { background-image: url('icons/icon-build.png'); }
-      .btn-kup { background-image: url('icons/icon-shop.png'); }
-      .btn-odkryj { background-image: url('icons/icon-discover.png'); }
-      .btn-wiecej { background-image: url('icons/icon-more.png'); }
+      #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 10px 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
+      .coin-icon { width: 30px; height: 30px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; }
+      .btn-friends { background: url('icons/icon-friends.png') center center / contain no-repeat; cursor: pointer; }
+      #coin-value { color: #ffd700; font-size: 22px; }
 
-      #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
-      
-      .coin-icon {
-        width: 30px;
-        height: 30px;
-        background-image: url('icons/icon-coin.png');
-        background-size: contain;
-        background-position: center;
-        background-repeat: no-repeat;
-      }
-      
-      .btn-friends {
-        background: url('icons/icon-friends.png') center center / contain no-repeat;
-        cursor: pointer;
-      }
-
-      #coin-value { color: #ffd700; font-size: 22px; text-shadow: 1px 1px 2px #000; }
       #mobile-game-controls { display: none; pointer-events: auto; }
       #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(0, 200, 0, 0.7); border-radius: 50%; color: white; font-size: 24px; border: 3px solid white; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1001;}
       #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
-      #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; color: white; text-shadow: 2px 2px 4px #0008; display: none; }
       
+      #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; display: none; }
       .build-ui-button { position: absolute; pointer-events: auto; cursor: pointer; background-color: #2c75ff; border: 3px solid white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 8px #0004; transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; }
-      .build-ui-button:hover { background-color: #4c8cff; }
-      .build-ui-button:active { transform: scale(0.95); }
-      
-      #build-exit-button {
-        background: url('icons/icon-back.png') center center / contain no-repeat;
-        border: none;
-        box-shadow: none;
-      }
-      #build-exit-button:hover {
-        background-color: transparent;
-        filter: brightness(1.2);
-      }
-      
+      .build-ui-button:hover { background-color: #4c8cff; } .build-ui-button:active { transform: scale(0.95); }
+      #build-exit-button { background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
+      #build-exit-button:hover { background-color: transparent; filter: brightness(1.2); }
       #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
       #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 28px; opacity: 0.5; cursor: not-allowed; }
       #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
+      
       #block-selection-panel { position: absolute; bottom: 90px; left: 20px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-wrap: wrap; gap: 10px; width: 250px; pointer-events: auto; }
-      .block-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; }
-      .block-item:hover { transform: scale(1.1); border-color: #00ff00; }
+      .block-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; } .block-item:hover { transform: scale(1.1); border-color: #00ff00; }
+      
       .panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; max-height: 80vh; background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; z-index: 10001; display: none; flex-direction: column; align-items: center; box-shadow: 0 10px 30px #0008; color: white; }
-      .panel h2 { margin-bottom: 20px; }
-      .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+      .panel h2 { margin-bottom: 20px; } .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
       .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; }
-      .panel-item:hover { background: #4c8cff; }
-      .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+      .panel-item:hover { background: #4c8cff; } .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+      
+      #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
+      #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
 
-      #explore-exit-button {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        width: 60px;
-        height: 60px;
-        background: url('icons/icon-back.png') center center / contain no-repeat;
-        pointer-events: auto;
-        cursor: pointer;
-        transition: filter 0.2s ease, transform 0.1s ease;
-        z-index: 2500;
-        font-size: initial;
-        color: initial;
-        text-shadow: none;
-        border: none;
-        border-radius: initial;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        box-shadow: none;
-      }
-      #explore-exit-button:hover {
-        filter: brightness(1.2);
-      }
-      #explore-exit-button:active { transform: scale(0.95); }
-
-
-      /* --- POPRAWKA: Zmiany w Media Query dla urządzeń mobilnych --- */
+      /* --- POPRAWKA: Znaczne zmiany w Media Query --- */
       @media (max-width: 768px) {
-        .top-bar {
-          height: 50px; /* Zmniejszona wysokość paska */
-          padding: 5px; /* Mniejszy padding */
-          gap: 5px;
-        }
-        .player-avatar {
-          width: 40px; /* Mniejsze awatary */
-          height: 40px;
-        }
-        .top-bar .player-name { display: none; }
-        .top-bar .player-name:first-of-type { display: block; font-size: 12px; }
+        .top-left-ui { gap: 8px; }
+        .player-avatar { width: 45px; height: 45px; }
+        .player-name { font-size: 10px; }
         
-        .right-ui {
-          top: 70px; /* Przesunięcie UI wyżej */
-          right: 10px;
-          width: auto;
-        }
+        .chat-container { top: 70px; }
+        .chat-area { width: 200px; height: 80px; }
+        #chat-toggle-button { width: 30px; height: 30px; font-size: 16px; }
+
+        .right-ui { top: 10px; right: 10px; gap: 10px; }
         .game-buttons { gap: 5px; }
+        .game-btn { width: 48px; height: 48px; }
         
-        .game-btn {
-          width: 50px; /* Znacznie mniejsze przyciski */
-          height: 50px;
-        }
-
-        #coin-counter {
-          padding: 6px; /* Mniejszy licznik monet */
-          gap: 8px;
-        }
-        #coin-value {
-          font-size: 14px; /* Mniejsza czcionka monet */
-        }
+        #coin-counter { padding: 5px 10px; gap: 5px; }
+        #coin-value { font-size: 14px; }
+        .coin-icon { width: 20px; height: 20px; }
         
-        .coin-icon {
-          width: 20px; /* Mniejsza ikona monety */
-          height: 20px;
-        }
+        #jump-button { width: 70px; height: 70px; right: 15px; bottom: 15px; }
+        #joystick-zone { left: 15px; bottom: 15px; }
         
-        #jump-button {
-          width: 70px; /* Mniejszy przycisk skoku */
-          height: 70px;
-        }
-
-        .chat-area { width: 95%; max-width: 300px; height: 100px; bottom: 150px; left: 50%; transform: translateX(-50%); }
-        .chat-input { width: 95%; max-width: 300px; bottom: 100px; height: 35px; left: 50%; transform: translateX(-50%); }
-        #chat-form { width: 95%; max-width: 300px; bottom: 145px; left: 50%; transform: translateX(-50%); }
         .panel, #block-selection-panel { width: 90%; }
       }
     </style>
@@ -315,68 +205,74 @@
   <body>
     <div id="loading-screen">
       <div class="clouds-container">
-        <div class="cloud cloud1"></div>
-        <div class="cloud cloud2"></div>
-        <div class="cloud cloud3"></div>
-        <div class="cloud cloud4"></div>
+        <div class="cloud cloud1"></div> <div class="cloud cloud2"></div> <div class="cloud cloud3"></div> <div class="cloud cloud4"></div>
       </div>
       <div class="loading-content">
         <img id="loading-logo" src="icons/favicon.png" alt="HyperCubesPlanet Logo">
         <div id="progress-bar">
           <div id="progress-bar-fill"></div>
-          <div id="loading-text">Wczytywanie - Proszę czekać...</div>
+          <div id="loading-text" class="text-outline">Wczytywanie - Proszę czekać...</div>
         </div>
       </div>
     </div>
     
     <div id="gameContainer">
         <div class="ui-overlay">
-            <div class="top-bar ui-element">
-                <div class="player-avatar">👤</div>
-                <div class="player-name">player</div>
-                <div class="player-avatar" style="background: linear-gradient(45deg, #27ae60, #2ecc71);">📧</div>
-                <div class="player-name">Poczta</div>
-                <div class="player-avatar btn-friends"></div>
-                <div class="player-name">Przyjaciele</div>
+          <!-- POPRAWKA: Nowa struktura HTML dla górnego paska i czatu -->
+          <div class="top-left-ui ui-element">
+            <div class="top-bar-item">
+              <div class="player-avatar">👤</div>
+              <div class="player-name text-outline">player</div>
             </div>
-            
-            <div class="chat-area ui-element">
-                <div class="chat-message">&lt;Łączenie z Nexusem...&gt;</div>
-                <div class="chat-message">&lt;Udało się dołączyć do Nexusa!&gt;</div>
+            <div class="top-bar-item">
+              <div class="player-avatar" style="background: linear-gradient(45deg, #27ae60, #2ecc71);"></div>
+              <div class="player-name text-outline">Poczta</div>
             </div>
-            
-            <div class="chat-input ui-element">💬</div>
-            <form id="chat-form" class="ui-element">
-                <input type="text" id="chat-input-field" placeholder="Napisz coś..." autocomplete="off" maxlength="50">
-                <button type="submit" id="chat-send-btn">Wyślij</button>
-            </form>
-            
-            <div class="right-ui ui-element">
-                <div class="game-buttons">
-                    <div class="game-btn btn-zagraj"></div>
-                    <div class="game-btn btn-buduj"></div>
-                    <div class="game-btn btn-kup"></div>
-                    <div class="game-btn btn-odkryj"></div>
-                    <div class="game-btn btn-wiecej"></div>
-                </div>
-                
-                <div id="coin-counter">
-                    <div class="coin-icon"></div>
-                    <div id="coin-value">0</div>
-                </div>
+            <div class="top-bar-item">
+              <div class="player-avatar btn-friends"></div>
+              <div class="player-name text-outline">Przyjaciele</div>
             </div>
+          </div>
+            
+          <div class="chat-container ui-element">
+            <div class="chat-area">
+                <div class="chat-message text-outline">&lt;Łączenie z Nexusem...&gt;</div>
+                <div class="chat-message text-outline">&lt;Udało się dołączyć do Nexusa!&gt;</div>
+            </div>
+            <div id="chat-toggle-button">💬</div>
+          </div>
+            
+          <form id="chat-form" class="ui-element">
+              <input type="text" id="chat-input-field" placeholder="Napisz coś..." autocomplete="off" maxlength="50">
+              <button type="submit" id="chat-send-btn">Wyślij</button>
+          </form>
+            
+          <div class="right-ui ui-element">
+              <div class="game-buttons">
+                  <div class="game-btn btn-zagraj"></div>
+                  <div class="game-btn btn-buduj"></div>
+                  <div class="game-btn btn-kup"></div>
+                  <div class="game-btn btn-odkryj"></div>
+                  <div class="game-btn btn-wiecej"></div>
+              </div>
+              
+              <div id="coin-counter">
+                  <div class="coin-icon"></div>
+                  <div id="coin-value" class="text-outline">0</div>
+              </div>
+          </div>
         </div>
 
         <div id="mobile-game-controls">
             <div id="joystick-zone"></div>
-            <button id="jump-button">SKOK</button>
+            <button id="jump-button" class="text-outline">SKOK</button>
         </div>
     </div>
     
     <div id="build-ui-container">
       <div id="build-exit-button" class="build-ui-button"></div>
-      <div id="build-save-button" class="build-ui-button">Zapisz</div>
-      <div id="build-mode-button" class="build-ui-button">Łatwy</div>
+      <div id="build-save-button" class="build-ui-button text-outline">Zapisz</div>
+      <div id="build-mode-button" class="build-ui-button text-outline">Łatwy</div>
       <div id="build-add-button" class="build-ui-button">+</div>
       <div id="block-selection-panel"></div>
     </div>
@@ -384,28 +280,28 @@
     <div id="explore-exit-button" style="display: none;"></div>
 
     <div id="discover-panel" class="panel">
-        <h2 id="discover-panel-title">Wybierz Świat</h2>
+        <h2 id="discover-panel-title" class="text-outline">Wybierz Świat</h2>
         <div id="discover-list" class="panel-list"></div>
-        <div id="discover-close-button" class="panel-close-button">Zamknij</div>
+        <div id="discover-close-button" class="panel-close-button text-outline">Zamknij</div>
     </div>
 
     <div id="build-choice-panel" class="panel">
-        <h2>Co chcesz zbudować?</h2>
+        <h2 class="text-outline">Co chcesz zbudować?</h2>
         <div class="panel-list">
-            <div id="build-choice-world" class="panel-item">Świat</div>
-            <div id="build-choice-skin" class="panel-item">Skina</div>
+            <div id="build-choice-world" class="panel-item text-outline">Świat</div>
+            <div id="build-choice-skin" class="panel-item text-outline">Skina</div>
         </div>
-        <div id="build-choice-close" class="panel-close-button">Anuluj</div>
+        <div id="build-choice-close" class="panel-close-button text-outline">Anuluj</div>
     </div>
 
     <div id="more-options-panel" class="panel">
-        <h2>Opcje</h2>
+        <h2 class="text-outline">Opcje</h2>
         <div class="panel-list">
-            <div id="toggle-fps-btn" class="panel-item">
+            <div id="toggle-fps-btn" class="panel-item text-outline">
                 Licznik FPS: <span id="fps-status">Wyłączony</span>
             </div>
         </div>
-        <div id="more-options-close" class="panel-close-button">Zamknij</div>
+        <div id="more-options-close" class="panel-close-button text-outline">Zamknij</div>
     </div>
 
     <script type="module" src="main.js"></script>
