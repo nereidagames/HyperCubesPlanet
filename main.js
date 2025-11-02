@@ -389,8 +389,4 @@ class BlockStarPlanetGame {
   }
 }
 
-// --- POPRAWKA: Globalna flaga zapobiegająca wielokrotnej inicjalizacji ---
-if (!window.gameInitialized) {
-    window.gameInitialized = true;
-    document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
-}
+document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
