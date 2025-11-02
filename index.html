@@ -85,7 +85,6 @@
         background-repeat: no-repeat;
       }
       
-      /* --- POPRAWKA: Style dla nowej ikony "Przyjaciele" --- */
       .btn-friends {
         background: url('icons/icon-friends.png') center center / contain no-repeat;
         cursor: pointer;
@@ -96,10 +95,22 @@
       #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(0, 200, 0, 0.7); border-radius: 50%; color: white; font-size: 24px; border: 3px solid white; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1001;}
       #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
       #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; color: white; text-shadow: 2px 2px 4px #0008; display: none; }
-      .build-ui-button { position: absolute; pointer-events: auto; cursor: pointer; background-color: #2c75ff; border: 3px solid white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 8px #0004; transition: transform 0.1s ease, background-color 0.2s ease; }
+      
+      .build-ui-button { position: absolute; pointer-events: auto; cursor: pointer; background-color: #2c75ff; border: 3px solid white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 8px #0004; transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; }
       .build-ui-button:hover { background-color: #4c8cff; }
       .build-ui-button:active { transform: scale(0.95); }
-      #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; background-color: #ff4757; }
+      
+      /* --- POPRAWKA: Zmiana ikony przycisku wyjścia z budowania --- */
+      #build-exit-button {
+        background: url('icons/icon-back.png') center center / contain no-repeat;
+        border: none;
+        box-shadow: none;
+      }
+      #build-exit-button:hover {
+        background-color: transparent; /* Usunięcie zmiany tła z klasy nadrzędnej */
+        filter: brightness(1.2); /* Efekt rozjaśnienia */
+      }
+      
       #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
       #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 28px; opacity: 0.5; cursor: not-allowed; }
       #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
@@ -113,28 +124,32 @@
       .panel-item:hover { background: #4c8cff; }
       .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
 
+      /* --- POPRAWKA: Zmiana ikony przycisku wyjścia z eksploracji --- */
       #explore-exit-button {
         position: absolute;
         top: 20px;
         left: 20px;
         width: 60px;
         height: 60px;
-        font-size: 36px;
-        background-color: #ff4757;
-        color: white;
-        text-shadow: 2px 2px 4px #0008;
+        background: url('icons/icon-back.png') center center / contain no-repeat;
         pointer-events: auto;
         cursor: pointer;
-        border: 3px solid white;
-        border-radius: 10px;
+        transition: filter 0.2s ease, transform 0.1s ease;
+        z-index: 2500;
+        /* Usunięcie niepotrzebnych stylów tekstowych i tła */
+        font-size: initial;
+        color: initial;
+        text-shadow: none;
+        border: none;
+        border-radius: initial;
         display: flex;
         justify-content: center;
         align-items: center;
-        box-shadow: 0 4px 8px #0004;
-        transition: transform 0.1s ease, background-color 0.2s ease;
-        z-index: 2500;
+        box-shadow: none;
       }
-      #explore-exit-button:hover { background-color: #ff6b81; }
+      #explore-exit-button:hover {
+        filter: brightness(1.2); /* Efekt rozjaśnienia */
+      }
       #explore-exit-button:active { transform: scale(0.95); }
 
 
@@ -176,7 +191,6 @@
                 <div class="player-name">player</div>
                 <div class="player-avatar" style="background: linear-gradient(45deg, #27ae60, #2ecc71);">📧</div>
                 <div class="player-name">Poczta</div>
-                <!-- POPRAWKA: Usunięto emoji i styl inline, dodano klasę .btn-friends -->
                 <div class="player-avatar btn-friends"></div>
                 <div class="player-name">Przyjaciele</div>
             </div>
@@ -215,14 +229,16 @@
     </div>
     
     <div id="build-ui-container">
-      <div id="build-exit-button" class="build-ui-button">←</div>
+      <!-- POPRAWKA: Usunięto tekst strzałki -->
+      <div id="build-exit-button" class="build-ui-button"></div>
       <div id="build-save-button" class="build-ui-button">Zapisz</div>
       <div id="build-mode-button" class="build-ui-button">Łatwy</div>
       <div id="build-add-button" class="build-ui-button">+</div>
       <div id="block-selection-panel"></div>
     </div>
     
-    <div id="explore-exit-button" style="display: none;">←</div>
+    <!-- POPRAWKA: Usunięto tekst strzałki -->
+    <div id="explore-exit-button" style="display: none;"></div>
 
     <div id="discover-panel" class="panel">
         <h2 id="discover-panel-title">Wybierz Świat</h2>
