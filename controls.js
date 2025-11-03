@@ -258,7 +258,6 @@ class ThirdPersonCameraController {
         this.maxPitch = Math.PI / 2 - 0.2;
         this.isMobile = false;
         
-        // --- NOWOŚĆ: Przechowuje ID palca kontrolującego kamerę ---
         this.cameraTouchId = null;
 
         this.setupControls();
@@ -271,11 +270,10 @@ class ThirdPersonCameraController {
     }
 
     setupControls() {
-        // --- ZMIANA: Logika dostosowana do śledzenia ID dotyku ---
         this.handleStart = (e) => {
             if (!this.enabled) return;
-
-            if (this.isMobile) {
+            // --- POPRAWKA: Sprawdzamy, czy to zdarzenie dotykowe ---
+            if (e.changedTouches) {
                 for (const touch of e.changedTouches) {
                     const isUIElement = touch.target.closest('#joystick-zone') || touch.target.closest('#jump-button') || touch.target.closest('.ui-element');
                     if (isUIElement) continue;
@@ -287,7 +285,7 @@ class ThirdPersonCameraController {
                         break;
                     }
                 }
-            } else {
+            } else { // W przeciwnym razie to zdarzenie myszy
                 if (e.target.closest('.ui-element')) return;
                 this.isDragging = true;
                 this.mousePosition = { x: e.clientX, y: e.clientY };
@@ -295,7 +293,8 @@ class ThirdPersonCameraController {
         };
 
         this.handleEnd = (e) => {
-            if (this.isMobile) {
+            // --- POPRAWKA: Sprawdzamy, czy to zdarzenie dotykowe ---
+            if (e.changedTouches) {
                 for (const touch of e.changedTouches) {
                     if (touch.identifier === this.cameraTouchId) {
                         this.cameraTouchId = null;
@@ -303,15 +302,17 @@ class ThirdPersonCameraController {
                         break;
                     }
                 }
-            } else {
-                this.isDragging = false;
+            } else { // W przeciwnym razie to zdarzenie myszy
+                if (this.isDragging) {
+                    this.isDragging = false;
+                }
             }
         };
 
         this.handleMove = (e) => {
             if (!this.enabled || !this.isDragging) return;
-
-            if (this.isMobile) {
+            // --- POPRAWKA: Sprawdzamy, czy to zdarzenie dotykowe ---
+            if (e.changedTouches) {
                 for (const touch of e.changedTouches) {
                     if (touch.identifier === this.cameraTouchId) {
                         const clientX = touch.clientX;
@@ -326,7 +327,7 @@ class ThirdPersonCameraController {
                         break;
                     }
                 }
-            } else {
+            } else { // W przeciwnym razie to zdarzenie myszy
                 const clientX = e.clientX;
                 const clientY = e.clientY;
                 const deltaX = clientX - this.mousePosition.x;
