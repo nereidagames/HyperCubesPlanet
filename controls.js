@@ -257,6 +257,10 @@ class ThirdPersonCameraController {
         this.minPitch = 0.1;
         this.maxPitch = Math.PI / 2 - 0.2;
         this.isMobile = false;
+        
+        // --- NOWOŚĆ: Przechowuje ID palca kontrolującego kamerę ---
+        this.cameraTouchId = null;
+
         this.setupControls();
     }
 
@@ -267,39 +271,80 @@ class ThirdPersonCameraController {
     }
 
     setupControls() {
+        // --- ZMIANA: Logika dostosowana do śledzenia ID dotyku ---
         this.handleStart = (e) => {
-            if (this.isMobile && (e.target.closest('#joystick-zone') || e.target.closest('#jump-button'))) return;
             if (!this.enabled) return;
-            if (!this.isMobile && e.target.closest('.ui-element')) return;
-            this.isDragging = true;
-            this.mousePosition = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY };
-            if (this.isMobile) e.preventDefault();
+
+            if (this.isMobile) {
+                for (const touch of e.changedTouches) {
+                    const isUIElement = touch.target.closest('#joystick-zone') || touch.target.closest('#jump-button') || touch.target.closest('.ui-element');
+                    if (isUIElement) continue;
+
+                    if (this.cameraTouchId === null) {
+                        this.cameraTouchId = touch.identifier;
+                        this.isDragging = true;
+                        this.mousePosition = { x: touch.clientX, y: touch.clientY };
+                        break;
+                    }
+                }
+            } else {
+                if (e.target.closest('.ui-element')) return;
+                this.isDragging = true;
+                this.mousePosition = { x: e.clientX, y: e.clientY };
+            }
         };
 
-        this.handleEnd = () => {
-            this.isDragging = false;
+        this.handleEnd = (e) => {
+            if (this.isMobile) {
+                for (const touch of e.changedTouches) {
+                    if (touch.identifier === this.cameraTouchId) {
+                        this.cameraTouchId = null;
+                        this.isDragging = false;
+                        break;
+                    }
+                }
+            } else {
+                this.isDragging = false;
+            }
         };
 
         this.handleMove = (e) => {
             if (!this.enabled || !this.isDragging) return;
-            const clientX = e.clientX || e.touches[0].clientX;
-            const clientY = e.clientY || e.touches[0].clientY;
-            const deltaX = clientX - this.mousePosition.x;
-            const deltaY = clientY - this.mousePosition.y;
-            const sensitivity = this.isMobile ? this.rotationSpeed * 2.5 : this.rotationSpeed;
-            this.rotation -= deltaX * sensitivity;
-            this.pitch += deltaY * sensitivity;
-            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
-            this.mousePosition = { x: clientX, y: clientY };
-            if (this.isMobile) e.preventDefault();
+
+            if (this.isMobile) {
+                for (const touch of e.changedTouches) {
+                    if (touch.identifier === this.cameraTouchId) {
+                        const clientX = touch.clientX;
+                        const clientY = touch.clientY;
+                        const deltaX = clientX - this.mousePosition.x;
+                        const deltaY = clientY - this.mousePosition.y;
+                        const sensitivity = this.rotationSpeed * 2.5;
+                        this.rotation -= deltaX * sensitivity;
+                        this.pitch += deltaY * sensitivity;
+                        this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+                        this.mousePosition = { x: clientX, y: clientY };
+                        break;
+                    }
+                }
+            } else {
+                const clientX = e.clientX;
+                const clientY = e.clientY;
+                const deltaX = clientX - this.mousePosition.x;
+                const deltaY = clientY - this.mousePosition.y;
+                const sensitivity = this.rotationSpeed;
+                this.rotation -= deltaX * sensitivity;
+                this.pitch += deltaY * sensitivity;
+                this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+                this.mousePosition = { x: clientX, y: clientY };
+            }
         };
 
         this.domElement.addEventListener('mousedown', this.handleStart);
         document.addEventListener('mouseup', this.handleEnd);
         document.addEventListener('mousemove', this.handleMove);
-        this.domElement.addEventListener('touchstart', this.handleStart, { passive: false });
-        document.addEventListener('touchend', this.handleEnd, { passive: false });
-        document.addEventListener('touchmove', this.handleMove, { passive: false });
+        this.domElement.addEventListener('touchstart', this.handleStart, { passive: true });
+        document.addEventListener('touchend', this.handleEnd, { passive: true });
+        document.addEventListener('touchmove', this.handleMove, { passive: true });
     }
 
     cleanupControls() {
@@ -329,4 +374,3 @@ class ThirdPersonCameraController {
 class FirstPersonCameraController {}
 
 export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };
-
