@@ -11,13 +11,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
 
     <script type="importmap">
-      { 
-        "imports": { 
-          "three": "https://esm.sh/three@0.160.0?dev", 
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.160.0?dev",
           "three/": "https://esm.sh/three@0.160.0&dev/",
           "nipplejs": "https://esm.sh/nipplejs",
           "three/addons/libs/stats.module.js": "https://esm.sh/three@0.160.0/examples/jsm/libs/stats.module.js"
-        } 
+        }
       }
     </script>
     <style>
@@ -77,7 +77,6 @@
 
       #mobile-game-controls { display: none; pointer-events: auto; }
       
-      /* --- POPRAWKA: Zmiana wyglądu przycisku skoku na ikonę --- */
       #jump-button {
         position: absolute;
         bottom: 30px;
@@ -92,7 +91,6 @@
         border: none;
         cursor: pointer;
         z-index: 1001;
-        /* Usunięcie niepotrzebnych stylów */
         border-radius: 0;
         box-shadow: none;
         display: block;
@@ -169,7 +167,7 @@
               <div class="player-name text-outline">player</div>
             </div>
             <div class="top-bar-item">
-              <div class="player-avatar" style="background-image: none; background-color: #27ae60;"></div>
+              <div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 70%; background-position: center; background-repeat: no-repeat; background-color: #27ae60;"></div>
               <div class="player-name text-outline">Poczta</div>
             </div>
             <div class="top-bar-item">
@@ -209,7 +207,6 @@
 
         <div id="mobile-game-controls">
             <div id="joystick-zone"></div>
-            <!-- POPRAWKA: Usunięcie tekstu "SKOK" -->
             <button id="jump-button"></button>
         </div>
     </div>
