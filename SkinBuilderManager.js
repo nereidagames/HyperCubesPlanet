@@ -3,7 +3,6 @@ import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
 
 export class SkinBuilderManager {
-  // --- POPRAWKA: Dodajemy loadingManager do konstruktora ---
   constructor(game, loadingManager) {
     this.game = game;
     this.scene = new THREE.Scene();
@@ -23,11 +22,17 @@ export class SkinBuilderManager {
       { name: 'Piasek', texturePath: 'textures/piasek.png' }
     ];
     this.selectedBlockType = this.blockTypes[0];
-    // --- POPRAWKA: Przekazujemy manager do TextureLoadera ---
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
+
+    // --- NOWOŚĆ: Logika dla długiego przytrzymania na mobile ---
+    this.longPressTimer = null;
+    this.isLongPress = false;
+    this.onTouchStart = this.onTouchStart.bind(this);
+    this.onTouchEnd = this.onTouchEnd.bind(this);
+    this.onTouchMove = this.onTouchMove.bind(this);
   }
 
   preloadTextures() {
@@ -56,8 +61,15 @@ export class SkinBuilderManager {
     this.scene.add(directionalLight);
     this.createBuildPlatform();
     this.createPreviewBlock();
+    
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
+    this.cameraController.setIsMobile(this.game.isMobile);
     this.cameraController.distance = 25;
+
+    if (this.game.isMobile) {
+        document.getElementById('jump-button').style.display = 'none';
+    }
+
     this.setupBuildEventListeners();
   }
 
@@ -89,6 +101,12 @@ export class SkinBuilderManager {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('contextmenu', e => e.preventDefault());
+
+    // --- NOWOŚĆ: Listenery dla dotyku ---
+    window.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    window.addEventListener('touchend', this.onTouchEnd);
+    window.addEventListener('touchmove', this.onTouchMove);
+
     document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
@@ -135,6 +153,12 @@ export class SkinBuilderManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
+
+    // --- NOWOŚĆ: Usunięcie listenerów dotyku ---
+    window.removeEventListener('touchstart', this.onTouchStart);
+    window.removeEventListener('touchend', this.onTouchEnd);
+    window.removeEventListener('touchmove', this.onTouchMove);
+
     document.getElementById('build-exit-button').onclick = null;
     document.getElementById('build-mode-button').onclick = null;
     document.getElementById('build-add-button').onclick = null;
@@ -148,7 +172,7 @@ export class SkinBuilderManager {
   }
   
   onMouseDown(event) {
-    if (!this.isActive || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel')) return;
+    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
     if (event.button === 0 && this.previewBlock.visible) this.placeBlock();
     else if (event.button === 2) this.removeBlock();
   }
@@ -213,6 +237,10 @@ export class SkinBuilderManager {
     this.placedBlocks = [];
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
+
+    if (this.game.isMobile) {
+        document.getElementById('jump-button').style.display = 'block';
+    }
   }
   
   update(deltaTime) {
@@ -234,4 +262,44 @@ export class SkinBuilderManager {
       this.previewBlock.visible = false;
     }
   }
-}
+
+  // --- NOWOŚĆ: Metody obsługi dotyku ---
+  onTouchStart(event) {
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    
+    event.preventDefault();
+    this.isLongPress = false;
+    
+    const touch = event.touches[0];
+    this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+    clearTimeout(this.longPressTimer);
+    this.longPressTimer = setTimeout(() => {
+        this.isLongPress = true;
+        this.removeBlock();
+    }, 500);
+  }
+
+  onTouchEnd(event) {
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+
+    clearTimeout(this.longPressTimer);
+    
+    if (!this.isLongPress && this.previewBlock.visible) {
+        this.placeBlock();
+    }
+  }
+
+  onTouchMove(event) {
+    if (!this.isActive || !this.game.isMobile) return;
+    
+    // Anuluj długie przytrzymanie, jeśli palec się poruszy
+    clearTimeout(this.longPressTimer);
+    
+    // Zaktualizuj pozycję podglądu bloku
+    const touch = event.touches[0];
+    this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+  }
+  }
