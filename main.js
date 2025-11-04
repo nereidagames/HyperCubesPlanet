@@ -200,8 +200,6 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
-    // POPRAWKA: Usunięto tę linię, aby kontener z joystickiem pozostał widoczny.
-    // this.toggleMobileControls(false); 
     this.buildManager.enterBuildMode();
   }
 
@@ -209,8 +207,6 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'SkinBuilderMode';
     this.toggleMainUI(false);
-    // POPRAWKA: Usunięto tę linię, aby kontener z joystickiem pozostał widoczny.
-    // this.toggleMobileControls(false); 
     this.skinBuilderManager.enterBuildMode();
   }
   
@@ -253,7 +249,8 @@ class BlockStarPlanetGame {
       if(this.playerController) this.playerController.destroy();
       this.playerController = new PlayerController(this.characterManager.character, collidables, {
           moveSpeed: 8, jumpForce: 12, gravity: 25,
-          groundRestingY: this.characterManager.currentGroundRestingY
+          // OSTATECZNA POPRAWKA: Przekazujemy prawdziwą wysokość podłogi z SceneManager
+          groundRestingY: this.sceneManager.FLOOR_TOP_Y
       });
       this.playerController.setIsMobile(this.isMobile);
   }
