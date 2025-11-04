@@ -13,6 +13,7 @@ export class BuildManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
+    this.platformSize = 64; // NOWOŚĆ: Przechowujemy rozmiar platformy
     this.cameraController = null;
     this.blockTypes = [
       { name: 'Trawa', texturePath: 'textures/trawa.png' },
@@ -29,7 +30,7 @@ export class BuildManager {
 
     this.longPressTimer = null;
     this.isLongPress = false;
-    this.touchStartPosition = { x: 0, y: 0 }; // NOWOŚĆ: Pozycja startowa dotyku
+    this.touchStartPosition = { x: 0, y: 0 };
     this.onTouchStart = this.onTouchStart.bind(this);
     this.onTouchEnd = this.onTouchEnd.bind(this);
     this.onTouchMove = this.onTouchMove.bind(this);
@@ -75,18 +76,39 @@ export class BuildManager {
   }
 
   createBuildPlatform() {
-    const platformSize = 64;
-    const geometry = new THREE.BoxGeometry(platformSize, 1, platformSize);
+    const geometry = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
     const material = new THREE.MeshLambertMaterial({ color: 0x559022 });
     this.platform = new THREE.Mesh(geometry, material);
     this.platform.position.y = -0.5;
     this.platform.receiveShadow = true;
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
-    const edges = new THREE.EdgesGeometry(geometry);
-    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 }));
-    line.position.y = -0.5;
-    this.scene.add(line);
+    
+    // --- NOWOŚĆ: Tworzenie wizualnych ścian granicznych ---
+    const barrierHeight = 100; // Wysokość ścian
+    const barrierMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x8A2BE2, 
+        transparent: true, 
+        opacity: 0.2,
+        side: THREE.DoubleSide // Widoczne z obu stron
+    });
+
+    const barrierNS = new THREE.Mesh(new THREE.PlaneGeometry(this.platformSize, barrierHeight), barrierMaterial);
+    barrierNS.position.set(0, barrierHeight / 2 - 0.5, this.platformSize / 2);
+    this.scene.add(barrierNS);
+
+    const barrierNS2 = barrierNS.clone();
+    barrierNS2.position.set(0, barrierHeight / 2 - 0.5, -this.platformSize / 2);
+    this.scene.add(barrierNS2);
+
+    const barrierEW = new THREE.Mesh(new THREE.PlaneGeometry(this.platformSize, barrierHeight), barrierMaterial);
+    barrierEW.rotation.y = Math.PI / 2;
+    barrierEW.position.set(this.platformSize / 2, barrierHeight / 2 - 0.5, 0);
+    this.scene.add(barrierEW);
+
+    const barrierEW2 = barrierEW.clone();
+    barrierEW2.position.set(-this.platformSize / 2, barrierHeight / 2 - 0.5, 0);
+    this.scene.add(barrierEW2);
   }
 
   createPreviewBlock() {
@@ -256,13 +278,22 @@ export class BuildManager {
     this.cameraController.update(deltaTime);
     this.raycaster.setFromCamera(this.mouse, this.game.camera);
     const intersects = this.raycaster.intersectObjects(this.collidableBuildObjects);
+    
     if (intersects.length > 0) {
-      this.previewBlock.visible = true;
       const intersect = intersects[0];
       const normal = intersect.face.normal.clone();
       const snappedPosition = new THREE.Vector3().copy(intersect.point)
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
-      this.previewBlock.position.copy(snappedPosition);
+
+      // --- NOWOŚĆ: Sprawdzanie granic platformy ---
+      const buildAreaLimit = this.platformSize / 2;
+      if (Math.abs(snappedPosition.x) < buildAreaLimit && Math.abs(snappedPosition.z) < buildAreaLimit) {
+        this.previewBlock.visible = true;
+        this.previewBlock.position.copy(snappedPosition);
+      } else {
+        this.previewBlock.visible = false;
+      }
+
     } else {
       this.previewBlock.visible = false;
     }
@@ -278,7 +309,6 @@ export class BuildManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
     
-    // Zapisz pozycję startową dotyku
     this.touchStartPosition.x = touch.clientX;
     this.touchStartPosition.y = touch.clientY;
 
@@ -304,17 +334,15 @@ export class BuildManager {
     
     const touch = event.touches[0];
     
-    // POPRAWKA: Anuluj długie przytrzymanie tylko, jeśli palec przesunął się o więcej niż próg
     const deltaX = touch.clientX - this.touchStartPosition.x;
     const deltaY = touch.clientY - this.touchStartPosition.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const MOVE_THRESHOLD = 10; // 10 pikseli
+    const MOVE_THRESHOLD = 10; 
 
     if (distance > MOVE_THRESHOLD) {
         clearTimeout(this.longPressTimer);
     }
     
-    // Zawsze aktualizuj pozycję podglądu bloku
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
