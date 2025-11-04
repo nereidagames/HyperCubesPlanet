@@ -37,7 +37,7 @@ export class CharacterManager {
     this.skinContainer = new THREE.Group();
     this.textureLoader = new THREE.TextureLoader();
     this.materialsCache = {};
-    this.currentGroundRestingY = 0.8;
+    // Usunięto 'currentGroundRestingY', ponieważ jest teraz pobierane z SceneManager
   }
   
   loadCharacter() {
@@ -46,16 +46,19 @@ export class CharacterManager {
     }
     this.character = new THREE.Group();
     const baseModel = createBaseCharacter();
+    
+    // OSTATECZNA POPRAWKA: Przesunięcie modelu wizualnego w dół, aby stopy były na dole
+    baseModel.position.y = -0.6;
     this.character.add(baseModel);
 
-    // --- KLUCZOWA POPRAWKA ---
-    // 1. Zmniejszamy cały kontener na skin, aby zbudowana postać była proporcjonalna.
     this.skinContainer.scale.setScalar(0.25);
-    // 2. Ustawiamy pozycję, aby skin znajdował się na "biodrach" nóg.
-    this.skinContainer.position.y = 0.8; 
+    // OSTATECZNA POPRAWKA: Przesunięcie kontenera na skin w dół, aby pasował do nóg
+    this.skinContainer.position.y = 0.2; 
     
     this.character.add(this.skinContainer);
-    this.character.position.set(0, this.currentGroundRestingY, 0);
+    
+    // Pozycja startowa nie ma już znaczenia, bo PlayerController ją nadpisuje
+    this.character.position.set(0, 5, 0); 
     this.scene.add(this.character);
     this.setupShadow();
     console.log("Base character loaded.");
@@ -97,7 +100,7 @@ export class CharacterManager {
       const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 });
       this.shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
       this.shadow.rotation.x = -Math.PI / 2;
-      this.shadow.position.y = 0.11;
+      this.shadow.position.y = 0.11; // Lekko nad podłogą
       this.scene.add(this.shadow);
   }
 
@@ -120,7 +123,6 @@ export class CharacterManager {
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
     const chatBubble = new CSS2DObject(div);
     
-    // POPRAWKA: Obniżamy pozycję dymka, aby pasowała do mniejszej postaci
     chatBubble.position.set(0, 2.5, 0); 
     
     this.character.add(chatBubble);
@@ -132,4 +134,4 @@ export class CharacterManager {
       }
     }, 5000);
   }
-}
+        }
