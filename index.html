@@ -2,7 +2,6 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <!-- POPRAWKA: Dodano opcje blokujące zoom -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>HyperCubesPlanet</title>
     <link rel="icon" type="image/png" href="icons/favicon.png">
@@ -23,7 +22,6 @@
     </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      /* POPRAWKA: Dodano touch-action, aby zablokować domyślne gesty przeglądarki */
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; touch-action: none; }
       
       .text-outline {
@@ -70,7 +68,12 @@
       .game-buttons { display: flex; gap: 15px; align-items: center; }
       .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
       .game-btn:active { transform: scale(0.95); }
-      .btn-zagraj { background-image: url('icons/icon-play.png'); } .btn-buduj { background-image: url('icons/icon-build.png'); } .btn-kup { background-image: url('icons/icon-shop.png'); } .btn-odkryj { background-image: url('icons/icon-discover.png'); } .btn-wiecej { background-image: url('icons/icon-more.png'); }
+      /* POPRAWKA: Ustawienie mniejszego rozmiaru dla ikony "Zagraj", aby pasowała do reszty */
+      .btn-zagraj { background-image: url('icons/icon-play.png'); background-size: 85%; } 
+      .btn-buduj { background-image: url('icons/icon-build.png'); } 
+      .btn-kup { background-image: url('icons/icon-shop.png'); } 
+      .btn-odkryj { background-image: url('icons/icon-discover.png'); } 
+      .btn-wiecej { background-image: url('icons/icon-more.png'); }
       
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 10px 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
       .coin-icon { width: 30px; height: 30px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; }
@@ -250,4 +253,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-  </html>
+              </html>
