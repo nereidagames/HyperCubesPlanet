@@ -13,7 +13,7 @@ export class BuildManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
-    this.platformSize = 64;
+    this.platformSize = 64; // Domyślny rozmiar
     this.cameraController = null;
     this.blockTypes = [
       { name: 'Trawa', texturePath: 'textures/trawa.png' },
@@ -48,8 +48,10 @@ export class BuildManager {
     });
   }
 
-  enterBuildMode() {
+  // ZMIANA: Funkcja przyjmuje teraz rozmiar
+  enterBuildMode(size = 64) {
     this.isActive = true;
+    this.platformSize = size; // Ustawienie wybranego rozmiaru
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
@@ -265,7 +267,6 @@ export class BuildManager {
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
 
       const buildAreaLimit = this.platformSize / 2;
-      // POPRAWKA: Dodano warunek `snappedPosition.y >= 0`
       if (
           Math.abs(snappedPosition.x) < buildAreaLimit && 
           Math.abs(snappedPosition.z) < buildAreaLimit && 
@@ -329,4 +330,4 @@ export class BuildManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-}
+      }
