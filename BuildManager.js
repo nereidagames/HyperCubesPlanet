@@ -84,10 +84,9 @@ export class BuildManager {
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
-    // --- POPRAWKA: Zastąpienie ścian cienką fioletową ramką ---
     const edges = new THREE.EdgesGeometry(geometry);
     const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 }));
-    line.position.y = -0.5; // Dopasuj do pozycji platformy
+    line.position.y = -0.5;
     this.scene.add(line);
   }
 
@@ -266,7 +265,12 @@ export class BuildManager {
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
 
       const buildAreaLimit = this.platformSize / 2;
-      if (Math.abs(snappedPosition.x) < buildAreaLimit && Math.abs(snappedPosition.z) < buildAreaLimit) {
+      // POPRAWKA: Dodano warunek `snappedPosition.y >= 0`
+      if (
+          Math.abs(snappedPosition.x) < buildAreaLimit && 
+          Math.abs(snappedPosition.z) < buildAreaLimit && 
+          snappedPosition.y >= 0
+      ) {
         this.previewBlock.visible = true;
         this.previewBlock.position.copy(snappedPosition);
       } else {
@@ -325,4 +329,4 @@ export class BuildManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-                                                    }
+}
