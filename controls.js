@@ -10,7 +10,6 @@ class PlayerController {
     this.gravity = options.gravity || 25;
     this.groundRestingY = options.groundRestingY || 0.6;
 
-    // POPRAWKA: Zmniejszono wysokość skrzynki kolizji, aby pasowała do modelu
     this.playerDimensions = new THREE.Vector3(0.8, 1.6, 0.8);
 
     this.velocity = new THREE.Vector3();
@@ -122,8 +121,6 @@ class PlayerController {
     const halfDepth = this.playerDimensions.z / 2;
     const epsilon = 0.001;
 
-    // POPRAWKA: Przechowuje obiekt, na którym aktualnie stoi gracz
-    let groundObject = null;
     let landedOnBlock = false;
 
     // --- Kolizja pionowa (Y) ---
@@ -141,26 +138,29 @@ class PlayerController {
                 this.jumpsRemaining = this.maxJumps;
                 this.canJump = true;
                 landedOnBlock = true;
-                groundObject = object; // Zapisz obiekt podłoża
             } else if (verticalMovement > 0) { // Wznoszenie (skok)
-                if (objectBox.min.y > this.player.position.y) {
-                    this.player.position.y = objectBox.min.y - halfHeight - epsilon;
-                    this.velocity.y = 0;
-                }
+                this.player.position.y = objectBox.min.y - halfHeight - epsilon;
+                this.velocity.y = 0;
             }
         }
     }
     
+    // Zaktualizuj playerBox po ostatecznym ustaleniu pozycji Y
+    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+
     // --- Kolizja pozioma (X) ---
     const horizontalMovementX = this.velocity.x * deltaTime;
     this.player.position.x += horizontalMovementX;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of this.collidableObjects) {
-        // POPRAWKA: Ignoruj obiekt, na którym stoimy, przy sprawdzaniu kolizji bocznej
-        if (object === groundObject) continue;
-
         objectBox.setFromObject(object);
+
+        // OSTATECZNA POPRAWKA: Jeśli góra obiektu jest poniżej stóp gracza, to nie jest ściana. Ignoruj.
+        if (objectBox.max.y < playerBox.min.y + epsilon) {
+            continue;
+        }
+
         if (playerBox.intersectsBox(objectBox)) {
             if (horizontalMovementX > 0) {
                 this.player.position.x = objectBox.min.x - halfWidth - epsilon;
@@ -178,10 +178,13 @@ class PlayerController {
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of this.collidableObjects) {
-        // POPRAWKA: Ignoruj obiekt, na którym stoimy, przy sprawdzaniu kolizji bocznej
-        if (object === groundObject) continue;
-
         objectBox.setFromObject(object);
+
+        // OSTATECZNA POPRAWKA: Jeśli góra obiektu jest poniżej stóp gracza, to nie jest ściana. Ignoruj.
+        if (objectBox.max.y < playerBox.min.y + epsilon) {
+            continue;
+        }
+
         if (playerBox.intersectsBox(objectBox)) {
             if (horizontalMovementZ > 0) {
                 this.player.position.z = objectBox.min.z - halfDepth - epsilon;
@@ -194,9 +197,9 @@ class PlayerController {
     }
 
     // Ostateczne sprawdzenie z podłogą
-    if (this.player.position.y <= this.groundRestingY) {
+    if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
-            this.player.position.y = this.groundRestingY;
+            this.player.position.y = this.groundRestingY + halfHeight;
             if (!this.isOnGround) {
                 this.velocity.y = 0;
                 this.isOnGround = true;
