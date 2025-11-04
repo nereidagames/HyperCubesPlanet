@@ -26,6 +26,13 @@ export class BuildManager {
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
+
+    // --- NOWOŚĆ: Logika dla długiego przytrzymania na mobile ---
+    this.longPressTimer = null;
+    this.isLongPress = false;
+    this.onTouchStart = this.onTouchStart.bind(this);
+    this.onTouchEnd = this.onTouchEnd.bind(this);
+    this.onTouchMove = this.onTouchMove.bind(this);
   }
 
   preloadTextures() {
@@ -96,6 +103,12 @@ export class BuildManager {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('contextmenu', e => e.preventDefault());
+
+    // --- NOWOŚĆ: Listenery dla dotyku ---
+    window.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    window.addEventListener('touchend', this.onTouchEnd);
+    window.addEventListener('touchmove', this.onTouchMove);
+
     document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
@@ -144,6 +157,12 @@ export class BuildManager {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('contextmenu', e => e.preventDefault());
+
+    // --- NOWOŚĆ: Usunięcie listenerów dotyku ---
+    window.removeEventListener('touchstart', this.onTouchStart);
+    window.removeEventListener('touchend', this.onTouchEnd);
+    window.removeEventListener('touchmove', this.onTouchMove);
+
     document.getElementById('build-exit-button').onclick = null;
     document.getElementById('build-mode-button').onclick = null;
     document.getElementById('build-add-button').onclick = null;
@@ -157,7 +176,7 @@ export class BuildManager {
   }
   
   onMouseDown(event) {
-    if (!this.isActive || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
     if (event.button === 0 && this.previewBlock.visible) this.placeBlock();
     else if (event.button === 2) this.removeBlock();
   }
@@ -250,4 +269,44 @@ export class BuildManager {
       this.previewBlock.visible = false;
     }
   }
-                                                      }
+
+  // --- NOWOŚĆ: Metody obsługi dotyku ---
+  onTouchStart(event) {
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    
+    event.preventDefault();
+    this.isLongPress = false;
+    
+    const touch = event.touches[0];
+    this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+    clearTimeout(this.longPressTimer);
+    this.longPressTimer = setTimeout(() => {
+        this.isLongPress = true;
+        this.removeBlock();
+    }, 500);
+  }
+
+  onTouchEnd(event) {
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+
+    clearTimeout(this.longPressTimer);
+    
+    if (!this.isLongPress && this.previewBlock.visible) {
+        this.placeBlock();
+    }
+  }
+
+  onTouchMove(event) {
+    if (!this.isActive || !this.game.isMobile) return;
+    
+    // Anuluj długie przytrzymanie, jeśli palec się poruszy
+    clearTimeout(this.longPressTimer);
+    
+    // Zaktualizuj pozycję podglądu bloku
+    const touch = event.touches[0];
+    this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+  }
+      }
