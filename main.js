@@ -200,7 +200,8 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); 
+    // POPRAWKA: Usunięto tę linię, aby kontener z joystickiem pozostał widoczny.
+    // this.toggleMobileControls(false); 
     this.buildManager.enterBuildMode();
   }
 
@@ -208,7 +209,8 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'SkinBuilderMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); 
+    // POPRAWKA: Usunięto tę linię, aby kontener z joystickiem pozostał widoczny.
+    // this.toggleMobileControls(false); 
     this.skinBuilderManager.enterBuildMode();
   }
   
@@ -365,7 +367,7 @@ class BlockStarPlanetGame {
     if (this.gameState === 'MainMenu') {
         if(this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
-            this.playerController.update(deltaTime, this.cameraController.rotation || rot);
+            this.playerController.update(deltaTime, rot);
         }
         if (this.characterManager) this.characterManager.update(deltaTime);
         if (this.multiplayerManager) this.multiplayerManager.update(deltaTime, this.characterManager.character);
@@ -381,7 +383,7 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'ExploreMode') {
         if (this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
-            this.playerController.update(deltaTime, this.cameraController.rotation || rot);
+            this.playerController.update(deltaTime, rot);
         }
         if (this.characterManager) this.characterManager.update(deltaTime);
         this.renderer.render(this.exploreScene, this.camera);
