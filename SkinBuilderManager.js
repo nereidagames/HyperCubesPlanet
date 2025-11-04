@@ -27,9 +27,9 @@ export class SkinBuilderManager {
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
 
-    // --- NOWOŚĆ: Logika dla długiego przytrzymania na mobile ---
     this.longPressTimer = null;
     this.isLongPress = false;
+    this.touchStartPosition = { x: 0, y: 0 }; // NOWOŚĆ: Pozycja startowa dotyku
     this.onTouchStart = this.onTouchStart.bind(this);
     this.onTouchEnd = this.onTouchEnd.bind(this);
     this.onTouchMove = this.onTouchMove.bind(this);
@@ -102,7 +102,6 @@ export class SkinBuilderManager {
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('contextmenu', e => e.preventDefault());
 
-    // --- NOWOŚĆ: Listenery dla dotyku ---
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
@@ -154,7 +153,6 @@ export class SkinBuilderManager {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
 
-    // --- NOWOŚĆ: Usunięcie listenerów dotyku ---
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchmove', this.onTouchMove);
@@ -263,7 +261,6 @@ export class SkinBuilderManager {
     }
   }
 
-  // --- NOWOŚĆ: Metody obsługi dotyku ---
   onTouchStart(event) {
     if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
     
@@ -273,6 +270,10 @@ export class SkinBuilderManager {
     const touch = event.touches[0];
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+    // Zapisz pozycję startową dotyku
+    this.touchStartPosition.x = touch.clientX;
+    this.touchStartPosition.y = touch.clientY;
 
     clearTimeout(this.longPressTimer);
     this.longPressTimer = setTimeout(() => {
@@ -294,12 +295,20 @@ export class SkinBuilderManager {
   onTouchMove(event) {
     if (!this.isActive || !this.game.isMobile) return;
     
-    // Anuluj długie przytrzymanie, jeśli palec się poruszy
-    clearTimeout(this.longPressTimer);
-    
-    // Zaktualizuj pozycję podglądu bloku
     const touch = event.touches[0];
+    
+    // POPRAWKA: Anuluj długie przytrzymanie tylko, jeśli palec przesunął się o więcej niż próg
+    const deltaX = touch.clientX - this.touchStartPosition.x;
+    const deltaY = touch.clientY - this.touchStartPosition.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const MOVE_THRESHOLD = 10; // 10 pikseli
+
+    if (distance > MOVE_THRESHOLD) {
+        clearTimeout(this.longPressTimer);
+    }
+    
+    // Zawsze aktualizuj pozycję podglądu bloku
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-  }
+      }
