@@ -13,7 +13,7 @@ export class BuildManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
-    this.platformSize = 64; // NOWOŚĆ: Przechowujemy rozmiar platformy
+    this.platformSize = 64;
     this.cameraController = null;
     this.blockTypes = [
       { name: 'Trawa', texturePath: 'textures/trawa.png' },
@@ -84,31 +84,11 @@ export class BuildManager {
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
-    // --- NOWOŚĆ: Tworzenie wizualnych ścian granicznych ---
-    const barrierHeight = 100; // Wysokość ścian
-    const barrierMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0x8A2BE2, 
-        transparent: true, 
-        opacity: 0.2,
-        side: THREE.DoubleSide // Widoczne z obu stron
-    });
-
-    const barrierNS = new THREE.Mesh(new THREE.PlaneGeometry(this.platformSize, barrierHeight), barrierMaterial);
-    barrierNS.position.set(0, barrierHeight / 2 - 0.5, this.platformSize / 2);
-    this.scene.add(barrierNS);
-
-    const barrierNS2 = barrierNS.clone();
-    barrierNS2.position.set(0, barrierHeight / 2 - 0.5, -this.platformSize / 2);
-    this.scene.add(barrierNS2);
-
-    const barrierEW = new THREE.Mesh(new THREE.PlaneGeometry(this.platformSize, barrierHeight), barrierMaterial);
-    barrierEW.rotation.y = Math.PI / 2;
-    barrierEW.position.set(this.platformSize / 2, barrierHeight / 2 - 0.5, 0);
-    this.scene.add(barrierEW);
-
-    const barrierEW2 = barrierEW.clone();
-    barrierEW2.position.set(-this.platformSize / 2, barrierHeight / 2 - 0.5, 0);
-    this.scene.add(barrierEW2);
+    // --- POPRAWKA: Zastąpienie ścian cienką fioletową ramką ---
+    const edges = new THREE.EdgesGeometry(geometry);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 }));
+    line.position.y = -0.5; // Dopasuj do pozycji platformy
+    this.scene.add(line);
   }
 
   createPreviewBlock() {
@@ -285,7 +265,6 @@ export class BuildManager {
       const snappedPosition = new THREE.Vector3().copy(intersect.point)
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
 
-      // --- NOWOŚĆ: Sprawdzanie granic platformy ---
       const buildAreaLimit = this.platformSize / 2;
       if (Math.abs(snappedPosition.x) < buildAreaLimit && Math.abs(snappedPosition.z) < buildAreaLimit) {
         this.previewBlock.visible = true;
@@ -346,4 +325,4 @@ export class BuildManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-      }
+                                                    }
