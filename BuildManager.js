@@ -3,7 +3,6 @@ import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
 
 export class BuildManager {
-  // --- POPRAWKA: Dodajemy loadingManager do konstruktora ---
   constructor(game, loadingManager) {
     this.game = game;
     this.scene = new THREE.Scene();
@@ -23,7 +22,6 @@ export class BuildManager {
       { name: 'Piasek', texturePath: 'textures/piasek.png' }
     ];
     this.selectedBlockType = this.blockTypes[0];
-    // --- POPRAWKA: Przekazujemy manager do TextureLoadera ---
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -58,7 +56,14 @@ export class BuildManager {
     this.scene.add(directionalLight);
     this.createBuildPlatform();
     this.createPreviewBlock();
+    
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
+    this.cameraController.setIsMobile(this.game.isMobile);
+
+    if (this.game.isMobile) {
+        document.getElementById('jump-button').style.display = 'none';
+    }
+
     this.setupBuildEventListeners();
   }
 
@@ -152,7 +157,7 @@ export class BuildManager {
   }
   
   onMouseDown(event) {
-    if (!this.isActive || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel')) return;
+    if (!this.isActive || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
     if (event.button === 0 && this.previewBlock.visible) this.placeBlock();
     else if (event.button === 2) this.removeBlock();
   }
@@ -223,6 +228,10 @@ export class BuildManager {
     this.placedBlocks = [];
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
+    
+    if (this.game.isMobile) {
+        document.getElementById('jump-button').style.display = 'block';
+    }
   }
   
   update(deltaTime) {
@@ -241,4 +250,4 @@ export class BuildManager {
       this.previewBlock.visible = false;
     }
   }
-}
+                                                      }
