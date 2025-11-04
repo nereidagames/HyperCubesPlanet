@@ -36,11 +36,13 @@ export class BuildCameraController {
 
   setIsMobile(isMobile) {
       this.isMobile = isMobile;
+      // Inicjalizujemy tryb, aby poprawnie ustawić UI (joystick)
+      this.setMode(this.mode); 
   }
 
   bindEvents() {
     this.handleMouseDown = (e) => {
-        if (this.mode === 'orbital' && !e.target.closest('.ui-element')) {
+        if (!e.target.closest('.ui-element')) {
             this.isDragging = true;
             this.previousMousePosition = { x: e.clientX, y: e.clientY };
         }
@@ -57,14 +59,12 @@ export class BuildCameraController {
     };
 
     this.handleTouchStart = (e) => {
-        if (this.mode === 'orbital') {
-            for (const touch of e.changedTouches) {
-                if (this.cameraTouchId === null && !touch.target.closest('.ui-element') && !touch.target.closest('#joystick-zone')) {
-                    this.cameraTouchId = touch.identifier;
-                    this.isDragging = true;
-                    this.previousMousePosition = { x: touch.clientX, y: touch.clientY };
-                    break;
-                }
+        for (const touch of e.changedTouches) {
+            if (this.cameraTouchId === null && !touch.target.closest('.ui-element') && !touch.target.closest('#joystick-zone')) {
+                this.cameraTouchId = touch.identifier;
+                this.isDragging = true;
+                this.previousMousePosition = { x: touch.clientX, y: touch.clientY };
+                break;
             }
         }
     };
@@ -102,8 +102,11 @@ export class BuildCameraController {
   }
 
   applyRotation(deltaX, deltaY, sensitivityMultiplier) {
-      this.rotation.y -= deltaX * 0.005 * sensitivityMultiplier;
-      this.rotation.x -= deltaY * 0.005 * sensitivityMultiplier;
+      if (this.mode === 'free' && this.isMobile) return; // W trybie free na mobile obracamy kamerą w update()
+      
+      const lookSpeed = this.mode === 'free' ? this.lookSpeed : 1;
+      this.rotation.y -= deltaX * 0.0025 * sensitivityMultiplier * lookSpeed;
+      this.rotation.x -= deltaY * 0.0025 * sensitivityMultiplier * lookSpeed;
       this.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.rotation.x));
   }
   
@@ -115,8 +118,8 @@ export class BuildCameraController {
     window.removeEventListener('touchmove', this.handleTouchMove);
     window.removeEventListener('touchend', this.handleTouchEnd);
 
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('keydown', this.onKeyDown.bind(this));
+    window.removeEventListener('keyup', this.onKeyUp.bind(this));
     
     if (this.joystick) {
         this.joystick.destroy();
@@ -133,29 +136,21 @@ export class BuildCameraController {
     
     if (this.isMobile) {
         const joystickZone = document.getElementById('joystick-zone');
-        if (this.mode === 'free') {
-            joystickZone.style.display = 'block';
-            if (!this.joystick) {
-                this.joystick = nipplejs.create({
-                    zone: joystickZone,
-                    mode: 'static',
-                    position: { left: '50%', top: '50%' },
-                    color: 'white',
-                    size: 100,
-                });
-                this.joystick.on('move', (evt, data) => {
-                    if (data.vector) this.joystickDirection.set(data.vector.x, data.vector.y);
-                });
-                this.joystick.on('end', () => {
-                    this.joystickDirection.set(0, 0);
-                });
-            }
-        } else { // tryb 'orbital'
-            joystickZone.style.display = 'none';
-            if (this.joystick) {
-                this.joystick.destroy();
-                this.joystick = null;
-            }
+        joystickZone.style.display = 'block'; // Zawsze pokazuj joystick na mobile
+        if (!this.joystick) {
+            this.joystick = nipplejs.create({
+                zone: joystickZone,
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: 'white',
+                size: 100,
+            });
+            this.joystick.on('move', (evt, data) => {
+                if (data.vector) this.joystickDirection.set(data.vector.x, data.vector.y);
+            });
+            this.joystick.on('end', () => {
+                this.joystickDirection.set(0, 0);
+            });
         }
     }
   }
@@ -172,31 +167,47 @@ export class BuildCameraController {
   }
 
   update(deltaTime) {
-    if (this.mode === 'free') {
-      const moveDirection = new THREE.Vector3();
-      
-      if (this.isMobile) {
-          if (this.joystickDirection.length() > 0) {
-              moveDirection.set(this.joystickDirection.x, 0, -this.joystickDirection.y);
-          }
-      } else {
-          if (this.keys['KeyW']) moveDirection.z = -1;
-          if (this.keys['KeyS']) moveDirection.z = 1;
-          if (this.keys['KeyA']) moveDirection.x = -1;
-          if (this.keys['KeyD']) moveDirection.x = 1;
-      }
-      
-      if (moveDirection.lengthSq() > 0) {
-        moveDirection.normalize().applyEuler(this.camera.rotation);
-        this.camera.position.add(moveDirection.multiplyScalar(this.moveSpeed * deltaTime));
-      }
-      
-      if (!this.isMobile) {
-          if (this.keys['Space']) this.camera.position.y += this.moveSpeed * deltaTime;
-          if (this.keys['ShiftLeft']) this.camera.position.y -= this.moveSpeed * deltaTime;
-      }
+    const moveDirection = new THREE.Vector3();
+    let hasMovementInput = false;
+
+    if (this.isMobile) {
+        if (this.joystickDirection.length() > 0.1) {
+             // W trybie zaawansowanym joystick służy do obracania kamery
+            if (this.mode === 'free') {
+                this.rotation.y -= this.joystickDirection.x * 0.03;
+                this.rotation.x += this.joystickDirection.y * 0.03;
+                this.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.rotation.x));
+            } else { // W trybie łatwym do poruszania się
+                moveDirection.set(this.joystickDirection.x, 0, -this.joystickDirection.y);
+                hasMovementInput = true;
+            }
+        }
+    } else { // Sterowanie na PC
+        if (this.keys['KeyW']) moveDirection.z = -1;
+        if (this.keys['KeyS']) moveDirection.z = 1;
+        if (this.keys['KeyA']) moveDirection.x = -1;
+        if (this.keys['KeyD']) moveDirection.x = 1;
+        if(moveDirection.lengthSq() > 0) hasMovementInput = true;
+    }
+
+    if (hasMovementInput) {
+        // Używamy rotacji Y kamery, aby ruch był zawsze zgodny z kierunkiem patrzenia
+        moveDirection.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), this.rotation.y);
+        const moveAmount = moveDirection.multiplyScalar(this.moveSpeed * deltaTime);
+
+        if (this.mode === 'free') {
+            this.camera.position.add(moveAmount);
+        } else { // orbital
+            this.target.add(moveAmount);
+        }
+    }
+    
+    // Ruch góra/dół tylko na PC w trybie free
+    if (this.mode === 'free' && !this.isMobile) {
+      if (this.keys['Space']) this.camera.position.y += this.moveSpeed * deltaTime;
+      if (this.keys['ShiftLeft']) this.camera.position.y -= this.moveSpeed * deltaTime;
     }
     
     this.updateCameraPosition();
   }
-      }
+              }
