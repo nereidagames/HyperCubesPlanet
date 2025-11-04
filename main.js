@@ -141,7 +141,7 @@ class BlockStarPlanetGame {
       (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); }
     );
     this.uiManager.initialize(this.isMobile);
-    this.uiManager.onBuildClick = () => this.switchToBuildMode();
+    this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size); // Zmiana
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
@@ -196,11 +196,12 @@ class BlockStarPlanetGame {
     localStorage.setItem('bsp_clone_fps_enabled', this.isFPSEnabled.toString());
   }
 
-  switchToBuildMode() {
+  // ZMIANA: Funkcja przyjmuje teraz rozmiar
+  switchToBuildMode(size) {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
-    this.buildManager.enterBuildMode();
+    this.buildManager.enterBuildMode(size); // Przekazanie rozmiaru do managera
   }
 
   switchToSkinBuilderMode() {
@@ -249,7 +250,6 @@ class BlockStarPlanetGame {
       if(this.playerController) this.playerController.destroy();
       this.playerController = new PlayerController(this.characterManager.character, collidables, {
           moveSpeed: 8, jumpForce: 12, gravity: 25,
-          // OSTATECZNA POPRAWKA: Przekazujemy prawdziwą wysokość podłogi z SceneManager
           groundRestingY: this.sceneManager.FLOOR_TOP_Y
       });
       this.playerController.setIsMobile(this.isMobile);
