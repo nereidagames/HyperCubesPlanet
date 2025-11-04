@@ -10,7 +10,8 @@ class PlayerController {
     this.gravity = options.gravity || 25;
     this.groundRestingY = options.groundRestingY || 0.6;
 
-    this.playerDimensions = new THREE.Vector3(0.8, 2.4, 0.8);
+    // POPRAWKA: Zmniejszono wysokość skrzynki kolizji, aby pasowała do modelu
+    this.playerDimensions = new THREE.Vector3(0.8, 1.6, 0.8);
 
     this.velocity = new THREE.Vector3();
     this.isOnGround = true;
@@ -121,23 +122,27 @@ class PlayerController {
     const halfDepth = this.playerDimensions.z / 2;
     const epsilon = 0.001;
 
+    // POPRAWKA: Przechowuje obiekt, na którym aktualnie stoi gracz
+    let groundObject = null;
+    let landedOnBlock = false;
+
+    // --- Kolizja pionowa (Y) ---
     const verticalMovement = this.velocity.y * deltaTime;
     this.player.position.y += verticalMovement;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
-    
-    let landedOnBlock = false;
 
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
         if (playerBox.intersectsBox(objectBox)) {
-            if (verticalMovement < 0) {
+            if (verticalMovement < 0) { // Spadanie
                 this.player.position.y = objectBox.max.y + halfHeight;
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
                 this.canJump = true;
                 landedOnBlock = true;
-            } else if (verticalMovement > 0) {
+                groundObject = object; // Zapisz obiekt podłoża
+            } else if (verticalMovement > 0) { // Wznoszenie (skok)
                 if (objectBox.min.y > this.player.position.y) {
                     this.player.position.y = objectBox.min.y - halfHeight - epsilon;
                     this.velocity.y = 0;
@@ -146,11 +151,15 @@ class PlayerController {
         }
     }
     
+    // --- Kolizja pozioma (X) ---
     const horizontalMovementX = this.velocity.x * deltaTime;
     this.player.position.x += horizontalMovementX;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of this.collidableObjects) {
+        // POPRAWKA: Ignoruj obiekt, na którym stoimy, przy sprawdzaniu kolizji bocznej
+        if (object === groundObject) continue;
+
         objectBox.setFromObject(object);
         if (playerBox.intersectsBox(objectBox)) {
             if (horizontalMovementX > 0) {
@@ -163,11 +172,15 @@ class PlayerController {
         }
     }
 
+    // --- Kolizja pozioma (Z) ---
     const horizontalMovementZ = this.velocity.z * deltaTime;
     this.player.position.z += horizontalMovementZ;
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of this.collidableObjects) {
+        // POPRAWKA: Ignoruj obiekt, na którym stoimy, przy sprawdzaniu kolizji bocznej
+        if (object === groundObject) continue;
+
         objectBox.setFromObject(object);
         if (playerBox.intersectsBox(objectBox)) {
             if (horizontalMovementZ > 0) {
@@ -180,6 +193,7 @@ class PlayerController {
         }
     }
 
+    // Ostateczne sprawdzenie z podłogą
     if (this.player.position.y <= this.groundRestingY) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY;
@@ -268,7 +282,6 @@ class ThirdPersonCameraController {
     }
 
     setupControls() {
-        // --- NOWA STRUKTURA: Oddzielne funkcje dla myszy i dotyku ---
         this.handleMouseDown = (e) => {
             if (!this.enabled || e.target.closest('.ui-element')) return;
             this.isDragging = true;
@@ -332,7 +345,6 @@ class ThirdPersonCameraController {
             }
         };
 
-        // Dodanie listenerów
         this.domElement.addEventListener('mousedown', this.handleMouseDown);
         document.addEventListener('mousemove', this.handleMouseMove);
         document.addEventListener('mouseup', this.handleMouseUp);
@@ -342,7 +354,6 @@ class ThirdPersonCameraController {
     }
 
     cleanupControls() {
-        // Usunięcie listenerów
         this.domElement.removeEventListener('mousedown', this.handleMouseDown);
         document.removeEventListener('mousemove', this.handleMouseMove);
         document.removeEventListener('mouseup', this.handleMouseUp);
