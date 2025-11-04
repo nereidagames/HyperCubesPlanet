@@ -257,9 +257,7 @@ class ThirdPersonCameraController {
         this.minPitch = 0.1;
         this.maxPitch = Math.PI / 2 - 0.2;
         this.isMobile = false;
-        
         this.cameraTouchId = null;
-
         this.setupControls();
     }
 
@@ -270,91 +268,87 @@ class ThirdPersonCameraController {
     }
 
     setupControls() {
-        this.handleStart = (e) => {
-            if (!this.enabled) return;
-            // --- POPRAWKA: Sprawdzamy, czy to zdarzenie dotykowe ---
-            if (e.changedTouches) {
-                for (const touch of e.changedTouches) {
-                    const isUIElement = touch.target.closest('#joystick-zone') || touch.target.closest('#jump-button') || touch.target.closest('.ui-element');
-                    if (isUIElement) continue;
-
-                    if (this.cameraTouchId === null) {
-                        this.cameraTouchId = touch.identifier;
-                        this.isDragging = true;
-                        this.mousePosition = { x: touch.clientX, y: touch.clientY };
-                        break;
-                    }
-                }
-            } else { // W przeciwnym razie to zdarzenie myszy
-                if (e.target.closest('.ui-element')) return;
-                this.isDragging = true;
-                this.mousePosition = { x: e.clientX, y: e.clientY };
-            }
+        // --- NOWA STRUKTURA: Oddzielne funkcje dla myszy i dotyku ---
+        this.handleMouseDown = (e) => {
+            if (!this.enabled || e.target.closest('.ui-element')) return;
+            this.isDragging = true;
+            this.mousePosition = { x: e.clientX, y: e.clientY };
         };
 
-        this.handleEnd = (e) => {
-            // --- POPRAWKA: Sprawdzamy, czy to zdarzenie dotykowe ---
-            if (e.changedTouches) {
-                for (const touch of e.changedTouches) {
-                    if (touch.identifier === this.cameraTouchId) {
-                        this.cameraTouchId = null;
-                        this.isDragging = false;
-                        break;
-                    }
-                }
-            } else { // W przeciwnym razie to zdarzenie myszy
-                if (this.isDragging) {
-                    this.isDragging = false;
-                }
-            }
-        };
-
-        this.handleMove = (e) => {
+        this.handleMouseMove = (e) => {
             if (!this.enabled || !this.isDragging) return;
-            // --- POPRAWKA: Sprawdzamy, czy to zdarzenie dotykowe ---
-            if (e.changedTouches) {
-                for (const touch of e.changedTouches) {
-                    if (touch.identifier === this.cameraTouchId) {
-                        const clientX = touch.clientX;
-                        const clientY = touch.clientY;
-                        const deltaX = clientX - this.mousePosition.x;
-                        const deltaY = clientY - this.mousePosition.y;
-                        const sensitivity = this.rotationSpeed * 2.5;
-                        this.rotation -= deltaX * sensitivity;
-                        this.pitch += deltaY * sensitivity;
-                        this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
-                        this.mousePosition = { x: clientX, y: clientY };
-                        break;
-                    }
+            const clientX = e.clientX;
+            const clientY = e.clientY;
+            const deltaX = clientX - this.mousePosition.x;
+            const deltaY = clientY - this.mousePosition.y;
+            const sensitivity = this.rotationSpeed;
+            this.rotation -= deltaX * sensitivity;
+            this.pitch += deltaY * sensitivity;
+            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+            this.mousePosition = { x: clientX, y: clientY };
+        };
+
+        this.handleMouseUp = () => {
+            this.isDragging = false;
+        };
+
+        this.handleTouchStart = (e) => {
+            if (!this.enabled) return;
+            for (const touch of e.changedTouches) {
+                if (this.cameraTouchId === null && !touch.target.closest('#joystick-zone') && !touch.target.closest('#jump-button') && !touch.target.closest('.ui-element')) {
+                    this.cameraTouchId = touch.identifier;
+                    this.isDragging = true;
+                    this.mousePosition = { x: touch.clientX, y: touch.clientY };
+                    break;
                 }
-            } else { // W przeciwnym razie to zdarzenie myszy
-                const clientX = e.clientX;
-                const clientY = e.clientY;
-                const deltaX = clientX - this.mousePosition.x;
-                const deltaY = clientY - this.mousePosition.y;
-                const sensitivity = this.rotationSpeed;
-                this.rotation -= deltaX * sensitivity;
-                this.pitch += deltaY * sensitivity;
-                this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
-                this.mousePosition = { x: clientX, y: clientY };
             }
         };
 
-        this.domElement.addEventListener('mousedown', this.handleStart);
-        document.addEventListener('mouseup', this.handleEnd);
-        document.addEventListener('mousemove', this.handleMove);
-        this.domElement.addEventListener('touchstart', this.handleStart, { passive: true });
-        document.addEventListener('touchend', this.handleEnd, { passive: true });
-        document.addEventListener('touchmove', this.handleMove, { passive: true });
+        this.handleTouchMove = (e) => {
+            if (!this.enabled || !this.isDragging) return;
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === this.cameraTouchId) {
+                    const clientX = touch.clientX;
+                    const clientY = touch.clientY;
+                    const deltaX = clientX - this.mousePosition.x;
+                    const deltaY = clientY - this.mousePosition.y;
+                    const sensitivity = this.rotationSpeed * 2.5;
+                    this.rotation -= deltaX * sensitivity;
+                    this.pitch += deltaY * sensitivity;
+                    this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+                    this.mousePosition = { x: clientX, y: clientY };
+                    break;
+                }
+            }
+        };
+
+        this.handleTouchEnd = (e) => {
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === this.cameraTouchId) {
+                    this.cameraTouchId = null;
+                    this.isDragging = false;
+                    break;
+                }
+            }
+        };
+
+        // Dodanie listenerów
+        this.domElement.addEventListener('mousedown', this.handleMouseDown);
+        document.addEventListener('mousemove', this.handleMouseMove);
+        document.addEventListener('mouseup', this.handleMouseUp);
+        this.domElement.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+        document.addEventListener('touchmove', this.handleTouchMove, { passive: true });
+        document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
     }
 
     cleanupControls() {
-        this.domElement.removeEventListener('mousedown', this.handleStart);
-        document.removeEventListener('mouseup', this.handleEnd);
-        document.removeEventListener('mousemove', this.handleMove);
-        this.domElement.removeEventListener('touchstart', this.handleStart);
-        document.removeEventListener('touchend', this.handleEnd);
-        document.removeEventListener('touchmove', this.handleMove);
+        // Usunięcie listenerów
+        this.domElement.removeEventListener('mousedown', this.handleMouseDown);
+        document.removeEventListener('mousemove', this.handleMouseMove);
+        document.removeEventListener('mouseup', this.handleMouseUp);
+        this.domElement.removeEventListener('touchstart', this.handleTouchStart);
+        document.removeEventListener('touchmove', this.handleTouchMove);
+        document.removeEventListener('touchend', this.handleTouchEnd);
     }
 
     update() {
