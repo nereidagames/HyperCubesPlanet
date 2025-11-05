@@ -2,34 +2,39 @@ import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 export function createBaseCharacter() {
-    const baseGroup = new THREE.Group();
+    // OSTATECZNA POPRAWKA: Użycie struktury zagnieżdżonej, aby offset był niezależny
+    const containerGroup = new THREE.Group(); // Grupa główna, której pozycja będzie zmieniana
+    const offsetGroup = new THREE.Group(); // Grupa wewnętrzna do trzymania wizualnego offsetu
+
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
     const leftLegGeo = new THREE.BoxGeometry(0.4, 0.8, 0.4);
     const leftLeg = new THREE.Mesh(leftLegGeo, legMaterial);
     leftLeg.position.set(-0.25, 0.4, 0);
-    baseGroup.add(leftLeg);
+    offsetGroup.add(leftLeg);
 
     const leftBootGeo = new THREE.BoxGeometry(0.4, 0.2, 0.5);
     const leftBoot = new THREE.Mesh(leftBootGeo, bootMaterial);
     leftBoot.position.set(-0.25, -0.1, 0.05);
-    baseGroup.add(leftBoot);
+    offsetGroup.add(leftBoot);
 
     const rightLegGeo = new THREE.BoxGeometry(0.4, 0.8, 0.4);
     const rightLeg = new THREE.Mesh(rightLegGeo, legMaterial);
     rightLeg.position.set(0.25, 0.4, 0);
-    baseGroup.add(rightLeg);
+    offsetGroup.add(rightLeg);
 
     const rightBootGeo = new THREE.BoxGeometry(0.4, 0.2, 0.5);
     const rightBoot = new THREE.Mesh(rightBootGeo, bootMaterial);
     rightBoot.position.set(0.25, -0.1, 0.05);
-    baseGroup.add(rightBoot);
+    offsetGroup.add(rightBoot);
 
-    // OSTATECZNA POPRAWKA: Przesunięcie modelu jest teraz częścią funkcji bazowej
-    baseGroup.position.y = -0.6;
+    // Przesuwamy tylko grupę wewnętrzną
+    offsetGroup.position.y = -0.6;
+    
+    containerGroup.add(offsetGroup);
 
-    return baseGroup;
+    return containerGroup;
 }
 
 export class CharacterManager {
@@ -49,7 +54,6 @@ export class CharacterManager {
     this.character = new THREE.Group();
     const baseModel = createBaseCharacter();
     
-    // Usunięto zbędne przesunięcie, ponieważ jest już w createBaseCharacter()
     this.character.add(baseModel);
 
     this.skinContainer.scale.setScalar(0.25);
