@@ -3,9 +3,10 @@ import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
 
 export class SkinBuilderManager {
-  constructor(game, loadingManager) {
+  constructor(game, loadingManager, blockManager) {
     this.game = game;
     this.scene = new THREE.Scene();
+    this.blockManager = blockManager;
     this.isActive = false;
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -15,14 +16,10 @@ export class SkinBuilderManager {
     this.platform = null;
     this.platformSize = 16;
     this.cameraController = null;
-    this.blockTypes = [
-      { name: 'Trawa', texturePath: 'textures/trawa.png' },
-      { name: 'Ziemia', texturePath: 'textures/ziemia.png' },
-      { name: 'Drewno', texturePath: 'textures/drewno.png' },
-      { name: 'Beton', texturePath: 'textures/beton.png' },
-      { name: 'Piasek', texturePath: 'textures/piasek.png' }
-    ];
-    this.selectedBlockType = this.blockTypes[0];
+
+    this.blockTypes = [];
+    this.selectedBlockType = null;
+    
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -37,7 +34,8 @@ export class SkinBuilderManager {
   }
 
   preloadTextures() {
-    this.blockTypes.forEach(blockType => {
+    const allBlocks = this.blockManager.getAllBlockDefinitions();
+    allBlocks.forEach(blockType => {
       if (!this.materials[blockType.texturePath]) {
         const texture = this.textureLoader.load(blockType.texturePath);
         texture.magFilter = THREE.NearestFilter;
@@ -49,6 +47,10 @@ export class SkinBuilderManager {
 
   enterBuildMode() {
     this.isActive = true;
+
+    this.blockTypes = this.blockManager.getOwnedBlockTypes();
+    this.selectedBlockType = this.blockTypes[0] || null;
+
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
@@ -86,14 +88,14 @@ export class SkinBuilderManager {
     gridHelper.position.y = 0.01;
     this.scene.add(gridHelper);
 
-    // --- POPRAWKA: Zastąpienie ścian cienką fioletową ramką ---
     const edges = new THREE.EdgesGeometry(geometry);
     const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 }));
-    line.position.y = -0.5; // Dopasuj do pozycji platformy
+    line.position.y = -0.5;
     this.scene.add(line);
   }
 
   createPreviewBlock() {
+    if (!this.selectedBlockType) return;
     const previewGeo = new THREE.BoxGeometry(1, 1, 1);
     const previewMat = this.materials[this.selectedBlockType.texturePath].clone();
     previewMat.transparent = true;
@@ -139,9 +141,11 @@ export class SkinBuilderManager {
   
   selectBlockType(blockType) {
       this.selectedBlockType = blockType;
-      this.previewBlock.material = this.materials[blockType.texturePath].clone();
-      this.previewBlock.material.transparent = true;
-      this.previewBlock.material.opacity = 0.6;
+      if (this.previewBlock) {
+        this.previewBlock.material = this.materials[blockType.texturePath].clone();
+        this.previewBlock.material.transparent = true;
+        this.previewBlock.material.opacity = 0.6;
+      }
   }
 
   toggleCameraMode() {
@@ -182,6 +186,7 @@ export class SkinBuilderManager {
   }
 
   placeBlock() {
+    if (!this.selectedBlockType) return;
     const blockGeo = new THREE.BoxGeometry(1, 1, 1);
     const blockMat = this.materials[this.selectedBlockType.texturePath];
     const newBlock = new THREE.Mesh(blockGeo, blockMat);
@@ -266,14 +271,14 @@ export class SkinBuilderManager {
           snappedPosition.y >= 0 &&
           snappedPosition.y < buildHeightLimit
       ) {
-        this.previewBlock.visible = true;
-        this.previewBlock.position.copy(snappedPosition);
+        if (this.previewBlock) this.previewBlock.visible = true;
+        if (this.previewBlock) this.previewBlock.position.copy(snappedPosition);
       } else {
-        this.previewBlock.visible = false;
+        if (this.previewBlock) this.previewBlock.visible = false;
       }
 
     } else {
-      this.previewBlock.visible = false;
+      if (this.previewBlock) this.previewBlock.visible = false;
     }
   }
 
@@ -302,7 +307,7 @@ export class SkinBuilderManager {
 
     clearTimeout(this.longPressTimer);
     
-    if (!this.isLongPress && this.previewBlock.visible) {
+    if (!this.isLongPress && this.previewBlock && this.previewBlock.visible) {
         this.placeBlock();
     }
   }
@@ -324,4 +329,4 @@ export class SkinBuilderManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-  }
+      }
