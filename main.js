@@ -141,7 +141,7 @@ class BlockStarPlanetGame {
       (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); }
     );
     this.uiManager.initialize(this.isMobile);
-    this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size); // Zmiana
+    this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
@@ -196,12 +196,11 @@ class BlockStarPlanetGame {
     localStorage.setItem('bsp_clone_fps_enabled', this.isFPSEnabled.toString());
   }
 
-  // ZMIANA: Funkcja przyjmuje teraz rozmiar
   switchToBuildMode(size) {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
-    this.buildManager.enterBuildMode(size); // Przekazanie rozmiaru do managera
+    this.buildManager.enterBuildMode(size);
   }
 
   switchToSkinBuilderMode() {
@@ -303,8 +302,21 @@ class BlockStarPlanetGame {
   }
 
   loadAndExploreWorld(worldName) {
-    const worldData = WorldStorage.loadWorld(worldName);
-    if (!worldData) { alert(`Nie udało się wczytać świata: ${worldName}`); return; }
+    const worldSaveData = WorldStorage.loadWorld(worldName);
+    if (!worldSaveData) { alert(`Nie udało się wczytać świata: ${worldName}`); return; }
+
+    // POPRAWKA: Sprawdzanie formatu zapisu świata (nowy z rozmiarem vs stary)
+    let worldBlocksData;
+    let worldSize;
+    if (Array.isArray(worldSaveData)) {
+        // Stary format zapisu (tylko bloki)
+        worldBlocksData = worldSaveData;
+        worldSize = 64; // Domyślny rozmiar dla starych światów
+    } else {
+        // Nowy format zapisu (obiekt z rozmiarem i blokami)
+        worldBlocksData = worldSaveData.blocks;
+        worldSize = worldSaveData.size || 64;
+    }
     
     this.gameState = 'ExploreMode';
     this.toggleMainUI(false);
@@ -320,11 +332,11 @@ class BlockStarPlanetGame {
     directionalLight.castShadow = true;
     this.exploreScene.add(directionalLight);
 
-    const worldBlocks = [];
+    const allCollidables = [];
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const loadedMaterials = {};
 
-    worldData.forEach(blockData => {
+    worldBlocksData.forEach(blockData => {
       if (blockData.texturePath) {
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         let material;
@@ -342,13 +354,43 @@ class BlockStarPlanetGame {
         block.castShadow = true;
         block.receiveShadow = true;
         this.exploreScene.add(block);
-        worldBlocks.push(block);
+        allCollidables.push(block);
       }
     });
 
+    // --- NOWOŚĆ: Tworzenie niewidzialnych ścian granicznych ---
+    const barrierHeight = 100;
+    const halfSize = worldSize / 2;
+    const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+
+    // Ściana +Z
+    const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
+    wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5);
+    this.exploreScene.add(wallZ1);
+    allCollidables.push(wallZ1);
+
+    // Ściana -Z
+    const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
+    wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5);
+    this.exploreScene.add(wallZ2);
+    allCollidables.push(wallZ2);
+    
+    // Ściana +X
+    const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
+    wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0);
+    this.exploreScene.add(wallX1);
+    allCollidables.push(wallX1);
+    
+    // Ściana -X
+    const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
+    wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0);
+    this.exploreScene.add(wallX2);
+    allCollidables.push(wallX2);
+
+
     this.exploreScene.add(this.characterManager.character);
     this.characterManager.character.position.set(0, 5, 0);
-    this.recreatePlayerController(worldBlocks);
+    this.recreatePlayerController(allCollidables);
     this.cameraController.enabled = true;
   }
 
