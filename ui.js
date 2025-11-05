@@ -3,11 +3,13 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     this.onBuildClick = null;
-    this.onWorldSizeSelected = null; // NOWOŚĆ: Callback dla wyboru rozmiaru
+    this.onWorldSizeSelected = null;
     this.onDiscoverClick = null;
     this.onPlayClick = null;
     this.onSkinBuilderClick = null;
     this.onToggleFPS = null;
+    this.onShopOpen = null; // Callback do otwarcia sklepu
+    this.onBuyBlock = null; // Callback do zakupu bloku
   }
   
   initialize(isMobile) {
@@ -51,14 +53,12 @@ export class UIManager {
     const buildChoiceSkinBtn = document.getElementById('build-choice-skin');
     const buildChoiceCloseBtn = document.getElementById('build-choice-close');
     
-    // --- NOWOŚĆ: Logika dla panelu wyboru rozmiaru świata ---
     const worldSizePanel = document.getElementById('world-size-panel');
     const sizeSmallBtn = document.getElementById('size-choice-small');
     const sizeMediumBtn = document.getElementById('size-choice-medium');
     const sizeLargeBtn = document.getElementById('size-choice-large');
     const worldSizeCloseBtn = document.getElementById('world-size-close');
 
-    // Zmiana: przycisk "Świat" teraz otwiera panel wyboru rozmiaru
     if (buildChoiceWorldBtn) buildChoiceWorldBtn.onclick = () => { 
         buildChoicePanel.style.display = 'none'; 
         worldSizePanel.style.display = 'flex';
@@ -69,11 +69,15 @@ export class UIManager {
     };
     if (buildChoiceCloseBtn) buildChoiceCloseBtn.onclick = () => { buildChoicePanel.style.display = 'none'; };
     
-    // Handlery dla przycisków wyboru rozmiaru
     if (sizeSmallBtn) sizeSmallBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
     if (sizeMediumBtn) sizeMediumBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
     if (sizeLargeBtn) sizeLargeBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
     if (worldSizeCloseBtn) worldSizeCloseBtn.onclick = () => { worldSizePanel.style.display = 'none'; };
+
+    // NOWOŚĆ: Handlery dla panelu sklepu
+    const shopPanel = document.getElementById('shop-panel');
+    const shopCloseBtn = document.getElementById('shop-close-button');
+    if (shopCloseBtn) shopCloseBtn.onclick = () => { shopPanel.style.display = 'none'; };
 
     const moreOptionsPanel = document.getElementById('more-options-panel');
     const toggleFPSBtn = document.getElementById('toggle-fps-btn');
@@ -106,10 +110,51 @@ export class UIManager {
     }
     
     switch (buttonType) {
-      case 'kup': 
-        this.showMessage('Otwieranie sklepu...', 'success'); 
+      // POPRAWKA: Prawidłowa obsługa przycisku "Kup"
+      case 'kup':
+        document.getElementById('shop-panel').style.display = 'flex';
+        if (this.onShopOpen) this.onShopOpen();
         break;
     }
+  }
+
+  // NOWOŚĆ: Funkcja do wypełniania sklepu
+  populateShop(allBlocks, isOwnedCallback) {
+    const shopList = document.getElementById('shop-list');
+    if (!shopList) return;
+    shopList.innerHTML = '';
+
+    allBlocks.forEach(block => {
+        const item = document.createElement('div');
+        item.className = 'shop-item';
+
+        const isOwned = isOwnedCallback(block.name);
+
+        item.innerHTML = `
+            <div class="shop-item-info">
+                <div class="shop-item-icon" style="background-image: url('${block.texturePath}')"></div>
+                <span class="shop-item-name text-outline">${block.name}</span>
+            </div>
+            <div class="shop-item-action">
+                ${isOwned 
+                    ? `<span class="owned-label text-outline">Posiadane</span>` 
+                    : `<button class="buy-btn" data-block-name="${block.name}">${block.cost} 🪙</button>`
+                }
+            </div>
+        `;
+        shopList.appendChild(item);
+    });
+
+    // Dodaj listenery do nowo utworzonych przycisków
+    shopList.querySelectorAll('.buy-btn').forEach(btn => {
+        btn.onclick = () => {
+            const blockName = btn.dataset.blockName;
+            const blockToBuy = allBlocks.find(b => b.name === blockName);
+            if (blockToBuy && this.onBuyBlock) {
+                this.onBuyBlock(blockToBuy);
+            }
+        };
+    });
   }
 
   setupChatSystem() { this.setupChatInput(); }
@@ -150,7 +195,7 @@ export class UIManager {
   
   showMessage(text, type = 'info') {
     const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: ${type === 'success' ? '#27ae60' : '#3498db'}; color: white; padding: 15px 25px; border-radius: 10px; font-weight: bold; z-index: 10000; box-shadow: 0 6px 12px rgba(0,0,0,0.4); opacity: 0; transition: all 0.3s ease;`;
+    messageDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: ${type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : '#3498db')}; color: white; padding: 15px 25px; border-radius: 10px; font-weight: bold; z-index: 10000; box-shadow: 0 6px 12px rgba(0,0,0,0.4); opacity: 0; transition: all 0.3s ease;`;
     messageDiv.classList.add('text-outline');
     messageDiv.textContent = text;
     document.body.appendChild(messageDiv);
@@ -163,4 +208,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-  }
+      }
