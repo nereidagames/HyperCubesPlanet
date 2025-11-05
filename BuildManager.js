@@ -13,7 +13,7 @@ export class BuildManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
-    this.platformSize = 64; // Domyślny rozmiar
+    this.platformSize = 64;
     this.cameraController = null;
     this.blockTypes = [
       { name: 'Trawa', texturePath: 'textures/trawa.png' },
@@ -48,10 +48,9 @@ export class BuildManager {
     });
   }
 
-  // ZMIANA: Funkcja przyjmuje teraz rozmiar
   enterBuildMode(size = 64) {
     this.isActive = true;
-    this.platformSize = size; // Ustawienie wybranego rozmiaru
+    this.platformSize = size;
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
@@ -138,7 +137,7 @@ export class BuildManager {
   
   selectBlockType(blockType) {
       this.selectedBlockType = blockType;
-      this.previewBlock.material = this.materials[blockType.texturePath].clone();
+      this.previewBlock.material = this.materials[this.selectedBlockType.texturePath].clone();
       this.previewBlock.material.transparent = true;
       this.previewBlock.material.opacity = 0.5;
       console.log(`Selected block: ${blockType.name}`);
@@ -225,16 +224,18 @@ export class BuildManager {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
-      const blocksData = this.placedBlocks.map(block => ({
-        x: block.position.x,
-        y: block.position.y,
-        z: block.position.z,
-        texturePath: block.userData.texturePath
-      }));
+      // POPRAWKA: Zapisujemy obiekt z rozmiarem i blokami
+      const worldData = {
+        size: this.platformSize,
+        blocks: this.placedBlocks.map(block => ({
+            x: block.position.x,
+            y: block.position.y,
+            z: block.position.z,
+            texturePath: block.userData.texturePath
+        }))
+      };
       
-      console.log("Saving world data:", JSON.stringify(blocksData, null, 2));
-
-      if (WorldStorage.saveWorld(worldName, blocksData)) {
+      if (WorldStorage.saveWorld(worldName, worldData)) {
         alert(`Świat "${worldName}" został pomyślnie zapisany!`);
         this.game.switchToMainMenu();
       }
@@ -330,4 +331,4 @@ export class BuildManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-      }
+                                             }
