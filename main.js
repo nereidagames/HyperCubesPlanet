@@ -219,6 +219,8 @@ class BlockStarPlanetGame {
         this.skinBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
       this.scene.add(this.characterManager.character);
+      // POPRAWKA: Resetowanie pozycji gracza po powrocie do menu głównego
+      this.characterManager.character.position.set(0, 5, 0); 
       document.getElementById('explore-exit-button').style.display = 'none';
     }
 
@@ -333,7 +335,6 @@ class BlockStarPlanetGame {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const loadedMaterials = {};
 
-    // --- NOWOŚĆ: Dodanie podłogi i jej obramowania ---
     const floorGeometry = new THREE.BoxGeometry(worldSize, 1, worldSize);
     const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x559022 });
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
