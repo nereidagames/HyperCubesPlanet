@@ -10,7 +10,8 @@ class PlayerController {
     this.gravity = options.gravity || 25;
     this.groundRestingY = options.groundRestingY || 0.6;
 
-    this.playerDimensions = new THREE.Vector3(0.8, 1.6, 0.8);
+    // POPRAWKA: Zmniejszono szerokość i głębokość postaci, aby mieściła się w luce 1x1
+    this.playerDimensions = new THREE.Vector3(0.6, 1.6, 0.6);
 
     this.velocity = new THREE.Vector3();
     this.isOnGround = true;
@@ -145,7 +146,6 @@ class PlayerController {
         }
     }
     
-    // Zaktualizuj playerBox po ostatecznym ustaleniu pozycji Y
     playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     // --- Kolizja pozioma (X) ---
@@ -156,7 +156,6 @@ class PlayerController {
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
 
-        // OSTATECZNA POPRAWKA: Jeśli góra obiektu jest poniżej stóp gracza, to nie jest ściana. Ignoruj.
         if (objectBox.max.y < playerBox.min.y + epsilon) {
             continue;
         }
@@ -180,7 +179,6 @@ class PlayerController {
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
 
-        // OSTATECZNA POPRAWKA: Jeśli góra obiektu jest poniżej stóp gracza, to nie jest ściana. Ignoruj.
         if (objectBox.max.y < playerBox.min.y + epsilon) {
             continue;
         }
@@ -196,7 +194,6 @@ class PlayerController {
         }
     }
 
-    // Ostateczne sprawdzenie z podłogą
     if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY + halfHeight;
