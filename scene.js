@@ -6,7 +6,6 @@ export class SceneManager {
     this.collidableObjects = [];
     this.MAP_SIZE = 64;
     this.BLOCK_SIZE = 1;
-    // POPRAWKA: Zwiększono wysokość niewidzialnej bariery, aby nie dało się jej przeskoczyć
     this.BARRIER_HEIGHT = 100; 
     this.BARRIER_THICKNESS = 1;
     this.FLOOR_TOP_Y = 0.1;
@@ -76,13 +75,21 @@ export class SceneManager {
     floorMesh.position.y = this.FLOOR_TOP_Y - 0.01;
     
     this.scene.add(floorMesh);
+
+    // --- POPRAWKA: Dodanie czystej, płaskiej ramki na krawędzi podłogi ---
+    const borderGeometry = new THREE.BoxGeometry(this.MAP_SIZE, 1, this.MAP_SIZE);
+    const edges = new THREE.EdgesGeometry(borderGeometry);
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 });
+    const line = new THREE.LineSegments(edges, lineMaterial);
+    // Pozycjonujemy ramkę, aby była na tej samej wysokości co w trybie budowy (względem podłogi)
+    line.position.y = this.FLOOR_TOP_Y - 0.5;
+    this.scene.add(line);
   }
   
   createBarrierBlocks() {
     const halfMapSize = this.MAP_SIZE / 2;
     const barrierY = this.BARRIER_HEIGHT / 2 + this.FLOOR_TOP_Y; 
     const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
-    const barrierLineMaterial = new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 });
     
     // Bariery wzdłuż osi X
     for (let i = 0; i < 2; i++) {
@@ -92,14 +99,11 @@ export class SceneManager {
       const barrierMesh = new THREE.Mesh(geometry, barrierMaterial);
       
       barrierMesh.castShadow = false;
-
       barrierMesh.position.set(0, barrierY, adjustedZPos);
       this.scene.add(barrierMesh);
       this.collidableObjects.push(barrierMesh);
-      const edges = new THREE.EdgesGeometry(geometry);
-      const line = new THREE.LineSegments(edges, barrierLineMaterial);
-      line.position.copy(barrierMesh.position);
-      this.scene.add(line);
+      
+      // --- POPRAWKA: Usunięto rysowanie krawędzi z wysokich, niewidzialnych ścian ---
     }
     
     // Bariery wzdłuż osi Z
@@ -110,14 +114,11 @@ export class SceneManager {
       const barrierMesh = new THREE.Mesh(geometry, barrierMaterial);
       
       barrierMesh.castShadow = false;
-      
       barrierMesh.position.set(adjustedXPos, barrierY, 0);
       this.scene.add(barrierMesh);
       this.collidableObjects.push(barrierMesh);
-      const edges = new THREE.EdgesGeometry(geometry);
-      const line = new THREE.LineSegments(edges, barrierLineMaterial);
-      line.position.copy(barrierMesh.position);
-      this.scene.add(line);
+      
+      // --- POPRAWKA: Usunięto rysowanie krawędzi z wysokich, niewidzialnych ścian ---
     }
   }
   
