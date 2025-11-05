@@ -6,7 +6,8 @@ export class SceneManager {
     this.collidableObjects = [];
     this.MAP_SIZE = 64;
     this.BLOCK_SIZE = 1;
-    this.BARRIER_HEIGHT = 6;
+    // POPRAWKA: Zwiększono wysokość niewidzialnej bariery, aby nie dało się jej przeskoczyć
+    this.BARRIER_HEIGHT = 100; 
     this.BARRIER_THICKNESS = 1;
     this.FLOOR_TOP_Y = 0.1;
   }
@@ -18,12 +19,9 @@ export class SceneManager {
   }
   
   setupLighting() {
-    // --- POPRAWKA OŚWIETLENIA ---
-    // Zwiększamy moc światła otoczenia, aby cała scena była jaśniejsza
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); 
     this.scene.add(ambientLight);
     
-    // Zmniejszamy nieco moc światła kierunkowego, aby cienie nie były zbyt ostre
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(this.MAP_SIZE / 4, 15, this.MAP_SIZE / 4); 
     directionalLight.castShadow = true;
@@ -93,8 +91,6 @@ export class SceneManager {
       const geometry = new THREE.BoxGeometry(this.MAP_SIZE + 2 * this.BARRIER_THICKNESS, this.BARRIER_HEIGHT, this.BARRIER_THICKNESS);
       const barrierMesh = new THREE.Mesh(geometry, barrierMaterial);
       
-      // --- POPRAWKA CIENIA ---
-      // Mówimy barierze, żeby NIE rzucała cienia
       barrierMesh.castShadow = false;
 
       barrierMesh.position.set(0, barrierY, adjustedZPos);
@@ -113,8 +109,6 @@ export class SceneManager {
       const geometry = new THREE.BoxGeometry(this.BARRIER_THICKNESS, this.BARRIER_HEIGHT, this.MAP_SIZE + 2 * this.BARRIER_THICKNESS);
       const barrierMesh = new THREE.Mesh(geometry, barrierMaterial);
       
-      // --- POPRAWKA CIENIA ---
-      // Mówimy barierze, żeby NIE rzucała cienia
       barrierMesh.castShadow = false;
       
       barrierMesh.position.set(adjustedXPos, barrierY, 0);
@@ -149,4 +143,4 @@ export class SceneManager {
       this.collidableObjects.push(block);
     }
   }
-}
+      }
