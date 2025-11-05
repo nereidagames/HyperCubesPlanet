@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const COINS_STORAGE_KEY = 'bsp_clone_coins'; // Klucz do zapisu w pamięci przeglądarki
+const COINS_STORAGE_KEY = 'bsp_clone_coins';
 
 export class CoinManager {
   constructor(scene, uiManager, player) {
@@ -8,17 +8,15 @@ export class CoinManager {
     this.uiManager = uiManager;
     this.player = player;
     
-    this.coins = 0; // Domyślna wartość
+    this.coins = 0;
     this.spawnedCoin = null;
 
-    this.spawnInterval = 20000; // 20 sekund
+    this.spawnInterval = 20000;
     this.spawnTimer = this.spawnInterval;
     this.mapBounds = 30;
 
-    // --- POPRAWKA: Ładowanie monet przy starcie ---
     const savedCoins = localStorage.getItem(COINS_STORAGE_KEY);
     if (savedCoins !== null) {
-        // Upewniamy się, że wczytana wartość jest liczbą
         const parsedCoins = parseInt(savedCoins, 10);
         if (!isNaN(parsedCoins)) {
             this.coins = parsedCoins;
@@ -56,7 +54,6 @@ export class CoinManager {
   }
 
   update(deltaTime) {
-    // Przeliczamy deltaTime z sekund na milisekundy
     this.spawnTimer -= deltaTime * 1000;
 
     if (this.spawnTimer <= 0) {
@@ -83,18 +80,26 @@ export class CoinManager {
 
     this.addCoins(200);
 
-    this.spawnTimer = 5000; // Szybsze odrodzenie po zebraniu monety
+    this.spawnTimer = 5000;
   }
 
   addCoins(amount) {
     this.coins += amount;
     this.uiManager.updateCoinCounter(this.coins);
 
-    // --- POPRAWKA: Zapisywanie monet po każdej zmianie ---
     try {
         localStorage.setItem(COINS_STORAGE_KEY, this.coins.toString());
     } catch (error) {
         console.error('Nie udało się zapisać monet. Pamięć przeglądarki może być pełna.', error);
     }
   }
-}
+
+  // NOWOŚĆ: Metoda do wydawania monet
+  spendCoins(amount) {
+    if (this.coins >= amount) {
+        this.addCoins(-amount); // Używamy addCoins z ujemną wartością, aby zachować logikę zapisu i UI
+        return true;
+    }
+    return false; // Zwraca false, jeśli nie ma wystarczająco monet
+  }
+  }
