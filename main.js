@@ -181,7 +181,7 @@ class BlockStarPlanetGame {
 
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
-      distance: 8, height: 4, rotationSpeed: 0.005
+      distance: 4, height: 2, rotationSpeed: 0.005
     });
     this.cameraController.setIsMobile(this.isMobile);
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager);
@@ -219,7 +219,6 @@ class BlockStarPlanetGame {
         this.skinBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
       this.scene.add(this.characterManager.character);
-      // POPRAWKA: Resetowanie pozycji gracza po powrocie do menu głównego
       this.characterManager.character.position.set(0, 5, 0); 
       document.getElementById('explore-exit-button').style.display = 'none';
     }
