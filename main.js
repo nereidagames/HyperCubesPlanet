@@ -305,15 +305,12 @@ class BlockStarPlanetGame {
     const worldSaveData = WorldStorage.loadWorld(worldName);
     if (!worldSaveData) { alert(`Nie udało się wczytać świata: ${worldName}`); return; }
 
-    // POPRAWKA: Sprawdzanie formatu zapisu świata (nowy z rozmiarem vs stary)
     let worldBlocksData;
     let worldSize;
     if (Array.isArray(worldSaveData)) {
-        // Stary format zapisu (tylko bloki)
         worldBlocksData = worldSaveData;
-        worldSize = 64; // Domyślny rozmiar dla starych światów
+        worldSize = 64;
     } else {
-        // Nowy format zapisu (obiekt z rozmiarem i blokami)
         worldBlocksData = worldSaveData.blocks;
         worldSize = worldSaveData.size || 64;
     }
@@ -335,6 +332,20 @@ class BlockStarPlanetGame {
     const allCollidables = [];
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const loadedMaterials = {};
+
+    // --- NOWOŚĆ: Dodanie podłogi i jej obramowania ---
+    const floorGeometry = new THREE.BoxGeometry(worldSize, 1, worldSize);
+    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x559022 });
+    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.position.y = -0.5;
+    floorMesh.receiveShadow = true;
+    this.exploreScene.add(floorMesh);
+    allCollidables.push(floorMesh);
+
+    const edges = new THREE.EdgesGeometry(floorGeometry);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 }));
+    line.position.y = -0.5;
+    this.exploreScene.add(line);
 
     worldBlocksData.forEach(blockData => {
       if (blockData.texturePath) {
@@ -358,30 +369,25 @@ class BlockStarPlanetGame {
       }
     });
 
-    // --- NOWOŚĆ: Tworzenie niewidzialnych ścian granicznych ---
     const barrierHeight = 100;
     const halfSize = worldSize / 2;
     const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
 
-    // Ściana +Z
     const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
     wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5);
     this.exploreScene.add(wallZ1);
     allCollidables.push(wallZ1);
 
-    // Ściana -Z
     const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
     wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5);
     this.exploreScene.add(wallZ2);
     allCollidables.push(wallZ2);
     
-    // Ściana +X
     const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
     wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0);
     this.exploreScene.add(wallX1);
     allCollidables.push(wallX1);
     
-    // Ściana -X
     const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
     wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0);
     this.exploreScene.add(wallX2);
