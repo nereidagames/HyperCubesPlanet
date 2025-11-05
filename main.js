@@ -11,6 +11,7 @@ import { CoinManager } from './CoinManager.js';
 import { SkinBuilderManager } from './SkinBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
 import Stats from 'three/addons/libs/stats.module.js';
+import { BlockManager } from './BlockManager.js';
 
 const LOADING_TEXTS = [
     "Dziurkowanie Kawałków Sera...",
@@ -32,6 +33,7 @@ class BlockStarPlanetGame {
     this.characterManager = null;
     this.cameraController = null;
     this.coinManager = null;
+    this.blockManager = new BlockManager();
     this.gameState = 'Loading';
     this.buildManager = null;
     this.skinBuilderManager = null;
@@ -53,6 +55,7 @@ class BlockStarPlanetGame {
 
   async init() {
     try {
+      this.blockManager.load();
       this.setupLoadingManager();
       await this.preloadInitialAssets();
     } catch (error) {
@@ -102,17 +105,10 @@ class BlockStarPlanetGame {
   async preloadInitialAssets() {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     
-    const blockTypes = [
-        { name: 'Trawa', texturePath: 'textures/trawa.png' },
-        { name: 'Ziemia', texturePath: 'textures/ziemia.png' },
-        { name: 'Drewno', texturePath: 'textures/drewno.png' },
-        { name: 'Beton', texturePath: 'textures/beton.png' },
-        { name: 'Piasek', texturePath: 'textures/piasek.png' }
-    ];
-
-    const loadTexture = (path) => new Promise(resolve => textureLoader.load(path, resolve));
-
-    const texturePromises = blockTypes.map(block => loadTexture(block.texturePath));
+    const allBlocks = this.blockManager.getAllBlockDefinitions();
+    const texturePromises = allBlocks.map(block => 
+        new Promise(resolve => textureLoader.load(block.texturePath, resolve))
+    );
     
     await Promise.all(texturePromises);
     
@@ -144,6 +140,8 @@ class BlockStarPlanetGame {
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
+    this.uiManager.onShopOpen = () => this.populateShopUI();
+    this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); 
 
@@ -164,8 +162,8 @@ class BlockStarPlanetGame {
     
     this.toggleMobileControls(true);
 
-    this.buildManager = new BuildManager(this, this.loadingManager);
-    this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager);
+    this.buildManager = new BuildManager(this, this.loadingManager, this.blockManager);
+    this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager, this.blockManager);
 
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
@@ -398,6 +396,23 @@ class BlockStarPlanetGame {
     this.characterManager.character.position.set(0, 5, 0);
     this.recreatePlayerController(allCollidables);
     this.cameraController.enabled = true;
+  }
+
+  handleBuyBlock(block) {
+    if (this.coinManager.spendCoins(block.cost)) {
+        this.blockManager.unlockBlock(block.name);
+        this.uiManager.showMessage(`Odblokowano: ${block.name}!`, 'success');
+        this.populateShopUI();
+    } else {
+        this.uiManager.showMessage('Masz za mało monet!', 'error');
+    }
+  }
+
+  populateShopUI() {
+    this.uiManager.populateShop(
+        this.blockManager.getAllBlockDefinitions(),
+        (blockName) => this.blockManager.isOwned(blockName)
+    );
   }
 
   animate() {
