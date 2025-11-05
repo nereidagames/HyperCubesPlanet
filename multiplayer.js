@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { createBaseCharacter } from './character.js'; // POPRAWKA: Import nowej funkcji
+import { createBaseCharacter } from './character.js';
 
 export class MultiplayerManager {
   constructor(scene, uiManager) {
@@ -15,14 +15,13 @@ export class MultiplayerManager {
       'Widzieliście nowy sklep?',
       'Zbieram na nowy strój.',
     ];
-    // POPRAWKA: Używamy stałej wartości Y dla wszystkich botów, zgodnej z CharacterManager
-    this.PLAYER_RESTING_Y = 0.8;
+    // POPRAWKA: Używamy teraz prawidłowej wysokości, zgodnej z fizyką gracza (0.1 podłogi + 0.8 połowy wysokości)
+    this.PLAYER_RESTING_Y = 0.9;
     this.MAP_SIZE = 64; 
   }
 
   async initialize() {
     console.log('Multiplayer Manager initialized');
-    // POPRAWKA: Tworzymy boty z nową pozycją Y
     await this.addOtherPlayer('Player_One', { position: new THREE.Vector3(5, this.PLAYER_RESTING_Y, 5) });
     await this.addOtherPlayer('Player_Two', { position: new THREE.Vector3(-5, this.PLAYER_RESTING_Y, 5) });
     await this.addOtherPlayer('Player_Three', { position: new THREE.Vector3(5, this.PLAYER_RESTING_Y, -5) });
@@ -32,7 +31,6 @@ export class MultiplayerManager {
     if (this.otherPlayers.has(id)) return;
 
     try {
-      // POPRAWKA: Używamy nowej funkcji do tworzenia bazy postaci
       const playerMesh = createBaseCharacter();
       
       playerMesh.userData.playerId = id;
@@ -81,7 +79,6 @@ export class MultiplayerManager {
     div.style.pointerEvents = 'none';
     
     const nameLabel = new CSS2DObject(div);
-    // POPRAWKA: Obniżamy etykietę, aby pasowała do niższej postaci
     nameLabel.position.set(0, 1.5, 0); 
     
     playerData.mesh.add(nameLabel);
@@ -119,7 +116,6 @@ export class MultiplayerManager {
     `;
     
     const chatBubble = new CSS2DObject(div);
-    // POPRAWKA: Obniżamy dymek czatu
     chatBubble.position.set(0, 1.8, 0);
     
     playerData.mesh.add(chatBubble);
@@ -149,7 +145,7 @@ export class MultiplayerManager {
       if (mesh.position.distanceTo(targetPosition) < 0.5) {
         targetPosition.set(
           (Math.random() - 0.5) * (this.MAP_SIZE - 5),
-          this.PLAYER_RESTING_Y, // Utrzymuj na poziomie podłoża
+          this.PLAYER_RESTING_Y,
           (Math.random() - 0.5) * (this.MAP_SIZE - 5)
         );
       }
@@ -195,4 +191,4 @@ export class MultiplayerManager {
         break;
     }
   }
-}
+        }
