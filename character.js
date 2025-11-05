@@ -2,34 +2,38 @@ import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 export function createBaseCharacter() {
-    // OSTATECZNA POPRAWKA: Użycie struktury zagnieżdżonej, aby offset był niezależny
-    const containerGroup = new THREE.Group(); // Grupa główna, której pozycja będzie zmieniana
-    const offsetGroup = new THREE.Group(); // Grupa wewnętrzna do trzymania wizualnego offsetu
+    const containerGroup = new THREE.Group();
+    const offsetGroup = new THREE.Group();
 
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
-    const leftLegGeo = new THREE.BoxGeometry(0.4, 0.8, 0.4);
+    // POPRAWKA: Zmniejszono szerokość/głębokość nóg i butów
+    const legWidth = 0.25;
+    const legDepth = 0.25;
+    const bootDepth = 0.3;
+    const legSeparation = 0.15; // Przysunięto nogi bliżej siebie
+
+    const leftLegGeo = new THREE.BoxGeometry(legWidth, 0.8, legDepth);
     const leftLeg = new THREE.Mesh(leftLegGeo, legMaterial);
-    leftLeg.position.set(-0.25, 0.4, 0);
+    leftLeg.position.set(-legSeparation, 0.4, 0);
     offsetGroup.add(leftLeg);
 
-    const leftBootGeo = new THREE.BoxGeometry(0.4, 0.2, 0.5);
+    const leftBootGeo = new THREE.BoxGeometry(legWidth, 0.2, bootDepth);
     const leftBoot = new THREE.Mesh(leftBootGeo, bootMaterial);
-    leftBoot.position.set(-0.25, -0.1, 0.05);
+    leftBoot.position.set(-legSeparation, -0.1, 0.05);
     offsetGroup.add(leftBoot);
 
-    const rightLegGeo = new THREE.BoxGeometry(0.4, 0.8, 0.4);
+    const rightLegGeo = new THREE.BoxGeometry(legWidth, 0.8, legDepth);
     const rightLeg = new THREE.Mesh(rightLegGeo, legMaterial);
-    rightLeg.position.set(0.25, 0.4, 0);
+    rightLeg.position.set(legSeparation, 0.4, 0);
     offsetGroup.add(rightLeg);
 
-    const rightBootGeo = new THREE.BoxGeometry(0.4, 0.2, 0.5);
+    const rightBootGeo = new THREE.BoxGeometry(legWidth, 0.2, bootDepth);
     const rightBoot = new THREE.Mesh(rightBootGeo, bootMaterial);
-    rightBoot.position.set(0.25, -0.1, 0.05);
+    rightBoot.position.set(legSeparation, -0.1, 0.05);
     offsetGroup.add(rightBoot);
 
-    // Przesuwamy tylko grupę wewnętrzną
     offsetGroup.position.y = -0.6;
     
     containerGroup.add(offsetGroup);
@@ -137,4 +141,4 @@ export class CharacterManager {
       }
     }, 5000);
   }
-        }
+                          }
