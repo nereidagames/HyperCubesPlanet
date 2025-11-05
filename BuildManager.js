@@ -3,9 +3,10 @@ import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
 
 export class BuildManager {
-  constructor(game, loadingManager) {
+  constructor(game, loadingManager, blockManager) {
     this.game = game;
     this.scene = new THREE.Scene();
+    this.blockManager = blockManager;
     this.isActive = false;
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -15,14 +16,10 @@ export class BuildManager {
     this.platform = null;
     this.platformSize = 64;
     this.cameraController = null;
-    this.blockTypes = [
-      { name: 'Trawa', texturePath: 'textures/trawa.png' },
-      { name: 'Ziemia', texturePath: 'textures/ziemia.png' },
-      { name: 'Drewno', texturePath: 'textures/drewno.png' },
-      { name: 'Beton', texturePath: 'textures/beton.png' },
-      { name: 'Piasek', texturePath: 'textures/piasek.png' }
-    ];
-    this.selectedBlockType = this.blockTypes[0];
+    
+    this.blockTypes = []; 
+    this.selectedBlockType = null;
+    
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -38,7 +35,8 @@ export class BuildManager {
 
   preloadTextures() {
     console.log("Preloading textures for build mode...");
-    this.blockTypes.forEach(blockType => {
+    const allBlocks = this.blockManager.getAllBlockDefinitions();
+    allBlocks.forEach(blockType => {
       if (!this.materials[blockType.texturePath]) {
         const texture = this.textureLoader.load(blockType.texturePath);
         texture.magFilter = THREE.NearestFilter;
@@ -51,6 +49,10 @@ export class BuildManager {
   enterBuildMode(size = 64) {
     this.isActive = true;
     this.platformSize = size;
+    
+    this.blockTypes = this.blockManager.getOwnedBlockTypes();
+    this.selectedBlockType = this.blockTypes[0] || null;
+
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
@@ -92,6 +94,7 @@ export class BuildManager {
   }
 
   createPreviewBlock() {
+    if (!this.selectedBlockType) return;
     const previewGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
     const previewMat = this.materials[this.selectedBlockType.texturePath].clone();
     previewMat.transparent = true;
@@ -137,9 +140,11 @@ export class BuildManager {
   
   selectBlockType(blockType) {
       this.selectedBlockType = blockType;
-      this.previewBlock.material = this.materials[this.selectedBlockType.texturePath].clone();
-      this.previewBlock.material.transparent = true;
-      this.previewBlock.material.opacity = 0.5;
+      if (this.previewBlock) {
+        this.previewBlock.material = this.materials[blockType.texturePath].clone();
+        this.previewBlock.material.transparent = true;
+        this.previewBlock.material.opacity = 0.5;
+      }
       console.log(`Selected block: ${blockType.name}`);
   }
 
@@ -182,6 +187,7 @@ export class BuildManager {
   }
 
   placeBlock() {
+    if (!this.selectedBlockType) return;
     const blockGeo = new THREE.BoxGeometry(1, 1, 1);
     const blockMat = this.materials[this.selectedBlockType.texturePath];
     const newBlock = new THREE.Mesh(blockGeo, blockMat);
@@ -224,7 +230,6 @@ export class BuildManager {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
-      // POPRAWKA: Zapisujemy obiekt z rozmiarem i blokami
       const worldData = {
         size: this.platformSize,
         blocks: this.placedBlocks.map(block => ({
@@ -273,14 +278,14 @@ export class BuildManager {
           Math.abs(snappedPosition.z) < buildAreaLimit && 
           snappedPosition.y >= 0
       ) {
-        this.previewBlock.visible = true;
-        this.previewBlock.position.copy(snappedPosition);
+        if (this.previewBlock) this.previewBlock.visible = true;
+        if (this.previewBlock) this.previewBlock.position.copy(snappedPosition);
       } else {
-        this.previewBlock.visible = false;
+        if (this.previewBlock) this.previewBlock.visible = false;
       }
 
     } else {
-      this.previewBlock.visible = false;
+      if (this.previewBlock) this.previewBlock.visible = false;
     }
   }
 
@@ -309,7 +314,7 @@ export class BuildManager {
 
     clearTimeout(this.longPressTimer);
     
-    if (!this.isLongPress && this.previewBlock.visible) {
+    if (!this.isLongPress && this.previewBlock && this.previewBlock.visible) {
         this.placeBlock();
     }
   }
@@ -331,4 +336,4 @@ export class BuildManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-                                             }
+      }
