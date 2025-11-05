@@ -134,6 +134,15 @@
       #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
       #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
 
+      /* NOWE STYLE DLA SKLEPU */
+      .shop-item { display: flex; align-items: center; justify-content: space-between; background: #333; padding: 10px; border-radius: 8px; width: 100%; }
+      .shop-item-info { display: flex; align-items: center; gap: 15px; }
+      .shop-item-icon { width: 40px; height: 40px; background-size: cover; border: 2px solid #555; border-radius: 5px; }
+      .shop-item-name { font-size: 16px; }
+      .shop-item-action .buy-btn { background: #ffd700; color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-family: 'Titan One', cursive; }
+      .shop-item-action .buy-btn:hover { background: #ffeb3b; }
+      .shop-item-action .owned-label { color: #2ed573; font-weight: bold; }
+
       @media (max-width: 768px) {
         .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
         .player-avatar { width: 40px; height: 40px; }
@@ -249,7 +258,6 @@
         <div id="build-choice-close" class="panel-close-button text-outline">Anuluj</div>
     </div>
 
-    <!-- NOWOŚĆ: Panel wyboru wielkości świata -->
     <div id="world-size-panel" class="panel">
         <h2 class="text-outline">Wybierz wielkość świata</h2>
         <div class="panel-list">
@@ -258,6 +266,13 @@
             <div id="size-choice-large" class="panel-item text-outline">Duży (256x256)</div>
         </div>
         <div id="world-size-close" class="panel-close-button text-outline">Anuluj</div>
+    </div>
+
+    <!-- NOWOŚĆ: Panel sklepu -->
+    <div id="shop-panel" class="panel">
+        <h2 class="text-outline">Sklep z Blokami</h2>
+        <div id="shop-list" class="panel-list"></div>
+        <div id="shop-close-button" class="panel-close-button text-outline">Zamknij</div>
     </div>
 
     <div id="more-options-panel" class="panel">
@@ -272,4 +287,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-</html>
+  </html>
