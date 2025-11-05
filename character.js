@@ -26,6 +26,9 @@ export function createBaseCharacter() {
     rightBoot.position.set(0.25, -0.1, 0.05);
     baseGroup.add(rightBoot);
 
+    // OSTATECZNA POPRAWKA: Przesunięcie modelu jest teraz częścią funkcji bazowej
+    baseGroup.position.y = -0.6;
+
     return baseGroup;
 }
 
@@ -37,7 +40,6 @@ export class CharacterManager {
     this.skinContainer = new THREE.Group();
     this.textureLoader = new THREE.TextureLoader();
     this.materialsCache = {};
-    // Usunięto 'currentGroundRestingY', ponieważ jest teraz pobierane z SceneManager
   }
   
   loadCharacter() {
@@ -47,17 +49,14 @@ export class CharacterManager {
     this.character = new THREE.Group();
     const baseModel = createBaseCharacter();
     
-    // OSTATECZNA POPRAWKA: Przesunięcie modelu wizualnego w dół, aby stopy były na dole
-    baseModel.position.y = -0.6;
+    // Usunięto zbędne przesunięcie, ponieważ jest już w createBaseCharacter()
     this.character.add(baseModel);
 
     this.skinContainer.scale.setScalar(0.25);
-    // OSTATECZNA POPRAWKA: Przesunięcie kontenera na skin w dół, aby pasował do nóg
     this.skinContainer.position.y = 0.2; 
     
     this.character.add(this.skinContainer);
     
-    // Pozycja startowa nie ma już znaczenia, bo PlayerController ją nadpisuje
     this.character.position.set(0, 5, 0); 
     this.scene.add(this.character);
     this.setupShadow();
@@ -100,7 +99,7 @@ export class CharacterManager {
       const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 });
       this.shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
       this.shadow.rotation.x = -Math.PI / 2;
-      this.shadow.position.y = 0.11; // Lekko nad podłogą
+      this.shadow.position.y = 0.11;
       this.scene.add(this.shadow);
   }
 
