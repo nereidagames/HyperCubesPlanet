@@ -123,9 +123,10 @@
       #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 28px; opacity: 0.5; cursor: not-allowed; }
       #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
       
-      #block-selection-panel, #prefab-selection-panel { position: absolute; bottom: 90px; left: 20px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-wrap: wrap; gap: 10px; width: 250px; pointer-events: auto; }
-      .block-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; } .block-item:hover { transform: scale(1.1); border-color: #00ff00; }
-      
+      #block-selection-panel, #prefab-selection-panel { position: absolute; bottom: 20px; left: 90px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-direction: column; gap: 10px; width: 250px; pointer-events: auto; max-height: 200px; overflow-y: auto; }
+      .block-item, .prefab-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; } .block-item:hover, .prefab-item:hover { transform: scale(1.1); border-color: #00ff00; }
+      .prefab-item { width: 100%; height: auto; padding: 10px; text-align: center; }
+
       .panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; max-height: 80vh; background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; z-index: 10001; display: none; flex-direction: column; align-items: center; box-shadow: 0 10px 30px #0008; color: white; }
       .panel h2 { margin-bottom: 20px; } .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
       .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; }
@@ -163,6 +164,7 @@
         #joystick-zone { left: 15px; bottom: 15px; }
         
         .panel, #block-selection-panel, #prefab-selection-panel { width: 90%; }
+        #block-selection-panel, #prefab-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: row; justify-content: center; }
       }
     </style>
   </head>
@@ -238,7 +240,7 @@
       <div id="build-mode-button" class="build-ui-button text-outline">Łatwy</div>
       <div id="build-add-button" class="build-ui-button">+</div>
       <div id="block-selection-panel"></div>
-      <div id="prefab-selection-panel"></div>
+      <div id="prefab-selection-panel" class="panel-list"></div>
     </div>
     
     <div id="explore-exit-button" style="display: none;"></div>
@@ -275,7 +277,6 @@
         <div id="shop-close-button" class="panel-close-button text-outline">Zamknij</div>
     </div>
 
-    <!-- NOWOŚĆ: Panel wyboru typu obiektu do dodania w trybie budowania -->
     <div id="add-choice-panel" class="panel">
         <h2 class="text-outline">Co chcesz dodać?</h2>
         <div class="panel-list">
@@ -297,4 +298,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-            </html>
+  </html>
