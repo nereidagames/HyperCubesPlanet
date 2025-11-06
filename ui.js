@@ -4,7 +4,7 @@ export class UIManager {
     this.isMobile = false;
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
-    this.onPrefabBuilderClick = null; // NOWOŚĆ
+    this.onPrefabBuilderClick = null;
     this.onDiscoverClick = null;
     this.onPlayClick = null;
     this.onToggleFPS = null;
@@ -48,31 +48,26 @@ export class UIManager {
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
-    // Panel wyboru typu budowy
     const buildChoicePanel = document.getElementById('build-choice-panel');
     const buildChoiceWorldBtn = document.getElementById('build-choice-world');
     const buildChoiceSkinBtn = document.getElementById('build-choice-skin');
-    const buildChoicePrefabBtn = document.getElementById('build-choice-prefab'); // NOWOŚĆ
+    const buildChoicePrefabBtn = document.getElementById('build-choice-prefab');
     const buildChoiceCloseBtn = document.getElementById('build-choice-close');
     
-    // Panel wyboru rozmiaru świata
     const worldSizePanel = document.getElementById('world-size-panel');
     const sizeSmallBtn = document.getElementById('size-choice-small');
     const sizeMediumBtn = document.getElementById('size-choice-medium');
     const sizeLargeBtn = document.getElementById('size-choice-large');
     const worldSizeCloseBtn = document.getElementById('world-size-close');
 
-    // Panel sklepu
     const shopPanel = document.getElementById('shop-panel');
     const shopCloseBtn = document.getElementById('shop-close-button');
     if (shopCloseBtn) shopCloseBtn.onclick = () => { shopPanel.style.display = 'none'; };
 
-    // Panel opcji
     const moreOptionsPanel = document.getElementById('more-options-panel');
     const toggleFPSBtn = document.getElementById('toggle-fps-btn');
     const moreOptionsCloseBtn = document.getElementById('more-options-close');
 
-    // Logika przycisków
     if (buildChoiceWorldBtn) buildChoiceWorldBtn.onclick = () => { 
         buildChoicePanel.style.display = 'none'; 
         worldSizePanel.style.display = 'flex';
@@ -81,7 +76,7 @@ export class UIManager {
         buildChoicePanel.style.display = 'none'; 
         if (this.onSkinBuilderClick) this.onSkinBuilderClick(); 
     };
-    if (buildChoicePrefabBtn) buildChoicePrefabBtn.onclick = () => { // NOWOŚĆ
+    if (buildChoicePrefabBtn) buildChoicePrefabBtn.onclick = () => {
         buildChoicePanel.style.display = 'none';
         if (this.onPrefabBuilderClick) this.onPrefabBuilderClick();
     };
@@ -214,4 +209,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-                                                                                                                                                   }
+      }
