@@ -9,7 +9,7 @@ import { BuildManager } from './BuildManager.js';
 import { WorldStorage } from './WorldStorage.js';
 import { CoinManager } from './CoinManager.js';
 import { SkinBuilderManager } from './SkinBuilderManager.js';
-import { PrefabBuilderManager } from './PrefabBuilderManager.js'; // NOWOŚĆ
+import { PrefabBuilderManager } from './PrefabBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
 import Stats from 'three/addons/libs/stats.module.js';
 import { BlockManager } from './BlockManager.js';
@@ -38,7 +38,7 @@ class BlockStarPlanetGame {
     this.gameState = 'Loading';
     this.buildManager = null;
     this.skinBuilderManager = null;
-    this.prefabBuilderManager = null; // NOWOŚĆ
+    this.prefabBuilderManager = null;
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
     this.clock = new THREE.Clock(); 
@@ -59,7 +59,7 @@ class BlockStarPlanetGame {
     try {
       this.blockManager.load();
       this.setupLoadingManager();
-      await this.preloadInitialAssets();
+      this.preloadInitialAssets(); // Usunięto await, ta funkcja tylko rozpoczyna ładowanie
     } catch (error) {
       console.error('CRITICAL: Error initializing game:', error);
       this.showError('Krytyczny błąd podczas ładowania gry.');
@@ -78,21 +78,28 @@ class BlockStarPlanetGame {
         progressBarFill.style.width = `${progress}%`;
     };
 
-    this.loadingManager.onLoad = () => {
+    // POPRAWKA: Cała logika post-ładowania jest teraz tutaj
+    this.loadingManager.onLoad = async () => {
         if (this.initialLoadComplete) {
             return; 
         }
+        this.initialLoadComplete = true; 
 
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
+        // Uruchomienie gry po załadowaniu
+        await this.setupManagers();
+        this.animate();
+        console.log('Game initialized successfully!');
+        
+        // Płynne ukrycie ekranu ładowania
         setTimeout(() => {
             if (loadingScreen) {
                 loadingScreen.style.opacity = '0';
                 setTimeout(() => { 
                     loadingScreen.style.display = 'none'; 
                     this.gameState = 'MainMenu';
-                    this.initialLoadComplete = true; 
                 }, 500);
             }
         }, 500);
@@ -104,19 +111,13 @@ class BlockStarPlanetGame {
     }, 2000);
   }
 
-  async preloadInitialAssets() {
+  // POPRAWKA: Ta funkcja teraz tylko rozpoczyna ładowanie, nie czeka na jego koniec
+  preloadInitialAssets() {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
-    
     const allBlocks = this.blockManager.getAllBlockDefinitions();
-    const texturePromises = allBlocks.map(block => 
-        new Promise(resolve => textureLoader.load(block.texturePath, resolve))
-    );
-    
-    await Promise.all(texturePromises);
-    
-    await this.setupManagers();
-    this.animate();
-    console.log('Game initialized successfully!');
+    allBlocks.forEach(block => {
+        textureLoader.load(block.texturePath);
+    });
   }
 
   detectMobileDevice() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
@@ -141,7 +142,7 @@ class BlockStarPlanetGame {
     this.uiManager.initialize(this.isMobile);
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
-    this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode(); // NOWOŚĆ
+    this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onShopOpen = () => this.populateShopUI();
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
@@ -167,7 +168,7 @@ class BlockStarPlanetGame {
 
     this.buildManager = new BuildManager(this, this.loadingManager, this.blockManager);
     this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager, this.blockManager);
-    this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager); // NOWOŚĆ
+    this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
 
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
@@ -212,7 +213,6 @@ class BlockStarPlanetGame {
     this.skinBuilderManager.enterBuildMode();
   }
 
-  // NOWOŚĆ: Przełączanie w tryb budowania prefabrykatów
   switchToPrefabBuilderMode() {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'PrefabBuilderMode';
@@ -227,7 +227,7 @@ class BlockStarPlanetGame {
         this.buildManager.exitBuildMode();
     } else if (this.gameState === 'SkinBuilderMode') {
         this.skinBuilderManager.exitBuildMode();
-    } else if (this.gameState === 'PrefabBuilderMode') { // NOWOŚĆ
+    } else if (this.gameState === 'PrefabBuilderMode') {
         this.prefabBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
       this.scene.add(this.characterManager.character);
@@ -454,7 +454,7 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'SkinBuilderMode') {
         this.skinBuilderManager.update(deltaTime);
         this.renderer.render(this.skinBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'PrefabBuilderMode') { // NOWOŚĆ
+    } else if (this.gameState === 'PrefabBuilderMode') {
         this.prefabBuilderManager.update(deltaTime);
         this.renderer.render(this.prefabBuilderManager.scene, this.camera);
     } else if (this.gameState === 'ExploreMode') {
@@ -475,4 +475,4 @@ class BlockStarPlanetGame {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
+document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });```
