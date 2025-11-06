@@ -59,7 +59,7 @@ class BlockStarPlanetGame {
     try {
       this.blockManager.load();
       this.setupLoadingManager();
-      this.preloadInitialAssets(); // Usunięto await, ta funkcja tylko rozpoczyna ładowanie
+      this.preloadInitialAssets(); // Usunięto 'await' - ta funkcja tylko rozpoczyna ładowanie
     } catch (error) {
       console.error('CRITICAL: Error initializing game:', error);
       this.showError('Krytyczny błąd podczas ładowania gry.');
@@ -78,7 +78,7 @@ class BlockStarPlanetGame {
         progressBarFill.style.width = `${progress}%`;
     };
 
-    // POPRAWKA: Cała logika post-ładowania jest teraz tutaj
+    // POPRAWKA: Cała logika post-ładowania jest teraz tutaj, w jednym miejscu
     this.loadingManager.onLoad = async () => {
         if (this.initialLoadComplete) {
             return; 
@@ -88,12 +88,12 @@ class BlockStarPlanetGame {
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        // Uruchomienie gry po załadowaniu
+        // Najpierw uruchamiamy grę w tle
         await this.setupManagers();
         this.animate();
         console.log('Game initialized successfully!');
         
-        // Płynne ukrycie ekranu ładowania
+        // A dopiero potem płynnie ukrywamy ekran ładowania
         setTimeout(() => {
             if (loadingScreen) {
                 loadingScreen.style.opacity = '0';
@@ -111,12 +111,12 @@ class BlockStarPlanetGame {
     }, 2000);
   }
 
-  // POPRAWKA: Ta funkcja teraz tylko rozpoczyna ładowanie, nie czeka na jego koniec
+  // POPRAWKA: Ta funkcja teraz tylko zleca ładowanie zasobów, nie czeka na nie
   preloadInitialAssets() {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const allBlocks = this.blockManager.getAllBlockDefinitions();
     allBlocks.forEach(block => {
-        textureLoader.load(block.texturePath);
+        textureLoader.load(block.texturePath); // Po prostu ładuj, LoadingManager zajmie się resztą
     });
   }
 
@@ -475,4 +475,4 @@ class BlockStarPlanetGame {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });```
+document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
