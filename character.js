@@ -8,11 +8,10 @@ export function createBaseCharacter() {
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
-    // POPRAWKA: Zmniejszono szerokość/głębokość nóg i butów
     const legWidth = 0.25;
     const legDepth = 0.25;
     const bootDepth = 0.3;
-    const legSeparation = 0.15; // Przysunięto nogi bliżej siebie
+    const legSeparation = 0.15;
 
     const leftLegGeo = new THREE.BoxGeometry(legWidth, 0.8, legDepth);
     const leftLeg = new THREE.Mesh(leftLegGeo, legMaterial);
@@ -60,7 +59,8 @@ export class CharacterManager {
     
     this.character.add(baseModel);
 
-    this.skinContainer.scale.setScalar(0.25);
+    // POPRAWKA: Podwójne zmniejszenie skali skinów
+    this.skinContainer.scale.setScalar(0.125);
     this.skinContainer.position.y = 0.2; 
     
     this.character.add(this.skinContainer);
@@ -141,4 +141,4 @@ export class CharacterManager {
       }
     }, 5000);
   }
-                          }
+    }
