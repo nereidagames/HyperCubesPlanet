@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
+import { PrefabStorage } from './PrefabStorage.js'; // NOWY IMPORT
 
 export class BuildManager {
   constructor(game, loadingManager, blockManager) {
@@ -11,6 +12,9 @@ export class BuildManager {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.previewBlock = null;
+    this.previewPrefab = null; // NOWOŚĆ
+    this.currentBuildMode = 'block'; // 'block' lub 'prefab'
+    this.selectedPrefabData = null; // NOWOŚĆ
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
@@ -52,6 +56,7 @@ export class BuildManager {
     
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
+    this.currentBuildMode = 'block'; // Zawsze zaczynaj od bloków
 
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
@@ -67,6 +72,8 @@ export class BuildManager {
     this.scene.add(directionalLight);
     this.createBuildPlatform();
     this.createPreviewBlock();
+    this.previewPrefab = new THREE.Group(); // Zainicjuj pustą grupę dla prefabrykatu
+    this.scene.add(this.previewPrefab);
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
@@ -115,11 +122,24 @@ export class BuildManager {
 
     document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
+    // ZMIANA: Przycisk "+" otwiera teraz nowe menu
     document.getElementById('build-add-button').onclick = () => {
-        const panel = document.getElementById('block-selection-panel');
-        panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+        document.getElementById('add-choice-panel').style.display = 'flex';
     };
     document.getElementById('build-save-button').onclick = () => this.saveWorld();
+
+    // NOWOŚĆ: Logika dla nowego menu
+    document.getElementById('add-choice-blocks').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'flex';
+    };
+    document.getElementById('add-choice-prefabs').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        this.showPrefabSelectionPanel();
+    };
+    document.getElementById('add-choice-close').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+    };
   }
   
   populateBlockSelectionPanel() {
@@ -138,14 +158,66 @@ export class BuildManager {
       });
   }
   
+  // NOWOŚĆ: Logika wyświetlania panelu prefabrykatów
+  showPrefabSelectionPanel() {
+      const panel = document.getElementById('prefab-selection-panel');
+      panel.innerHTML = '';
+      const prefabNames = PrefabStorage.getSavedPrefabsList();
+      if (prefabNames.length === 0) {
+          panel.innerHTML = '<div class="panel-item text-outline">Brak prefabrykatów</div>';
+      } else {
+          prefabNames.forEach(name => {
+              const item = document.createElement('div');
+              item.className = 'panel-item text-outline prefab-item';
+              item.textContent = name;
+              item.onclick = () => {
+                  this.selectPrefab(name);
+                  panel.style.display = 'none';
+              };
+              panel.appendChild(item);
+          });
+      }
+      panel.style.display = 'flex';
+  }
+  
   selectBlockType(blockType) {
+      this.currentBuildMode = 'block';
       this.selectedBlockType = blockType;
       if (this.previewBlock) {
         this.previewBlock.material = this.materials[blockType.texturePath].clone();
         this.previewBlock.material.transparent = true;
         this.previewBlock.material.opacity = 0.5;
       }
+      this.previewPrefab.visible = false;
+      this.previewBlock.visible = true;
       console.log(`Selected block: ${blockType.name}`);
+  }
+
+  // NOWOŚĆ: Logika wyboru prefabrykatu
+  selectPrefab(prefabName) {
+      this.currentBuildMode = 'prefab';
+      this.selectedPrefabData = PrefabStorage.loadPrefab(prefabName);
+      if (!this.selectedPrefabData) return;
+
+      // Wyczyść stary podgląd
+      while(this.previewPrefab.children.length) {
+          this.previewPrefab.remove(this.previewPrefab.children[0]);
+      }
+      
+      // Stwórz nowy podgląd
+      this.selectedPrefabData.forEach(blockData => {
+          const geo = new THREE.BoxGeometry(1, 1, 1);
+          const mat = this.materials[blockData.texturePath].clone();
+          mat.transparent = true;
+          mat.opacity = 0.5;
+          const block = new THREE.Mesh(geo, mat);
+          block.position.set(blockData.x, blockData.y, blockData.z);
+          this.previewPrefab.add(block);
+      });
+
+      this.previewBlock.visible = false;
+      this.previewPrefab.visible = true;
+      console.log(`Selected prefab: ${prefabName}`);
   }
 
   toggleCameraMode() {
@@ -172,6 +244,10 @@ export class BuildManager {
     document.getElementById('build-mode-button').onclick = null;
     document.getElementById('build-add-button').onclick = null;
     document.getElementById('build-save-button').onclick = null;
+    document.getElementById('add-choice-blocks').onclick = null;
+    document.getElementById('add-choice-prefabs').onclick = null;
+    document.getElementById('add-choice-close').onclick = null;
+
     if (this.cameraController) this.cameraController.destroy();
   }
   
@@ -181,9 +257,18 @@ export class BuildManager {
   }
   
   onMouseDown(event) {
-    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
-    if (event.button === 0 && this.previewBlock.visible) this.placeBlock();
-    else if (event.button === 2) this.removeBlock();
+    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
+    
+    // ZMIANA: Rozróżnienie między stawianiem bloku a prefabrykatu
+    if (event.button === 0) {
+        if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
+            this.placeBlock();
+        } else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) {
+            this.placePrefab();
+        }
+    } else if (event.button === 2) {
+        this.removeBlock();
+    }
   }
 
   placeBlock() {
@@ -200,6 +285,31 @@ export class BuildManager {
     this.scene.add(newBlock);
     this.placedBlocks.push(newBlock);
     this.collidableBuildObjects.push(newBlock);
+    this.updateSaveButton();
+  }
+  
+  // NOWOŚĆ: Logika umieszczania prefabrykatu
+  placePrefab() {
+    if (!this.selectedPrefabData) return;
+    
+    this.selectedPrefabData.forEach(blockData => {
+        const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+        const blockMat = this.materials[blockData.texturePath];
+        const newBlock = new THREE.Mesh(blockGeo, blockMat);
+        newBlock.userData.texturePath = blockData.texturePath;
+
+        // Ustaw pozycję bloku względem pozycji podglądu całego prefabrykatu
+        const finalPosition = new THREE.Vector3(blockData.x, blockData.y, blockData.z).add(this.previewPrefab.position);
+        newBlock.position.copy(finalPosition);
+
+        newBlock.castShadow = true;
+        newBlock.receiveShadow = true;
+
+        this.scene.add(newBlock);
+        this.placedBlocks.push(newBlock);
+        this.collidableBuildObjects.push(newBlock);
+    });
+
     this.updateSaveButton();
   }
   
@@ -273,24 +383,31 @@ export class BuildManager {
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
 
       const buildAreaLimit = this.platformSize / 2;
+      let isVisible = false;
       if (
           Math.abs(snappedPosition.x) < buildAreaLimit && 
           Math.abs(snappedPosition.z) < buildAreaLimit && 
           snappedPosition.y >= 0
       ) {
-        if (this.previewBlock) this.previewBlock.visible = true;
-        if (this.previewBlock) this.previewBlock.position.copy(snappedPosition);
-      } else {
-        if (this.previewBlock) this.previewBlock.visible = false;
+          isVisible = true;
+          if (this.currentBuildMode === 'block') {
+              this.previewBlock.position.copy(snappedPosition);
+          } else {
+              this.previewPrefab.position.copy(snappedPosition);
+          }
       }
+      
+      this.previewBlock.visible = isVisible && this.currentBuildMode === 'block';
+      this.previewPrefab.visible = isVisible && this.currentBuildMode === 'prefab';
 
     } else {
-      if (this.previewBlock) this.previewBlock.visible = false;
+      this.previewBlock.visible = false;
+      this.previewPrefab.visible = false;
     }
   }
 
   onTouchStart(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
     
     event.preventDefault();
     this.isLongPress = false;
@@ -310,12 +427,16 @@ export class BuildManager {
   }
 
   onTouchEnd(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
 
     clearTimeout(this.longPressTimer);
     
-    if (!this.isLongPress && this.previewBlock && this.previewBlock.visible) {
-        this.placeBlock();
+    if (!this.isLongPress) {
+        if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
+            this.placeBlock();
+        } else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) {
+            this.placePrefab();
+        }
     }
   }
 
