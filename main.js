@@ -9,6 +9,7 @@ import { BuildManager } from './BuildManager.js';
 import { WorldStorage } from './WorldStorage.js';
 import { CoinManager } from './CoinManager.js';
 import { SkinBuilderManager } from './SkinBuilderManager.js';
+import { PrefabBuilderManager } from './PrefabBuilderManager.js'; // NOWOŚĆ
 import { SkinStorage } from './SkinStorage.js';
 import Stats from 'three/addons/libs/stats.module.js';
 import { BlockManager } from './BlockManager.js';
@@ -37,6 +38,7 @@ class BlockStarPlanetGame {
     this.gameState = 'Loading';
     this.buildManager = null;
     this.skinBuilderManager = null;
+    this.prefabBuilderManager = null; // NOWOŚĆ
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
     this.clock = new THREE.Clock(); 
@@ -139,6 +141,7 @@ class BlockStarPlanetGame {
     this.uiManager.initialize(this.isMobile);
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
+    this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode(); // NOWOŚĆ
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onShopOpen = () => this.populateShopUI();
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
@@ -164,6 +167,7 @@ class BlockStarPlanetGame {
 
     this.buildManager = new BuildManager(this, this.loadingManager, this.blockManager);
     this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager, this.blockManager);
+    this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager); // NOWOŚĆ
 
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
@@ -207,6 +211,14 @@ class BlockStarPlanetGame {
     this.toggleMainUI(false);
     this.skinBuilderManager.enterBuildMode();
   }
+
+  // NOWOŚĆ: Przełączanie w tryb budowania prefabrykatów
+  switchToPrefabBuilderMode() {
+    if (this.gameState !== 'MainMenu') return;
+    this.gameState = 'PrefabBuilderMode';
+    this.toggleMainUI(false);
+    this.prefabBuilderManager.enterBuildMode();
+  }
   
   switchToMainMenu() {
     if (this.gameState === 'MainMenu') return;
@@ -215,6 +227,8 @@ class BlockStarPlanetGame {
         this.buildManager.exitBuildMode();
     } else if (this.gameState === 'SkinBuilderMode') {
         this.skinBuilderManager.exitBuildMode();
+    } else if (this.gameState === 'PrefabBuilderMode') { // NOWOŚĆ
+        this.prefabBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
       this.scene.add(this.characterManager.character);
       this.characterManager.character.position.set(0, 5, 0); 
@@ -440,6 +454,9 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'SkinBuilderMode') {
         this.skinBuilderManager.update(deltaTime);
         this.renderer.render(this.skinBuilderManager.scene, this.camera);
+    } else if (this.gameState === 'PrefabBuilderMode') { // NOWOŚĆ
+        this.prefabBuilderManager.update(deltaTime);
+        this.renderer.render(this.prefabBuilderManager.scene, this.camera);
     } else if (this.gameState === 'ExploreMode') {
         if (this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
