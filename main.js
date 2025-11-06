@@ -59,7 +59,7 @@ class BlockStarPlanetGame {
     try {
       this.blockManager.load();
       this.setupLoadingManager();
-      this.preloadInitialAssets(); // Usunięto 'await' - ta funkcja tylko rozpoczyna ładowanie
+      this.preloadInitialAssets();
     } catch (error) {
       console.error('CRITICAL: Error initializing game:', error);
       this.showError('Krytyczny błąd podczas ładowania gry.');
@@ -78,7 +78,6 @@ class BlockStarPlanetGame {
         progressBarFill.style.width = `${progress}%`;
     };
 
-    // POPRAWKA: Cała logika post-ładowania jest teraz tutaj, w jednym miejscu
     this.loadingManager.onLoad = async () => {
         if (this.initialLoadComplete) {
             return; 
@@ -88,12 +87,10 @@ class BlockStarPlanetGame {
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        // Najpierw uruchamiamy grę w tle
         await this.setupManagers();
         this.animate();
         console.log('Game initialized successfully!');
         
-        // A dopiero potem płynnie ukrywamy ekran ładowania
         setTimeout(() => {
             if (loadingScreen) {
                 loadingScreen.style.opacity = '0';
@@ -111,12 +108,11 @@ class BlockStarPlanetGame {
     }, 2000);
   }
 
-  // POPRAWKA: Ta funkcja teraz tylko zleca ładowanie zasobów, nie czeka na nie
   preloadInitialAssets() {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const allBlocks = this.blockManager.getAllBlockDefinitions();
     allBlocks.forEach(block => {
-        textureLoader.load(block.texturePath); // Po prostu ładuj, LoadingManager zajmie się resztą
+        textureLoader.load(block.texturePath);
     });
   }
 
