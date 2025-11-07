@@ -53,6 +53,15 @@ class BlockStarPlanetGame {
     
     this.initialLoadComplete = false;
 
+    // NOWE WŁAŚCIWOŚCI DLA PODGLĄDU GRACZA
+    this.previewScene = null;
+    this.previewCamera = null;
+    this.previewRenderer = null;
+    this.previewCharacter = null;
+    this.previewContainer = null;
+    this.isPreviewDragging = false;
+    this.previewPreviousMouseX = 0;
+
     this.setupRenderer();
     this.init();
   }
@@ -143,6 +152,7 @@ class BlockStarPlanetGame {
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
     this.uiManager.onPartBuilderClick = () => this.switchToPartBuilderMode();
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
+    this.uiManager.onPlayerAvatarClick = () => this.showPlayerPreview();
     this.uiManager.onShopOpen = () => this.populateShopUI();
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
@@ -438,6 +448,75 @@ class BlockStarPlanetGame {
     );
   }
 
+  // --- NOWE FUNKCJE DLA PODGLĄDU GRACZA ---
+
+  setupPreviewScene() {
+    this.previewContainer = document.getElementById('player-preview-renderer-container');
+    const { clientWidth, clientHeight } = this.previewContainer;
+
+    this.previewScene = new THREE.Scene();
+    this.previewScene.background = new THREE.Color(0x3d3d3d);
+
+    this.previewCamera = new THREE.PerspectiveCamera(50, clientWidth / clientHeight, 0.1, 100);
+    this.previewCamera.position.set(0, 0.5, 4);
+
+    this.previewRenderer = new THREE.WebGLRenderer({ antialias: true });
+    this.previewRenderer.setSize(clientWidth, clientHeight);
+    this.previewRenderer.setPixelRatio(window.devicePixelRatio);
+    this.previewContainer.appendChild(this.previewRenderer.domElement);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 1.5);
+    this.previewScene.add(ambient);
+    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
+    directional.position.set(2, 5, 5);
+    this.previewScene.add(directional);
+
+    // Dodaj obsługę obracania
+    const onPointerDown = (e) => {
+        this.isPreviewDragging = true;
+        this.previewPreviousMouseX = e.clientX || e.touches[0].clientX;
+    };
+    const onPointerUp = () => {
+        this.isPreviewDragging = false;
+    };
+    const onPointerMove = (e) => {
+        if (!this.isPreviewDragging) return;
+        const clientX = e.clientX || e.touches[0].clientX;
+        const deltaX = clientX - this.previewPreviousMouseX;
+        if (this.previewCharacter) {
+            this.previewCharacter.rotation.y += deltaX * 0.01;
+        }
+        this.previewPreviousMouseX = clientX;
+    };
+
+    this.previewContainer.addEventListener('mousedown', onPointerDown);
+    this.previewContainer.addEventListener('touchstart', onPointerDown, { passive: true });
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchend', onPointerUp);
+    this.previewContainer.addEventListener('mousemove', onPointerMove);
+    this.previewContainer.addEventListener('touchmove', onPointerMove, { passive: true });
+    this.previewContainer.addEventListener('mouseleave', onPointerUp);
+  }
+
+  showPlayerPreview() {
+    if (!this.previewRenderer) {
+      this.setupPreviewScene();
+    }
+
+    // Usuń stary model, jeśli istnieje
+    if (this.previewCharacter) {
+      this.previewScene.remove(this.previewCharacter);
+    }
+    
+    // Sklonuj aktualny model gracza
+    this.previewCharacter = this.characterManager.character.clone(true);
+    this.previewCharacter.position.set(0, -0.8, 0); // Wycentruj pionowo
+    this.previewCharacter.rotation.set(0, 0, 0); // Zresetuj rotację
+    this.previewScene.add(this.previewCharacter);
+    
+    document.getElementById('player-preview-panel').style.display = 'flex';
+  }
+
   animate() {
     requestAnimationFrame(() => this.animate());
     
@@ -476,6 +555,14 @@ class BlockStarPlanetGame {
         }
         if (this.characterManager) this.characterManager.update(deltaTime);
         this.renderer.render(this.exploreScene, this.camera);
+    }
+
+    // Renderuj scenę podglądu, jeśli jest widoczna
+    if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
+      if (this.previewCharacter && !this.isPreviewDragging) {
+        this.previewCharacter.rotation.y += 0.005; // Automatyczny obrót
+      }
+      this.previewRenderer.render(this.previewScene, this.previewCamera);
     }
   }
   
