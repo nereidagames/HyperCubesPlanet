@@ -53,7 +53,6 @@ class BlockStarPlanetGame {
     
     this.initialLoadComplete = false;
 
-    // NOWE WŁAŚCIWOŚCI DLA PODGLĄDU GRACZA
     this.previewScene = null;
     this.previewCamera = null;
     this.previewRenderer = null;
@@ -448,8 +447,6 @@ class BlockStarPlanetGame {
     );
   }
 
-  // --- NOWE FUNKCJE DLA PODGLĄDU GRACZA ---
-
   setupPreviewScene() {
     this.previewContainer = document.getElementById('player-preview-renderer-container');
     const { clientWidth, clientHeight } = this.previewContainer;
@@ -471,7 +468,6 @@ class BlockStarPlanetGame {
     directional.position.set(2, 5, 5);
     this.previewScene.add(directional);
 
-    // Dodaj obsługę obracania
     const onPointerDown = (e) => {
         this.isPreviewDragging = true;
         this.previewPreviousMouseX = e.clientX || e.touches[0].clientX;
@@ -503,15 +499,14 @@ class BlockStarPlanetGame {
       this.setupPreviewScene();
     }
 
-    // Usuń stary model, jeśli istnieje
     if (this.previewCharacter) {
       this.previewScene.remove(this.previewCharacter);
     }
     
-    // Sklonuj aktualny model gracza
     this.previewCharacter = this.characterManager.character.clone(true);
-    this.previewCharacter.position.set(0, -0.8, 0); // Wycentruj pionowo
-    this.previewCharacter.rotation.set(0, 0, 0); // Zresetuj rotację
+    // POPRAWKA: Ustawienie pozycji na 0, aby model był wycentrowany
+    this.previewCharacter.position.set(0, 0, 0); 
+    this.previewCharacter.rotation.set(0, 0, 0);
     this.previewScene.add(this.previewCharacter);
     
     document.getElementById('player-preview-panel').style.display = 'flex';
@@ -557,10 +552,9 @@ class BlockStarPlanetGame {
         this.renderer.render(this.exploreScene, this.camera);
     }
 
-    // Renderuj scenę podglądu, jeśli jest widoczna
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
       if (this.previewCharacter && !this.isPreviewDragging) {
-        this.previewCharacter.rotation.y += 0.005; // Automatyczny obrót
+        this.previewCharacter.rotation.y += 0.005;
       }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
     }
