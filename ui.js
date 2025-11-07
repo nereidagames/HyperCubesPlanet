@@ -5,6 +5,7 @@ export class UIManager {
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
+    this.onPartBuilderClick = null; // NOWOŚĆ
     this.onDiscoverClick = null;
     this.onPlayClick = null;
     this.onToggleFPS = null;
@@ -52,6 +53,7 @@ export class UIManager {
     const buildChoiceWorldBtn = document.getElementById('build-choice-world');
     const buildChoiceSkinBtn = document.getElementById('build-choice-skin');
     const buildChoicePrefabBtn = document.getElementById('build-choice-prefab');
+    const buildChoicePartBtn = document.getElementById('build-choice-part'); // NOWOŚĆ
     const buildChoiceCloseBtn = document.getElementById('build-choice-close');
     
     const worldSizePanel = document.getElementById('world-size-panel');
@@ -79,6 +81,10 @@ export class UIManager {
     if (buildChoicePrefabBtn) buildChoicePrefabBtn.onclick = () => {
         buildChoicePanel.style.display = 'none';
         if (this.onPrefabBuilderClick) this.onPrefabBuilderClick();
+    };
+    if (buildChoicePartBtn) buildChoicePartBtn.onclick = () => { // NOWOŚĆ
+        buildChoicePanel.style.display = 'none';
+        if (this.onPartBuilderClick) this.onPartBuilderClick();
     };
     if (buildChoiceCloseBtn) buildChoiceCloseBtn.onclick = () => { buildChoicePanel.style.display = 'none'; };
     
@@ -209,4 +215,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-      }
+                                                     }
