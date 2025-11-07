@@ -124,6 +124,9 @@ export class BuildManager {
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'flex';
+        // POPRAWKA: Ukryj opcję Części, pokaż opcję Prefabrykatów
+        document.getElementById('add-choice-parts').style.display = 'none';
+        document.getElementById('add-choice-prefabs').style.display = 'block';
     };
     document.getElementById('build-save-button').onclick = () => this.saveWorld();
 
@@ -288,7 +291,6 @@ export class BuildManager {
     this.selectedPrefabData.forEach(blockData => {
         const finalPosition = new THREE.Vector3(blockData.x, blockData.y, blockData.z).add(this.previewPrefab.position);
 
-        // POPRAWKA: Sprawdzaj, czy blok mieści się w granicach przed postawieniem
         if (
             Math.abs(finalPosition.x) < buildAreaLimit && 
             Math.abs(finalPosition.z) < buildAreaLimit &&
