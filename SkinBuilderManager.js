@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
+import { HyperCubePartStorage } from './HyperCubePartStorage.js'; // NOWY IMPORT
 
 export class SkinBuilderManager {
   constructor(game, loadingManager, blockManager) {
@@ -11,6 +12,9 @@ export class SkinBuilderManager {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.previewBlock = null;
+    this.previewPart = null; // NOWOŚĆ
+    this.currentBuildMode = 'block'; // 'block' lub 'part'
+    this.selectedPartData = null; // NOWOŚĆ
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
@@ -50,6 +54,7 @@ export class SkinBuilderManager {
 
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
+    this.currentBuildMode = 'block';
 
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
@@ -64,6 +69,8 @@ export class SkinBuilderManager {
     this.scene.add(directionalLight);
     this.createBuildPlatform();
     this.createPreviewBlock();
+    this.previewPart = new THREE.Group();
+    this.scene.add(this.previewPart);
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
@@ -117,10 +124,24 @@ export class SkinBuilderManager {
     document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
-        const panel = document.getElementById('block-selection-panel');
-        panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+        document.getElementById('add-choice-panel').style.display = 'flex';
+        // Ukryj opcję prefabrykatów w tym trybie
+        document.getElementById('add-choice-prefabs').style.display = 'none';
+        document.getElementById('add-choice-parts').style.display = 'block';
     };
     document.getElementById('build-save-button').onclick = () => this.saveSkin();
+
+    document.getElementById('add-choice-blocks').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'flex';
+    };
+    document.getElementById('add-choice-parts').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        this.showPartSelectionPanel();
+    };
+    document.getElementById('add-choice-close').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+    };
   }
   
   populateBlockSelectionPanel() {
@@ -138,14 +159,61 @@ export class SkinBuilderManager {
           panel.appendChild(blockItem);
       });
   }
+
+  showPartSelectionPanel() {
+      const panel = document.getElementById('part-selection-panel');
+      panel.innerHTML = '';
+      const partNames = HyperCubePartStorage.getSavedPartsList();
+      if (partNames.length === 0) {
+          panel.innerHTML = '<div class="panel-item text-outline">Brak części</div>';
+      } else {
+          partNames.forEach(name => {
+              const item = document.createElement('div');
+              item.className = 'panel-item text-outline part-item';
+              item.textContent = name;
+              item.onclick = () => {
+                  this.selectPart(name);
+                  panel.style.display = 'none';
+              };
+              panel.appendChild(item);
+          });
+      }
+      panel.style.display = 'flex';
+  }
   
   selectBlockType(blockType) {
+      this.currentBuildMode = 'block';
       this.selectedBlockType = blockType;
       if (this.previewBlock) {
         this.previewBlock.material = this.materials[blockType.texturePath].clone();
         this.previewBlock.material.transparent = true;
         this.previewBlock.material.opacity = 0.6;
       }
+      this.previewPart.visible = false;
+      this.previewBlock.visible = true;
+  }
+
+  selectPart(partName) {
+      this.currentBuildMode = 'part';
+      this.selectedPartData = HyperCubePartStorage.loadPart(partName);
+      if (!this.selectedPartData) return;
+
+      while(this.previewPart.children.length) {
+          this.previewPart.remove(this.previewPart.children[0]);
+      }
+      
+      this.selectedPartData.forEach(blockData => {
+          const geo = new THREE.BoxGeometry(1, 1, 1);
+          const mat = this.materials[blockData.texturePath].clone();
+          mat.transparent = true;
+          mat.opacity = 0.5;
+          const block = new THREE.Mesh(geo, mat);
+          block.position.set(blockData.x, blockData.y, blockData.z);
+          this.previewPart.add(block);
+      });
+
+      this.previewBlock.visible = false;
+      this.previewPart.visible = true;
   }
 
   toggleCameraMode() {
@@ -162,6 +230,7 @@ export class SkinBuilderManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('contextmenu', e => e.preventDefault());
 
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
@@ -171,6 +240,10 @@ export class SkinBuilderManager {
     document.getElementById('build-mode-button').onclick = null;
     document.getElementById('build-add-button').onclick = null;
     document.getElementById('build-save-button').onclick = null;
+    document.getElementById('add-choice-blocks').onclick = null;
+    document.getElementById('add-choice-parts').onclick = null;
+    document.getElementById('add-choice-close').onclick = null;
+
     if (this.cameraController) this.cameraController.destroy();
   }
   
@@ -180,9 +253,17 @@ export class SkinBuilderManager {
   }
   
   onMouseDown(event) {
-    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
-    if (event.button === 0 && this.previewBlock.visible) this.placeBlock();
-    else if (event.button === 2) this.removeBlock();
+    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#part-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
+    
+    if (event.button === 0) {
+        if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
+            this.placeBlock();
+        } else if (this.currentBuildMode === 'part' && this.previewPart.visible) {
+            this.placePart();
+        }
+    } else if (event.button === 2) {
+        this.removeBlock();
+    }
   }
 
   placeBlock() {
@@ -195,6 +276,35 @@ export class SkinBuilderManager {
     this.scene.add(newBlock);
     this.placedBlocks.push(newBlock);
     this.collidableBuildObjects.push(newBlock);
+    this.updateSaveButton();
+  }
+  
+  placePart() {
+    if (!this.selectedPartData) return;
+    
+    this.selectedPartData.forEach(blockData => {
+        const finalPosition = new THREE.Vector3(blockData.x, blockData.y, blockData.z).add(this.previewPart.position);
+
+        const buildAreaLimit = this.platformSize / 2;
+        const buildHeightLimit = 20;
+        if (
+            Math.abs(finalPosition.x) < buildAreaLimit && 
+            Math.abs(finalPosition.z) < buildAreaLimit &&
+            finalPosition.y >= 0 &&
+            finalPosition.y < buildHeightLimit
+        ) {
+            const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+            const blockMat = this.materials[blockData.texturePath];
+            const newBlock = new THREE.Mesh(blockGeo, blockMat);
+            newBlock.userData.texturePath = blockData.texturePath;
+            newBlock.position.copy(finalPosition);
+
+            this.scene.add(newBlock);
+            this.placedBlocks.push(newBlock);
+            this.collidableBuildObjects.push(newBlock);
+        }
+    });
+
     this.updateSaveButton();
   }
   
@@ -265,25 +375,32 @@ export class SkinBuilderManager {
         
       const buildAreaLimit = this.platformSize / 2;
       const buildHeightLimit = 20;
+      let isVisible = false;
       if (
           Math.abs(snappedPosition.x) < buildAreaLimit && 
           Math.abs(snappedPosition.z) < buildAreaLimit &&
           snappedPosition.y >= 0 &&
           snappedPosition.y < buildHeightLimit
       ) {
-        if (this.previewBlock) this.previewBlock.visible = true;
-        if (this.previewBlock) this.previewBlock.position.copy(snappedPosition);
-      } else {
-        if (this.previewBlock) this.previewBlock.visible = false;
+          isVisible = true;
+          if (this.currentBuildMode === 'block') {
+              if (this.previewBlock) this.previewBlock.position.copy(snappedPosition);
+          } else {
+              if (this.previewPart) this.previewPart.position.copy(snappedPosition);
+          }
       }
+      
+      if (this.previewBlock) this.previewBlock.visible = isVisible && this.currentBuildMode === 'block';
+      if (this.previewPart) this.previewPart.visible = isVisible && this.currentBuildMode === 'part';
 
     } else {
       if (this.previewBlock) this.previewBlock.visible = false;
+      if (this.previewPart) this.previewPart.visible = false;
     }
   }
 
   onTouchStart(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#part-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
     
     event.preventDefault();
     this.isLongPress = false;
@@ -303,12 +420,16 @@ export class SkinBuilderManager {
   }
 
   onTouchEnd(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#part-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
 
     clearTimeout(this.longPressTimer);
     
-    if (!this.isLongPress && this.previewBlock && this.previewBlock.visible) {
-        this.placeBlock();
+    if (!this.isLongPress) {
+        if (this.currentBuildMode === 'block' && this.previewBlock && this.previewBlock.visible) {
+            this.placeBlock();
+        } else if (this.currentBuildMode === 'part' && this.previewPart && this.previewPart.visible) {
+            this.placePart();
+        }
     }
   }
 
@@ -329,4 +450,4 @@ export class SkinBuilderManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-      }
+  }
