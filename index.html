@@ -185,7 +185,7 @@
     <div id="gameContainer">
         <div class="ui-overlay">
           <div class="top-bar ui-element">
-            <div class="top-bar-item">
+            <div id="player-avatar-button" class="top-bar-item">
               <div class="player-avatar">👤</div>
               <div class="player-name text-outline">player</div>
             </div>
@@ -289,6 +289,13 @@
         <div id="add-choice-close" class="panel-close-button text-outline">Anuluj</div>
     </div>
 
+    <!-- NOWOŚĆ: Panel podglądu postaci -->
+    <div id="player-preview-panel" class="panel">
+      <h2 class="text-outline">Podgląd Postaci</h2>
+      <div id="player-preview-renderer-container" style="width: 250px; height: 350px; border: 2px solid white; border-radius: 10px; cursor: ew-resize;"></div>
+      <div id="player-preview-close" class="panel-close-button text-outline">Zamknij</div>
+    </div>
+
     <div id="more-options-panel" class="panel">
         <h2 class="text-outline">Opcje</h2>
         <div class="panel-list">
@@ -301,4 +308,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-                    </html>
+  </html>
