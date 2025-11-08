@@ -143,6 +143,21 @@
       .shop-item-action .buy-btn:hover { background: #ffeb3b; }
       .shop-item-action .owned-label { color: #2ed573; font-weight: bold; }
 
+      /* POPRAWKA: Powiększenie panelu podglądu postaci */
+      #player-preview-panel {
+        width: 50vw;
+        height: 80vh;
+        max-width: 500px;
+      }
+      #player-preview-renderer-container {
+        width: 100%;
+        flex-grow: 1; /* Automatycznie wypełni dostępną przestrzeń */
+        border: 2px solid white; 
+        border-radius: 10px; 
+        cursor: ew-resize;
+      }
+
+
       @media (max-width: 768px) {
         .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
         .player-avatar { width: 40px; height: 40px; }
@@ -289,10 +304,9 @@
         <div id="add-choice-close" class="panel-close-button text-outline">Anuluj</div>
     </div>
 
-    <!-- NOWOŚĆ: Panel podglądu postaci -->
     <div id="player-preview-panel" class="panel">
       <h2 class="text-outline">Podgląd Postaci</h2>
-      <div id="player-preview-renderer-container" style="width: 250px; height: 350px; border: 2px solid white; border-radius: 10px; cursor: ew-resize;"></div>
+      <div id="player-preview-renderer-container"></div>
       <div id="player-preview-close" class="panel-close-button text-outline">Zamknij</div>
     </div>
 
@@ -308,4 +322,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-  </html>
+                                                                                      </html>
