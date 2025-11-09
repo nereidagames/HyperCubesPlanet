@@ -146,7 +146,7 @@
       #player-preview-panel { width: 50vw; height: 80vh; max-width: 500px; }
       #player-preview-renderer-container { width: 100%; flex-grow: 1; border: 2px solid white; border-radius: 10px; cursor: ew-resize; }
 
-      #build-choice-panel { width: auto; max-width: 90vw; }
+      #build-choice-panel, #world-size-panel { width: auto; max-width: 90vw; }
       .build-choice-grid { display: flex; justify-content: center; align-items: flex-start; gap: 15px; flex-wrap: wrap; }
       .build-choice-item { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: transform 0.2s ease; }
       .build-choice-item:hover { transform: scale(1.05); }
@@ -290,10 +290,19 @@
 
     <div id="world-size-panel" class="panel">
         <h2 class="text-outline">Wybierz wielkość świata</h2>
-        <div class="panel-list">
-            <div id="size-choice-small" class="panel-item text-outline">Mały (64x64)</div>
-            <div id="size-choice-medium" class="panel-item text-outline">Średni (128x128)</div>
-            <div id="size-choice-large" class="panel-item text-outline">Duży (256x256)</div>
+        <div class="build-choice-grid">
+            <div id="size-choice-new-small" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div>
+                <span class="build-choice-label text-outline">Mały Świat</span>
+            </div>
+            <div id="size-choice-new-medium" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div>
+                <span class="build-choice-label text-outline">Średni Świat</span>
+            </div>
+            <div id="size-choice-new-large" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div>
+                <span class="build-choice-label text-outline">Duży Świat</span>
+            </div>
         </div>
         <div id="world-size-close" class="panel-close-button text-outline">Anuluj</div>
     </div>
@@ -332,4 +341,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-</html>
+  </html>
