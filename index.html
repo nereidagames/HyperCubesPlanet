@@ -143,20 +143,16 @@
       .shop-item-action .buy-btn:hover { background: #ffeb3b; }
       .shop-item-action .owned-label { color: #2ed573; font-weight: bold; }
 
-      /* POPRAWKA: Powiększenie panelu podglądu postaci */
-      #player-preview-panel {
-        width: 50vw;
-        height: 80vh;
-        max-width: 500px;
-      }
-      #player-preview-renderer-container {
-        width: 100%;
-        flex-grow: 1; /* Automatycznie wypełni dostępną przestrzeń */
-        border: 2px solid white; 
-        border-radius: 10px; 
-        cursor: ew-resize;
-      }
+      #player-preview-panel { width: 50vw; height: 80vh; max-width: 500px; }
+      #player-preview-renderer-container { width: 100%; flex-grow: 1; border: 2px solid white; border-radius: 10px; cursor: ew-resize; }
 
+      /* NOWE STYLE DLA PANELU WYBORU BUDOWY */
+      #build-choice-panel { width: auto; max-width: 90vw; }
+      .build-choice-grid { display: flex; justify-content: center; align-items: flex-start; gap: 15px; flex-wrap: wrap; }
+      .build-choice-item { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: transform 0.2s ease; }
+      .build-choice-item:hover { transform: scale(1.05); }
+      .build-choice-icon { width: 120px; height: 120px; background-color: #2ed573; border-radius: 15px; background-size: 90%; background-position: center; background-repeat: no-repeat; border: 3px solid white; box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
+      .build-choice-label { font-size: 16px; color: white; }
 
       @media (max-width: 768px) {
         .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
@@ -180,6 +176,9 @@
         
         .panel, #block-selection-panel, #prefab-selection-panel, #part-selection-panel { width: 90%; }
         #block-selection-panel, #prefab-selection-panel, #part-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: row; justify-content: center; }
+
+        .build-choice-icon { width: 80px; height: 80px; }
+        .build-choice-label { font-size: 12px; }
       }
     </style>
   </head>
@@ -267,13 +266,26 @@
         <div id="discover-close-button" class="panel-close-button text-outline">Zamknij</div>
     </div>
 
+    <!-- ZMIANA: Przebudowany panel wyboru budowy -->
     <div id="build-choice-panel" class="panel">
         <h2 class="text-outline">Co chcesz zbudować?</h2>
-        <div class="panel-list">
-            <div id="build-choice-world" class="panel-item text-outline">Świat</div>
-            <div id="build-choice-skin" class="panel-item text-outline">Skina</div>
-            <div id="build-choice-prefab" class="panel-item text-outline">Prefabrykat</div>
-            <div id="build-choice-part" class="panel-item text-outline">Część HyperCube</div>
+        <div class="build-choice-grid">
+            <div id="build-choice-new-skin" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div>
+                <span class="build-choice-label text-outline">Nowy HyperCube</span>
+            </div>
+            <div id="build-choice-new-part" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div>
+                <span class="build-choice-label text-outline">Nowa Część</span>
+            </div>
+            <div id="build-choice-new-world" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div>
+                <span class="build-choice-label text-outline">Nowy Świat</span>
+            </div>
+            <div id="build-choice-new-prefab" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div>
+                <span class="build-choice-label text-outline">Nowy Prefabrykat</span>
+            </div>
         </div>
         <div id="build-choice-close" class="panel-close-button text-outline">Anuluj</div>
     </div>
@@ -322,4 +334,4 @@
 
     <script type="module" src="main.js"></script>
   </body>
-                                                                                      </html>
+</html>
