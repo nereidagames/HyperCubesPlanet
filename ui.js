@@ -57,17 +57,19 @@ export class UIManager {
     const buildChoiceCloseBtn = document.getElementById('build-choice-close');
     if (buildChoiceCloseBtn) buildChoiceCloseBtn.onclick = () => { buildChoicePanel.style.display = 'none'; };
 
-    // ZMIANA: Nowe ID przycisków
     const newWorldBtn = document.getElementById('build-choice-new-world');
     const newSkinBtn = document.getElementById('build-choice-new-skin');
     const newPrefabBtn = document.getElementById('build-choice-new-prefab');
     const newPartBtn = document.getElementById('build-choice-new-part');
     
     const worldSizePanel = document.getElementById('world-size-panel');
-    const sizeSmallBtn = document.getElementById('size-choice-small');
-    const sizeMediumBtn = document.getElementById('size-choice-medium');
-    const sizeLargeBtn = document.getElementById('size-choice-large');
     const worldSizeCloseBtn = document.getElementById('world-size-close');
+    if (worldSizeCloseBtn) worldSizeCloseBtn.onclick = () => { worldSizePanel.style.display = 'none'; };
+    
+    // ZMIANA: Nowe ID przycisków wyboru rozmiaru
+    const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
+    const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
+    const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
 
     const shopPanel = document.getElementById('shop-panel');
     const shopCloseBtn = document.getElementById('shop-close-button');
@@ -81,7 +83,6 @@ export class UIManager {
     const previewCloseBtn = document.getElementById('player-preview-close');
     if (previewCloseBtn) previewCloseBtn.onclick = () => { previewPanel.style.display = 'none'; };
 
-    // ZMIANA: Nowe handlery dla przycisków w siatce
     if (newWorldBtn) newWorldBtn.onclick = () => { 
         buildChoicePanel.style.display = 'none'; 
         worldSizePanel.style.display = 'flex';
@@ -99,10 +100,10 @@ export class UIManager {
         if (this.onPartBuilderClick) this.onPartBuilderClick();
     };
     
-    if (sizeSmallBtn) sizeSmallBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
-    if (sizeMediumBtn) sizeMediumBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
-    if (sizeLargeBtn) sizeLargeBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
-    if (worldSizeCloseBtn) worldSizeCloseBtn.onclick = () => { worldSizePanel.style.display = 'none'; };
+    // ZMIANA: Nowe handlery dla przycisków w siatce wyboru rozmiaru
+    if (sizeNewSmallBtn) sizeNewSmallBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
+    if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
+    if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
 
     if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
     if (moreOptionsCloseBtn) moreOptionsCloseBtn.onclick = () => { moreOptionsPanel.style.display = 'none'; };
@@ -226,4 +227,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-}
+      }
