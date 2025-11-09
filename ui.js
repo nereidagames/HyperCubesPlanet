@@ -12,13 +12,45 @@ export class UIManager {
     this.onToggleFPS = null;
     this.onShopOpen = null;
     this.onBuyBlock = null;
+    this.onNameSubmit = null; // NOWOŚĆ
+
+    this.modalBackground = null;
+    this.activePanel = null;
   }
   
   initialize(isMobile) {
     this.isMobile = isMobile;
+    this.modalBackground = document.getElementById('modal-background');
     this.setupButtonHandlers();
     this.setupChatSystem();
     console.log('UI Manager initialized');
+  }
+
+  openPanel(panelId) {
+    if (this.activePanel) {
+        this.activePanel.style.display = 'none';
+    }
+    this.activePanel = document.getElementById(panelId);
+    if (this.activePanel) {
+        this.activePanel.style.display = 'flex';
+        this.modalBackground.style.display = 'flex';
+    }
+  }
+
+  closeAllPanels() {
+    if (this.activePanel) {
+        this.activePanel.style.display = 'none';
+        this.activePanel = null;
+    }
+    this.modalBackground.style.display = 'none';
+  }
+
+  // NOWOŚĆ: Funkcja do aktualizacji wyświetlanego nicku
+  updatePlayerName(name) {
+    const nameDisplay = document.getElementById('player-name-display');
+    if (nameDisplay) {
+        nameDisplay.textContent = name;
+    }
   }
   
   updateFPSToggleText(isEnabled) {
@@ -48,53 +80,62 @@ export class UIManager {
     });
 
     const playerBtn = document.getElementById('player-avatar-button');
-    if (playerBtn) playerBtn.onclick = () => { if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
+    if (playerBtn) playerBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
 
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
-    // POPRAWKA: Uproszczona obsługa zamykania paneli
     document.querySelectorAll('.panel-close-button').forEach(btn => {
-        btn.onclick = () => {
-            btn.closest('.panel').style.display = 'none';
-        };
+        btn.onclick = () => this.closeAllPanels();
     });
 
-    const buildChoicePanel = document.getElementById('build-choice-panel');
     const newWorldBtn = document.getElementById('build-choice-new-world');
     const newSkinBtn = document.getElementById('build-choice-new-skin');
     const newPrefabBtn = document.getElementById('build-choice-new-prefab');
     const newPartBtn = document.getElementById('build-choice-new-part');
     
-    const worldSizePanel = document.getElementById('world-size-panel');
     const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
     const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
     const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
 
-    // Logika przycisków
-    if (newWorldBtn) newWorldBtn.onclick = () => { 
-        buildChoicePanel.style.display = 'none'; 
-        document.getElementById('world-size-panel').style.display = 'flex';
-    };
+    const toggleFPSBtn = document.getElementById('toggle-fps-btn');
+
+    if (newWorldBtn) newWorldBtn.onclick = () => this.openPanel('world-size-panel');
     if (newSkinBtn) newSkinBtn.onclick = () => { 
-        buildChoicePanel.style.display = 'none'; 
+        this.closeAllPanels(); 
         if (this.onSkinBuilderClick) this.onSkinBuilderClick(); 
     };
     if (newPrefabBtn) newPrefabBtn.onclick = () => {
-        buildChoicePanel.style.display = 'none';
+        this.closeAllPanels();
         if (this.onPrefabBuilderClick) this.onPrefabBuilderClick();
     };
     if (newPartBtn) newPartBtn.onclick = () => {
-        buildChoicePanel.style.display = 'none';
+        this.closeAllPanels();
         if (this.onPartBuilderClick) this.onPartBuilderClick();
     };
     
-    if (sizeNewSmallBtn) sizeNewSmallBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
-    if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
-    if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
+    if (sizeNewSmallBtn) sizeNewSmallBtn.onclick = () => { this.closeAllPanels(); if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
+    if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { this.closeAllPanels(); if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
+    if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { this.closeAllPanels(); if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
 
-    const toggleFPSBtn = document.getElementById('toggle-fps-btn');
     if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
+
+    // NOWOŚĆ: Logika dla panelu wprowadzania nazwy
+    const nameInputPanel = document.getElementById('name-input-panel');
+    const nameInputField = document.getElementById('name-input-field');
+    const nameSubmitBtn = document.getElementById('name-submit-btn');
+
+    if (nameSubmitBtn) {
+        nameSubmitBtn.onclick = () => {
+            const name = nameInputField.value.trim();
+            if (name && this.onNameSubmit) {
+                this.onNameSubmit(name);
+                nameInputPanel.style.display = 'none';
+            } else {
+                alert('Nazwa nie może być pusta!');
+            }
+        };
+    }
   }
 
   getButtonType(button) {
@@ -110,12 +151,11 @@ export class UIManager {
     buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
     setTimeout(() => { buttonElement.style.transform = ''; }, 150);
 
-    // POPRAWKA: Uproszczona logika otwierania paneli
-    if (buttonType === 'zagraj') { document.getElementById('discover-panel').style.display = 'flex'; if (this.onPlayClick) this.onPlayClick(); return; }
-    if (buttonType === 'buduj') { document.getElementById('build-choice-panel').style.display = 'flex'; return; }
-    if (buttonType === 'odkryj') { document.getElementById('discover-panel').style.display = 'flex'; if (this.onDiscoverClick) this.onDiscoverClick(); return; }
-    if (buttonType === 'wiecej') { document.getElementById('more-options-panel').style.display = 'flex'; return; }
-    if (buttonType === 'kup') { document.getElementById('shop-panel').style.display = 'flex'; if (this.onShopOpen) this.onShopOpen(); return; }
+    if (buttonType === 'zagraj') { this.openPanel('discover-panel'); if (this.onPlayClick) this.onPlayClick(); return; }
+    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
+    if (buttonType === 'odkryj') { this.openPanel('discover-panel'); if (this.onDiscoverClick) this.onDiscoverClick(); return; }
+    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
+    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
   populateShop(allBlocks, isOwnedCallback) {
@@ -206,4 +246,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-                                                   }
+        }
