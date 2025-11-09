@@ -25,6 +25,8 @@ const LOADING_TEXTS = [
     "Wczytywanie - Proszę czekać..."
 ];
 
+const PLAYER_NAME_KEY = 'bsp_clone_player_name'; // Klucz do zapisu nazwy
+
 class BlockStarPlanetGame {
   constructor() {
     this.scene = new THREE.Scene();
@@ -98,15 +100,20 @@ class BlockStarPlanetGame {
         loadingText.textContent = "Gotowe!";
         
         await this.setupManagers();
-        this.animate();
-        console.log('Game initialized successfully!');
         
         setTimeout(() => {
             if (loadingScreen) {
                 loadingScreen.style.opacity = '0';
                 setTimeout(() => { 
                     loadingScreen.style.display = 'none'; 
-                    this.gameState = 'MainMenu';
+                    // Sprawdź, czy gracz ma już nick
+                    const playerName = localStorage.getItem(PLAYER_NAME_KEY);
+                    if (playerName) {
+                        this.uiManager.updatePlayerName(playerName);
+                        this.startGame();
+                    } else {
+                        document.getElementById('name-input-panel').style.display = 'flex';
+                    }
                 }, 500);
             }
         }, 500);
@@ -116,6 +123,13 @@ class BlockStarPlanetGame {
         const randomIndex = Math.floor(Math.random() * LOADING_TEXTS.length);
         loadingText.textContent = LOADING_TEXTS[randomIndex];
     }, 2000);
+  }
+  
+  // NOWOŚĆ: Funkcja uruchamiająca grę po podaniu nazwy
+  startGame() {
+      this.animate();
+      this.gameState = 'MainMenu';
+      console.log('Game initialized successfully!');
   }
 
   preloadInitialAssets() {
@@ -156,6 +170,11 @@ class BlockStarPlanetGame {
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); 
+    this.uiManager.onNameSubmit = (name) => {
+        localStorage.setItem(PLAYER_NAME_KEY, name);
+        this.uiManager.updatePlayerName(name);
+        this.startGame();
+    };
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
 
@@ -302,7 +321,7 @@ class BlockStarPlanetGame {
                 const item = document.createElement('div');
                 item.className = 'panel-item';
                 item.textContent = worldName;
-                item.onclick = () => { panel.style.display = 'none'; this.loadAndExploreWorld(worldName); };
+                item.onclick = () => { this.uiManager.closeAllPanels(); this.loadAndExploreWorld(worldName); };
                 list.appendChild(item);
             });
         }
@@ -317,7 +336,7 @@ class BlockStarPlanetGame {
                 item.className = 'panel-item';
                 item.textContent = skinName;
                 item.onclick = () => {
-                    panel.style.display = 'none';
+                    this.uiManager.closeAllPanels();
                     const skinData = SkinStorage.loadSkin(skinName);
                     this.characterManager.applySkin(skinData);
                     SkinStorage.setLastUsedSkin(skinName);
@@ -328,8 +347,8 @@ class BlockStarPlanetGame {
         }
     }
 
-    closeButton.onclick = () => { panel.style.display = 'none'; };
-    panel.style.display = 'flex';
+    closeButton.onclick = () => this.uiManager.closeAllPanels();
+    this.uiManager.openPanel('discover-panel');
   }
 
   loadAndExploreWorld(worldName) {
@@ -504,12 +523,11 @@ class BlockStarPlanetGame {
     }
     
     this.previewCharacter = this.characterManager.character.clone(true);
-    // POPRAWKA: Ustawienie pozycji na 0, aby model był wycentrowany
     this.previewCharacter.position.set(0, 0, 0); 
     this.previewCharacter.rotation.set(0, 0, 0);
     this.previewScene.add(this.previewCharacter);
     
-    document.getElementById('player-preview-panel').style.display = 'flex';
+    this.uiManager.openPanel('player-preview-panel');
   }
 
   animate() {
