@@ -127,31 +127,13 @@
       .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; } .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
       .prefab-item, .part-item { width: 100%; height: auto; padding: 10px; text-align: center; }
 
-      /* POPRAWKA: Nowy styl dla tła paneli i ich pozycjonowania */
-      .modal-background {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 10000;
-        display: none; /* Domyślnie ukryte */
-        justify-content: center;
-        align-items: center;
-      }
-      .panel { 
-        position: static; /* Już nie fixed */
-        transform: none; /* Już nie centrujemy */
-        width: auto;
-        max-width: 90vw;
-        background: none; /* Tło jest teraz na .modal-background */
-        border: none;
-        box-shadow: none;
-      }
+      /* POPRAWKA: Przywrócenie pierwotnego, niezawodnego stylu dla paneli */
+      .panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: auto; max-width: 90vw; background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; z-index: 10001; display: none; flex-direction: column; align-items: center; box-shadow: 0 10px 30px #0008; color: white; }
+      .panel h2 { margin-bottom: 20px; } 
       .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
       .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; }
-      .panel-item:hover { background: #4c8cff; } .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+      .panel-item:hover { background: #4c8cff; } 
+      .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
       
       #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
       #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
@@ -279,90 +261,87 @@
     
     <div id="explore-exit-button" style="display: none;"></div>
 
-    <!-- NOWOŚĆ: Kontener tła dla paneli modalnych -->
-    <div id="modal-background" class="modal-background">
-      <div id="build-choice-panel" class="panel">
-          <h2 class="text-outline">Co chcesz zbudować?</h2>
-          <div class="build-choice-grid">
-              <div id="build-choice-new-skin" class="build-choice-item">
-                  <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div>
-                  <span class="build-choice-label text-outline">Nowy HyperCube</span>
-              </div>
-              <div id="build-choice-new-part" class="build-choice-item">
-                  <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div>
-                  <span class="build-choice-label text-outline">Nowa Część</span>
-              </div>
-              <div id="build-choice-new-world" class="build-choice-item">
-                  <div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div>
-                  <span class="build-choice-label text-outline">Nowy Świat</span>
-              </div>
-              <div id="build-choice-new-prefab" class="build-choice-item">
-                  <div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div>
-                  <span class="build-choice-label text-outline">Nowy Prefabrykat</span>
-              </div>
-          </div>
-          <div id="build-choice-close" class="panel-close-button text-outline">Anuluj</div>
-      </div>
+    <!-- POPRAWKA: Usunięto globalny kontener, panele są teraz oddzielne -->
+    <div id="discover-panel" class="panel">
+      <h2 id="discover-panel-title" class="text-outline">Wybierz Świat</h2>
+      <div id="discover-list" class="panel-list"></div>
+      <div id="discover-close-button" class="panel-close-button text-outline">Zamknij</div>
+    </div>
 
-      <div id="world-size-panel" class="panel">
-          <h2 class="text-outline">Wybierz wielkość świata</h2>
-          <div class="build-choice-grid">
-              <div id="size-choice-new-small" class="build-choice-item">
-                  <div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div>
-                  <span class="build-choice-label text-outline">Mały Świat</span>
-              </div>
-              <div id="size-choice-new-medium" class="build-choice-item">
-                  <div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div>
-                  <span class="build-choice-label text-outline">Średni Świat</span>
-              </div>
-              <div id="size-choice-new-large" class="build-choice-item">
-                  <div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div>
-                  <span class="build-choice-label text-outline">Duży Świat</span>
-              </div>
-          </div>
-          <div id="world-size-close" class="panel-close-button text-outline">Anuluj</div>
-      </div>
-      
-      <!-- Pozostałe panele, które mają być pełnoekranowe -->
-      <div id="discover-panel" class="panel">
-        <h2 id="discover-panel-title" class="text-outline">Wybierz Świat</h2>
-        <div id="discover-list" class="panel-list"></div>
-        <div id="discover-close-button" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-
-      <div id="shop-panel" class="panel">
-        <h2 class="text-outline">Sklep z Blokami</h2>
-        <div id="shop-list" class="panel-list"></div>
-        <div id="shop-close-button" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-
-      <div id="add-choice-panel" class="panel">
-        <h2 class="text-outline">Co chcesz dodać?</h2>
-        <div class="panel-list">
-            <div id="add-choice-blocks" class="panel-item text-outline">Bloki</div>
-            <div id="add-choice-prefabs" class="panel-item text-outline">Prefabrykaty</div>
-            <div id="add-choice-parts" class="panel-item text-outline">Części HyperCube</div>
-        </div>
-        <div id="add-choice-close" class="panel-close-button text-outline">Anuluj</div>
-      </div>
-      
-      <div id="player-preview-panel" class="panel">
-        <h2 class="text-outline">Podgląd Postaci</h2>
-        <div id="player-preview-renderer-container"></div>
-        <div id="player-preview-close" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-
-      <div id="more-options-panel" class="panel">
-        <h2 class="text-outline">Opcje</h2>
-        <div class="panel-list">
-            <div id="toggle-fps-btn" class="panel-item text-outline">
-                Licznik FPS: <span id="fps-status">Wyłączony</span>
+    <div id="build-choice-panel" class="panel">
+        <h2 class="text-outline">Co chcesz zbudować?</h2>
+        <div class="build-choice-grid">
+            <div id="build-choice-new-skin" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div>
+                <span class="build-choice-label text-outline">Nowy HyperCube</span>
+            </div>
+            <div id="build-choice-new-part" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div>
+                <span class="build-choice-label text-outline">Nowa Część</span>
+            </div>
+            <div id="build-choice-new-world" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div>
+                <span class="build-choice-label text-outline">Nowy Świat</span>
+            </div>
+            <div id="build-choice-new-prefab" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div>
+                <span class="build-choice-label text-outline">Nowy Prefabrykat</span>
             </div>
         </div>
-        <div id="more-options-close" class="panel-close-button text-outline">Zamknij</div>
+        <div id="build-choice-close" class="panel-close-button text-outline">Anuluj</div>
+    </div>
+
+    <div id="world-size-panel" class="panel">
+        <h2 class="text-outline">Wybierz wielkość świata</h2>
+        <div class="build-choice-grid">
+            <div id="size-choice-new-small" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div>
+                <span class="build-choice-label text-outline">Mały Świat</span>
+            </div>
+            <div id="size-choice-new-medium" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div>
+                <span class="build-choice-label text-outline">Średni Świat</span>
+            </div>
+            <div id="size-choice-new-large" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div>
+                <span class="build-choice-label text-outline">Duży Świat</span>
+            </div>
+        </div>
+        <div id="world-size-close" class="panel-close-button text-outline">Anuluj</div>
+    </div>
+
+    <div id="shop-panel" class="panel">
+      <h2 class="text-outline">Sklep z Blokami</h2>
+      <div id="shop-list" class="panel-list"></div>
+      <div id="shop-close-button" class="panel-close-button text-outline">Zamknij</div>
+    </div>
+
+    <div id="add-choice-panel" class="panel">
+      <h2 class="text-outline">Co chcesz dodać?</h2>
+      <div class="panel-list">
+          <div id="add-choice-blocks" class="panel-item text-outline">Bloki</div>
+          <div id="add-choice-prefabs" class="panel-item text-outline">Prefabrykaty</div>
+          <div id="add-choice-parts" class="panel-item text-outline">Części HyperCube</div>
       </div>
+      <div id="add-choice-close" class="panel-close-button text-outline">Anuluj</div>
+    </div>
+    
+    <div id="player-preview-panel" class="panel">
+      <h2 class="text-outline">Podgląd Postaci</h2>
+      <div id="player-preview-renderer-container"></div>
+      <div id="player-preview-close" class="panel-close-button text-outline">Zamknij</div>
+    </div>
+
+    <div id="more-options-panel" class="panel">
+      <h2 class="text-outline">Opcje</h2>
+      <div class="panel-list">
+          <div id="toggle-fps-btn" class="panel-item text-outline">
+              Licznik FPS: <span id="fps-status">Wyłączony</span>
+          </div>
+      </div>
+      <div id="more-options-close" class="panel-close-button text-outline">Zamknij</div>
     </div>
 
     <script type="module" src="main.js"></script>
   </body>
-                    </html>
+          </html>
