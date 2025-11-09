@@ -8,7 +8,7 @@ export class UIManager {
     this.onPartBuilderClick = null;
     this.onDiscoverClick = null;
     this.onPlayClick = null;
-    this.onPlayerAvatarClick = null; // NOWOŚĆ
+    this.onPlayerAvatarClick = null;
     this.onToggleFPS = null;
     this.onShopOpen = null;
     this.onBuyBlock = null;
@@ -54,11 +54,14 @@ export class UIManager {
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
     const buildChoicePanel = document.getElementById('build-choice-panel');
-    const buildChoiceWorldBtn = document.getElementById('build-choice-world');
-    const buildChoiceSkinBtn = document.getElementById('build-choice-skin');
-    const buildChoicePrefabBtn = document.getElementById('build-choice-prefab');
-    const buildChoicePartBtn = document.getElementById('build-choice-part');
     const buildChoiceCloseBtn = document.getElementById('build-choice-close');
+    if (buildChoiceCloseBtn) buildChoiceCloseBtn.onclick = () => { buildChoicePanel.style.display = 'none'; };
+
+    // ZMIANA: Nowe ID przycisków
+    const newWorldBtn = document.getElementById('build-choice-new-world');
+    const newSkinBtn = document.getElementById('build-choice-new-skin');
+    const newPrefabBtn = document.getElementById('build-choice-new-prefab');
+    const newPartBtn = document.getElementById('build-choice-new-part');
     
     const worldSizePanel = document.getElementById('world-size-panel');
     const sizeSmallBtn = document.getElementById('size-choice-small');
@@ -78,23 +81,23 @@ export class UIManager {
     const previewCloseBtn = document.getElementById('player-preview-close');
     if (previewCloseBtn) previewCloseBtn.onclick = () => { previewPanel.style.display = 'none'; };
 
-    if (buildChoiceWorldBtn) buildChoiceWorldBtn.onclick = () => { 
+    // ZMIANA: Nowe handlery dla przycisków w siatce
+    if (newWorldBtn) newWorldBtn.onclick = () => { 
         buildChoicePanel.style.display = 'none'; 
         worldSizePanel.style.display = 'flex';
     };
-    if (buildChoiceSkinBtn) buildChoiceSkinBtn.onclick = () => { 
+    if (newSkinBtn) newSkinBtn.onclick = () => { 
         buildChoicePanel.style.display = 'none'; 
         if (this.onSkinBuilderClick) this.onSkinBuilderClick(); 
     };
-    if (buildChoicePrefabBtn) buildChoicePrefabBtn.onclick = () => {
+    if (newPrefabBtn) newPrefabBtn.onclick = () => {
         buildChoicePanel.style.display = 'none';
         if (this.onPrefabBuilderClick) this.onPrefabBuilderClick();
     };
-    if (buildChoicePartBtn) buildChoicePartBtn.onclick = () => {
+    if (newPartBtn) newPartBtn.onclick = () => {
         buildChoicePanel.style.display = 'none';
         if (this.onPartBuilderClick) this.onPartBuilderClick();
     };
-    if (buildChoiceCloseBtn) buildChoiceCloseBtn.onclick = () => { buildChoicePanel.style.display = 'none'; };
     
     if (sizeSmallBtn) sizeSmallBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
     if (sizeMediumBtn) sizeMediumBtn.onclick = () => { worldSizePanel.style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
@@ -223,4 +226,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-      }
+}
