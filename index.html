@@ -147,32 +147,31 @@
       #player-preview-renderer-container { width: 100%; flex-grow: 1; border: 2px solid white; border-radius: 10px; cursor: ew-resize; }
 
       #build-choice-panel, #world-size-panel { width: auto; max-width: 90vw; }
-      .build-choice-grid { display: flex; justify-content: center; align-items: flex-start; gap: 15px; flex-wrap: wrap; }
+      .build-choice-grid { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; }
       .build-choice-item { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: transform 0.2s ease; }
       .build-choice-item:hover { transform: scale(1.05); }
       .build-choice-icon { width: 120px; height: 120px; background-color: #75d040; border-radius: 15px; background-size: 90%; background-position: center; background-repeat: no-repeat; border: 3px solid white; box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
       .build-choice-label { font-size: 16px; color: white; }
 
-      /* POPRAWKA: Zmiany dla trybu mobilnego */
       @media (max-width: 768px) {
-        .top-bar { height: 55px; padding: 5px 10px; gap: 10px; }
+        .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
         .player-avatar { width: 40px; height: 40px; }
         .player-name { font-size: 9px; }
         
-        .chat-container { top: 65px; }
-        .chat-area { width: 220px; height: 80px; }
+        .chat-container { top: 60px; }
+        .chat-area { width: 200px; height: 80px; }
         #chat-toggle-button { width: 30px; height: 30px; font-size: 16px; }
 
-        .right-ui { top: 65px; right: 10px; }
-        .game-buttons { gap: 8px; }
-        .game-btn { width: 60px; height: 60px; }
+        .right-ui { top: 60px; right: 10px; }
+        .game-buttons { gap: 5px; }
+        .game-btn { width: 48px; height: 48px; }
         
-        #coin-counter { padding: 8px 12px; gap: 8px; }
-        #coin-value { font-size: 18px; }
-        .coin-icon { width: 24px; height: 24px; }
+        #coin-counter { padding: 5px 10px; gap: 5px; }
+        #coin-value { font-size: 14px; }
+        .coin-icon { width: 20px; height: 20px; }
         
-        #jump-button { width: 75px; height: 75px; right: 15px; bottom: 15px; }
-        #joystick-zone { width: 110px; height: 110px; left: 15px; bottom: 15px; }
+        #jump-button { width: 70px; height: 70px; right: 15px; bottom: 15px; }
+        #joystick-zone { left: 15px; bottom: 15px; }
         
         .panel, #block-selection-panel, #prefab-selection-panel, #part-selection-panel { width: 90%; }
         #block-selection-panel, #prefab-selection-panel, #part-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: row; justify-content: center; }
