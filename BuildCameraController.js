@@ -30,6 +30,10 @@ export class BuildCameraController {
     this.joystick = null;
     this.joystickDirection = new THREE.Vector2();
 
+    // POPRAWKA: Bindowanie funkcji do właściwości klasy, aby zapewnić tę samą referencję
+    this.boundOnKeyDown = this.onKeyDown.bind(this);
+    this.boundOnKeyUp = this.onKeyUp.bind(this);
+
     this.bindEvents();
     this.updateCameraPosition();
   }
@@ -97,8 +101,9 @@ export class BuildCameraController {
     window.addEventListener('touchmove', this.handleTouchMove, { passive: true });
     window.addEventListener('touchend', this.handleTouchEnd, { passive: true });
 
-    window.addEventListener('keydown', this.onKeyDown.bind(this));
-    window.addEventListener('keyup', this.onKeyUp.bind(this));
+    // POPRAWKA: Użycie wcześniej zbindowanych funkcji
+    window.addEventListener('keydown', this.boundOnKeyDown);
+    window.addEventListener('keyup', this.boundOnKeyUp);
   }
 
   applyRotation(deltaX, deltaY, sensitivityMultiplier) {
@@ -118,8 +123,9 @@ export class BuildCameraController {
     window.removeEventListener('touchmove', this.handleTouchMove);
     window.removeEventListener('touchend', this.handleTouchEnd);
 
-    window.removeEventListener('keydown', this.onKeyDown.bind(this));
-    window.removeEventListener('keyup', this.onKeyUp.bind(this));
+    // POPRAWKA: Usunięcie listenerów przy użyciu tych samych referencji
+    window.removeEventListener('keydown', this.boundOnKeyDown);
+    window.removeEventListener('keyup', this.boundOnKeyUp);
     
     if (this.joystick) {
         this.joystick.destroy();
@@ -210,4 +216,4 @@ export class BuildCameraController {
     
     this.updateCameraPosition();
   }
-              }
+}
