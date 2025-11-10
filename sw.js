@@ -40,7 +40,8 @@ const urlsToCache = [
   'icons/icon-friends.png',
   'icons/icon-jump.png',
   'icons/icon-back.png',
-  'icons/logo-poczta.png',
+  // --- POPRAWKA: Zakomentowano potencjalnie brakujący plik. Upewnij się, że ten plik istnieje w folderze icons/ ---
+  // 'icons/logo-poczta.png',
   'icons/icon-newhypercube.png',
   'icons/icon-newhypercubepart.png',
   'icons/icon-newworld.png',
