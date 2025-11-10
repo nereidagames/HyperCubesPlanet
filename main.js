@@ -297,9 +297,9 @@ class BlockStarPlanetGame {
   
   recreatePlayerController(collidables) {
       if(this.playerController) this.playerController.destroy();
-      // --- POPRAWKA: Zwiększono wartość grawitacji z 25 na 35, aby postać spadała szybciej ---
+      // --- POPRAWKA: Przekazanie nowych, zbalansowanych wartości skoku i grawitacji ---
       this.playerController = new PlayerController(this.characterManager.character, collidables, {
-          moveSpeed: 8, jumpForce: 12, gravity: 35,
+          moveSpeed: 8, jumpForce: 18, gravity: 50,
           groundRestingY: this.sceneManager.FLOOR_TOP_Y
       });
       this.playerController.setIsMobile(this.isMobile);
@@ -594,4 +594,4 @@ class BlockStarPlanetGame {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); })
+document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
