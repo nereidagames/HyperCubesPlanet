@@ -583,6 +583,13 @@ class BlockStarPlanetGame {
     errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
     errorDiv.textContent = message;
     document.body.appendChild(errorDiv);
+
+    // POPRAWKA: Dodanie timera, który usunie element po 5 sekundach
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
+    }, 5000);
   }
 }
 
