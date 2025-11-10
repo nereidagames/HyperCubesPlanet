@@ -22,7 +22,6 @@ export class UIManager {
     console.log('UI Manager initialized');
   }
 
-  // POPRAWKA: Dodanie brakującej funkcji
   updatePlayerName(name) {
     const nameDisplay = document.getElementById('player-name-display');
     if (nameDisplay) {
@@ -42,6 +41,13 @@ export class UIManager {
     if (panel) {
         panel.style.display = 'none';
     }
+  }
+
+  // --- POPRAWKA: Dodanie brakującej metody do zamykania wszystkich paneli ---
+  closeAllPanels() {
+    document.querySelectorAll('.panel-modal').forEach(panel => {
+      panel.style.display = 'none';
+    });
   }
   
   updateFPSToggleText(isEnabled) {
