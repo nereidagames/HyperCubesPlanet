@@ -7,7 +7,8 @@ class PlayerController {
     this.collidableObjects = collidableObjects;
     this.moveSpeed = options.moveSpeed || 8;
     this.jumpForce = options.jumpForce || 12;
-    this.gravity = options.gravity || 25;
+    // --- POPRAWKA: Zwiększono wartość grawitacji z 25 na 35, aby postać spadała szybciej ---
+    this.gravity = options.gravity || 35;
     this.groundRestingY = options.groundRestingY || 0.6;
 
     // POPRAWKA: Zmniejszono szerokość i głębokość postaci, aby mieściła się w luce 1x1
