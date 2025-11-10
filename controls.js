@@ -6,12 +6,12 @@ class PlayerController {
     this.player = player;
     this.collidableObjects = collidableObjects;
     this.moveSpeed = options.moveSpeed || 8;
-    this.jumpForce = options.jumpForce || 12;
-    // --- POPRAWKA: Zwiększono wartość grawitacji z 25 na 35, aby postać spadała szybciej ---
-    this.gravity = options.gravity || 35;
+    // --- POPRAWKA: Znacznie zwiększono siłę skoku, aby skok był wysoki i dynamiczny ---
+    this.jumpForce = options.jumpForce || 18;
+    // --- POPRAWKA: Znacznie zwiększono grawitację, aby postać spadała o wiele szybciej ---
+    this.gravity = options.gravity || 50;
     this.groundRestingY = options.groundRestingY || 0.6;
 
-    // POPRAWKA: Zmniejszono szerokość i głębokość postaci, aby mieściła się w luce 1x1
     this.playerDimensions = new THREE.Vector3(0.6, 1.6, 0.6);
 
     this.velocity = new THREE.Vector3();
