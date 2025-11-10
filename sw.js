@@ -1,7 +1,8 @@
-const CACHE_NAME = 'hypercubesplanet-cache-v1';
+// --- POPRAWKA: Zmiana nazwy cache na v2, aby wymusić aktualizację ---
+const CACHE_NAME = 'hypercubesplanet-cache-v2';
+
 // Lista wszystkich plików, które muszą być dostępne offline, aby gra działała.
 const urlsToCache = [
-  // Pliki HTML i konfiguracyjne
   './',
   './index.html',
   './manifest.json',
@@ -40,8 +41,7 @@ const urlsToCache = [
   'icons/icon-friends.png',
   'icons/icon-jump.png',
   'icons/icon-back.png',
-  // --- POPRAWKA: Zakomentowano potencjalnie brakujący plik. Upewnij się, że ten plik istnieje w folderze icons/ ---
-  // 'icons/logo-poczta.png',
+  'icons/logo-poczta.png',
   'icons/icon-newhypercube.png',
   'icons/icon-newhypercubepart.png',
   'icons/icon-newworld.png',
@@ -63,11 +63,30 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache');
+        console.log('Opened cache:', CACHE_NAME);
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting(); // Wymuś aktywację nowego Service Workera
 });
+
+// --- POPRAWKA: Dodanie obsługi zdarzenia 'activate' do czyszczenia starych cache ---
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  return self.clients.claim(); // Przejmij kontrolę nad wszystkimi otwartymi kartami
+});
+
 
 // Przechwytywanie żądań sieciowych
 self.addEventListener('fetch', event => {
