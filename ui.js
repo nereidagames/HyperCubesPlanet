@@ -12,45 +12,14 @@ export class UIManager {
     this.onToggleFPS = null;
     this.onShopOpen = null;
     this.onBuyBlock = null;
-    this.onNameSubmit = null; // NOWOŚĆ
-
-    this.modalBackground = null;
-    this.activePanel = null;
+    this.onNameSubmit = null;
   }
   
   initialize(isMobile) {
     this.isMobile = isMobile;
-    this.modalBackground = document.getElementById('modal-background');
     this.setupButtonHandlers();
     this.setupChatSystem();
     console.log('UI Manager initialized');
-  }
-
-  openPanel(panelId) {
-    if (this.activePanel) {
-        this.activePanel.style.display = 'none';
-    }
-    this.activePanel = document.getElementById(panelId);
-    if (this.activePanel) {
-        this.activePanel.style.display = 'flex';
-        this.modalBackground.style.display = 'flex';
-    }
-  }
-
-  closeAllPanels() {
-    if (this.activePanel) {
-        this.activePanel.style.display = 'none';
-        this.activePanel = null;
-    }
-    this.modalBackground.style.display = 'none';
-  }
-
-  // NOWOŚĆ: Funkcja do aktualizacji wyświetlanego nicku
-  updatePlayerName(name) {
-    const nameDisplay = document.getElementById('player-name-display');
-    if (nameDisplay) {
-        nameDisplay.textContent = name;
-    }
   }
   
   updateFPSToggleText(isEnabled) {
@@ -73,54 +42,72 @@ export class UIManager {
   }
 
   setupButtonHandlers() {
-    const buttons = document.querySelectorAll('.game-btn');
-    buttons.forEach(button => {
+    // Zamykanie wszystkich paneli
+    document.querySelectorAll('.panel-close-button').forEach(btn => {
+        btn.closest('.panel-modal').style.cursor = 'pointer';
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            btn.closest('.panel-modal').style.display = 'none';
+        };
+        // Zamykanie po kliknięciu tła
+        btn.closest('.panel-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                e.currentTarget.style.display = 'none';
+            }
+        });
+        // Zapobieganie zamykaniu po kliknięciu w zawartość
+        btn.closest('.panel-content').addEventListener('click', (e) => e.stopPropagation());
+    });
+
+    // Główne przyciski
+    document.querySelectorAll('.game-btn').forEach(button => {
       const buttonType = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
 
+    // Inne przyciski
     const playerBtn = document.getElementById('player-avatar-button');
-    if (playerBtn) playerBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
+    if (playerBtn) playerBtn.onclick = () => { document.getElementById('player-preview-panel').style.display = 'flex'; if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
 
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
-    document.querySelectorAll('.panel-close-button').forEach(btn => {
-        btn.onclick = () => this.closeAllPanels();
-    });
-
+    // Przyciski wyboru budowy
     const newWorldBtn = document.getElementById('build-choice-new-world');
     const newSkinBtn = document.getElementById('build-choice-new-skin');
     const newPrefabBtn = document.getElementById('build-choice-new-prefab');
     const newPartBtn = document.getElementById('build-choice-new-part');
     
+    if (newWorldBtn) newWorldBtn.onclick = () => { 
+        document.getElementById('build-choice-panel').style.display = 'none'; 
+        document.getElementById('world-size-panel').style.display = 'flex';
+    };
+    if (newSkinBtn) newSkinBtn.onclick = () => { 
+        document.getElementById('build-choice-panel').style.display = 'none'; 
+        if (this.onSkinBuilderClick) this.onSkinBuilderClick(); 
+    };
+    if (newPrefabBtn) newPrefabBtn.onclick = () => {
+        document.getElementById('build-choice-panel').style.display = 'none';
+        if (this.onPrefabBuilderClick) this.onPrefabBuilderClick();
+    };
+    if (newPartBtn) newPartBtn.onclick = () => {
+        document.getElementById('build-choice-panel').style.display = 'none';
+        if (this.onPartBuilderClick) this.onPartBuilderClick();
+    };
+
+    // Przyciski wyboru rozmiaru świata
     const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
     const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
     const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
 
+    if (sizeNewSmallBtn) sizeNewSmallBtn.onclick = () => { document.getElementById('world-size-panel').style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
+    if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { document.getElementById('world-size-panel').style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
+    if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { document.getElementById('world-size-panel').style.display = 'none'; if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
+
+    // Inne
     const toggleFPSBtn = document.getElementById('toggle-fps-btn');
-
-    if (newWorldBtn) newWorldBtn.onclick = () => this.openPanel('world-size-panel');
-    if (newSkinBtn) newSkinBtn.onclick = () => { 
-        this.closeAllPanels(); 
-        if (this.onSkinBuilderClick) this.onSkinBuilderClick(); 
-    };
-    if (newPrefabBtn) newPrefabBtn.onclick = () => {
-        this.closeAllPanels();
-        if (this.onPrefabBuilderClick) this.onPrefabBuilderClick();
-    };
-    if (newPartBtn) newPartBtn.onclick = () => {
-        this.closeAllPanels();
-        if (this.onPartBuilderClick) this.onPartBuilderClick();
-    };
-    
-    if (sizeNewSmallBtn) sizeNewSmallBtn.onclick = () => { this.closeAllPanels(); if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
-    if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { this.closeAllPanels(); if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
-    if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { this.closeAllPanels(); if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
-
     if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
 
-    // NOWOŚĆ: Logika dla panelu wprowadzania nazwy
     const nameInputPanel = document.getElementById('name-input-panel');
     const nameInputField = document.getElementById('name-input-field');
     const nameSubmitBtn = document.getElementById('name-submit-btn');
@@ -151,11 +138,11 @@ export class UIManager {
     buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
     setTimeout(() => { buttonElement.style.transform = ''; }, 150);
 
-    if (buttonType === 'zagraj') { this.openPanel('discover-panel'); if (this.onPlayClick) this.onPlayClick(); return; }
-    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
-    if (buttonType === 'odkryj') { this.openPanel('discover-panel'); if (this.onDiscoverClick) this.onDiscoverClick(); return; }
-    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
-    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
+    if (buttonType === 'zagraj') { document.getElementById('discover-panel').style.display = 'flex'; if (this.onPlayClick) this.onPlayClick(); return; }
+    if (buttonType === 'buduj') { document.getElementById('build-choice-panel').style.display = 'flex'; return; }
+    if (buttonType === 'odkryj') { document.getElementById('discover-panel').style.display = 'flex'; if (this.onDiscoverClick) this.onDiscoverClick(); return; }
+    if (buttonType === 'wiecej') { document.getElementById('more-options-panel').style.display = 'flex'; return; }
+    if (buttonType === 'kup') { document.getElementById('shop-panel').style.display = 'flex'; if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
   populateShop(allBlocks, isOwnedCallback) {
@@ -246,4 +233,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-        }
+}
