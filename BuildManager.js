@@ -29,12 +29,20 @@ export class BuildManager {
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
 
+    // POPRAWKA: Bindowanie nowej metody do obsługi contextmenu
+    this.onContextMenu = this.onContextMenu.bind(this);
+
     this.longPressTimer = null;
     this.isLongPress = false;
     this.touchStartPosition = { x: 0, y: 0 };
     this.onTouchStart = this.onTouchStart.bind(this);
     this.onTouchEnd = this.onTouchEnd.bind(this);
     this.onTouchMove = this.onTouchMove.bind(this);
+  }
+
+  // POPRAWKA: Nowa metoda do obsługi zdarzenia
+  onContextMenu(event) {
+    event.preventDefault();
   }
 
   preloadTextures() {
@@ -114,7 +122,8 @@ export class BuildManager {
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
-    window.addEventListener('contextmenu', e => e.preventDefault());
+    // POPRAWKA: Użycie nazwanej metody jako listenera
+    window.addEventListener('contextmenu', this.onContextMenu);
 
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
     window.addEventListener('touchend', this.onTouchEnd);
@@ -231,7 +240,8 @@ export class BuildManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
-    window.removeEventListener('contextmenu', e => e.preventDefault());
+    // POPRAWKA: Usunięcie listenera przy użyciu tej samej referencji
+    window.removeEventListener('contextmenu', this.onContextMenu);
 
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
@@ -457,4 +467,4 @@ export class BuildManager {
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
-  }
+}
