@@ -4,7 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>HyperCubesPlanet</title>
+    
+    <!-- === POCZĄTEK ZMIAN PWA === -->
     <link rel="icon" type="image/png" href="icons/favicon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <!-- Wsparcie dla iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HCP">
+    <link rel="apple-touch-icon" href="icons/favicon.png">
+    <!-- === KONIEC ZMIAN PWA === -->
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -127,7 +137,6 @@
       .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; } .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
       .prefab-item, .part-item { width: 100%; height: auto; padding: 10px; text-align: center; }
 
-      /* POPRAWKA: Każdy panel jest teraz pełnoekranowym modalem */
       .panel-modal {
         position: fixed;
         top: 0;
@@ -311,7 +320,6 @@
     
     <div id="explore-exit-button" style="display: none;"></div>
 
-    <!-- POPRAWKA: Każdy panel jest teraz oddzielnym, pełnoekranowym modalem -->
     <div id="discover-panel" class="panel-modal">
       <div class="panel-content">
         <h2 id="discover-panel-title" class="text-outline">Wybierz Świat</h2>
@@ -377,44 +385,4 @@
     <div id="add-choice-panel" class="panel-modal">
       <div class="panel-content">
         <h2 class="text-outline">Co chcesz dodać?</h2>
-        <div class="panel-list">
-            <div id="add-choice-blocks" class="panel-item text-outline">Bloki</div>
-            <div id="add-choice-prefabs" class="panel-item text-outline">Prefabrykaty</div>
-            <div id="add-choice-parts" class="panel-item text-outline">Części HyperCube</div>
-        </div>
-        <div id="add-choice-close" class="panel-close-button text-outline">Anuluj</div>
-      </div>
-    </div>
-    
-    <div id="player-preview-panel" class="panel-modal">
-      <div class="panel-content">
-        <h2 class="text-outline">Podgląd Postaci</h2>
-        <div id="player-preview-renderer-container"></div>
-        <div id="player-preview-close" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-    </div>
-
-    <div id="more-options-panel" class="panel-modal">
-      <div class="panel-content">
-        <h2 class="text-outline">Opcje</h2>
-        <div class="panel-list">
-            <div id="toggle-fps-btn" class="panel-item text-outline">
-                Licznik FPS: <span id="fps-status">Wyłączony</span>
-            </div>
-        </div>
-        <div id="more-options-close" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-    </div>
-
-    <div id="name-input-panel" class="panel-modal">
-        <div id="name-input-panel-container">
-            <h2 class="text-outline">Jak się chcesz nazywać?</h2>
-            <input type="text" id="name-input-field" maxlength="15" placeholder="Wpisz swój nick...">
-            <button id="name-submit-btn" class="text-outline">Zatwierdź</button>
-        </div>
-    </div>
-
-    <script type="module" src="main.js"></script>
-  </body>
-</html>
-
+        <div class=
