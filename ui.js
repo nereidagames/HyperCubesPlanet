@@ -12,10 +12,7 @@ export class UIManager {
     this.onToggleFPS = null;
     this.onShopOpen = null;
     this.onBuyBlock = null;
-    this.onNameSubmit = null;
-
-    this.modalBackground = null;
-    this.activePanel = null;
+    this.onNameSubmit = null; // NOWOŚĆ
   }
   
   initialize(isMobile) {
@@ -25,7 +22,7 @@ export class UIManager {
     console.log('UI Manager initialized');
   }
 
-  // NOWOŚĆ: Dodanie brakującej funkcji do aktualizacji nazwy gracza
+  // POPRAWKA: Dodanie brakującej funkcji
   updatePlayerName(name) {
     const nameDisplay = document.getElementById('player-name-display');
     if (nameDisplay) {
@@ -67,34 +64,41 @@ export class UIManager {
   }
 
   setupButtonHandlers() {
+    // Zamykanie wszystkich paneli
     document.querySelectorAll('.panel-close-button').forEach(btn => {
-        btn.onclick = () => {
-            btn.closest('.panel-modal').style.display = 'none';
-        };
+        const panel = btn.closest('.panel-modal');
+        if (panel) {
+            btn.onclick = () => { panel.style.display = 'none'; };
+            panel.addEventListener('click', (e) => {
+                if (e.target === panel) {
+                    panel.style.display = 'none';
+                }
+            });
+        }
+    });
+    document.querySelectorAll('.panel-content').forEach(content => {
+        content.addEventListener('click', e => e.stopPropagation());
     });
 
+    // Główne przyciski
     document.querySelectorAll('.game-btn').forEach(button => {
       const buttonType = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
 
+    // Inne przyciski
     const playerBtn = document.getElementById('player-avatar-button');
     if (playerBtn) playerBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
 
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
+    // Przyciski wyboru budowy
     const newWorldBtn = document.getElementById('build-choice-new-world');
     const newSkinBtn = document.getElementById('build-choice-new-skin');
     const newPrefabBtn = document.getElementById('build-choice-new-prefab');
     const newPartBtn = document.getElementById('build-choice-new-part');
     
-    const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
-    const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
-    const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
-
-    const toggleFPSBtn = document.getElementById('toggle-fps-btn');
-
     if (newWorldBtn) newWorldBtn.onclick = () => { 
         this.closePanel('build-choice-panel'); 
         this.openPanel('world-size-panel');
@@ -111,11 +115,18 @@ export class UIManager {
         this.closePanel('build-choice-panel');
         if (this.onPartBuilderClick) this.onPartBuilderClick();
     };
-    
+
+    // Przyciski wyboru rozmiaru świata
+    const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
+    const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
+    const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
+
     if (sizeNewSmallBtn) sizeNewSmallBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(64); };
     if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
     if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
 
+    // Inne
+    const toggleFPSBtn = document.getElementById('toggle-fps-btn');
     if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
 
     const nameInputPanel = document.getElementById('name-input-panel');
