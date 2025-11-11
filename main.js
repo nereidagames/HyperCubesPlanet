@@ -63,6 +63,9 @@ class BlockStarPlanetGame {
     this.isPreviewDragging = false;
     this.previewPreviousMouseX = 0;
 
+    // Timer do wysyłania pozycji gracza
+    this.positionUpdateInterval = null;
+
     this.setupRenderer();
     this.init();
   }
@@ -106,7 +109,6 @@ class BlockStarPlanetGame {
                 loadingScreen.style.opacity = '0';
                 setTimeout(() => { 
                     loadingScreen.style.display = 'none'; 
-                    // Sprawdź, czy gracz ma już nick
                     const playerName = localStorage.getItem(PLAYER_NAME_KEY);
                     if (playerName) {
                         this.uiManager.updatePlayerName(playerName);
@@ -128,6 +130,19 @@ class BlockStarPlanetGame {
   startGame() {
       this.animate();
       this.gameState = 'MainMenu';
+      
+      // Uruchomienie cyklicznego wysyłania pozycji gracza na serwer
+      if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
+      this.positionUpdateInterval = setInterval(() => {
+        if (this.gameState === 'MainMenu' && this.multiplayerManager && this.characterManager.character) {
+          this.multiplayerManager.sendMessage({
+            type: 'playerMove',
+            position: this.characterManager.character.position,
+            quaternion: this.characterManager.character.quaternion
+          });
+        }
+      }, 100); // Wysyłaj pozycję 10 razy na sekundę (co 100ms)
+
       console.log('Game initialized successfully!');
   }
 
@@ -155,16 +170,12 @@ class BlockStarPlanetGame {
   }
 
   async setupManagers() {
-    // === POCZĄTEK LOGIKI PWA DLA PRZYCISKU INSTALACJI ===
     let deferredPrompt;
     const installButton = document.getElementById('install-button');
 
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Zapobiegaj wyświetlaniu domyślnego monitu przez Chrome
       e.preventDefault();
-      // Zapisz zdarzenie, aby można je było wywołać później.
       deferredPrompt = e;
-      // Pokaż nasz niestandardowy przycisk instalacji
       if (installButton) {
         installButton.style.display = 'block';
       }
@@ -173,22 +184,23 @@ class BlockStarPlanetGame {
     if (installButton) {
         installButton.addEventListener('click', async () => {
           if (deferredPrompt) {
-            // Pokaż monit instalacji
             deferredPrompt.prompt();
-            // Poczekaj na decyzję użytkownika
             const { outcome } = await deferredPrompt.userChoice;
             console.log(`User response to the install prompt: ${outcome}`);
-            // Możemy użyć `deferredPrompt` tylko raz.
             deferredPrompt = null;
-            // Ukryj przycisk po interakcji
             installButton.style.display = 'none';
           }
         });
     }
-    // === KONIEC LOGIKI PWA ===
       
     this.uiManager = new UIManager(
-      (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); }
+      (message) => { 
+        if (this.multiplayerManager) {
+            this.multiplayerManager.sendMessage({ type: 'chatMessage', text: message });
+        }
+        // Wyświetl wiadomość lokalnie od razu dla lepszego UX
+        this.uiManager.addChatMessage(`Ty: ${message}`);
+      }
     );
     this.uiManager.initialize(this.isMobile);
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
@@ -246,8 +258,10 @@ class BlockStarPlanetGame {
       distance: 4, height: 2, rotationSpeed: 0.005
     });
     this.cameraController.setIsMobile(this.isMobile);
+    
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager);
-    await this.multiplayerManager.initialize();
+    this.multiplayerManager.initialize(); // Usunięto await, aby nie blokować ładowania
+
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
   }
   
@@ -293,7 +307,7 @@ class BlockStarPlanetGame {
         this.buildManager.exitBuildMode();
     } else if (this.gameState === 'SkinBuilderMode') {
         this.skinBuilderManager.exitBuildMode();
-    } else if (this.gameState === 'PrefabBuilderManager') {
+    } else if (this.gameState === 'PrefabBuilderMode') {
         this.prefabBuilderManager.exitBuildMode();
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.exitBuildMode();
@@ -336,10 +350,8 @@ class BlockStarPlanetGame {
   }
 
   showDiscoverPanel(type) {
-    const panel = document.getElementById('discover-panel');
     const list = document.getElementById('discover-list');
     const title = document.getElementById('discover-panel-title');
-    const closeButton = document.getElementById('discover-close-button');
     list.innerHTML = '';
     
     if (type === 'worlds') {
@@ -378,7 +390,6 @@ class BlockStarPlanetGame {
         }
     }
 
-    closeButton.onclick = () => this.uiManager.closeAllPanels();
     this.uiManager.openPanel('discover-panel');
   }
 
@@ -576,7 +587,7 @@ class BlockStarPlanetGame {
             this.playerController.update(deltaTime, rot);
         }
         if (this.characterManager) this.characterManager.update(deltaTime);
-        if (this.multiplayerManager) this.multiplayerManager.update(deltaTime, this.characterManager.character);
+        if (this.multiplayerManager) this.multiplayerManager.update(deltaTime);
         if (this.coinManager) this.coinManager.update(deltaTime);
         this.renderer.render(this.scene, this.camera);
         this.css2dRenderer.render(this.scene, this.camera);
