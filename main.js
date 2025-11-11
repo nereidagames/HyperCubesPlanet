@@ -125,7 +125,6 @@ class BlockStarPlanetGame {
     }, 2000);
   }
   
-  // NOWOŚĆ: Funkcja uruchamiająca grę po podaniu nazwy
   startGame() {
       this.animate();
       this.gameState = 'MainMenu';
@@ -156,6 +155,38 @@ class BlockStarPlanetGame {
   }
 
   async setupManagers() {
+    // === POCZĄTEK LOGIKI PWA DLA PRZYCISKU INSTALACJI ===
+    let deferredPrompt;
+    const installButton = document.getElementById('install-button');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Zapobiegaj wyświetlaniu domyślnego monitu przez Chrome
+      e.preventDefault();
+      // Zapisz zdarzenie, aby można je było wywołać później.
+      deferredPrompt = e;
+      // Pokaż nasz niestandardowy przycisk instalacji
+      if (installButton) {
+        installButton.style.display = 'block';
+      }
+    });
+
+    if (installButton) {
+        installButton.addEventListener('click', async () => {
+          if (deferredPrompt) {
+            // Pokaż monit instalacji
+            deferredPrompt.prompt();
+            // Poczekaj na decyzję użytkownika
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            // Możemy użyć `deferredPrompt` tylko raz.
+            deferredPrompt = null;
+            // Ukryj przycisk po interakcji
+            installButton.style.display = 'none';
+          }
+        });
+    }
+    // === KONIEC LOGIKI PWA ===
+      
     this.uiManager = new UIManager(
       (message) => { if (this.characterManager) this.characterManager.displayChatBubble(message); }
     );
@@ -262,7 +293,7 @@ class BlockStarPlanetGame {
         this.buildManager.exitBuildMode();
     } else if (this.gameState === 'SkinBuilderMode') {
         this.skinBuilderManager.exitBuildMode();
-    } else if (this.gameState === 'PrefabBuilderMode') {
+    } else if (this.gameState === 'PrefabBuilderManager') {
         this.prefabBuilderManager.exitBuildMode();
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.exitBuildMode();
@@ -297,7 +328,6 @@ class BlockStarPlanetGame {
   
   recreatePlayerController(collidables) {
       if(this.playerController) this.playerController.destroy();
-      // --- POPRAWKA: Przekazanie nowych, zbalansowanych wartości skoku i grawitacji ---
       this.playerController = new PlayerController(this.characterManager.character, collidables, {
           moveSpeed: 8, jumpForce: 18, gravity: 50,
           groundRestingY: this.sceneManager.FLOOR_TOP_Y
@@ -585,7 +615,6 @@ class BlockStarPlanetGame {
     errorDiv.textContent = message;
     document.body.appendChild(errorDiv);
 
-    // POPRAWKA: Dodanie timera, który usunie element po 5 sekundach
     setTimeout(() => {
         if (errorDiv.parentNode) {
             errorDiv.parentNode.removeChild(errorDiv);
