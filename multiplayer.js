@@ -21,19 +21,17 @@ export class MultiplayerManager {
       this.ws = new WebSocket(serverUrl);
       
       this.ws.onopen = () => {
-        console.log('[CLIENT] Połączono z serwerem WebSocket!');
+        console.log('Połączono z serwerem WebSocket!');
         this.uiManager.addChatMessage('<Pomyślnie połączono z Nexusem! Witaj w grze.>');
       };
 
       this.ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        // --- LOGOWANIE KAŻDEJ WIADOMOŚCI ---
-        console.log('[CLIENT RECEIVE] Otrzymano od serwera:', message);
         this.handleServerMessage(message);
       };
 
       this.ws.onclose = () => {
-        console.log('[CLIENT] Rozłączono z serwerem WebSocket.');
+        console.log('Rozłączono z serwerem WebSocket.');
         this.uiManager.addChatMessage('<Rozłączono z Nexusem. Połączenie zostało przerwane.>');
         this.otherPlayers.forEach((playerData, id) => {
             this.removeOtherPlayer(id);
@@ -41,28 +39,32 @@ export class MultiplayerManager {
       };
 
       this.ws.onerror = (error) => {
-        console.error('[CLIENT ERROR] Błąd WebSocket:', error);
+        console.error('Błąd WebSocket:', error);
         this.uiManager.addChatMessage('<Błąd połączenia z Nexusem. Serwer może być niedostępny. Spróbuj odświeżyć stronę.>');
       };
 
     } catch (error) {
-        console.error("[CLIENT ERROR] Nie udało się połączyć z serwerem WebSocket:", error);
+        console.error("Nie udało się połączyć z serwerem WebSocket:", error);
         this.uiManager.addChatMessage('<Krytyczny błąd przy próbie połączenia z serwerem.>');
     }
   }
 
   handleServerMessage(message) {
+    // --- POPRAWKA: Kluczowa zmiana - ignorujemy wiadomości o nas samych ---
+    if (message.id === this.myId && message.type !== 'welcome' && message.type !== 'chatMessage') {
+        return;
+    }
+
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
-        console.log(`[CLIENT] Otrzymano ID: ${this.myId}`);
         const nickname = localStorage.getItem('bsp_clone_player_name') || `Player_${this.myId.substring(0, 4)}`;
         this.sendMessage({ type: 'setNickname', nickname: nickname });
         break;
 
       case 'playerList':
-        console.log('[CLIENT] Przetwarzam listę obecnych graczy...');
         message.players.forEach(player => {
+          // Sprawdzamy ponownie dla pewności, czy to nie my
           if (player.id !== this.myId && !this.otherPlayers.has(player.id)) {
             this.addOtherPlayer(player.id, player);
           }
@@ -70,25 +72,19 @@ export class MultiplayerManager {
         break;
 
       case 'playerJoined':
-        console.log(`[CLIENT] Gracz ${message.nickname} dołączył do gry.`);
-        if (message.id !== this.myId) {
-          this.addOtherPlayer(message.id, message);
-        }
+        // Ta wiadomość jest teraz wysyłana tylko do innych, więc nie musimy tu sprawdzać ID
+        this.addOtherPlayer(message.id, message);
         break;
 
       case 'playerLeft':
-        console.log(`[CLIENT] Gracz ${message.id} opuścił grę.`);
         this.removeOtherPlayer(message.id);
         break;
 
       case 'playerMove':
-        if (message.id !== this.myId) {
-          const playerData = this.otherPlayers.get(message.id);
-          if (playerData) {
-            // console.log(`[CLIENT] Aktualizuję pozycję gracza ${playerData.nickname}`); // Można odkomentować dla bardzo szczegółowych logów
-            playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
-            playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
-          }
+        const playerData = this.otherPlayers.get(message.id);
+        if (playerData) {
+          playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
+          playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
         }
         break;
         
@@ -104,20 +100,16 @@ export class MultiplayerManager {
 
   sendMessage(data) {
     if (this.ws && this.ws.readyState === this.ws.OPEN) {
-      const messageStr = JSON.stringify(data);
-      console.log(`[CLIENT SEND] Wysyłam na serwer: ${messageStr}`);
-      this.ws.send(messageStr);
+      this.ws.send(JSON.stringify(data));
     }
   }
 
   addOtherPlayer(id, data) {
     if (this.otherPlayers.has(id)) return;
-    console.log(`[CLIENT] Tworzę postać dla gracza ${data.nickname} w pozycji`, data.position);
 
     const playerMesh = createBaseCharacter();
     playerMesh.position.set(data.position.x, data.position.y, data.position.z);
     playerMesh.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
-
     this.scene.add(playerMesh);
     
     const playerData = {
@@ -128,6 +120,7 @@ export class MultiplayerManager {
     };
 
     this.otherPlayers.set(id, playerData);
+    console.log(`Stworzono postać dla gracza: ${data.nickname}`);
   }
 
   removeOtherPlayer(id) {
@@ -135,7 +128,7 @@ export class MultiplayerManager {
       const playerData = this.otherPlayers.get(id);
       this.scene.remove(playerData.mesh);
       this.otherPlayers.delete(id);
-      console.log(`[CLIENT] Usunięto postać gracza ${id}`);
+      console.log(`Usunięto postać gracza ${id}`);
     }
   }
 
@@ -143,9 +136,7 @@ export class MultiplayerManager {
     const playerData = this.otherPlayers.get(id);
     if (!playerData || !playerData.mesh) return;
     
-    if (playerData.chatBubble) {
-      playerData.mesh.remove(playerData.chatBubble);
-    }
+    if (playerData.chatBubble) playerData.mesh.remove(playerData.chatBubble);
     
     const div = document.createElement('div');
     div.className = 'chat-bubble';
@@ -172,4 +163,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-                                            }
+  }
