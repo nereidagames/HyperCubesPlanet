@@ -54,24 +54,23 @@ export class MultiplayerManager {
       case 'welcome':
         this.myId = message.id;
         console.log(`Otrzymano ID od serwera: ${this.myId}`);
-        // --- POPRAWKA: Po otrzymaniu ID, wysyłamy serwerowi nasz nick ---
         const nickname = localStorage.getItem('bsp_clone_player_name') || `Player_${this.myId.substring(0, 4)}`;
         this.sendMessage({ type: 'setNickname', nickname: nickname });
         break;
 
+      // --- NOWOŚĆ: Obsługa listy graczy, którzy już są na serwerze ---
       case 'playerList':
-        // Serwer przysłał listę graczy, którzy już byli w lobby
         message.players.forEach(player => {
           if (player.id !== this.myId && !this.otherPlayers.has(player.id)) {
-            this.addOtherPlayer(player.id, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0), nickname: player.nickname });
+            this.addOtherPlayer(player.id, player); // Przekazujemy cały obiekt gracza
           }
         });
         break;
 
+      // --- ZMIANA: `playerJoined` teraz też otrzymuje pozycję ---
       case 'playerJoined':
-        // Nowy gracz dołączył po nas
         if (message.id !== this.myId) {
-          this.addOtherPlayer(message.id, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0), nickname: message.nickname });
+          this.addOtherPlayer(message.id, message); // Przekazujemy cały obiekt gracza
         }
         break;
 
@@ -90,11 +89,8 @@ export class MultiplayerManager {
         break;
         
       case 'chatMessage':
-        // --- POPRAWKA: Używamy teraz pola `nickname` zamiast `id` ---
-        const senderName = message.nickname || message.id.substring(0, 8); // Zabezpieczenie, gdyby nick był pusty
-        if (message.id === this.myId) {
-            // Wiadomość od nas, serwer ją potwierdził. Możemy ją zignorować, bo wyświetliliśmy ją lokalnie.
-        } else {
+        const senderName = message.nickname || message.id.substring(0, 8);
+        if (message.id !== this.myId) {
             this.uiManager.addChatMessage(`${senderName}: ${message.text}`);
             this.displayChatBubble(message.id, message.text);
         }
@@ -108,19 +104,22 @@ export class MultiplayerManager {
     }
   }
 
+  // --- ZMIANA: Funkcja przyjmuje teraz pełne dane gracza ---
   addOtherPlayer(id, data) {
     if (this.otherPlayers.has(id)) return;
 
     const playerMesh = createBaseCharacter();
-    playerMesh.position.copy(data.position);
+    // Ustaw postać w jej ostatniej znanej pozycji
+    playerMesh.position.set(data.position.x, data.position.y, data.position.z);
+    playerMesh.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
 
     this.scene.add(playerMesh);
     
     const playerData = {
       mesh: playerMesh,
       nickname: data.nickname,
-      targetPosition: new THREE.Vector3().copy(data.position),
-      targetQuaternion: new THREE.Quaternion(),
+      targetPosition: new THREE.Vector3().copy(playerMesh.position),
+      targetQuaternion: new THREE.Quaternion().copy(playerMesh.quaternion),
     };
 
     this.otherPlayers.set(id, playerData);
@@ -165,8 +164,10 @@ export class MultiplayerManager {
 
   update(deltaTime) {
     this.otherPlayers.forEach((playerData) => {
+      // Płynne przejście do docelowej pozycji (interpolacja)
       playerData.mesh.position.lerp(playerData.targetPosition, deltaTime * 15);
+      // Płynny obrót do docelowej rotacji (interpolacja sferyczna)
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-            }
+                                  }
