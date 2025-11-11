@@ -14,7 +14,7 @@ export class MultiplayerManager {
 
   initialize() {
     // Logika łączenia z serwerem WebSocket
-    const serverUrl = 'ws://localhost:8080'; // Adres naszego lokalnego serwera
+    const serverUrl = 'ws://hypercubes-nexus-server.onrender.com'; // Adres naszego lokalnego serwera
 
     try {
       this.ws = new WebSocket(serverUrl);
@@ -168,3 +168,4 @@ export class MultiplayerManager {
     });
   }
 }
+
