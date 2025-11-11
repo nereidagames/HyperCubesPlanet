@@ -12,7 +12,7 @@ export class UIManager {
     this.onToggleFPS = null;
     this.onShopOpen = null;
     this.onBuyBlock = null;
-    this.onNameSubmit = null; // NOWOŚĆ
+    this.onNameSubmit = null;
   }
   
   initialize(isMobile) {
@@ -43,7 +43,6 @@ export class UIManager {
     }
   }
 
-  // --- POPRAWKA: Dodanie brakującej metody do zamykania wszystkich paneli ---
   closeAllPanels() {
     document.querySelectorAll('.panel-modal').forEach(panel => {
       panel.style.display = 'none';
@@ -70,7 +69,6 @@ export class UIManager {
   }
 
   setupButtonHandlers() {
-    // Zamykanie wszystkich paneli
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         const panel = btn.closest('.panel-modal');
         if (panel) {
@@ -86,20 +84,17 @@ export class UIManager {
         content.addEventListener('click', e => e.stopPropagation());
     });
 
-    // Główne przyciski
     document.querySelectorAll('.game-btn').forEach(button => {
       const buttonType = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
 
-    // Inne przyciski
     const playerBtn = document.getElementById('player-avatar-button');
     if (playerBtn) playerBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
 
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
-    // Przyciski wyboru budowy
     const newWorldBtn = document.getElementById('build-choice-new-world');
     const newSkinBtn = document.getElementById('build-choice-new-skin');
     const newPrefabBtn = document.getElementById('build-choice-new-prefab');
@@ -122,7 +117,6 @@ export class UIManager {
         if (this.onPartBuilderClick) this.onPartBuilderClick();
     };
 
-    // Przyciski wyboru rozmiaru świata
     const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
     const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
     const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
@@ -131,7 +125,6 @@ export class UIManager {
     if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
     if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
 
-    // Inne
     const toggleFPSBtn = document.getElementById('toggle-fps-btn');
     if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
 
@@ -238,7 +231,6 @@ export class UIManager {
       const message = chatInput.value.trim();
       if (message && this.onSendMessage) {
         this.onSendMessage(message);
-        this.addChatMessage(`Ty: ${message}`);
       }
       chatInput.value = '';
       chatForm.style.display = 'none';
