@@ -6,90 +6,130 @@ export class MultiplayerManager {
   constructor(scene, uiManager) {
     this.scene = scene;
     this.uiManager = uiManager;
-    this.otherPlayers = new Map();
-    this.chatMessages = [
-      'Co za wspaniały dzień!',
-      'Ktoś chce pograć w minigry?',
-      'Fajna miejscówka!',
-      'Cześć wszystkim!',
-      'Widzieliście nowy sklep?',
-      'Zbieram na nowy strój.',
-    ];
-    // POPRAWKA: Używamy teraz prawidłowej wysokości, zgodnej z fizyką gracza (0.1 podłogi + 0.8 połowy wysokości)
+    this.otherPlayers = new Map(); // Mapa będzie teraz przechowywać prawdziwych graczy
+    this.ws = null; // Obiekt WebSocket
+    this.myId = null; // Nasze unikalne ID otrzymane od serwera
     this.PLAYER_RESTING_Y = 0.9;
-    this.MAP_SIZE = 64; 
   }
 
-  async initialize() {
-    console.log('Multiplayer Manager initialized');
-    await this.addOtherPlayer('Player_One', { position: new THREE.Vector3(5, this.PLAYER_RESTING_Y, 5) });
-    await this.addOtherPlayer('Player_Two', { position: new THREE.Vector3(-5, this.PLAYER_RESTING_Y, 5) });
-    await this.addOtherPlayer('Player_Three', { position: new THREE.Vector3(5, this.PLAYER_RESTING_Y, -5) });
-  }
-
-  async addOtherPlayer(id, data) {
-    if (this.otherPlayers.has(id)) return;
+  initialize() {
+    // Logika łączenia z serwerem WebSocket
+    const serverUrl = 'ws://localhost:8080'; // Adres naszego lokalnego serwera
 
     try {
-      const playerMesh = createBaseCharacter();
+      this.ws = new WebSocket(serverUrl);
       
-      playerMesh.userData.playerId = id;
-      playerMesh.position.copy(data.position);
-      playerMesh.scale.setScalar(1);
-      
-      playerMesh.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-          child.userData.playerId = id;
-        }
-      });
-
-      this.scene.add(playerMesh);
-
-      const playerData = {
-        id: id,
-        mesh: playerMesh,
-        targetPosition: new THREE.Vector3().copy(data.position),
-        movementSpeed: 2 + Math.random() * 2,
-        chatCooldown: 10 + Math.random() * 20,
-        animationState: 'idle',
-        originalY: data.position.y,
+      this.ws.onopen = () => {
+        console.log('Połączono z serwerem WebSocket!');
+        this.uiManager.addChatMessage('<Połączono z Nexusem!>');
       };
 
-      this.otherPlayers.set(id, playerData);
-      console.log(`Added other player: ${id}`);
+      this.ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        this.handleServerMessage(message);
+      };
+
+      this.ws.onclose = () => {
+        console.log('Rozłączono z serwerem WebSocket.');
+        this.uiManager.addChatMessage('<Rozłączono z Nexusem>');
+        // Opcjonalnie: wyczyść listę graczy po rozłączeniu
+        this.otherPlayers.forEach((playerData, id) => {
+            this.removeOtherPlayer(id);
+        });
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('Błąd WebSocket:', error);
+        this.uiManager.addChatMessage('<Błąd połączenia z Nexusem>');
+      };
+
     } catch (error) {
-      console.error(`Failed to create player ${id}:`, error);
+        console.error("Nie udało się połączyć z serwerem WebSocket:", error);
     }
   }
 
-  displayPlayerName(id) {
-    const playerData = this.otherPlayers.get(id);
-    if (!playerData || playerData.nameLabel) return;
+  handleServerMessage(message) {
+    switch (message.type) {
+      case 'welcome':
+        // Serwer przywitał nas i dał nam nasze ID
+        this.myId = message.id;
+        console.log(`Otrzymano ID od serwera: ${this.myId}`);
+        break;
+
+      case 'playerList':
+        // Serwer przysłał listę już obecnych graczy
+        message.players.forEach(playerId => {
+            if (playerId !== this.myId && !this.otherPlayers.has(playerId)) {
+                this.addOtherPlayer(playerId, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0) });
+            }
+        });
+        break;
+
+      case 'playerJoined':
+        // Nowy gracz dołączył, stwórzmy jego postać (jeśli to nie my)
+        if (message.id !== this.myId) {
+          this.addOtherPlayer(message.id, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0) });
+        }
+        break;
+
+      case 'playerLeft':
+        // Gracz wyszedł, usuńmy jego postać
+        this.removeOtherPlayer(message.id);
+        break;
+
+      case 'playerMove':
+        // Gracz się poruszył, zaktualizujmy jego pozycję (jeśli to nie my)
+        if (message.id !== this.myId) {
+          const playerData = this.otherPlayers.get(message.id);
+          if (playerData) {
+            playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
+            playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
+          }
+        }
+        break;
+        
+      case 'chatMessage':
+        // Ktoś wysłał wiadomość na czacie
+        if (message.id !== this.myId) {
+            const senderName = message.id.substring(0, 8); // Użyjmy skróconego ID jako nazwy
+            this.uiManager.addChatMessage(`${senderName}: ${message.text}`);
+            this.displayChatBubble(message.id, message.text);
+        }
+        break;
+    }
+  }
+
+  sendMessage(data) {
+    if (this.ws && this.ws.readyState === this.ws.OPEN) {
+      this.ws.send(JSON.stringify(data));
+    }
+  }
+
+  addOtherPlayer(id, data) {
+    if (this.otherPlayers.has(id)) return;
+
+    const playerMesh = createBaseCharacter();
+    playerMesh.position.copy(data.position);
+
+    this.scene.add(playerMesh);
     
-    const div = document.createElement('div');
-    div.className = 'player-nametag';
-    div.textContent = id;
-    div.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-    div.style.color = 'white';
-    div.style.padding = '2px 8px';
-    div.style.borderRadius = '4px';
-    div.style.fontSize = '12px';
-    div.style.pointerEvents = 'none';
-    
-    const nameLabel = new CSS2DObject(div);
-    nameLabel.position.set(0, 1.5, 0); 
-    
-    playerData.mesh.add(nameLabel);
-    playerData.nameLabel = nameLabel;
-    
-    setTimeout(() => {
-      if (playerData.nameLabel) {
-        playerData.mesh.remove(playerData.nameLabel);
-        playerData.nameLabel = null;
-      }
-    }, 3000);
+    const playerData = {
+      mesh: playerMesh,
+      targetPosition: new THREE.Vector3().copy(data.position),
+      targetQuaternion: new THREE.Quaternion(), // Będziemy też synchronizować rotację
+    };
+
+    this.otherPlayers.set(id, playerData);
+    console.log(`Dodano gracza: ${id}`);
+  }
+
+  removeOtherPlayer(id) {
+    if (this.otherPlayers.has(id)) {
+      const playerData = this.otherPlayers.get(id);
+      this.scene.remove(playerData.mesh);
+      this.otherPlayers.delete(id);
+      console.log(`Usunięto gracza: ${id}`);
+    }
   }
 
   displayChatBubble(id, message) {
@@ -98,22 +138,12 @@ export class MultiplayerManager {
     
     if (playerData.chatBubble) {
       playerData.mesh.remove(playerData.chatBubble);
-      playerData.chatBubble = null;
     }
     
     const div = document.createElement('div');
     div.className = 'chat-bubble';
     div.textContent = message;
-    div.style.cssText = `
-      background-color: rgba(255, 255, 255, 0.8);
-      color: #333;
-      padding: 8px 12px;
-      border-radius: 15px;
-      font-size: 12px;
-      max-width: 150px;
-      text-align: center;
-      pointer-events: none;
-    `;
+    div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
     
     const chatBubble = new CSS2DObject(div);
     chatBubble.position.set(0, 1.8, 0);
@@ -129,66 +159,12 @@ export class MultiplayerManager {
     }, 5000);
   }
 
-  removeOtherPlayer(id) {
-    if (!this.otherPlayers.has(id)) return;
-    
-    const playerData = this.otherPlayers.get(id);
-    this.scene.remove(playerData.mesh);
-    this.otherPlayers.delete(id);
-    console.log(`Removed other player: ${id}`);
-  }
-
-  update(deltaTime, localPlayer) {
-    this.otherPlayers.forEach((playerData, id) => {
-      const { mesh, targetPosition } = playerData;
-      
-      if (mesh.position.distanceTo(targetPosition) < 0.5) {
-        targetPosition.set(
-          (Math.random() - 0.5) * (this.MAP_SIZE - 5),
-          this.PLAYER_RESTING_Y,
-          (Math.random() - 0.5) * (this.MAP_SIZE - 5)
-        );
-      }
-      
-      mesh.position.lerp(targetPosition, deltaTime * 0.5);
-      
-      const moveDistance = mesh.position.distanceTo(playerData.lastPosition || mesh.position);
-      playerData.lastPosition = mesh.position.clone();
-      
-      if (moveDistance > 0.01) {
-        const direction = new THREE.Vector3().subVectors(targetPosition, mesh.position).normalize();
-        if (direction.lengthSq() > 0.001) {
-          const targetRotation = Math.atan2(direction.x, direction.z);
-          const qEnd = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetRotation, 0));
-          mesh.quaternion.slerp(qEnd, 0.1);
-        }
-        playerData.animationState = 'walk';
-      } else {
-        playerData.animationState = 'idle';
-      }
-      
-      this.animatePlayer(playerData, deltaTime);
-      
-      playerData.chatCooldown -= deltaTime;
-      if (playerData.chatCooldown <= 0) {
-        const message = this.chatMessages[Math.floor(Math.random() * this.chatMessages.length)];
-        this.displayChatBubble(id, message);
-        this.uiManager.addChatMessage(`${id}: ${message}`);
-        playerData.chatCooldown = 15 + Math.random() * 25;
-      }
+  update(deltaTime) {
+    this.otherPlayers.forEach((playerData) => {
+      // Płynne przejście do docelowej pozycji (interpolacja)
+      playerData.mesh.position.lerp(playerData.targetPosition, deltaTime * 15);
+      // Płynny obrót do docelowej rotacji (interpolacja sferyczna)
+      playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-
-  animatePlayer(playerData, deltaTime) {
-    const { mesh, animationState } = playerData;
-    mesh.scale.y = 1;
-    mesh.position.y = this.PLAYER_RESTING_Y;
-    
-    switch (animationState) {
-      case 'walk':
-        break;
-      case 'idle':
-        break;
-    }
-  }
-        }
+}
