@@ -5,20 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>HyperCubesPlanet</title>
     
-    <!-- === POCZĄTEK ZMIAN PWA === -->
+    <!-- === PWA HEADERS === -->
     <link rel="icon" type="image/png" href="icons/favicon.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
-    
-    <!-- POPRAWKA: Dodanie nowego tagu meta, aby usunąć ostrzeżenie -->
     <meta name="mobile-web-app-capable" content="yes">
-
     <!-- Wsparcie dla iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HCP">
     <link rel="apple-touch-icon" href="icons/favicon.png">
-    <!-- === KONIEC ZMIAN PWA === -->
+    <!-- === END PWA HEADERS === -->
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,6 +84,8 @@
       .btn-kup { background-image: url('icons/icon-shop.png'); } 
       .btn-odkryj { background-image: url('icons/icon-discover.png'); } 
       .btn-wiecej { background-image: url('icons/icon-more.png'); }
+      /* Styl dla nowego przycisku instalacji */
+      .btn-download { background-image: url('icons/icon-download.png'); }
       
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 10px 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
       .coin-icon { width: 30px; height: 30px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; }
@@ -292,11 +291,13 @@
             
           <div class="right-ui ui-element">
               <div class="game-buttons">
-                  <div class="game-btn btn-zagraj"></div>
-                  <div class="game-btn btn-buduj"></div>
-                  <div class="game-btn btn-kup"></div>
-                  <div class="game-btn btn-odkryj"></div>
-                  <div class="game-btn btn-wiecej"></div>
+                  <button class="game-btn btn-zagraj"></button>
+                  <button class="game-btn btn-buduj"></button>
+                  <button class="game-btn btn-kup"></button>
+                  <button class="game-btn btn-odkryj"></button>
+                  <button class="game-btn btn-wiecej"></button>
+                  <!-- === PRZYCISK INSTALACJI PWA === -->
+                  <button id="install-button" class="game-btn btn-download" style="display: none;"></button>
               </div>
               
               <div id="coin-counter">
