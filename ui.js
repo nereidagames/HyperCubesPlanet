@@ -19,6 +19,7 @@ export class UIManager {
     this.isMobile = isMobile;
     this.setupButtonHandlers();
     this.setupChatSystem();
+    // --- POPRAWKA: Usunięto dodawanie statycznych wiadomości. Teraz zarządza tym multiplayer.js ---
     console.log('UI Manager initialized');
   }
 
@@ -252,4 +253,4 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-}
+    }
