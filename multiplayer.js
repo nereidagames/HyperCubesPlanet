@@ -6,22 +6,25 @@ export class MultiplayerManager {
   constructor(scene, uiManager) {
     this.scene = scene;
     this.uiManager = uiManager;
-    this.otherPlayers = new Map(); // Mapa będzie teraz przechowywać prawdziwych graczy
-    this.ws = null; // Obiekt WebSocket
-    this.myId = null; // Nasze unikalne ID otrzymane od serwera
+    this.otherPlayers = new Map();
+    this.ws = null;
+    this.myId = null;
     this.PLAYER_RESTING_Y = 0.9;
   }
 
   initialize() {
-    // Logika łączenia z serwerem WebSocket
-    const serverUrl = 'ws://hypercubes-nexus-server.onrender.com'; // Adres naszego lokalnego serwera
+    const serverUrl = 'wss://hypercubes-nexus-server.onrender.com'; // Upewnij się, że to Twój poprawny adres z Render
+
+    // --- POPRAWKA: Natychmiastowe wyświetlanie statusu łączenia ---
+    this.uiManager.addChatMessage('<Łączenie z Nexusem...>');
 
     try {
       this.ws = new WebSocket(serverUrl);
       
       this.ws.onopen = () => {
         console.log('Połączono z serwerem WebSocket!');
-        this.uiManager.addChatMessage('<Połączono z Nexusem!>');
+        // --- POPRAWKA: Bardziej opisowy komunikat o sukcesie ---
+        this.uiManager.addChatMessage('<Pomyślnie połączono z Nexusem! Witaj w grze.>');
       };
 
       this.ws.onmessage = (event) => {
@@ -31,8 +34,8 @@ export class MultiplayerManager {
 
       this.ws.onclose = () => {
         console.log('Rozłączono z serwerem WebSocket.');
-        this.uiManager.addChatMessage('<Rozłączono z Nexusem>');
-        // Opcjonalnie: wyczyść listę graczy po rozłączeniu
+        // --- POPRAWKA: Jasny komunikat o rozłączeniu ---
+        this.uiManager.addChatMessage('<Rozłączono z Nexusem. Połączenie zostało przerwane.>');
         this.otherPlayers.forEach((playerData, id) => {
             this.removeOtherPlayer(id);
         });
@@ -40,24 +43,24 @@ export class MultiplayerManager {
 
       this.ws.onerror = (error) => {
         console.error('Błąd WebSocket:', error);
-        this.uiManager.addChatMessage('<Błąd połączenia z Nexusem>');
+        // --- POPRAWKA: Jasny komunikat o błędzie ---
+        this.uiManager.addChatMessage('<Błąd połączenia z Nexusem. Serwer może być niedostępny. Spróbuj odświeżyć stronę.>');
       };
 
     } catch (error) {
         console.error("Nie udało się połączyć z serwerem WebSocket:", error);
+        this.uiManager.addChatMessage('<Krytyczny błąd przy próbie połączenia z serwerem.>');
     }
   }
 
   handleServerMessage(message) {
     switch (message.type) {
       case 'welcome':
-        // Serwer przywitał nas i dał nam nasze ID
         this.myId = message.id;
         console.log(`Otrzymano ID od serwera: ${this.myId}`);
         break;
 
       case 'playerList':
-        // Serwer przysłał listę już obecnych graczy
         message.players.forEach(playerId => {
             if (playerId !== this.myId && !this.otherPlayers.has(playerId)) {
                 this.addOtherPlayer(playerId, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0) });
@@ -66,19 +69,16 @@ export class MultiplayerManager {
         break;
 
       case 'playerJoined':
-        // Nowy gracz dołączył, stwórzmy jego postać (jeśli to nie my)
         if (message.id !== this.myId) {
           this.addOtherPlayer(message.id, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0) });
         }
         break;
 
       case 'playerLeft':
-        // Gracz wyszedł, usuńmy jego postać
         this.removeOtherPlayer(message.id);
         break;
 
       case 'playerMove':
-        // Gracz się poruszył, zaktualizujmy jego pozycję (jeśli to nie my)
         if (message.id !== this.myId) {
           const playerData = this.otherPlayers.get(message.id);
           if (playerData) {
@@ -89,9 +89,8 @@ export class MultiplayerManager {
         break;
         
       case 'chatMessage':
-        // Ktoś wysłał wiadomość na czacie
         if (message.id !== this.myId) {
-            const senderName = message.id.substring(0, 8); // Użyjmy skróconego ID jako nazwy
+            const senderName = message.id.substring(0, 8);
             this.uiManager.addChatMessage(`${senderName}: ${message.text}`);
             this.displayChatBubble(message.id, message.text);
         }
@@ -116,7 +115,7 @@ export class MultiplayerManager {
     const playerData = {
       mesh: playerMesh,
       targetPosition: new THREE.Vector3().copy(data.position),
-      targetQuaternion: new THREE.Quaternion(), // Będziemy też synchronizować rotację
+      targetQuaternion: new THREE.Quaternion(),
     };
 
     this.otherPlayers.set(id, playerData);
@@ -161,11 +160,8 @@ export class MultiplayerManager {
 
   update(deltaTime) {
     this.otherPlayers.forEach((playerData) => {
-      // Płynne przejście do docelowej pozycji (interpolacja)
       playerData.mesh.position.lerp(playerData.targetPosition, deltaTime * 15);
-      // Płynny obrót do docelowej rotacji (interpolacja sferyczna)
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-}
-
+    }
