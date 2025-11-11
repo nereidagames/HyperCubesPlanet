@@ -15,7 +15,6 @@ export class MultiplayerManager {
   initialize() {
     const serverUrl = 'wss://hypercubes-nexus-server.onrender.com'; // Upewnij się, że to Twój poprawny adres z Render
 
-    // --- POPRAWKA: Natychmiastowe wyświetlanie statusu łączenia ---
     this.uiManager.addChatMessage('<Łączenie z Nexusem...>');
 
     try {
@@ -23,7 +22,6 @@ export class MultiplayerManager {
       
       this.ws.onopen = () => {
         console.log('Połączono z serwerem WebSocket!');
-        // --- POPRAWKA: Bardziej opisowy komunikat o sukcesie ---
         this.uiManager.addChatMessage('<Pomyślnie połączono z Nexusem! Witaj w grze.>');
       };
 
@@ -34,7 +32,6 @@ export class MultiplayerManager {
 
       this.ws.onclose = () => {
         console.log('Rozłączono z serwerem WebSocket.');
-        // --- POPRAWKA: Jasny komunikat o rozłączeniu ---
         this.uiManager.addChatMessage('<Rozłączono z Nexusem. Połączenie zostało przerwane.>');
         this.otherPlayers.forEach((playerData, id) => {
             this.removeOtherPlayer(id);
@@ -43,7 +40,6 @@ export class MultiplayerManager {
 
       this.ws.onerror = (error) => {
         console.error('Błąd WebSocket:', error);
-        // --- POPRAWKA: Jasny komunikat o błędzie ---
         this.uiManager.addChatMessage('<Błąd połączenia z Nexusem. Serwer może być niedostępny. Spróbuj odświeżyć stronę.>');
       };
 
@@ -58,19 +54,24 @@ export class MultiplayerManager {
       case 'welcome':
         this.myId = message.id;
         console.log(`Otrzymano ID od serwera: ${this.myId}`);
+        // --- POPRAWKA: Po otrzymaniu ID, wysyłamy serwerowi nasz nick ---
+        const nickname = localStorage.getItem('bsp_clone_player_name') || `Player_${this.myId.substring(0, 4)}`;
+        this.sendMessage({ type: 'setNickname', nickname: nickname });
         break;
 
       case 'playerList':
-        message.players.forEach(playerId => {
-            if (playerId !== this.myId && !this.otherPlayers.has(playerId)) {
-                this.addOtherPlayer(playerId, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0) });
-            }
+        // Serwer przysłał listę graczy, którzy już byli w lobby
+        message.players.forEach(player => {
+          if (player.id !== this.myId && !this.otherPlayers.has(player.id)) {
+            this.addOtherPlayer(player.id, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0), nickname: player.nickname });
+          }
         });
         break;
 
       case 'playerJoined':
+        // Nowy gracz dołączył po nas
         if (message.id !== this.myId) {
-          this.addOtherPlayer(message.id, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0) });
+          this.addOtherPlayer(message.id, { position: new THREE.Vector3(0, this.PLAYER_RESTING_Y, 0), nickname: message.nickname });
         }
         break;
 
@@ -89,8 +90,11 @@ export class MultiplayerManager {
         break;
         
       case 'chatMessage':
-        if (message.id !== this.myId) {
-            const senderName = message.id.substring(0, 8);
+        // --- POPRAWKA: Używamy teraz pola `nickname` zamiast `id` ---
+        const senderName = message.nickname || message.id.substring(0, 8); // Zabezpieczenie, gdyby nick był pusty
+        if (message.id === this.myId) {
+            // Wiadomość od nas, serwer ją potwierdził. Możemy ją zignorować, bo wyświetliliśmy ją lokalnie.
+        } else {
             this.uiManager.addChatMessage(`${senderName}: ${message.text}`);
             this.displayChatBubble(message.id, message.text);
         }
@@ -114,12 +118,13 @@ export class MultiplayerManager {
     
     const playerData = {
       mesh: playerMesh,
+      nickname: data.nickname,
       targetPosition: new THREE.Vector3().copy(data.position),
       targetQuaternion: new THREE.Quaternion(),
     };
 
     this.otherPlayers.set(id, playerData);
-    console.log(`Dodano gracza: ${id}`);
+    console.log(`Dodano gracza: ${data.nickname} (${id})`);
   }
 
   removeOtherPlayer(id) {
@@ -164,4 +169,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-    }
+            }
