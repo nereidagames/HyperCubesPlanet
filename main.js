@@ -240,7 +240,7 @@ class BlockStarPlanetGame {
     this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
-    // --- POPRAWKA: ZMIANA KOLEJNOŚCI ---
+    // --- POPRAWKA: Prawidłowa kolejność inicjalizacji ---
     // 1. Najpierw przygotuj scenę (podłogę, światła itp.)
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
@@ -255,14 +255,15 @@ class BlockStarPlanetGame {
         this.characterManager.applySkin(skinData);
     }
 
+    // 3. Stwórz kontroler fizyki dla lokalnego gracza
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
       distance: 4, height: 2, rotationSpeed: 0.005
     });
     this.cameraController.setIsMobile(this.isMobile);
     
-    // 3. Dopiero teraz, gdy scena i lokalny gracz są gotowi, połącz się z multiplayerem
-    this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager);
+    // 4. Dopiero teraz połącz się z multiplayerem, przekazując mu referencję do sceneManager
+    this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager);
     this.multiplayerManager.initialize();
 
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
