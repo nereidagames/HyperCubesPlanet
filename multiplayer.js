@@ -50,7 +50,6 @@ export class MultiplayerManager {
   }
 
   handleServerMessage(message) {
-    // --- POPRAWKA: Kluczowa zmiana - ignorujemy wiadomości o nas samych ---
     if (message.id === this.myId && message.type !== 'welcome' && message.type !== 'chatMessage') {
         return;
     }
@@ -58,13 +57,14 @@ export class MultiplayerManager {
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
-        const nickname = localStorage.getItem('bsp_clone_player_name') || `Player_${this.myId.substring(0, 4)}`;
-        this.sendMessage({ type: 'setNickname', nickname: nickname });
+        const nickname = localStorage.getItem('bsp_clone_player_name');
+        if (nickname) {
+            this.sendMessage({ type: 'setNickname', nickname: nickname });
+        }
         break;
 
       case 'playerList':
         message.players.forEach(player => {
-          // Sprawdzamy ponownie dla pewności, czy to nie my
           if (player.id !== this.myId && !this.otherPlayers.has(player.id)) {
             this.addOtherPlayer(player.id, player);
           }
@@ -72,8 +72,16 @@ export class MultiplayerManager {
         break;
 
       case 'playerJoined':
-        // Ta wiadomość jest teraz wysyłana tylko do innych, więc nie musimy tu sprawdzać ID
         this.addOtherPlayer(message.id, message);
+        break;
+        
+      // --- NOWOŚĆ: Obsługa aktualizacji nicku ---
+      case 'updateNickname':
+        const playerToUpdate = this.otherPlayers.get(message.id);
+        if (playerToUpdate) {
+            console.log(`Aktualizuję nick gracza ${message.id} na ${message.nickname}`);
+            playerToUpdate.nickname = message.nickname;
+        }
         break;
 
       case 'playerLeft':
@@ -89,8 +97,12 @@ export class MultiplayerManager {
         break;
         
       case 'chatMessage':
-        const senderName = message.nickname || message.id.substring(0, 8);
-        if (message.id !== this.myId) {
+        const senderName = message.nickname;
+        // Wiadomość od nas jest teraz też rozgłaszana, więc musimy ją obsłużyć
+        if (message.id === this.myId) {
+            // To nasza wiadomość, wyświetlmy ją (zamiast robić to w main.js)
+            this.uiManager.addChatMessage(`Ty: ${message.text}`);
+        } else {
             this.uiManager.addChatMessage(`${senderName}: ${message.text}`);
             this.displayChatBubble(message.id, message.text);
         }
@@ -163,4 +175,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-  }
+        }
