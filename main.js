@@ -25,7 +25,7 @@ const LOADING_TEXTS = [
     "Wczytywanie - Proszę czekać..."
 ];
 
-const PLAYER_NAME_KEY = 'bsp_clone_player_name'; // Klucz do zapisu nazwy
+const PLAYER_NAME_KEY = 'bsp_clone_player_name';
 
 class BlockStarPlanetGame {
   constructor() {
@@ -63,7 +63,6 @@ class BlockStarPlanetGame {
     this.isPreviewDragging = false;
     this.previewPreviousMouseX = 0;
 
-    // Timer do wysyłania pozycji gracza
     this.positionUpdateInterval = null;
 
     this.setupRenderer();
@@ -131,7 +130,6 @@ class BlockStarPlanetGame {
       this.animate();
       this.gameState = 'MainMenu';
       
-      // Uruchomienie cyklicznego wysyłania pozycji gracza na serwer
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if (this.gameState === 'MainMenu' && this.multiplayerManager && this.characterManager.character) {
@@ -141,7 +139,7 @@ class BlockStarPlanetGame {
             quaternion: this.characterManager.character.quaternion
           });
         }
-      }, 100); // Wysyłaj pozycję 10 razy na sekundę (co 100ms)
+      }, 100);
 
       console.log('Game initialized successfully!');
   }
@@ -194,12 +192,11 @@ class BlockStarPlanetGame {
     }
       
     this.uiManager = new UIManager(
+      // --- POPRAWKA: Usunięto lokalne wyświetlanie czatu. Teraz obsługuje to serwer. ---
       (message) => { 
         if (this.multiplayerManager) {
             this.multiplayerManager.sendMessage({ type: 'chatMessage', text: message });
         }
-        // Wyświetl wiadomość lokalnie od razu dla lepszego UX
-        this.uiManager.addChatMessage(`Ty: ${message}`);
       }
     );
     this.uiManager.initialize(this.isMobile);
@@ -217,6 +214,10 @@ class BlockStarPlanetGame {
         localStorage.setItem(PLAYER_NAME_KEY, name);
         this.uiManager.updatePlayerName(name);
         this.startGame();
+        // Po wpisaniu nicku, wyślij go od razu na serwer
+        if (this.multiplayerManager) {
+            this.multiplayerManager.sendMessage({ type: 'setNickname', nickname: name });
+        }
     };
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
@@ -260,7 +261,7 @@ class BlockStarPlanetGame {
     this.cameraController.setIsMobile(this.isMobile);
     
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager);
-    this.multiplayerManager.initialize(); // Usunięto await, aby nie blokować ładowania
+    this.multiplayerManager.initialize();
 
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
   }
