@@ -192,7 +192,6 @@ class BlockStarPlanetGame {
     }
       
     this.uiManager = new UIManager(
-      // --- POPRAWKA: Usunięto lokalne wyświetlanie czatu. Teraz obsługuje to serwer. ---
       (message) => { 
         if (this.multiplayerManager) {
             this.multiplayerManager.sendMessage({ type: 'chatMessage', text: message });
@@ -214,7 +213,6 @@ class BlockStarPlanetGame {
         localStorage.setItem(PLAYER_NAME_KEY, name);
         this.uiManager.updatePlayerName(name);
         this.startGame();
-        // Po wpisaniu nicku, wyślij go od razu na serwer
         if (this.multiplayerManager) {
             this.multiplayerManager.sendMessage({ type: 'setNickname', nickname: name });
         }
@@ -242,9 +240,12 @@ class BlockStarPlanetGame {
     this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
+    // --- POPRAWKA: ZMIANA KOLEJNOŚCI ---
+    // 1. Najpierw przygotuj scenę (podłogę, światła itp.)
     this.sceneManager = new SceneManager(this.scene);
     await this.sceneManager.initialize();
     
+    // 2. Potem stwórz postać lokalnego gracza i dodaj ją do gotowej sceny
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
@@ -260,6 +261,7 @@ class BlockStarPlanetGame {
     });
     this.cameraController.setIsMobile(this.isMobile);
     
+    // 3. Dopiero teraz, gdy scena i lokalny gracz są gotowi, połącz się z multiplayerem
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager);
     this.multiplayerManager.initialize();
 
