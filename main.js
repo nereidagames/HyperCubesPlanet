@@ -69,7 +69,7 @@ class BlockStarPlanetGame {
     this.init();
   }
 
-  async init() {
+  init() {
     try {
       this.blockManager.load();
       this.setupLoadingManager();
@@ -92,7 +92,8 @@ class BlockStarPlanetGame {
         progressBarFill.style.width = `${progress}%`;
     };
 
-    this.loadingManager.onLoad = async () => {
+    // --- POPRAWKA: Usunięto 'async' z tej funkcji ---
+    this.loadingManager.onLoad = () => {
         if (this.initialLoadComplete) {
             return; 
         }
@@ -101,7 +102,8 @@ class BlockStarPlanetGame {
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        await this.setupManagers();
+        // --- POPRAWKA: Wywołanie jest teraz synchroniczne ---
+        this.setupManagers();
         
         setTimeout(() => {
             if (loadingScreen) {
@@ -167,7 +169,8 @@ class BlockStarPlanetGame {
     document.getElementById('gameContainer').appendChild(this.css2dRenderer.domElement);
   }
 
-  async setupManagers() {
+  // --- POPRAWKA: Usunięto 'async' z tej funkcji ---
+  setupManagers() {
     let deferredPrompt;
     const installButton = document.getElementById('install-button');
 
@@ -240,12 +243,12 @@ class BlockStarPlanetGame {
     this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
-    // --- POPRAWKA: Prawidłowa kolejność inicjalizacji ---
-    // 1. Najpierw przygotuj scenę (podłogę, światła itp.)
+    // --- POPRAWKA: Prawidłowa, synchroniczna kolejność inicjalizacji ---
+    // 1. Stwórz i zbuduj scenę
     this.sceneManager = new SceneManager(this.scene);
-    await this.sceneManager.initialize();
+    this.sceneManager.initialize(); // Usunięto 'await'
     
-    // 2. Potem stwórz postać lokalnego gracza i dodaj ją do gotowej sceny
+    // 2. Stwórz postać lokalnego gracza
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
@@ -262,7 +265,7 @@ class BlockStarPlanetGame {
     });
     this.cameraController.setIsMobile(this.isMobile);
     
-    // 4. Dopiero teraz połącz się z multiplayerem, przekazując mu referencję do sceneManager
+    // 4. Dopiero teraz połącz się z multiplayerem
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager);
     this.multiplayerManager.initialize();
 
