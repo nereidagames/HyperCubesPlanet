@@ -414,23 +414,182 @@ class BlockStarPlanetGame {
   }
 
   loadAndExploreWorld(worldName) {
-    // ... (bez zmian)
+    const worldSaveData = WorldStorage.loadWorld(worldName);
+    if (!worldSaveData) { alert(`Nie udało się wczytać świata: ${worldName}`); return; }
+
+    let worldBlocksData;
+    let worldSize;
+    if (Array.isArray(worldSaveData)) {
+        worldBlocksData = worldSaveData;
+        worldSize = 64;
+    } else {
+        worldBlocksData = worldSaveData.blocks;
+        worldSize = worldSaveData.size || 64;
+    }
+    
+    this.gameState = 'ExploreMode';
+    this.toggleMainUI(false);
+    this.toggleMobileControls(true);
+    document.getElementById('explore-exit-button').style.display = 'flex';
+    
+    this.exploreScene = new THREE.Scene();
+    this.exploreScene.background = new THREE.Color(0x87CEEB);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    this.exploreScene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(20, 30, 20);
+    directionalLight.castShadow = true;
+    this.exploreScene.add(directionalLight);
+
+    const allCollidables = [];
+    const textureLoader = new THREE.TextureLoader(this.loadingManager);
+    const loadedMaterials = {};
+
+    const floorGeometry = new THREE.BoxGeometry(worldSize, 1, worldSize);
+    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x559022 });
+    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.position.y = -0.5;
+    floorMesh.receiveShadow = true;
+    this.exploreScene.add(floorMesh);
+    allCollidables.push(floorMesh);
+
+    const edges = new THREE.EdgesGeometry(floorGeometry);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 }));
+    line.position.y = -0.5;
+    this.exploreScene.add(line);
+
+    worldBlocksData.forEach(blockData => {
+      if (blockData.texturePath) {
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        let material;
+        if (loadedMaterials[blockData.texturePath]) {
+          material = loadedMaterials[blockData.texturePath];
+        } else {
+          const texture = textureLoader.load(blockData.texturePath);
+          texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestFilter;
+          material = new THREE.MeshLambertMaterial({ map: texture });
+          loadedMaterials[blockData.texturePath] = material;
+        }
+        const block = new THREE.Mesh(geometry, material);
+        block.position.set(blockData.x, blockData.y, blockData.z);
+        block.castShadow = true;
+        block.receiveShadow = true;
+        this.exploreScene.add(block);
+        allCollidables.push(block);
+      }
+    });
+
+    const barrierHeight = 100;
+    const halfSize = worldSize / 2;
+    const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+
+    const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
+    wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5);
+    this.exploreScene.add(wallZ1);
+    allCollidables.push(wallZ1);
+
+    const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
+    wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5);
+    this.exploreScene.add(wallZ2);
+    allCollidables.push(wallZ2);
+    
+    const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
+    wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0);
+    this.exploreScene.add(wallX1);
+    allCollidables.push(wallX1);
+    
+    const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
+    wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0);
+    this.exploreScene.add(wallX2);
+    allCollidables.push(wallX2);
+
+
+    this.exploreScene.add(this.characterManager.character);
+    this.characterManager.character.position.set(0, 5, 0);
+    this.recreatePlayerController(allCollidables);
+    this.cameraController.enabled = true;
   }
 
   handleBuyBlock(block) {
-    // ... (bez zmian)
+    if (this.coinManager.spendCoins(block.cost)) {
+        this.blockManager.unlockBlock(block.name);
+        this.uiManager.showMessage(`Odblokowano: ${block.name}!`, 'success');
+        this.populateShopUI();
+    } else {
+        this.uiManager.showMessage('Masz za mało monet!', 'error');
+    }
   }
 
   populateShopUI() {
-    // ... (bez zmian)
+    this.uiManager.populateShop(
+        this.blockManager.getAllBlockDefinitions(),
+        (blockName) => this.blockManager.isOwned(blockName)
+    );
   }
 
   setupPreviewScene() {
-    // ... (bez zmian)
+    this.previewContainer = document.getElementById('player-preview-renderer-container');
+    const { clientWidth, clientHeight } = this.previewContainer;
+
+    this.previewScene = new THREE.Scene();
+    this.previewScene.background = new THREE.Color(0x3d3d3d);
+
+    this.previewCamera = new THREE.PerspectiveCamera(50, clientWidth / clientHeight, 0.1, 100);
+    this.previewCamera.position.set(0, 0.5, 4);
+
+    this.previewRenderer = new THREE.WebGLRenderer({ antialias: true });
+    this.previewRenderer.setSize(clientWidth, clientHeight);
+    this.previewRenderer.setPixelRatio(window.devicePixelRatio);
+    this.previewContainer.appendChild(this.previewRenderer.domElement);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 1.5);
+    this.previewScene.add(ambient);
+    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
+    directional.position.set(2, 5, 5);
+    this.previewScene.add(directional);
+
+    const onPointerDown = (e) => {
+        this.isPreviewDragging = true;
+        this.previewPreviousMouseX = e.clientX || e.touches[0].clientX;
+    };
+    const onPointerUp = () => {
+        this.isPreviewDragging = false;
+    };
+    const onPointerMove = (e) => {
+        if (!this.isPreviewDragging) return;
+        const clientX = e.clientX || e.touches[0].clientX;
+        const deltaX = clientX - this.previewPreviousMouseX;
+        if (this.previewCharacter) {
+            this.previewCharacter.rotation.y += deltaX * 0.01;
+        }
+        this.previewPreviousMouseX = clientX;
+    };
+
+    this.previewContainer.addEventListener('mousedown', onPointerDown);
+    this.previewContainer.addEventListener('touchstart', onPointerDown, { passive: true });
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchend', onPointerUp);
+    this.previewContainer.addEventListener('mousemove', onPointerMove);
+    this.previewContainer.addEventListener('touchmove', onPointerMove, { passive: true });
+    this.previewContainer.addEventListener('mouseleave', onPointerUp);
   }
 
   showPlayerPreview() {
-    // ... (bez zmian)
+    if (!this.previewRenderer) {
+      this.setupPreviewScene();
+    }
+
+    if (this.previewCharacter) {
+      this.previewScene.remove(this.previewCharacter);
+    }
+    
+    this.previewCharacter = this.characterManager.character.clone(true);
+    this.previewCharacter.position.set(0, 0, 0); 
+    this.previewCharacter.rotation.set(0, 0, 0);
+    this.previewScene.add(this.previewCharacter);
+    
+    this.uiManager.openPanel('player-preview-panel');
   }
 
   animate() {
