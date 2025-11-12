@@ -50,14 +50,14 @@ export class MultiplayerManager {
   }
 
   handleServerMessage(message) {
-    if (message.id === this.myId && message.type !== 'welcome' && message.type !== 'chatMessage') {
-        return;
-    }
+    // Nie potrzebujemy już ogólnego ignorowania wiadomości o nas samych,
+    // serwer jest teraz mądrzejszy i nie wysyła nam zbędnych danych.
 
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
         const nickname = localStorage.getItem('bsp_clone_player_name');
+        // Jeśli mamy już nick, od razu informujemy serwer, że jesteśmy gotowi.
         if (nickname) {
             this.sendMessage({ type: 'setNickname', nickname: nickname });
         }
@@ -72,14 +72,14 @@ export class MultiplayerManager {
         break;
 
       case 'playerJoined':
-        this.addOtherPlayer(message.id, message);
+        if (message.id !== this.myId) {
+          this.addOtherPlayer(message.id, message);
+        }
         break;
-        
-      // --- NOWOŚĆ: Obsługa aktualizacji nicku ---
+
       case 'updateNickname':
         const playerToUpdate = this.otherPlayers.get(message.id);
         if (playerToUpdate) {
-            console.log(`Aktualizuję nick gracza ${message.id} na ${message.nickname}`);
             playerToUpdate.nickname = message.nickname;
         }
         break;
@@ -89,18 +89,18 @@ export class MultiplayerManager {
         break;
 
       case 'playerMove':
-        const playerData = this.otherPlayers.get(message.id);
-        if (playerData) {
-          playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
-          playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
+        if (message.id !== this.myId) {
+            const playerData = this.otherPlayers.get(message.id);
+            if (playerData) {
+              playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
+              playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
+            }
         }
         break;
         
       case 'chatMessage':
         const senderName = message.nickname;
-        // Wiadomość od nas jest teraz też rozgłaszana, więc musimy ją obsłużyć
         if (message.id === this.myId) {
-            // To nasza wiadomość, wyświetlmy ją (zamiast robić to w main.js)
             this.uiManager.addChatMessage(`Ty: ${message.text}`);
         } else {
             this.uiManager.addChatMessage(`${senderName}: ${message.text}`);
@@ -145,8 +145,8 @@ export class MultiplayerManager {
   }
 
   displayChatBubble(id, message) {
+    if (!this.otherPlayers.has(id)) return;
     const playerData = this.otherPlayers.get(id);
-    if (!playerData || !playerData.mesh) return;
     
     if (playerData.chatBubble) playerData.mesh.remove(playerData.chatBubble);
     
@@ -175,4 +175,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-        }
+    }
