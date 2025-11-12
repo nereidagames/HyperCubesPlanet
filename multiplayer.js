@@ -3,9 +3,10 @@ import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { createBaseCharacter } from './character.js';
 
 export class MultiplayerManager {
-  constructor(scene, uiManager) {
+  constructor(scene, uiManager, sceneManager) {
     this.scene = scene;
     this.uiManager = uiManager;
+    this.sceneManager = sceneManager;
     this.otherPlayers = new Map();
     this.ws = null;
     this.myId = null;
@@ -50,14 +51,14 @@ export class MultiplayerManager {
   }
 
   handleServerMessage(message) {
-    // Nie potrzebujemy już ogólnego ignorowania wiadomości o nas samych,
-    // serwer jest teraz mądrzejszy i nie wysyła nam zbędnych danych.
+    if (message.id === this.myId && message.type !== 'welcome' && message.type !== 'chatMessage') {
+        return;
+    }
 
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
         const nickname = localStorage.getItem('bsp_clone_player_name');
-        // Jeśli mamy już nick, od razu informujemy serwer, że jesteśmy gotowi.
         if (nickname) {
             this.sendMessage({ type: 'setNickname', nickname: nickname });
         }
@@ -73,7 +74,7 @@ export class MultiplayerManager {
 
       case 'playerJoined':
         if (message.id !== this.myId) {
-          this.addOtherPlayer(message.id, message);
+            this.addOtherPlayer(message.id, message);
         }
         break;
 
@@ -124,6 +125,12 @@ export class MultiplayerManager {
     playerMesh.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     this.scene.add(playerMesh);
     
+    playerMesh.traverse((child) => {
+        if (child.isMesh) {
+            this.sceneManager.collidableObjects.push(child);
+        }
+    });
+    
     const playerData = {
       mesh: playerMesh,
       nickname: data.nickname,
@@ -138,6 +145,17 @@ export class MultiplayerManager {
   removeOtherPlayer(id) {
     if (this.otherPlayers.has(id)) {
       const playerData = this.otherPlayers.get(id);
+      
+      this.sceneManager.collidableObjects = this.sceneManager.collidableObjects.filter(obj => {
+          let keep = true;
+          playerData.mesh.traverse(child => {
+              if (child === obj) {
+                  keep = false;
+              }
+          });
+          return keep;
+      });
+
       this.scene.remove(playerData.mesh);
       this.otherPlayers.delete(id);
       console.log(`Usunięto postać gracza ${id}`);
@@ -175,4 +193,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-    }
+                      }
