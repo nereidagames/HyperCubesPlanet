@@ -51,10 +51,6 @@ export class MultiplayerManager {
   }
 
   handleServerMessage(message) {
-    if (message.id === this.myId && message.type !== 'welcome' && message.type !== 'chatMessage') {
-        return;
-    }
-
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
@@ -74,7 +70,7 @@ export class MultiplayerManager {
 
       case 'playerJoined':
         if (message.id !== this.myId) {
-            this.addOtherPlayer(message.id, message);
+          this.addOtherPlayer(message.id, message);
         }
         break;
 
@@ -127,7 +123,9 @@ export class MultiplayerManager {
     
     playerMesh.traverse((child) => {
         if (child.isMesh) {
-            this.sceneManager.collidableObjects.push(child);
+            if (this.sceneManager && this.sceneManager.collidableObjects) {
+                this.sceneManager.collidableObjects.push(child);
+            }
         }
     });
     
@@ -146,15 +144,17 @@ export class MultiplayerManager {
     if (this.otherPlayers.has(id)) {
       const playerData = this.otherPlayers.get(id);
       
-      this.sceneManager.collidableObjects = this.sceneManager.collidableObjects.filter(obj => {
-          let keep = true;
-          playerData.mesh.traverse(child => {
-              if (child === obj) {
-                  keep = false;
-              }
+      if (this.sceneManager && this.sceneManager.collidableObjects) {
+          this.sceneManager.collidableObjects = this.sceneManager.collidableObjects.filter(obj => {
+              let keep = true;
+              playerData.mesh.traverse(child => {
+                  if (child === obj) {
+                      keep = false;
+                  }
+              });
+              return keep;
           });
-          return keep;
-      });
+      }
 
       this.scene.remove(playerData.mesh);
       this.otherPlayers.delete(id);
@@ -193,4 +193,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-                      }
+                                                     }
