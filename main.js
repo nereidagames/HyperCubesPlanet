@@ -31,7 +31,16 @@ class BlockStarPlanetGame {
   constructor() {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    
+    // --- POPRAWKA: Logika wykrywania poziomu jakości ---
+    this.quality = this.getQualityTier();
+    console.log(`Wykryty poziom jakości: ${this.quality}`);
+
+    // Tworzenie renderera zależy teraz od poziomu jakości
+    this.renderer = new THREE.WebGLRenderer({ 
+        antialias: this.quality === 'high' // Antialiasing tylko na wysokiej jakości
+    });
+    
     this.css2dRenderer = new CSS2DRenderer();
     this.playerController = null;
     this.characterManager = null;
@@ -69,6 +78,18 @@ class BlockStarPlanetGame {
     this.init();
   }
 
+  // --- NOWOŚĆ: Funkcja do określania poziomu jakości ---
+  getQualityTier() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // navigator.deviceMemory jest eksperymentalną funkcją, więc dodajemy zabezpieczenie
+    const ram = navigator.deviceMemory || 2; // Domyślnie 2GB, jeśli przeglądarka nie podaje
+
+    if (isMobile && ram <= 4) {
+      return 'low'; // Dla urządzeń mobilnych z 4GB RAM lub mniej
+    }
+    return 'high'; // Dla PC i mocnych telefonów
+  }
+
   init() {
     try {
       this.blockManager.load();
@@ -92,7 +113,6 @@ class BlockStarPlanetGame {
         progressBarFill.style.width = `${progress}%`;
     };
 
-    // --- POPRAWKA: Usunięto 'async' z tej funkcji ---
     this.loadingManager.onLoad = () => {
         if (this.initialLoadComplete) {
             return; 
@@ -102,7 +122,6 @@ class BlockStarPlanetGame {
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        // --- POPRAWKA: Wywołanie jest teraz synchroniczne ---
         this.setupManagers();
         
         setTimeout(() => {
@@ -154,13 +173,20 @@ class BlockStarPlanetGame {
     });
   }
 
-  detectMobileDevice() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
+  detectMobileDevice() { 
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); 
+  }
 
   setupRenderer() {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setClearColor(0x87CEEB, 1);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // --- POPRAWKA: Cienie są konfigurowane w zależności od jakości ---
+    if (this.quality === 'high') {
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
+
     document.getElementById('gameContainer').appendChild(this.renderer.domElement);
     this.css2dRenderer.setSize(window.innerWidth, window.innerHeight);
     this.css2dRenderer.domElement.style.position = 'absolute';
@@ -169,7 +195,6 @@ class BlockStarPlanetGame {
     document.getElementById('gameContainer').appendChild(this.css2dRenderer.domElement);
   }
 
-  // --- POPRAWKA: Usunięto 'async' z tej funkcji ---
   setupManagers() {
     let deferredPrompt;
     const installButton = document.getElementById('install-button');
@@ -243,10 +268,9 @@ class BlockStarPlanetGame {
     this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
-    // --- POPRAWKA: Prawidłowa, synchroniczna kolejność inicjalizacji ---
-    // 1. Stwórz i zbuduj scenę
-    this.sceneManager = new SceneManager(this.scene);
-    this.sceneManager.initialize(); // Usunięto 'await'
+    // 1. Stwórz i zbuduj scenę, przekazując informację o jakości
+    this.sceneManager = new SceneManager(this.scene, this.quality);
+    this.sceneManager.initialize();
     
     // 2. Stwórz postać lokalnego gracza
     this.characterManager = new CharacterManager(this.scene);
@@ -612,33 +636,4 @@ class BlockStarPlanetGame {
         this.renderer.render(this.partBuilderManager.scene, this.camera);
     } else if (this.gameState === 'ExploreMode') {
         if (this.playerController && this.cameraController) {
-            const rot = this.cameraController.update(deltaTime);
-            this.playerController.update(deltaTime, rot);
-        }
-        if (this.characterManager) this.characterManager.update(deltaTime);
-        this.renderer.render(this.exploreScene, this.camera);
-    }
-
-    if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
-      if (this.previewCharacter && !this.isPreviewDragging) {
-        this.previewCharacter.rotation.y += 0.005;
-      }
-      this.previewRenderer.render(this.previewScene, this.previewCamera);
-    }
-  }
-  
-  showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
-
-    setTimeout(() => {
-        if (errorDiv.parentNode) {
-            errorDiv.parentNode.removeChild(errorDiv);
-        }
-    }, 5000);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
+            const rot
