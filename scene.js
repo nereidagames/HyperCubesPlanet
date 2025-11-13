@@ -12,9 +12,8 @@ export class SceneManager {
     this.isInitialized = false; // Flaga zapobiegająca wielokrotnej inicjalizacji
   }
   
-  // Usunięto 'async', ponieważ funkcja nie jest asynchroniczna
   initialize() {
-    // Jeśli scena była już zbudowana, natychmiast zakończ
+    // Jeśli scena była już zbudowana, natychmiast zakończ. To jest kluczowe zabezpieczenie.
     if (this.isInitialized) {
       return;
     }
@@ -23,7 +22,6 @@ export class SceneManager {
     this.createEnvironment();
     this.setupFog();
 
-    // Ustaw flagę, aby ta metoda nie wykonała się ponownie
     this.isInitialized = true;
   }
   
