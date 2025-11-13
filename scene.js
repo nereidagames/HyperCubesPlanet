@@ -1,19 +1,20 @@
 import * as THREE from 'three';
 
 export class SceneManager {
-  constructor(scene, quality = 'high') {
+  constructor(scene) {
     this.scene = scene;
-    this.quality = quality;
     this.collidableObjects = [];
     this.MAP_SIZE = 64;
     this.BLOCK_SIZE = 1;
     this.BARRIER_HEIGHT = 100; 
     this.BARRIER_THICKNESS = 1;
     this.FLOOR_TOP_Y = 0.1;
-    this.isInitialized = false;
+    this.isInitialized = false; // Flaga zapobiegająca wielokrotnej inicjalizacji
   }
   
+  // Usunięto 'async', ponieważ funkcja nie jest asynchroniczna
   initialize() {
+    // Jeśli scena była już zbudowana, natychmiast zakończ
     if (this.isInitialized) {
       return;
     }
@@ -22,6 +23,7 @@ export class SceneManager {
     this.createEnvironment();
     this.setupFog();
 
+    // Ustaw flagę, aby ta metoda nie wykonała się ponownie
     this.isInitialized = true;
   }
   
@@ -31,20 +33,17 @@ export class SceneManager {
     
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(this.MAP_SIZE / 4, 15, this.MAP_SIZE / 4); 
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = this.MAP_SIZE * 0.8;
     
-    if (this.quality === 'high') {
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 1024;
-        directionalLight.shadow.mapSize.height = 1024;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = this.MAP_SIZE * 0.8;
-        
-        const shadowCameraSize = this.MAP_SIZE / 2 + this.BARRIER_THICKNESS + 5; 
-        directionalLight.shadow.camera.left = -shadowCameraSize;
-        directionalLight.shadow.camera.right = shadowCameraSize;
-        directionalLight.shadow.camera.top = shadowCameraSize;
-        directionalLight.shadow.camera.bottom = -shadowCameraSize;
-    }
+    const shadowCameraSize = this.MAP_SIZE / 2 + this.BARRIER_THICKNESS + 5; 
+    directionalLight.shadow.camera.left = -shadowCameraSize;
+    directionalLight.shadow.camera.right = shadowCameraSize;
+    directionalLight.shadow.camera.top = shadowCameraSize;
+    directionalLight.shadow.camera.bottom = -shadowCameraSize;
     
     this.scene.add(directionalLight);
   }
@@ -82,11 +81,7 @@ export class SceneManager {
 
     const floorMaterial = new THREE.MeshLambertMaterial({ map: texture });
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
-    
-    if (this.quality === 'high') {
-        floorMesh.receiveShadow = true;
-    }
-    
+    floorMesh.receiveShadow = true;
     floorMesh.position.y = this.FLOOR_TOP_Y - 0.01;
     
     this.scene.add(floorMesh);
@@ -130,32 +125,23 @@ export class SceneManager {
   }
   
   createDecorations() {
-    const decorationCount = this.quality === 'high' ? 25 : 5;
     const decorativeColors = [0xff4757, 0x3742fa, 0x2ed573, 0xffa502];
-    
-    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const materials = decorativeColors.map(color => new THREE.MeshLambertMaterial({ color }));
-
-    for (let i = 0; i < decorationCount; i++) {
-      const material = materials[Math.floor(Math.random() * materials.length)];
-      const block = new THREE.Mesh(boxGeometry, material);
-      
-      const scaleX = Math.random() * 2 + 0.5;
-      const scaleY = Math.random() * 3 + 0.5;
-      const scaleZ = Math.random() * 2 + 0.5;
-      block.scale.set(scaleX, scaleY, scaleZ);
-
+    for (let i = 0; i < 25; i++) {
+      const geometry = new THREE.BoxGeometry(
+        Math.random() * 2 + 0.5,
+        Math.random() * 3 + 0.5,
+        Math.random() * 2 + 0.5
+      );
+      const color = decorativeColors[Math.floor(Math.random() * decorativeColors.length)];
+      const material = new THREE.MeshLambertMaterial({ color });
+      const block = new THREE.Mesh(geometry, material);
       block.position.set(
         (Math.random() - 0.5) * (this.MAP_SIZE - 5),
-        scaleY / 2 + this.FLOOR_TOP_Y,
+        geometry.parameters.height / 2 + this.FLOOR_TOP_Y,
         (Math.random() - 0.5) * (this.MAP_SIZE - 5)
       );
-
-      if (this.quality === 'high') {
-        block.castShadow = true;
-        block.receiveShadow = true;
-      }
-
+      block.castShadow = true;
+      block.receiveShadow = true;
       this.scene.add(block);
       this.collidableObjects.push(block);
     }
