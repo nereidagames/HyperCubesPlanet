@@ -70,12 +70,13 @@ class BlockStarPlanetGame {
   }
 
   async init() {
+    // POPRAWKA: Dodano blok try-catch do obsługi ewentualnych krytycznych błędów ładowania
     try {
       this.blockManager.load();
       this.setupLoadingManager();
       this.preloadInitialAssets();
     } catch (error) {
-      console.error('CRITICAL: Error initializing game:', error);
+      console.error('Krytyczny błąd podczas inicjalizacji gry:', error);
       this.showError('Krytyczny błąd podczas ładowania gry.');
     }
   }
@@ -99,6 +100,7 @@ class BlockStarPlanetGame {
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
+        // Czekamy na pełne załadowanie menedżerów przed ukryciem ekranu ładowania
         await this.setupManagers();
         
         setTimeout(() => {
@@ -111,6 +113,7 @@ class BlockStarPlanetGame {
                         this.uiManager.updatePlayerName(playerName);
                         this.startGame();
                     } else {
+                        // Pokaż panel do wpisania nazwy, jeśli nie ma jej w pamięci
                         document.getElementById('name-input-panel').style.display = 'flex';
                     }
                 }, 500);
@@ -128,6 +131,7 @@ class BlockStarPlanetGame {
       this.animate();
       this.gameState = 'MainMenu';
       
+      // Rozpocznij wysyłanie pozycji do serwera
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if (this.gameState === 'MainMenu' && this.multiplayerManager && this.characterManager.character) {
@@ -139,7 +143,7 @@ class BlockStarPlanetGame {
         }
       }, 100);
 
-      console.log('Game initialized successfully!');
+      console.log('Gra zainicjalizowana pomyślnie!');
   }
 
   preloadInitialAssets() {
@@ -214,6 +218,7 @@ class BlockStarPlanetGame {
         this.uiManager.updatePlayerName(name);
         this.startGame();
         if (this.multiplayerManager) {
+            // POPRAWKA: Użycie SkinStorage do wczytania danych skina, co jest czystszym podejściem.
             const skinName = SkinStorage.getLastUsedSkin();
             const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
             this.multiplayerManager.sendMessage({ type: 'playerReady', nickname: name, skinData: skinData });
@@ -243,6 +248,8 @@ class BlockStarPlanetGame {
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
     this.sceneManager = new SceneManager(this.scene);
+    // KLUCZOWE: Czekamy, aż scena (światła, podłoga) zostanie w pełni zainicjalizowana.
+    // Usunięcie 'await' (lub 'async' z funkcji initialize) powoduje błąd wyścigu.
     await this.sceneManager.initialize();
     
     this.characterManager = new CharacterManager(this.scene);
@@ -313,6 +320,19 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
+      // POPRAWKA: Logika czyszczenia po trybie eksploracji
+      if (this.exploreScene) {
+          // 1. Usuń postać ze starej sceny
+          this.exploreScene.remove(this.characterManager.character);
+          
+          // 2. Wyczyść starą scenę, aby zwolnić pamięć
+          while(this.exploreScene.children.length > 0){ 
+              this.exploreScene.remove(this.exploreScene.children[0]); 
+          }
+          this.exploreScene = null;
+      }
+      
+      // 3. Dodaj postać z powrotem do głównej sceny
       this.scene.add(this.characterManager.character);
       this.characterManager.character.position.set(0, 5, 0); 
       document.getElementById('explore-exit-button').style.display = 'none';
@@ -485,7 +505,7 @@ class BlockStarPlanetGame {
     this.exploreScene.add(wallX2);
     allCollidables.push(wallX2);
 
-
+    // Przeniesienie obiektu postaci do nowej sceny
     this.exploreScene.add(this.characterManager.character);
     this.characterManager.character.position.set(0, 5, 0);
     this.recreatePlayerController(allCollidables);
@@ -604,7 +624,7 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.update(deltaTime);
         this.renderer.render(this.partBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'ExploreMode') {
+    } else if (this.gameState === 'ExploreMode' && this.exploreScene) { // Dodano sprawdzenie czy exploreScene istnieje
         if (this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
             this.playerController.update(deltaTime, rot);
@@ -622,16 +642,14 @@ class BlockStarPlanetGame {
   }
   
   showError(message) {
+    // Ukryj ekran ładowania, aby błąd był widoczny
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) loadingScreen.style.display = 'none';
+
     const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
+    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: 'Titan One', cursive; text-align: center; font-weight: bold; z-index: 10000;`;
     errorDiv.textContent = message;
     document.body.appendChild(errorDiv);
-
-    setTimeout(() => {
-        if (errorDiv.parentNode) {
-            errorDiv.parentNode.removeChild(errorDiv);
-        }
-    }, 5000);
   }
 }
 
