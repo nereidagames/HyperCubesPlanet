@@ -69,7 +69,7 @@ class BlockStarPlanetGame {
     this.init();
   }
 
-  init() {
+  async init() {
     try {
       this.blockManager.load();
       this.setupLoadingManager();
@@ -92,14 +92,14 @@ class BlockStarPlanetGame {
         progressBarFill.style.width = `${progress}%`;
     };
 
-    this.loadingManager.onLoad = () => {
+    this.loadingManager.onLoad = async () => {
         if (this.initialLoadComplete) return;
         this.initialLoadComplete = true; 
 
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        this.setupManagers();
+        await this.setupManagers();
         
         setTimeout(() => {
             if (loadingScreen) {
@@ -167,7 +167,7 @@ class BlockStarPlanetGame {
     document.getElementById('gameContainer').appendChild(this.css2dRenderer.domElement);
   }
 
-  setupManagers() {
+  async setupManagers() {
     let deferredPrompt;
     const installButton = document.getElementById('install-button');
 
@@ -241,7 +241,7 @@ class BlockStarPlanetGame {
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
     this.sceneManager = new SceneManager(this.scene);
-    this.sceneManager.initialize();
+    await this.sceneManager.initialize();
     
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
@@ -258,7 +258,6 @@ class BlockStarPlanetGame {
     });
     this.cameraController.setIsMobile(this.isMobile);
     
-    // --- POPRAWKA: Przekazujemy `this.sceneManager` jako trzeci argument ---
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager);
     this.multiplayerManager.initialize();
 
