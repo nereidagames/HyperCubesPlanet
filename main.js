@@ -214,7 +214,9 @@ class BlockStarPlanetGame {
         this.uiManager.updatePlayerName(name);
         this.startGame();
         if (this.multiplayerManager) {
-            this.multiplayerManager.sendMessage({ type: 'setNickname', nickname: name });
+            const skinName = SkinStorage.getLastUsedSkin();
+            const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
+            this.multiplayerManager.sendMessage({ type: 'playerReady', nickname: name, skinData: skinData });
         }
     };
 
@@ -258,7 +260,8 @@ class BlockStarPlanetGame {
     });
     this.cameraController.setIsMobile(this.isMobile);
     
-    this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager);
+    // --- POPRAWKA: Przekazujemy `materialsCache` do multiplayer managera ---
+    this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache);
     this.multiplayerManager.initialize();
 
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
