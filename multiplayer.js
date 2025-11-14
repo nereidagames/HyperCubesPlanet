@@ -3,10 +3,12 @@ import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { createBaseCharacter } from './character.js';
 
 export class MultiplayerManager {
-  constructor(scene, uiManager, sceneManager) {
+  constructor(scene, uiManager, sceneManager, materialsCache) {
     this.scene = scene;
     this.uiManager = uiManager;
     this.sceneManager = sceneManager;
+    this.materialsCache = materialsCache; // Zapisujemy pamięć podręczną materiałów
+    this.textureLoader = new THREE.TextureLoader();
     this.otherPlayers = new Map();
     this.ws = null;
     this.myId = null;
@@ -56,7 +58,9 @@ export class MultiplayerManager {
         this.myId = message.id;
         const nickname = localStorage.getItem('bsp_clone_player_name');
         if (nickname) {
-            this.sendMessage({ type: 'setNickname', nickname: nickname });
+            const skinName = localStorage.getItem('bsp_clone_last_skin');
+            const skinData = skinName ? JSON.parse(localStorage.getItem('bsp_clone_skins'))[skinName] : null;
+            this.sendMessage({ type: 'playerReady', nickname: nickname, skinData: skinData });
         }
         break;
 
@@ -71,13 +75,6 @@ export class MultiplayerManager {
       case 'playerJoined':
         if (message.id !== this.myId) {
           this.addOtherPlayer(message.id, message);
-        }
-        break;
-
-      case 'updateNickname':
-        const playerToUpdate = this.otherPlayers.get(message.id);
-        if (playerToUpdate) {
-            playerToUpdate.nickname = message.nickname;
         }
         break;
 
@@ -116,12 +113,42 @@ export class MultiplayerManager {
   addOtherPlayer(id, data) {
     if (this.otherPlayers.has(id)) return;
 
-    const playerMesh = createBaseCharacter();
-    playerMesh.position.set(data.position.x, data.position.y, data.position.z);
-    playerMesh.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
-    this.scene.add(playerMesh);
+    const playerContainer = new THREE.Group();
+    const baseCharacter = createBaseCharacter();
+    playerContainer.add(baseCharacter);
+
+    const skinContainer = new THREE.Group();
+    skinContainer.scale.setScalar(0.125);
+    skinContainer.position.y = 0.2;
+    playerContainer.add(skinContainer);
     
-    playerMesh.traverse((child) => {
+    // --- POPRAWKA: Nakładamy skin na postać innego gracza ---
+    if (data.skinData) {
+        data.skinData.forEach(blockData => {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            let material;
+            if (this.materialsCache[blockData.texturePath]) {
+                material = this.materialsCache[blockData.texturePath];
+            } else {
+                const texture = this.textureLoader.load(blockData.texturePath);
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                material = new THREE.MeshLambertMaterial({ map: texture });
+                this.materialsCache[blockData.texturePath] = material;
+            }
+            const block = new THREE.Mesh(geometry, material);
+            block.position.set(blockData.x, blockData.y, blockData.z);
+            block.castShadow = true;
+            block.receiveShadow = true;
+            skinContainer.add(block);
+        });
+    }
+
+    playerContainer.position.set(data.position.x, data.position.y, data.position.z);
+    playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
+    this.scene.add(playerContainer);
+    
+    playerContainer.traverse((child) => {
         if (child.isMesh) {
             if (this.sceneManager && this.sceneManager.collidableObjects) {
                 this.sceneManager.collidableObjects.push(child);
@@ -130,10 +157,10 @@ export class MultiplayerManager {
     });
     
     const playerData = {
-      mesh: playerMesh,
+      mesh: playerContainer,
       nickname: data.nickname,
-      targetPosition: new THREE.Vector3().copy(playerMesh.position),
-      targetQuaternion: new THREE.Quaternion().copy(playerMesh.quaternion),
+      targetPosition: new THREE.Vector3().copy(playerContainer.position),
+      targetQuaternion: new THREE.Quaternion().copy(playerContainer.quaternion),
     };
 
     this.otherPlayers.set(id, playerData);
