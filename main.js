@@ -69,7 +69,7 @@ class BlockStarPlanetGame {
     this.init();
   }
 
-  init() {
+  async init() {
     try {
       this.blockManager.load();
       this.setupLoadingManager();
@@ -92,14 +92,16 @@ class BlockStarPlanetGame {
         progressBarFill.style.width = `${progress}%`;
     };
 
-    this.loadingManager.onLoad = () => {
+    // --- POPRAWKA: Przywracamy 'async', aby 'await' działało poprawnie ---
+    this.loadingManager.onLoad = async () => {
         if (this.initialLoadComplete) return;
         this.initialLoadComplete = true; 
 
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        this.setupManagers();
+        // Czekamy, aż wszystkie managery zostaną w pełni zainicjowane
+        await this.setupManagers();
         
         setTimeout(() => {
             if (loadingScreen) {
@@ -167,7 +169,8 @@ class BlockStarPlanetGame {
     document.getElementById('gameContainer').appendChild(this.css2dRenderer.domElement);
   }
 
-  setupManagers() {
+  // --- POPRAWKA: Przywracamy 'async', aby zagwarantować poprawną kolejność ---
+  async setupManagers() {
     let deferredPrompt;
     const installButton = document.getElementById('install-button');
 
@@ -240,9 +243,11 @@ class BlockStarPlanetGame {
     this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
+    // 1. Stwórz scenę i POCZEKAJ, aż się zbuduje
     this.sceneManager = new SceneManager(this.scene);
-    this.sceneManager.initialize();
+    await this.sceneManager.initialize();
     
+    // 2. Stwórz postać lokalnego gracza
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
@@ -252,12 +257,14 @@ class BlockStarPlanetGame {
         this.characterManager.applySkin(skinData);
     }
 
+    // 3. Stwórz kontroler fizyki
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
       distance: 4, height: 2, rotationSpeed: 0.005
     });
     this.cameraController.setIsMobile(this.isMobile);
     
+    // 4. Połącz się z multiplayerem
     this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager);
     this.multiplayerManager.initialize();
 
