@@ -9,12 +9,11 @@ export class SceneManager {
     this.BARRIER_HEIGHT = 100; 
     this.BARRIER_THICKNESS = 1;
     this.FLOOR_TOP_Y = 0.1;
-    this.isInitialized = false; // Flaga zapobiegająca wielokrotnej inicjalizacji
+    this.isInitialized = false;
   }
   
-  // --- POPRAWKA: Przywracamy 'async', aby poprawnie współpracowało z 'await' w main.js ---
+  // --- POPRAWKA: Przywracamy 'async', aby 'await' w main.js działało poprawnie ---
   async initialize() {
-    // Jeśli scena była już zbudowana, natychmiast zakończ
     if (this.isInitialized) {
       return;
     }
@@ -23,7 +22,6 @@ export class SceneManager {
     this.createEnvironment();
     this.setupFog();
 
-    // Ustaw flagę, aby ta metoda nie wykonała się ponownie
     this.isInitialized = true;
   }
   
