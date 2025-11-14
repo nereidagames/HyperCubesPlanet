@@ -1,14 +1,17 @@
-// --- POPRAWKA: Zmiana nazwy cache na v2, aby wymusić aktualizację ---
+// POPRAWKA: Zmiana nazwy cache na v2.
+// Zawsze zmieniaj tę nazwę (np. na v3, v4), gdy aktualizujesz pliki w urlsToCache.
+// To zmusi przeglądarkę do pobrania nowych wersji plików.
 const CACHE_NAME = 'hypercubesplanet-cache-v2';
 
 // Lista wszystkich plików, które muszą być dostępne offline, aby gra działała.
+// Upewnij się, że wszystkie kluczowe zasoby są tutaj wymienione.
 const urlsToCache = [
   './',
   './index.html',
-  './manifest.json',
-
-  // Główne skrypty JS
   './main.js',
+  './manifest.json',
+  
+  // Główne skrypty JS
   './ui.js',
   './scene.js',
   './controls.js',
@@ -49,6 +52,7 @@ const urlsToCache = [
   'icons/icon-smallworld.png',
   'icons/icon-mediumworld.png',
   'icons/icon-bigworld.png',
+  'icons/icon-download.png', // Dodano brakującą ikonę
 
   // Tekstury bloków
   'textures/ziemia.png',
@@ -60,45 +64,70 @@ const urlsToCache = [
 
 // Instalacja Service Workera i zapisanie zasobów w pamięci podręcznej
 self.addEventListener('install', event => {
+  console.log('Service Worker: Instalacja...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache:', CACHE_NAME);
+        console.log('Service Worker: Cache otwarty, cachowanie plików...');
         return cache.addAll(urlsToCache);
       })
+      .then(() => {
+        // POPRAWKA: Wymuś aktywację nowego Service Workera od razu.
+        // Dzięki temu użytkownik nie musi zamykać i otwierać karty, aby dostać aktualizację.
+        self.skipWaiting();
+      })
   );
-  self.skipWaiting(); // Wymuś aktywację nowego Service Workera
 });
 
-// --- POPRAWKA: Dodanie obsługi zdarzenia 'activate' do czyszczenia starych cache ---
+// POPRAWKA: Dodano obsługę zdarzenia 'activate' do czyszczenia starych cache.
+// Jest to kluczowe dla prawidłowego zarządzania wersjami.
 self.addEventListener('activate', event => {
+  console.log('Service Worker: Aktywacja...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
+          // Jeśli nazwa cache nie pasuje do aktualnej, usuwamy ją.
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            console.log('Service Worker: Usuwanie starego cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+        // POPRAWKA: Przejmij kontrolę nad wszystkimi otwartymi kartami.
+        // To zapewnia, że wszystkie karty będą używać nowego Service Workera.
+        return self.clients.claim();
     })
   );
-  return self.clients.claim(); // Przejmij kontrolę nad wszystkimi otwartymi kartami
 });
 
-
-// Przechwytywanie żądań sieciowych
+// Przechwytywanie żądań sieciowych (strategia: Cache First, Falling Back to Network)
 self.addEventListener('fetch', event => {
+  // Ignoruj żądania, które nie są typu GET (np. POST do serwera WebSocket)
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
-      .then(response => {
-        // Jeśli zasób jest w pamięci podręcznej, zwróć go.
-        if (response) {
-          return response;
+      .then(cachedResponse => {
+        // Jeśli zasób jest w pamięci podręcznej, zwróć go. To działa offline.
+        if (cachedResponse) {
+          return cachedResponse;
         }
-        // W przeciwnym razie, pobierz go z sieci.
-        return fetch(event.request);
+        
+        // Jeśli zasobu nie ma w cache, pobierz go z sieci.
+        return fetch(event.request).then(networkResponse => {
+          // Opcjonalnie: można tutaj dodać logikę dynamicznego cachowania,
+          // ale dla zasobów gry lepiej trzymać się listy w 'urlsToCache'.
+          return networkResponse;
+        });
+      })
+      .catch(error => {
+        // Ta część może być użyta do zwrócenia strony "offline", jeśli zawiedzie zarówno cache, jak i sieć.
+        console.error('Service Worker: Błąd podczas pobierania zasobu:', error);
+        // Można zwrócić zapasowy obrazek lub stronę HTML.
       })
   );
 });
