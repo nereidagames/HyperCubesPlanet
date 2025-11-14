@@ -193,4 +193,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-                                                     }
+}
