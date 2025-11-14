@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { createBaseCharacter } from './character.js';
+import { SkinStorage } from './SkinStorage.js'; // Importujemy, aby mieć spójny dostęp
 
 export class MultiplayerManager {
   constructor(scene, uiManager, sceneManager, materialsCache) {
     this.scene = scene;
     this.uiManager = uiManager;
     this.sceneManager = sceneManager;
-    this.materialsCache = materialsCache; // Zapisujemy pamięć podręczną materiałów
+    this.materialsCache = materialsCache;
     this.textureLoader = new THREE.TextureLoader();
     this.otherPlayers = new Map();
     this.ws = null;
@@ -29,16 +30,22 @@ export class MultiplayerManager {
       };
 
       this.ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        this.handleServerMessage(message);
+        try {
+          const message = JSON.parse(event.data);
+          this.handleServerMessage(message);
+        } catch (e) {
+          console.error("Błąd parsowania wiadomości od serwera:", e);
+        }
       };
 
       this.ws.onclose = () => {
         console.log('Rozłączono z serwerem WebSocket.');
         this.uiManager.addChatMessage('<Rozłączono z Nexusem. Połączenie zostało przerwane.>');
+        // Usuń wszystkich graczy, gdy połączenie jest zerwane
         this.otherPlayers.forEach((playerData, id) => {
             this.removeOtherPlayer(id);
         });
+        this.otherPlayers.clear();
       };
 
       this.ws.onerror = (error) => {
@@ -53,13 +60,16 @@ export class MultiplayerManager {
   }
 
   handleServerMessage(message) {
+    const currentPlayer = this.otherPlayers.get(message.id);
+
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
         const nickname = localStorage.getItem('bsp_clone_player_name');
         if (nickname) {
-            const skinName = localStorage.getItem('bsp_clone_last_skin');
-            const skinData = skinName ? JSON.parse(localStorage.getItem('bsp_clone_skins'))[skinName] : null;
+            // POPRAWKA: Używamy SkinStorage dla spójności
+            const skinName = SkinStorage.getLastUsedSkin();
+            const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
             this.sendMessage({ type: 'playerReady', nickname: nickname, skinData: skinData });
         }
         break;
@@ -73,7 +83,7 @@ export class MultiplayerManager {
         break;
 
       case 'playerJoined':
-        if (message.id !== this.myId) {
+        if (message.id !== this.myId && !this.otherPlayers.has(message.id)) {
           this.addOtherPlayer(message.id, message);
         }
         break;
@@ -83,19 +93,16 @@ export class MultiplayerManager {
         break;
 
       case 'playerMove':
-        if (message.id !== this.myId) {
-            const playerData = this.otherPlayers.get(message.id);
-            if (playerData) {
-              playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
-              playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
-            }
+        if (message.id !== this.myId && currentPlayer) {
+            currentPlayer.targetPosition.set(message.position.x, message.position.y, message.position.z);
+            currentPlayer.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
         }
         break;
         
       case 'chatMessage':
-        const senderName = message.nickname;
+        const senderName = message.nickname || 'Gracz';
         if (message.id === this.myId) {
-            this.uiManager.addChatMessage(`Ty: ${message.text}`);
+            // Wiadomości własne są już dodawane przez UIManager, więc pomijamy
         } else {
             this.uiManager.addChatMessage(`${senderName}: ${message.text}`);
             this.displayChatBubble(message.id, message.text);
@@ -105,13 +112,13 @@ export class MultiplayerManager {
   }
 
   sendMessage(data) {
-    if (this.ws && this.ws.readyState === this.ws.OPEN) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
   }
 
   addOtherPlayer(id, data) {
-    if (this.otherPlayers.has(id)) return;
+    if (this.otherPlayers.has(id) || !data.nickname) return;
 
     const playerContainer = new THREE.Group();
     const baseCharacter = createBaseCharacter();
@@ -122,8 +129,8 @@ export class MultiplayerManager {
     skinContainer.position.y = 0.2;
     playerContainer.add(skinContainer);
     
-    // --- POPRAWKA: Nakładamy skin na postać innego gracza ---
-    if (data.skinData) {
+    // Nakładamy skin na postać innego gracza
+    if (data.skinData && Array.isArray(data.skinData)) {
         data.skinData.forEach(blockData => {
             const geometry = new THREE.BoxGeometry(1, 1, 1);
             let material;
@@ -145,16 +152,13 @@ export class MultiplayerManager {
     }
 
     playerContainer.position.set(data.position.x, data.position.y, data.position.z);
-    playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
+    if (data.quaternion) {
+        playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
+    }
     this.scene.add(playerContainer);
     
-    playerContainer.traverse((child) => {
-        if (child.isMesh) {
-            if (this.sceneManager && this.sceneManager.collidableObjects) {
-                this.sceneManager.collidableObjects.push(child);
-            }
-        }
-    });
+    // OPTYMALIZACJA: Nie dodajemy obiektów innych graczy do tablicy kolizji,
+    // aby uniknąć problemów z fizyką i "przepychaniem się".
     
     const playerData = {
       mesh: playerContainer,
@@ -164,48 +168,58 @@ export class MultiplayerManager {
     };
 
     this.otherPlayers.set(id, playerData);
-    console.log(`Stworzono postać dla gracza: ${data.nickname}`);
+    console.log(`Stworzono postać dla gracza: ${data.nickname} (${id})`);
   }
 
   removeOtherPlayer(id) {
     if (this.otherPlayers.has(id)) {
       const playerData = this.otherPlayers.get(id);
       
-      if (this.sceneManager && this.sceneManager.collidableObjects) {
-          this.sceneManager.collidableObjects = this.sceneManager.collidableObjects.filter(obj => {
-              let keep = true;
-              playerData.mesh.traverse(child => {
-                  if (child === obj) {
-                      keep = false;
-                  }
-              });
-              return keep;
-          });
-      }
-
+      // POPRAWKA: Ulepszona logika usuwania gracza
+      // 1. Przechodzimy przez wszystkie obiekty w kontenerze gracza
+      playerData.mesh.traverse(object => {
+          // 2. Jeśli obiekt ma geometrię lub materiał, zwalniamy pamięć
+          if (object.geometry) {
+              object.geometry.dispose();
+          }
+          if (object.material) {
+              // Materiały mogą być w tablicy
+              if (Array.isArray(object.material)) {
+                  object.material.forEach(material => material.dispose());
+              } else {
+                  object.material.dispose();
+              }
+          }
+      });
+      
+      // 3. Usuwamy główny kontener gracza ze sceny
       this.scene.remove(playerData.mesh);
+      
+      // 4. Usuwamy gracza z naszej mapy
       this.otherPlayers.delete(id);
-      console.log(`Usunięto postać gracza ${id}`);
+      console.log(`Usunięto postać i zasoby gracza ${id}`);
     }
   }
 
   displayChatBubble(id, message) {
-    if (!this.otherPlayers.has(id)) return;
     const playerData = this.otherPlayers.get(id);
+    if (!playerData) return;
     
     if (playerData.chatBubble) playerData.mesh.remove(playerData.chatBubble);
     
     const div = document.createElement('div');
-    div.className = 'chat-bubble';
+    div.className = 'chat-bubble text-outline'; // Dodano text-outline dla spójności
     div.textContent = message;
-    div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
+    div.style.cssText = `background-color: rgba(255, 255, 255, 0.9); color: black; padding: 8px 12px; border-radius: 15px; font-size: 13px; max-width: 150px; text-align: center; pointer-events: none;`;
     
     const chatBubble = new CSS2DObject(div);
-    chatBubble.position.set(0, 1.8, 0);
+    // Pozycja dymka nad modelem postaci
+    chatBubble.position.set(0, 2.2, 0);
     
     playerData.mesh.add(chatBubble);
     playerData.chatBubble = chatBubble;
     
+    // Usunięcie dymka po 5 sekundach
     setTimeout(() => {
       if (playerData.chatBubble === chatBubble) {
         playerData.mesh.remove(chatBubble);
@@ -215,6 +229,7 @@ export class MultiplayerManager {
   }
 
   update(deltaTime) {
+    // Płynne przesuwanie (interpolacja) modeli innych graczy do ich docelowych pozycji
     this.otherPlayers.forEach((playerData) => {
       playerData.mesh.position.lerp(playerData.targetPosition, deltaTime * 15);
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
