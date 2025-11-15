@@ -50,16 +50,22 @@ export class MultiplayerManager {
     }
   }
 
+  // POPRAWKA: Dedykowana funkcja do wysyłania gotowości, wywoływana z main.js we właściwym momencie.
+  sendPlayerReady() {
+    const nickname = localStorage.getItem('bsp_clone_player_name');
+    if (nickname) {
+        const skinName = SkinStorage.getLastUsedSkin();
+        const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
+        this.sendMessage({ type: 'playerReady', nickname: nickname, skinData: skinData });
+        console.log("Wysłano 'playerReady' do serwera, ponieważ gra jest w pełni załadowana.");
+    }
+  }
+
   handleServerMessage(message) {
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
-        const nickname = localStorage.getItem('bsp_clone_player_name');
-        if (nickname) {
-            const skinName = SkinStorage.getLastUsedSkin();
-            const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
-            this.sendMessage({ type: 'playerReady', nickname: nickname, skinData: skinData });
-        }
+        // POPRAWKA: Usunięto stąd logikę wysyłania 'playerReady', aby zapobiec przedwczesnemu ogłaszaniu.
         break;
       case 'playerList':
         message.players.forEach(player => {
@@ -80,7 +86,6 @@ export class MultiplayerManager {
         const playerData = this.otherPlayers.get(message.id);
         if (message.id !== this.myId && playerData) {
             playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
-            // POPRAWKA KRYTYCZNA: Użycie .set() zamiast .copy() dla kwaternionu z obiektu JSON.
             playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
         }
         break;
@@ -108,16 +113,14 @@ export class MultiplayerManager {
 
     const skinContainer = new THREE.Group();
     skinContainer.scale.setScalar(0.125);
-    skinContainer.position.y = 0.6;
+    skinContainer.position.y = 1.2;
     playerContainer.add(skinContainer);
     
     if (data.skinData && Array.isArray(data.skinData)) {
         data.skinData.forEach(blockData => {
             const geometry = new THREE.BoxGeometry(1, 1, 1);
-            let material;
-            if (this.materialsCache[blockData.texturePath]) {
-                material = this.materialsCache[blockData.texturePath];
-            } else {
+            let material = this.materialsCache[blockData.texturePath];
+            if (!material) {
                 const texture = this.textureLoader.load(blockData.texturePath);
                 texture.magFilter = THREE.NearestFilter;
                 texture.minFilter = THREE.NearestFilter;
@@ -134,7 +137,6 @@ export class MultiplayerManager {
 
     playerContainer.position.set(data.position.x, data.position.y, data.position.z);
     if (data.quaternion) {
-        // POPRAWKA KRYTYCZNA: Użycie .set() zamiast .copy() dla kwaternionu z obiektu JSON.
         playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     }
     this.scene.add(playerContainer);
@@ -178,7 +180,7 @@ export class MultiplayerManager {
     div.textContent = message;
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.9); color: black; padding: 8px 12px; border-radius: 15px; font-size: 13px; max-width: 150px; text-align: center; pointer-events: none;`;
     const chatBubble = new CSS2DObject(div);
-    chatBubble.position.set(0, 1.8, 0);
+    chatBubble.position.set(0, 2.2, 0);
     playerData.mesh.add(chatBubble);
     playerData.chatBubble = chatBubble;
     setTimeout(() => {
