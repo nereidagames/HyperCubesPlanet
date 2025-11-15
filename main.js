@@ -70,7 +70,6 @@ class BlockStarPlanetGame {
   }
 
   async init() {
-    // POPRAWKA: Dodano blok try-catch do obsługi ewentualnych krytycznych błędów ładowania
     try {
       this.blockManager.load();
       this.setupLoadingManager();
@@ -100,7 +99,6 @@ class BlockStarPlanetGame {
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        // Czekamy na pełne załadowanie menedżerów przed ukryciem ekranu ładowania
         await this.setupManagers();
         
         setTimeout(() => {
@@ -113,7 +111,6 @@ class BlockStarPlanetGame {
                         this.uiManager.updatePlayerName(playerName);
                         this.startGame();
                     } else {
-                        // Pokaż panel do wpisania nazwy, jeśli nie ma jej w pamięci
                         document.getElementById('name-input-panel').style.display = 'flex';
                     }
                 }, 500);
@@ -130,8 +127,13 @@ class BlockStarPlanetGame {
   startGame() {
       this.animate();
       this.gameState = 'MainMenu';
+
+      // POPRAWKA: To jest teraz idealny moment na ogłoszenie gotowości.
+      // Gra jest w pełni załadowana, postać stworzona, a pętla gry zaraz ruszy.
+      if (this.multiplayerManager) {
+        this.multiplayerManager.sendPlayerReady();
+      }
       
-      // Rozpocznij wysyłanie pozycji do serwera
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if (this.gameState === 'MainMenu' && this.multiplayerManager && this.characterManager.character) {
@@ -217,12 +219,6 @@ class BlockStarPlanetGame {
         localStorage.setItem(PLAYER_NAME_KEY, name);
         this.uiManager.updatePlayerName(name);
         this.startGame();
-        if (this.multiplayerManager) {
-            // POPRAWKA: Użycie SkinStorage do wczytania danych skina, co jest czystszym podejściem.
-            const skinName = SkinStorage.getLastUsedSkin();
-            const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
-            this.multiplayerManager.sendMessage({ type: 'playerReady', nickname: name, skinData: skinData });
-        }
     };
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
@@ -248,8 +244,6 @@ class BlockStarPlanetGame {
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
     this.sceneManager = new SceneManager(this.scene);
-    // KLUCZOWE: Czekamy, aż scena (światła, podłoga) zostanie w pełni zainicjalizowana.
-    // Usunięcie 'await' (lub 'async' z funkcji initialize) powoduje błąd wyścigu.
     await this.sceneManager.initialize();
     
     this.characterManager = new CharacterManager(this.scene);
@@ -320,21 +314,16 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
-      // POPRAWKA: Logika czyszczenia po trybie eksploracji
       if (this.exploreScene) {
-          // 1. Usuń postać ze starej sceny
           this.exploreScene.remove(this.characterManager.character);
-          
-          // 2. Wyczyść starą scenę, aby zwolnić pamięć
           while(this.exploreScene.children.length > 0){ 
               this.exploreScene.remove(this.exploreScene.children[0]); 
           }
           this.exploreScene = null;
       }
       
-      // 3. Dodaj postać z powrotem do głównej sceny
       this.scene.add(this.characterManager.character);
-      this.characterManager.character.position.set(0, 5, 0); 
+      this.characterManager.character.position.set(0, 10, 0); // Reset to high pos
       document.getElementById('explore-exit-button').style.display = 'none';
     }
 
@@ -462,10 +451,8 @@ class BlockStarPlanetGame {
     worldBlocksData.forEach(blockData => {
       if (blockData.texturePath) {
         const geometry = new THREE.BoxGeometry(1, 1, 1);
-        let material;
-        if (loadedMaterials[blockData.texturePath]) {
-          material = loadedMaterials[blockData.texturePath];
-        } else {
+        let material = loadedMaterials[blockData.texturePath];
+        if (!material) {
           const texture = textureLoader.load(blockData.texturePath);
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;
@@ -505,9 +492,9 @@ class BlockStarPlanetGame {
     this.exploreScene.add(wallX2);
     allCollidables.push(wallX2);
 
-    // Przeniesienie obiektu postaci do nowej sceny
+
     this.exploreScene.add(this.characterManager.character);
-    this.characterManager.character.position.set(0, 5, 0);
+    this.characterManager.character.position.set(0, 10, 0); // High spawn pos
     this.recreatePlayerController(allCollidables);
     this.cameraController.enabled = true;
   }
@@ -537,7 +524,7 @@ class BlockStarPlanetGame {
     this.previewScene.background = new THREE.Color(0x3d3d3d);
 
     this.previewCamera = new THREE.PerspectiveCamera(50, clientWidth / clientHeight, 0.1, 100);
-    this.previewCamera.position.set(0, 0.5, 4);
+    this.previewCamera.position.set(0, 1, 4);
 
     this.previewRenderer = new THREE.WebGLRenderer({ antialias: true });
     this.previewRenderer.setSize(clientWidth, clientHeight);
@@ -624,7 +611,7 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.update(deltaTime);
         this.renderer.render(this.partBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'ExploreMode' && this.exploreScene) { // Dodano sprawdzenie czy exploreScene istnieje
+    } else if (this.gameState === 'ExploreMode' && this.exploreScene) {
         if (this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
             this.playerController.update(deltaTime, rot);
@@ -642,7 +629,6 @@ class BlockStarPlanetGame {
   }
   
   showError(message) {
-    // Ukryj ekran ładowania, aby błąd był widoczny
     const loadingScreen = document.getElementById('loading-screen');
     if (loadingScreen) loadingScreen.style.display = 'none';
 
