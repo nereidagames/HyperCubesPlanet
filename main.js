@@ -124,16 +124,32 @@ class BlockStarPlanetGame {
     }, 2000);
   }
   
+  // POPRAWKA KRYTYCZNA: Ostateczna logika startu gry
   startGame() {
       this.animate();
       this.gameState = 'MainMenu';
 
-      // POPRAWKA: To jest teraz idealny moment na ogłoszenie gotowości.
-      // Gra jest w pełni załadowana, postać stworzona, a pętla gry zaraz ruszy.
-      if (this.multiplayerManager) {
+      // KROK 1: Sprawdzamy, czy wszystkie potrzebne obiekty istnieją.
+      if (this.characterManager && this.characterManager.character && this.sceneManager && this.multiplayerManager) {
+        
+        // KROK 2: NATYCHMIAST ustawiamy pozycję lokalnej postaci na ziemi.
+        // To synchronizuje stan początkowy, zanim cokolwiek zostanie wysłane do sieci.
+        // Nieważne, że postać została stworzona na y=10, teraz ją "teleportujemy" na ziemię.
+        this.characterManager.character.position.set(0, this.sceneManager.FLOOR_TOP_Y, 0);
+
+        // KROK 3: Resetujemy prędkość w kontrolerze fizyki, aby postać nie miała pędu spadania.
+        if (this.playerController) {
+            this.playerController.velocity.set(0, 0, 0);
+        }
+
+        // KROK 4: TERAZ i tylko teraz, gdy stan lokalny jest poprawny, ogłaszamy światu naszą gotowość.
         this.multiplayerManager.sendPlayerReady();
+
+      } else {
+          console.error("Nie można wysłać 'playerReady', kluczowe menedżery nie są gotowe!");
       }
       
+      // KROK 5: Uruchamiamy regularne wysyłanie (już poprawnych) aktualizacji pozycji.
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if (this.gameState === 'MainMenu' && this.multiplayerManager && this.characterManager.character) {
@@ -145,7 +161,7 @@ class BlockStarPlanetGame {
         }
       }, 100);
 
-      console.log('Gra zainicjalizowana pomyślnie!');
+      console.log('Gra zainicjalizowana pomyślnie! Stan początkowy zsynchronizowany.');
   }
 
   preloadInitialAssets() {
