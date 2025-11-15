@@ -79,8 +79,9 @@ export class MultiplayerManager {
       case 'playerMove':
         const playerData = this.otherPlayers.get(message.id);
         if (message.id !== this.myId && playerData) {
-            playerData.targetPosition.copy(message.position);
-            playerData.targetQuaternion.copy(message.quaternion);
+            playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
+            // POPRAWKA KRYTYCZNA: Użycie .set() zamiast .copy() dla kwaternionu z obiektu JSON.
+            playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
         }
         break;
       case 'chatMessage':
@@ -103,13 +104,10 @@ export class MultiplayerManager {
     if (this.otherPlayers.has(id) || !data.nickname) return;
 
     const playerContainer = new THREE.Group();
-    
-    // POPRAWKA: Używamy nowej, uproszczonej funkcji do budowy modelu bazowego.
     createBaseCharacter(playerContainer);
 
     const skinContainer = new THREE.Group();
     skinContainer.scale.setScalar(0.125);
-    // POPRAWKA: Ustawiamy pozycję Y kontenera skina na tę samą wartość co w CharacterManager.
     skinContainer.position.y = 0.6;
     playerContainer.add(skinContainer);
     
@@ -134,9 +132,10 @@ export class MultiplayerManager {
         });
     }
 
-    playerContainer.position.copy(data.position);
+    playerContainer.position.set(data.position.x, data.position.y, data.position.z);
     if (data.quaternion) {
-        playerContainer.quaternion.copy(data.quaternion);
+        // POPRAWKA KRYTYCZNA: Użycie .set() zamiast .copy() dla kwaternionu z obiektu JSON.
+        playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     }
     this.scene.add(playerContainer);
     
