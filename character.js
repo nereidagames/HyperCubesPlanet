@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// Uproszczona funkcja tworząca bazowy model postaci
+// POPRAWKA KRYTYCZNA: Funkcja tworzy model, którego spód stóp jest na y=0.
+// To standardowa praktyka, która rozwiązuje problemy z kolizją i pozycjonowaniem.
 export function createBaseCharacter(parentContainer) {
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
@@ -13,26 +14,27 @@ export function createBaseCharacter(parentContainer) {
     const bootDepth = 0.3;
     const legSeparation = 0.15;
     
-    // Pozycja Y jest liczona względem środka kontenera (y=0),
-    // aby stopy znalazły się poniżej tego punktu.
-    const legBaseY = -0.5;
+    // Spód butów jest na y=0, więc ich środek jest na y = bootHeight / 2
+    const bootCenterY = bootHeight / 2;
+    // Nogi są bezpośrednio nad butami
+    const legCenterY = bootHeight + legHeight / 2;
 
     // Lewa noga i but
     const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(legWidth, legHeight, legDepth), legMaterial);
-    leftLeg.position.set(-legSeparation, legBaseY, 0);
+    leftLeg.position.set(-legSeparation, legCenterY, 0);
     parentContainer.add(leftLeg);
 
     const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(legWidth, bootHeight, bootDepth), bootMaterial);
-    leftBoot.position.set(-legSeparation, legBaseY - (legHeight/2) - (bootHeight/2), 0.025);
+    leftBoot.position.set(-legSeparation, bootCenterY, 0.025);
     parentContainer.add(leftBoot);
 
     // Prawa noga i but
     const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(legWidth, legHeight, legDepth), legMaterial);
-    rightLeg.position.set(legSeparation, legBaseY, 0);
+    rightLeg.position.set(legSeparation, legCenterY, 0);
     parentContainer.add(rightLeg);
 
     const rightBoot = new THREE.Mesh(new THREE.BoxGeometry(legWidth, bootHeight, bootDepth), bootMaterial);
-    rightBoot.position.set(legSeparation, legBaseY - (legHeight/2) - (bootHeight/2), 0.025);
+    rightBoot.position.set(legSeparation, bootCenterY, 0.025);
     parentContainer.add(rightBoot);
 }
 
@@ -55,14 +57,16 @@ export class CharacterManager {
     createBaseCharacter(this.character);
     
     this.skinContainer.scale.setScalar(0.125);
-    this.skinContainer.position.y = 0.6; 
+    // Pozycja skina jest teraz wyżej, bo jest liczona od stóp postaci.
+    this.skinContainer.position.y = 1.2; 
     
     this.character.add(this.skinContainer);
     
-    this.character.position.set(0, 5, 0); 
+    // Spawnujemy postać wysoko, aby fizyka mogła ją poprawnie opuścić na ziemię.
+    this.character.position.set(0, 10, 0); 
     this.scene.add(this.character);
     this.setupShadow();
-    console.log("Bazowa postać gracza załadowana z uproszczoną strukturą.");
+    console.log("Bazowa postać gracza załadowana ze standardem 'origin at feet'.");
   }
   
   applySkin(skinData) {
@@ -70,16 +74,13 @@ export class CharacterManager {
         this.skinContainer.remove(this.skinContainer.children[0]); 
     }
     if (!skinData || !Array.isArray(skinData) || skinData.length === 0) {
-        // Gdy nie ma skina, bazowy model nóg będzie widoczny
         return;
     }
     
     skinData.forEach(blockData => {
         const geometry = new THREE.BoxGeometry(1, 1, 1);
-        let material;
-        if (this.materialsCache[blockData.texturePath]) {
-            material = this.materialsCache[blockData.texturePath];
-        } else {
+        let material = this.materialsCache[blockData.texturePath];
+        if (!material) {
             const texture = this.textureLoader.load(blockData.texturePath);
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
@@ -92,16 +93,16 @@ export class CharacterManager {
         block.receiveShadow = true;
         this.skinContainer.add(block);
     });
-    console.log(`Nałożono skin składający się z ${skinData.length} bloków.`);
   }
 
   setupShadow() {
       if (this.shadow) this.scene.remove(this.shadow);
-      const shadowGeometry = new THREE.CircleGeometry(0.5, 32);
+      const shadowGeometry = new THREE.CircleGeometry(0.4, 32);
       const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
       this.shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
       this.shadow.rotation.x = -Math.PI / 2;
-      this.shadow.position.y = 0.11; 
+      // Cień jest teraz tuż nad ziemią (y=0), ale pod stopami postaci.
+      this.shadow.position.y = 0.01; 
       this.scene.add(this.shadow);
   }
 
@@ -109,25 +110,27 @@ export class CharacterManager {
     if (this.character && this.shadow) {
       this.shadow.position.x = this.character.position.x;
       this.shadow.position.z = this.character.position.z;
+      // Ustawiamy Y cienia na Y podłogi, a nie postaci, aby nie lewitował.
+      this.shadow.position.y = 0.1;
     }
   }
   
   displayChatBubble(message) {
     if (!this.character) return;
-    if (this.character.chatBubble) {
-      this.character.remove(this.character.chatBubble);
-      this.character.chatBubble = null;
-    }
+    if (this.character.chatBubble) this.character.remove(this.character.chatBubble);
+    
     const div = document.createElement('div');
     div.className = 'chat-bubble';
     div.textContent = message;
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.9); color: black; padding: 8px 12px; border-radius: 15px; font-size: 13px; max-width: 150px; text-align: center; pointer-events: none;`;
     const chatBubble = new CSS2DObject(div);
-    chatBubble.position.set(0, 1.8, 0); 
+    // Dymek jest teraz wyżej, bo liczony od stóp.
+    chatBubble.position.set(0, 2.2, 0); 
     this.character.add(chatBubble);
     this.character.chatBubble = chatBubble;
+
     setTimeout(() => {
-      if (this.character.chatBubble === chatBubble) {
+      if (this.character && this.character.chatBubble === chatBubble) {
         this.character.remove(chatBubble);
         this.character.chatBubble = null;
       }
