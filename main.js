@@ -133,6 +133,9 @@ class BlockStarPlanetGame {
 
       this.uiManager.updatePlayerName(username);
       
+      // --- POPRAWKA: Pokazujemy główny interfejs gry ---
+      document.querySelector('.ui-overlay').style.display = 'block';
+
       this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache);
       this.multiplayerManager.initialize(token);
 
