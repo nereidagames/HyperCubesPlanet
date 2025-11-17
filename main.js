@@ -27,6 +27,7 @@ const LOADING_TEXTS = [
 
 const PLAYER_NAME_KEY = 'bsp_clone_player_name';
 const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 class BlockStarPlanetGame {
   constructor() {
@@ -106,7 +107,7 @@ class BlockStarPlanetGame {
             if (loadingScreen) {
                 loadingScreen.style.opacity = '0';
                 setTimeout(() => { 
-                    loadingScreen.style.display = 'none';
+                    loadingScreen.style.display = 'none'; 
                     const token = localStorage.getItem(JWT_TOKEN_KEY);
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
@@ -187,7 +188,7 @@ class BlockStarPlanetGame {
           }
 
           try {
-              const response = await fetch('/api/register', {
+              const response = await fetch(`${API_BASE_URL}/api/register`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ username, password })
@@ -211,7 +212,7 @@ class BlockStarPlanetGame {
           const password = document.getElementById('login-password').value;
 
           try {
-              const response = await fetch('/api/login', {
+              const response = await fetch(`${API_BASE_URL}/api/login`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ username, password })
