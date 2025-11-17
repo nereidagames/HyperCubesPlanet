@@ -5,17 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>HyperCubesPlanet</title>
     
-    <!-- === PWA HEADERS === -->
     <link rel="icon" type="image/png" href="icons/favicon.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
     <meta name="mobile-web-app-capable" content="yes">
-    <!-- Wsparcie dla iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HCP">
     <link rel="apple-touch-icon" href="icons/favicon.png">
-    <!-- === END PWA HEADERS === -->
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,10 +31,7 @@
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; touch-action: none; }
-      
-      .text-outline {
-        text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
-      }
+      .text-outline { text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000; }
 
       #loading-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; transition: opacity 0.5s ease-out; overflow: hidden; }
       .loading-content { display: flex; flex-direction: column; align-items: center; gap: 40px; z-index: 2; }
@@ -55,6 +49,67 @@
       .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
       @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
 
+      #auth-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(to bottom, #87CEEB, #B0E0E6);
+        z-index: 99998;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        color: white;
+      }
+      .auth-container {
+        background: rgba(0, 0, 0, 0.5);
+        padding: 30px;
+        border-radius: 20px;
+        border: 3px solid white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        text-align: center;
+        width: 90%;
+        max-width: 400px;
+      }
+      .auth-container h2 {
+        margin-bottom: 25px;
+        font-size: 28px;
+      }
+      .auth-form {
+        display: none;
+        flex-direction: column;
+        gap: 15px;
+      }
+      .auth-form input {
+        font-family: 'Titan One', cursive;
+        padding: 12px;
+        border-radius: 8px;
+        border: 2px solid white;
+        text-align: center;
+        font-size: 18px;
+        background-color: rgba(255, 255, 255, 0.9);
+      }
+      .auth-buttons button, .auth-form button {
+        font-family: 'Titan One', cursive;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 20px;
+        cursor: pointer;
+        color: white;
+        transition: transform 0.1s ease;
+      }
+      .auth-buttons button:active, .auth-form button:active {
+        transform: scale(0.95);
+      }
+      .btn-primary { background-color: #2ed573; }
+      .btn-secondary { background-color: #3498db; }
+      .btn-back { background-color: #e74c3c; margin-top: 10px; }
+      .auth-buttons { display: flex; flex-direction: column; gap: 15px; }
+      #auth-message { margin-top: 15px; color: #ffdd59; font-size: 14px; min-height: 20px; }
+      
       #gameContainer { position: relative; width: 100vw; height: 100vh; }
       canvas { display: block; cursor: grab; }
       canvas:active { cursor: grabbing; }
@@ -84,7 +139,6 @@
       .btn-kup { background-image: url('icons/icon-shop.png'); } 
       .btn-odkryj { background-image: url('icons/icon-discover.png'); } 
       .btn-wiecej { background-image: url('icons/icon-more.png'); }
-      /* Styl dla nowego przycisku instalacji */
       .btn-download { background-image: url('icons/icon-download.png'); }
       
       #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 10px 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -259,6 +313,37 @@
       </div>
     </div>
     
+    <div id="auth-screen">
+      <div class="auth-container">
+        <div id="welcome-view">
+          <h2 class="text-outline">Witaj w HyperCubesPlanet!</h2>
+          <div class="auth-buttons">
+            <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
+            <button id="show-register-btn" class="btn-primary text-outline">Nowy Gracz</button>
+          </div>
+        </div>
+
+        <form id="login-form" class="auth-form">
+          <h2 class="text-outline">Logowanie</h2>
+          <input type="text" id="login-username" placeholder="Nazwa użytkownika..." required autocomplete="username">
+          <input type="password" id="login-password" placeholder="Hasło..." required autocomplete="current-password">
+          <button type="submit" class="btn-primary text-outline">Zaloguj</button>
+          <button type="button" class="btn-back text-outline">Wróć</button>
+        </form>
+
+        <form id="register-form" class="auth-form">
+          <h2 class="text-outline">Rejestracja</h2>
+          <input type="text" id="register-username" placeholder="Nazwa użytkownika..." required minlength="3" maxlength="15">
+          <input type="password" id="register-password" placeholder="Hasło..." required minlength="6">
+          <input type="password" id="register-password-confirm" placeholder="Powtórz hasło..." required>
+          <button type="submit" class="btn-primary text-outline">Zarejestruj</button>
+          <button type="button" class="btn-back text-outline">Wróć</button>
+        </form>
+
+        <div id="auth-message" class="text-outline"></div>
+      </div>
+    </div>
+
     <div id="gameContainer">
         <div class="ui-overlay">
           <div class="top-bar ui-element">
@@ -277,10 +362,7 @@
           </div>
             
           <div class="chat-container ui-element">
-            <div class="chat-area">
-                <div class="chat-message text-outline">&lt;Łączenie z Nexusem...&gt;</div>
-                <div class="chat-message text-outline">&lt;Udało się dołączyć do Nexusa!&gt;</div>
-            </div>
+            <div class="chat-area"></div>
             <div id="chat-toggle-button">💬</div>
           </div>
             
@@ -296,7 +378,6 @@
                   <button class="game-btn btn-kup"></button>
                   <button class="game-btn btn-odkryj"></button>
                   <button class="game-btn btn-wiecej"></button>
-                  <!-- === PRZYCISK INSTALACJI PWA === -->
                   <button id="install-button" class="game-btn btn-download" style="display: none;"></button>
               </div>
               
@@ -443,4 +524,4 @@
       }
     </script>
   </body>
-</html>
+  </html>
