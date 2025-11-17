@@ -26,6 +26,7 @@ const LOADING_TEXTS = [
 ];
 
 const PLAYER_NAME_KEY = 'bsp_clone_player_name';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 class BlockStarPlanetGame {
   constructor() {
@@ -75,7 +76,7 @@ class BlockStarPlanetGame {
       this.setupLoadingManager();
       this.preloadInitialAssets();
     } catch (error) {
-      console.error('Krytyczny błąd podczas inicjalizacji gry:', error);
+      console.error('CRITICAL: Error initializing game:', error);
       this.showError('Krytyczny błąd podczas ładowania gry.');
     }
   }
@@ -105,13 +106,14 @@ class BlockStarPlanetGame {
             if (loadingScreen) {
                 loadingScreen.style.opacity = '0';
                 setTimeout(() => { 
-                    loadingScreen.style.display = 'none'; 
-                    const playerName = localStorage.getItem(PLAYER_NAME_KEY);
-                    if (playerName) {
-                        this.uiManager.updatePlayerName(playerName);
-                        this.startGame();
+                    loadingScreen.style.display = 'none';
+                    const token = localStorage.getItem(JWT_TOKEN_KEY);
+                    const username = localStorage.getItem(PLAYER_NAME_KEY);
+
+                    if (token && username) {
+                        this.startGame(username, token);
                     } else {
-                        document.getElementById('name-input-panel').style.display = 'flex';
+                        this.setupAuthScreen();
                     }
                 }, 500);
             }
@@ -124,32 +126,18 @@ class BlockStarPlanetGame {
     }, 2000);
   }
   
-  // POPRAWKA KRYTYCZNA: Ostateczna logika startu gry
-  startGame() {
+  startGame(username, token) {
+      localStorage.setItem(PLAYER_NAME_KEY, username);
+      localStorage.setItem(JWT_TOKEN_KEY, token);
+
+      this.uiManager.updatePlayerName(username);
+      
+      this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache);
+      this.multiplayerManager.initialize(token);
+
       this.animate();
       this.gameState = 'MainMenu';
-
-      // KROK 1: Sprawdzamy, czy wszystkie potrzebne obiekty istnieją.
-      if (this.characterManager && this.characterManager.character && this.sceneManager && this.multiplayerManager) {
-        
-        // KROK 2: NATYCHMIAST ustawiamy pozycję lokalnej postaci na ziemi.
-        // To synchronizuje stan początkowy, zanim cokolwiek zostanie wysłane do sieci.
-        // Nieważne, że postać została stworzona na y=10, teraz ją "teleportujemy" na ziemię.
-        this.characterManager.character.position.set(0, this.sceneManager.FLOOR_TOP_Y, 0);
-
-        // KROK 3: Resetujemy prędkość w kontrolerze fizyki, aby postać nie miała pędu spadania.
-        if (this.playerController) {
-            this.playerController.velocity.set(0, 0, 0);
-        }
-
-        // KROK 4: TERAZ i tylko teraz, gdy stan lokalny jest poprawny, ogłaszamy światu naszą gotowość.
-        this.multiplayerManager.sendPlayerReady();
-
-      } else {
-          console.error("Nie można wysłać 'playerReady', kluczowe menedżery nie są gotowe!");
-      }
       
-      // KROK 5: Uruchamiamy regularne wysyłanie (już poprawnych) aktualizacji pozycji.
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if (this.gameState === 'MainMenu' && this.multiplayerManager && this.characterManager.character) {
@@ -161,7 +149,87 @@ class BlockStarPlanetGame {
         }
       }, 100);
 
-      console.log('Gra zainicjalizowana pomyślnie! Stan początkowy zsynchronizowany.');
+      console.log('Game initialized successfully!');
+  }
+
+  setupAuthScreen() {
+      const authScreen = document.getElementById('auth-screen');
+      const welcomeView = document.getElementById('welcome-view');
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const showLoginBtn = document.getElementById('show-login-btn');
+      const showRegisterBtn = document.getElementById('show-register-btn');
+      const backButtons = document.querySelectorAll('.btn-back');
+      const authMessage = document.getElementById('auth-message');
+
+      const showView = (view) => {
+          welcomeView.style.display = 'none';
+          loginForm.style.display = 'none';
+          registerForm.style.display = 'none';
+          view.style.display = 'flex';
+          authMessage.textContent = '';
+      };
+
+      showLoginBtn.onclick = () => showView(loginForm);
+      showRegisterBtn.onclick = () => showView(registerForm);
+      backButtons.forEach(btn => btn.onclick = () => showView(welcomeView));
+
+      registerForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          authMessage.textContent = 'Rejestrowanie...';
+          const username = document.getElementById('register-username').value;
+          const password = document.getElementById('register-password').value;
+          const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+          if (password !== passwordConfirm) {
+              authMessage.textContent = 'Hasła nie są takie same!';
+              return;
+          }
+
+          try {
+              const response = await fetch('/api/register', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username, password })
+              });
+              const data = await response.json();
+              if (response.ok) {
+                  authMessage.textContent = 'Rejestracja pomyślna! Teraz możesz się zalogować.';
+                  showView(loginForm);
+              } else {
+                  authMessage.textContent = data.message || 'Błąd rejestracji.';
+              }
+          } catch (error) {
+              authMessage.textContent = 'Błąd połączenia z serwerem.';
+          }
+      });
+
+      loginForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          authMessage.textContent = 'Logowanie...';
+          const username = document.getElementById('login-username').value;
+          const password = document.getElementById('login-password').value;
+
+          try {
+              const response = await fetch('/api/login', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username, password })
+              });
+              const data = await response.json();
+              if (response.ok) {
+                  authMessage.textContent = 'Zalogowano pomyślnie!';
+                  authScreen.style.display = 'none';
+                  this.startGame(data.user.username, data.token);
+              } else {
+                  authMessage.textContent = data.message || 'Błąd logowania.';
+              }
+          } catch (error) {
+              authMessage.textContent = 'Błąd połączenia z serwerem.';
+          }
+      });
+
+      authScreen.style.display = 'flex';
   }
 
   preloadInitialAssets() {
@@ -231,11 +299,6 @@ class BlockStarPlanetGame {
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); 
-    this.uiManager.onNameSubmit = (name) => {
-        localStorage.setItem(PLAYER_NAME_KEY, name);
-        this.uiManager.updatePlayerName(name);
-        this.startGame();
-    };
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
 
@@ -277,9 +340,6 @@ class BlockStarPlanetGame {
     });
     this.cameraController.setIsMobile(this.isMobile);
     
-    this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache);
-    this.multiplayerManager.initialize();
-
     this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
   }
   
@@ -330,16 +390,8 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.exitBuildMode();
     } else if (this.gameState === 'ExploreMode') {
-      if (this.exploreScene) {
-          this.exploreScene.remove(this.characterManager.character);
-          while(this.exploreScene.children.length > 0){ 
-              this.exploreScene.remove(this.exploreScene.children[0]); 
-          }
-          this.exploreScene = null;
-      }
-      
       this.scene.add(this.characterManager.character);
-      this.characterManager.character.position.set(0, 10, 0); // Reset to high pos
+      this.characterManager.character.position.set(0, 5, 0); 
       document.getElementById('explore-exit-button').style.display = 'none';
     }
 
@@ -467,8 +519,10 @@ class BlockStarPlanetGame {
     worldBlocksData.forEach(blockData => {
       if (blockData.texturePath) {
         const geometry = new THREE.BoxGeometry(1, 1, 1);
-        let material = loadedMaterials[blockData.texturePath];
-        if (!material) {
+        let material;
+        if (loadedMaterials[blockData.texturePath]) {
+          material = loadedMaterials[blockData.texturePath];
+        } else {
           const texture = textureLoader.load(blockData.texturePath);
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;
@@ -510,7 +564,7 @@ class BlockStarPlanetGame {
 
 
     this.exploreScene.add(this.characterManager.character);
-    this.characterManager.character.position.set(0, 10, 0); // High spawn pos
+    this.characterManager.character.position.set(0, 5, 0);
     this.recreatePlayerController(allCollidables);
     this.cameraController.enabled = true;
   }
@@ -540,7 +594,7 @@ class BlockStarPlanetGame {
     this.previewScene.background = new THREE.Color(0x3d3d3d);
 
     this.previewCamera = new THREE.PerspectiveCamera(50, clientWidth / clientHeight, 0.1, 100);
-    this.previewCamera.position.set(0, 1, 4);
+    this.previewCamera.position.set(0, 0.5, 4);
 
     this.previewRenderer = new THREE.WebGLRenderer({ antialias: true });
     this.previewRenderer.setSize(clientWidth, clientHeight);
@@ -627,7 +681,7 @@ class BlockStarPlanetGame {
     } else if (this.gameState === 'PartBuilderMode') {
         this.partBuilderManager.update(deltaTime);
         this.renderer.render(this.partBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'ExploreMode' && this.exploreScene) {
+    } else if (this.gameState === 'ExploreMode') {
         if (this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
             this.playerController.update(deltaTime, rot);
@@ -645,13 +699,16 @@ class BlockStarPlanetGame {
   }
   
   showError(message) {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) loadingScreen.style.display = 'none';
-
     const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: 'Titan One', cursive; text-align: center; font-weight: bold; z-index: 10000;`;
+    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
     errorDiv.textContent = message;
     document.body.appendChild(errorDiv);
+
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
+    }, 5000);
   }
 }
 
