@@ -233,6 +233,12 @@ class BlockStarPlanetGame {
       authScreen.style.display = 'flex';
   }
 
+  logout() {
+    localStorage.removeItem(JWT_TOKEN_KEY);
+    localStorage.removeItem(PLAYER_NAME_KEY);
+    window.location.reload();
+  }
+
   preloadInitialAssets() {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const allBlocks = this.blockManager.getAllBlockDefinitions();
@@ -299,7 +305,12 @@ class BlockStarPlanetGame {
     this.uiManager.onShopOpen = () => this.populateShopUI();
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
-    this.uiManager.onToggleFPS = () => this.toggleFPSCounter(); 
+    this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
+    
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.onclick = () => this.logout();
+    }
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
 
