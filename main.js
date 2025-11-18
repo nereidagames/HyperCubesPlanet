@@ -111,11 +111,12 @@ class BlockStarPlanetGame {
                     const token = localStorage.getItem(JWT_TOKEN_KEY);
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
-                    // Na tym etapie, dla uproszczenia, zawsze pokazujemy ekran logowania,
-                    // aby pobrać świeże dane (np. saldo monet).
-                    // W przyszłości można dodać weryfikację tokenu i automatyczne logowanie.
-                    this.setupAuthScreen();
-
+                    if (token && username) {
+                        // W przyszłości można dodać weryfikację tokenu
+                        this.startGame( { username: username, coins: 0 /* tymczasowo */ }, token);
+                    } else {
+                        this.setupAuthScreen();
+                    }
                 }, 500);
             }
         }, 500);
@@ -352,7 +353,10 @@ class BlockStarPlanetGame {
 
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
-      distance: 4, height: 2, rotationSpeed: 0.005
+      distance: 15,
+      height: 7, 
+      rotationSpeed: 0.005,
+      floorY: this.sceneManager.FLOOR_TOP_Y
     });
     this.cameraController.setIsMobile(this.isMobile);
   }
