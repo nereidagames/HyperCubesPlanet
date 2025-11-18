@@ -111,11 +111,11 @@ class BlockStarPlanetGame {
                     const token = localStorage.getItem(JWT_TOKEN_KEY);
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
-                    if (token && username) {
-                        this.startGame(username, token);
-                    } else {
-                        this.setupAuthScreen();
-                    }
+                    // Na tym etapie, dla uproszczenia, zawsze pokazujemy ekran logowania,
+                    // aby pobrać świeże dane (np. saldo monet).
+                    // W przyszłości można dodać weryfikację tokenu i automatyczne logowanie.
+                    this.setupAuthScreen();
+
                 }, 500);
             }
         }, 500);
@@ -127,14 +127,15 @@ class BlockStarPlanetGame {
     }, 2000);
   }
   
-  startGame(username, token) {
-      localStorage.setItem(PLAYER_NAME_KEY, username);
+  startGame(user, token) {
+      localStorage.setItem(PLAYER_NAME_KEY, user.username);
       localStorage.setItem(JWT_TOKEN_KEY, token);
 
-      this.uiManager.updatePlayerName(username);
+      this.uiManager.updatePlayerName(user.username);
       
-      // --- POPRAWKA: Pokazujemy główny interfejs gry ---
       document.querySelector('.ui-overlay').style.display = 'block';
+
+      this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character, user.coins);
 
       this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache);
       this.multiplayerManager.initialize(token);
@@ -224,7 +225,7 @@ class BlockStarPlanetGame {
               if (response.ok) {
                   authMessage.textContent = 'Zalogowano pomyślnie!';
                   authScreen.style.display = 'none';
-                  this.startGame(data.user.username, data.token);
+                  this.startGame(data.user, data.token);
               } else {
                   authMessage.textContent = data.message || 'Błąd logowania.';
               }
@@ -354,8 +355,6 @@ class BlockStarPlanetGame {
       distance: 4, height: 2, rotationSpeed: 0.005
     });
     this.cameraController.setIsMobile(this.isMobile);
-    
-    this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character);
   }
   
   toggleFPSCounter() {
