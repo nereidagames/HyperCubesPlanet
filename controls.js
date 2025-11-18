@@ -8,12 +8,9 @@ class PlayerController {
     this.moveSpeed = options.moveSpeed || 8;
     this.jumpForce = options.jumpForce || 18;
     this.gravity = options.gravity || 50;
-    
-    // POPRAWKA: groundRestingY to teraz po prostu wysokość podłogi.
-    this.groundRestingY = options.groundRestingY || 0.1;
+    this.groundRestingY = options.groundRestingY || 0.6;
 
-    // POPRAWKA: Wymiary fizyczne postaci. Wysokość to 1.8.
-    this.playerDimensions = new THREE.Vector3(0.6, 1.8, 0.6);
+    this.playerDimensions = new THREE.Vector3(0.6, 1.6, 0.6);
 
     this.velocity = new THREE.Vector3();
     this.isOnGround = true;
@@ -28,7 +25,6 @@ class PlayerController {
     this.joystick = null;
   }
 
-  // ... (funkcje setIsMobile, setupInput, cleanupInput, jump, destroy, setupMobileControls pozostają bez zmian)
   setIsMobile(isMobile) {
     this.isMobile = isMobile;
     
@@ -117,87 +113,103 @@ class PlayerController {
     this.applyMovementAndCollisions(deltaTime);
   }
 
-  // POPRAWKA KRYTYCZNA: Cała logika kolizji została uproszczona i poprawiona.
   applyMovementAndCollisions(deltaTime) {
     const playerBox = new THREE.Box3();
     const objectBox = new THREE.Box3();
-    const epsilon = 0.001; // Mała wartość zapobiegająca problemom z precyzją
-    
-    // Bounding box gracza jest teraz wyśrodkowany względem jego wysokości.
-    const playerCenter = this.player.position.clone().add(new THREE.Vector3(0, this.playerDimensions.y / 2, 0));
-    
-    // --- Kolizja pionowa (Y) ---
-    this.player.position.y += this.velocity.y * deltaTime;
-    playerCenter.y = this.player.position.y + this.playerDimensions.y / 2;
-    playerBox.setFromCenterAndSize(playerCenter, this.playerDimensions);
+    const halfHeight = this.playerDimensions.y / 2;
+    const halfWidth = this.playerDimensions.x / 2;
+    const halfDepth = this.playerDimensions.z / 2;
+    const epsilon = 0.001;
 
-    let onAnyObject = false;
+    let landedOnBlock = false;
+
+    // --- Kolizja pionowa (Y) ---
+    const verticalMovement = this.velocity.y * deltaTime;
+    this.player.position.y += verticalMovement;
+    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
         if (playerBox.intersectsBox(objectBox)) {
-            if (this.velocity.y < 0) { // Spadanie
-                this.player.position.y = objectBox.max.y + epsilon;
+            if (verticalMovement < 0) { // Spadanie
+                this.player.position.y = objectBox.max.y + halfHeight;
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
                 this.canJump = true;
-                onAnyObject = true;
-            } else if (this.velocity.y > 0) { // Wznoszenie (uderzenie w sufit)
-                this.player.position.y = objectBox.min.y - this.playerDimensions.y - epsilon;
+                landedOnBlock = true;
+            } else if (verticalMovement > 0) { // Wznoszenie (skok)
+                this.player.position.y = objectBox.min.y - halfHeight - epsilon;
                 this.velocity.y = 0;
             }
         }
     }
     
+    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+
     // --- Kolizja pozioma (X) ---
-    this.player.position.x += this.velocity.x * deltaTime;
-    playerCenter.x = this.player.position.x;
-    playerCenter.y = this.player.position.y + this.playerDimensions.y / 2;
-    playerBox.setFromCenterAndSize(playerCenter, this.playerDimensions);
+    const horizontalMovementX = this.velocity.x * deltaTime;
+    this.player.position.x += horizontalMovementX;
+    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
+
+        if (objectBox.max.y < playerBox.min.y + epsilon) {
+            continue;
+        }
+
         if (playerBox.intersectsBox(objectBox)) {
-            if (this.velocity.x > 0) { // Ruch w prawo
-                this.player.position.x = objectBox.min.x - this.playerDimensions.x / 2 - epsilon;
-            } else if (this.velocity.x < 0) { // Ruch w lewo
-                this.player.position.x = objectBox.max.x + this.playerDimensions.x / 2 + epsilon;
+            if (horizontalMovementX > 0) {
+                this.player.position.x = objectBox.min.x - halfWidth - epsilon;
+            } else if (horizontalMovementX < 0) {
+                this.player.position.x = objectBox.max.x + halfWidth + epsilon;
             }
             this.velocity.x = 0;
+            break;
         }
     }
 
     // --- Kolizja pozioma (Z) ---
-    this.player.position.z += this.velocity.z * deltaTime;
-    playerCenter.z = this.player.position.z;
-    playerCenter.x = this.player.position.x;
-    playerBox.setFromCenterAndSize(playerCenter, this.playerDimensions);
+    const horizontalMovementZ = this.velocity.z * deltaTime;
+    this.player.position.z += horizontalMovementZ;
+    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
+
+        if (objectBox.max.y < playerBox.min.y + epsilon) {
+            continue;
+        }
+
         if (playerBox.intersectsBox(objectBox)) {
-            if (this.velocity.z > 0) { // Ruch do przodu (w głąb sceny)
-                this.player.position.z = objectBox.min.z - this.playerDimensions.z / 2 - epsilon;
-            } else if (this.velocity.z < 0) { // Ruch do tyłu
-                this.player.position.z = objectBox.max.z + this.playerDimensions.z / 2 + epsilon;
+            if (horizontalMovementZ > 0) {
+                this.player.position.z = objectBox.min.z - halfDepth - epsilon;
+            } else if (horizontalMovementZ < 0) {
+                this.player.position.z = objectBox.max.z + halfDepth + epsilon;
             }
             this.velocity.z = 0;
+            break;
         }
     }
 
-    // Sprawdzenie, czy gracz stoi na głównej podłodze
-    if (this.player.position.y < this.groundRestingY) {
-        this.player.position.y = this.groundRestingY;
-        this.velocity.y = 0;
-        this.isOnGround = true;
-        this.jumpsRemaining = this.maxJumps;
-        this.canJump = true;
-    } else if (!onAnyObject && this.player.position.y > this.groundRestingY + epsilon) {
-        this.isOnGround = false;
+    if (this.player.position.y <= this.groundRestingY + halfHeight) {
+        if (!landedOnBlock) {
+            this.player.position.y = this.groundRestingY + halfHeight;
+            if (!this.isOnGround) {
+                this.velocity.y = 0;
+                this.isOnGround = true;
+                this.jumpsRemaining = this.maxJumps;
+                this.canJump = true;
+            }
+        }
+    } else {
+        if (!landedOnBlock) {
+            this.isOnGround = false;
+        }
     }
   }
-
+  
   destroy() { this.cleanupInput(); }
 
   setupMobileControls() {
@@ -241,7 +253,7 @@ class PlayerController {
     }
   }
 }
-// Klasa ThirdPersonCameraController pozostaje bez zmian
+
 class ThirdPersonCameraController {
     constructor(camera, target, domElement, options = {}) {
         this.camera = camera;
@@ -255,8 +267,14 @@ class ThirdPersonCameraController {
         this.mousePosition = { x: 0, y: 0 };
         this.enabled = true;
         this.pitch = 0.5;
-        this.minPitch = 0.1;
-        this.maxPitch = Math.PI / 2 - 0.2;
+        
+        // --- POPRAWKA: Zmiana limitów kąta nachylenia kamery ---
+        // minPitch: -Math.PI / 2 pozwala patrzeć prosto w dół
+        // maxPitch: Math.PI / 2 pozwala patrzeć prosto w górę
+        // Dodajemy mały epsilon (0.001), aby uniknąć problemów numerycznych w punkcie zenitu/nadiru
+        this.minPitch = -Math.PI / 2 + 0.001;
+        this.maxPitch = Math.PI / 2 - 0.001;
+
         this.isMobile = false;
         this.cameraTouchId = null;
         this.setupControls();
@@ -284,6 +302,7 @@ class ThirdPersonCameraController {
             const sensitivity = this.rotationSpeed;
             this.rotation -= deltaX * sensitivity;
             this.pitch += deltaY * sensitivity;
+            // Ograniczamy kąt nachylenia do nowych, szerszych limitów
             this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
             this.mousePosition = { x: clientX, y: clientY };
         };
@@ -315,6 +334,7 @@ class ThirdPersonCameraController {
                     const sensitivity = this.rotationSpeed * 2.5;
                     this.rotation -= deltaX * sensitivity;
                     this.pitch += deltaY * sensitivity;
+                    // Ograniczamy kąt nachylenia do nowych, szerszych limitów
                     this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
                     this.mousePosition = { x: clientX, y: clientY };
                     break;
@@ -351,13 +371,11 @@ class ThirdPersonCameraController {
 
     update() {
         if (!this.enabled || !this.target) return 0;
-        // Cel kamery jest teraz nieco wyżej (na wysokości głowy), bo target.position to stopy.
-        const targetPosition = this.target.position.clone().add(new THREE.Vector3(0, 1.2, 0));
         const horizontalDistance = this.distance * Math.cos(this.pitch);
         const verticalDistance = this.distance * Math.sin(this.pitch);
         const offset = new THREE.Vector3(Math.sin(this.rotation) * horizontalDistance, verticalDistance, Math.cos(this.rotation) * horizontalDistance);
-        this.camera.position.copy(targetPosition).add(offset);
-        this.camera.lookAt(targetPosition);
+        this.camera.position.copy(this.target.position).add(offset);
+        this.camera.lookAt(this.target.position.x, this.target.position.y + 1, this.target.position.z);
         return this.rotation;
     }
 
@@ -365,5 +383,7 @@ class ThirdPersonCameraController {
         this.cleanupControls();
     }
 }
+
 class FirstPersonCameraController {}
+
 export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };
