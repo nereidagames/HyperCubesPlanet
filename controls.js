@@ -259,8 +259,8 @@ class ThirdPersonCameraController {
         this.camera = camera;
         this.target = target;
         this.domElement = domElement;
-        this.distance = options.distance || 15;
-        this.height = options.height || 7;
+        this.distance = options.distance || 5;
+        this.height = options.height || 2;
         this.rotationSpeed = options.rotationSpeed || 0.005;
         this.rotation = 0;
         this.isDragging = false;
@@ -269,10 +269,7 @@ class ThirdPersonCameraController {
         this.pitch = 0.5;
         this.minPitch = -Math.PI / 2 + 0.001;
         this.maxPitch = Math.PI / 2 - 0.001;
-
-        // --- NOWOŚĆ: Przechowujemy wysokość podłogi dla kolizji ---
         this.floorY = options.floorY || 0;
-
         this.isMobile = false;
         this.cameraTouchId = null;
         this.setupControls();
@@ -382,17 +379,12 @@ class ThirdPersonCameraController {
         
         const idealCameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
 
-        // --- POPRAWKA: Logika kolizji kamery z podłogą ---
-        const cameraFloorClearance = 0.5; // Jak wysoko nad podłogą ma się zatrzymać kamera
+        const cameraFloorClearance = 0.5;
         if (idealCameraPosition.y < this.floorY + cameraFloorClearance) {
-            // Obliczamy nową, skróconą odległość kamery od gracza,
-            // aby utrzymać ją nad podłogą przy tym samym kącie nachylenia.
             const newVerticalDistance = this.floorY + cameraFloorClearance - targetPosition.y;
             currentDistance = newVerticalDistance / Math.sin(this.pitch);
-            // Zabezpieczenie przed zbyt bliskim podejściem (efekt pierwszej osoby)
             currentDistance = Math.max(currentDistance, 1.5);
             
-            // Ponownie obliczamy pozycję z nową odległością
             const newHorizontalDistance = currentDistance * Math.cos(this.pitch);
             offset.set(
                 Math.sin(this.rotation) * newHorizontalDistance, 
