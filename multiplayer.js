@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { createBaseCharacter } from './character.js';
-import { SkinStorage } from './SkinStorage.js'; // Importujemy, aby mieć dostęp do skinów
+import { SkinStorage } from './SkinStorage.js';
 
 export class MultiplayerManager {
   constructor(scene, uiManager, sceneManager, materialsCache) {
@@ -13,7 +13,6 @@ export class MultiplayerManager {
     this.otherPlayers = new Map();
     this.ws = null;
     this.myId = null;
-    this.PLAYER_RESTING_Y = 0.9;
   }
 
   initialize(token) {
@@ -61,7 +60,6 @@ export class MultiplayerManager {
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
-        // Po otrzymaniu powitania, wyślij dane skina, aby stać się "gotowym"
         const skinName = SkinStorage.getLastUsedSkin();
         const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
         this.sendMessage({ type: 'playerReady', skinData: skinData });
@@ -145,8 +143,11 @@ export class MultiplayerManager {
             skinContainer.add(block);
         });
     }
-
-    playerContainer.position.set(data.position.x, data.position.y, data.position.z);
+    
+    const playerHalfHeight = 0.8; // Zgodnie z playerDimensions.y / 2 w controls.js
+    const restingY = playerHalfHeight + this.sceneManager.FLOOR_TOP_Y;
+    
+    playerContainer.position.set(data.position.x, restingY, data.position.z);
     playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     this.scene.add(playerContainer);
     
@@ -222,4 +223,4 @@ export class MultiplayerManager {
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
   }
-                                            }
+}```
