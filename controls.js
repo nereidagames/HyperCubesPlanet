@@ -267,13 +267,11 @@ class ThirdPersonCameraController {
         this.mousePosition = { x: 0, y: 0 };
         this.enabled = true;
         this.pitch = 0.5;
-        
-        // --- POPRAWKA: Zmiana limitów kąta nachylenia kamery ---
-        // minPitch: -Math.PI / 2 pozwala patrzeć prosto w dół
-        // maxPitch: Math.PI / 2 pozwala patrzeć prosto w górę
-        // Dodajemy mały epsilon (0.001), aby uniknąć problemów numerycznych w punkcie zenitu/nadiru
         this.minPitch = -Math.PI / 2 + 0.001;
         this.maxPitch = Math.PI / 2 - 0.001;
+
+        // --- NOWOŚĆ: Przechowujemy wysokość podłogi dla kolizji ---
+        this.floorY = options.floorY || 0;
 
         this.isMobile = false;
         this.cameraTouchId = null;
@@ -302,7 +300,6 @@ class ThirdPersonCameraController {
             const sensitivity = this.rotationSpeed;
             this.rotation -= deltaX * sensitivity;
             this.pitch += deltaY * sensitivity;
-            // Ograniczamy kąt nachylenia do nowych, szerszych limitów
             this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
             this.mousePosition = { x: clientX, y: clientY };
         };
@@ -334,7 +331,6 @@ class ThirdPersonCameraController {
                     const sensitivity = this.rotationSpeed * 2.5;
                     this.rotation -= deltaX * sensitivity;
                     this.pitch += deltaY * sensitivity;
-                    // Ograniczamy kąt nachylenia do nowych, szerszych limitów
                     this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
                     this.mousePosition = { x: clientX, y: clientY };
                     break;
@@ -371,11 +367,43 @@ class ThirdPersonCameraController {
 
     update() {
         if (!this.enabled || !this.target) return 0;
-        const horizontalDistance = this.distance * Math.cos(this.pitch);
-        const verticalDistance = this.distance * Math.sin(this.pitch);
-        const offset = new THREE.Vector3(Math.sin(this.rotation) * horizontalDistance, verticalDistance, Math.cos(this.rotation) * horizontalDistance);
-        this.camera.position.copy(this.target.position).add(offset);
-        this.camera.lookAt(this.target.position.x, this.target.position.y + 1, this.target.position.z);
+        
+        let currentDistance = this.distance;
+        const targetPosition = new THREE.Vector3(this.target.position.x, this.target.position.y + 1, this.target.position.z);
+        
+        const horizontalDistance = currentDistance * Math.cos(this.pitch);
+        const verticalDistance = currentDistance * Math.sin(this.pitch);
+        
+        const offset = new THREE.Vector3(
+            Math.sin(this.rotation) * horizontalDistance, 
+            verticalDistance, 
+            Math.cos(this.rotation) * horizontalDistance
+        );
+        
+        const idealCameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
+
+        // --- POPRAWKA: Logika kolizji kamery z podłogą ---
+        const cameraFloorClearance = 0.5; // Jak wysoko nad podłogą ma się zatrzymać kamera
+        if (idealCameraPosition.y < this.floorY + cameraFloorClearance) {
+            // Obliczamy nową, skróconą odległość kamery od gracza,
+            // aby utrzymać ją nad podłogą przy tym samym kącie nachylenia.
+            const newVerticalDistance = this.floorY + cameraFloorClearance - targetPosition.y;
+            currentDistance = newVerticalDistance / Math.sin(this.pitch);
+            // Zabezpieczenie przed zbyt bliskim podejściem (efekt pierwszej osoby)
+            currentDistance = Math.max(currentDistance, 1.5);
+            
+            // Ponownie obliczamy pozycję z nową odległością
+            const newHorizontalDistance = currentDistance * Math.cos(this.pitch);
+            offset.set(
+                Math.sin(this.rotation) * newHorizontalDistance, 
+                newVerticalDistance, 
+                Math.cos(this.rotation) * newHorizontalDistance
+            );
+        }
+        
+        this.camera.position.copy(targetPosition).add(offset);
+        this.camera.lookAt(targetPosition);
+        
         return this.rotation;
     }
 
