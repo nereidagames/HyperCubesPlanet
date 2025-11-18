@@ -112,8 +112,7 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // W przyszłości można dodać weryfikację tokenu
-                        this.startGame( { username: username, coins: 0 /* tymczasowo */ }, token);
+                        this.startGame( { username: username, coins: 0 }, token);
                     } else {
                         this.setupAuthScreen();
                     }
@@ -352,9 +351,10 @@ class BlockStarPlanetGame {
     }
 
     this.recreatePlayerController(this.sceneManager.collidableObjects);
+    
     this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
-      distance: 15,
-      height: 7, 
+      distance: 5,
+      height: 2, 
       rotationSpeed: 0.005,
       floorY: this.sceneManager.FLOOR_TOP_Y
     });
