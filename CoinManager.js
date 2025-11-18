@@ -1,29 +1,59 @@
 import * as THREE from 'three';
 
-const COINS_STORAGE_KEY = 'bsp_clone_coins';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class CoinManager {
-  constructor(scene, uiManager, player) {
+  constructor(scene, uiManager, player, initialCoins = 0) {
     this.scene = scene;
     this.uiManager = uiManager;
     this.player = player;
     
-    this.coins = 0;
+    this.coins = initialCoins;
     this.spawnedCoin = null;
 
-    this.spawnInterval = 20000;
+    this.spawnInterval = 20000; // 20 sekund
     this.spawnTimer = this.spawnInterval;
     this.mapBounds = 30;
 
-    const savedCoins = localStorage.getItem(COINS_STORAGE_KEY);
-    if (savedCoins !== null) {
-        const parsedCoins = parseInt(savedCoins, 10);
-        if (!isNaN(parsedCoins)) {
-            this.coins = parsedCoins;
-        }
-    }
-
     this.uiManager.updateCoinCounter(this.coins);
+  }
+
+  // Prywatna, asynchroniczna metoda do komunikacji z serwerem
+  async #updateCoinsOnServer(amount) {
+      const token = localStorage.getItem(JWT_TOKEN_KEY);
+      if (!token) {
+          console.error("Brak tokenu, nie można zaktualizować monet.");
+          return false;
+      }
+
+      try {
+          const response = await fetch(`${API_BASE_URL}/api/coins/update`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ amount })
+          });
+
+          if (!response.ok) {
+              const data = await response.json();
+              console.error('Błąd aktualizacji monet na serwerze:', data.message);
+              this.uiManager.showMessage(data.message || 'Błąd serwera', 'error');
+              return false;
+          }
+
+          const data = await response.json();
+          this.coins = data.newBalance; // Zaktualizuj saldo na podstawie odpowiedzi serwera
+          this.uiManager.updateCoinCounter(this.coins);
+          return true;
+
+      } catch (error) {
+          console.error('Błąd sieci podczas aktualizacji monet:', error);
+          this.uiManager.showMessage('Błąd połączenia z serwerem', 'error');
+          return false;
+      }
   }
 
   createCoinMesh() {
@@ -50,7 +80,7 @@ export class CoinManager {
 
     this.scene.add(coin);
     this.spawnedCoin = coin;
-    console.log(`Coin spawned at: x=${x.toFixed(1)}, z=${z.toFixed(1)}`);
+    console.log(`Moneta pojawiła się w: x=${x.toFixed(1)}, z=${z.toFixed(1)}`);
   }
 
   update(deltaTime) {
@@ -72,34 +102,30 @@ export class CoinManager {
     }
   }
 
-  collectCoin() {
-    console.log("Coin collected!");
+  async collectCoin() {
+    if (!this.spawnedCoin) return; // Zapobiegaj podwójnemu zebraniu
     
-    this.scene.remove(this.spawnedCoin);
-    this.spawnedCoin = null;
+    const collectedCoin = this.spawnedCoin;
+    this.spawnedCoin = null; // Natychmiast oznacz jako zebrany
+    
+    console.log("Moneta zebrana!");
+    
+    this.scene.remove(collectedCoin);
 
-    this.addCoins(200);
-
-    this.spawnTimer = 5000;
-  }
-
-  addCoins(amount) {
-    this.coins += amount;
-    this.uiManager.updateCoinCounter(this.coins);
-
-    try {
-        localStorage.setItem(COINS_STORAGE_KEY, this.coins.toString());
-    } catch (error) {
-        console.error('Nie udało się zapisać monet. Pamięć przeglądarki może być pełna.', error);
+    const success = await this.#updateCoinsOnServer(200);
+    if(success) {
+        this.uiManager.showMessage('+200 monet!', 'success');
     }
+
+    this.spawnTimer = 5000; // Resetuj timer szybciej po zebraniu
   }
 
-  // NOWOŚĆ: Metoda do wydawania monet
-  spendCoins(amount) {
-    if (this.coins >= amount) {
-        this.addCoins(-amount); // Używamy addCoins z ujemną wartością, aby zachować logikę zapisu i UI
-        return true;
+  async spendCoins(amount) {
+    if (this.coins < amount) {
+        this.uiManager.showMessage('Masz za mało monet!', 'error');
+        return false; // Szybkie sprawdzenie po stronie klienta
     }
-    return false; // Zwraca false, jeśli nie ma wystarczająco monet
+    
+    return await this.#updateCoinsOnServer(-amount);
   }
-  }
+      }
