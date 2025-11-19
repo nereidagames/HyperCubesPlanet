@@ -60,9 +60,12 @@ export class MultiplayerManager {
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
-        const skinName = SkinStorage.getLastUsedSkin();
-        const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
-        this.sendMessage({ type: 'playerReady', skinData: skinData });
+        const nickname = localStorage.getItem('bsp_clone_player_name');
+        if (nickname) {
+            const skinName = SkinStorage.getLastUsedSkin();
+            const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
+            this.sendMessage({ type: 'playerReady', nickname: nickname, skinData: skinData });
+        }
         break;
 
       case 'playerList':
@@ -76,6 +79,13 @@ export class MultiplayerManager {
       case 'playerJoined':
         if (message.id !== this.myId) {
           this.addOtherPlayer(message.id, message);
+        }
+        break;
+        
+      case 'updateNickname':
+        const playerToUpdate = this.otherPlayers.get(message.id);
+        if (playerToUpdate) {
+            playerToUpdate.nickname = message.nickname;
         }
         break;
 
@@ -144,9 +154,10 @@ export class MultiplayerManager {
         });
     }
     
+    // --- POPRAWKA: Prawidłowe obliczenie wysokości spoczynkowej ---
     const playerHalfHeight = 0.8; // Zgodnie z playerDimensions.y / 2 w controls.js
     const restingY = playerHalfHeight + this.sceneManager.FLOOR_TOP_Y;
-    
+
     playerContainer.position.set(data.position.x, restingY, data.position.z);
     playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     this.scene.add(playerContainer);
@@ -224,4 +235,3 @@ export class MultiplayerManager {
     });
   }
 }
-
