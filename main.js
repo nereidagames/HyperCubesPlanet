@@ -108,8 +108,14 @@ class BlockStarPlanetGame {
                 loadingScreen.style.opacity = '0';
                 setTimeout(() => { 
                     loadingScreen.style.display = 'none'; 
-                    // Zawsze pokazuj ekran logowania, aby pobrać świeże dane
-                    this.setupAuthScreen();
+                    const token = localStorage.getItem(JWT_TOKEN_KEY);
+                    const username = localStorage.getItem(PLAYER_NAME_KEY);
+
+                    if (token && username) {
+                        this.startGame( { username: username, coins: 0 }, token);
+                    } else {
+                        this.setupAuthScreen();
+                    }
                 }, 500);
             }
         }, 500);
@@ -126,11 +132,12 @@ class BlockStarPlanetGame {
       localStorage.setItem(JWT_TOKEN_KEY, token);
 
       this.uiManager.updatePlayerName(user.username);
+      
       document.querySelector('.ui-overlay').style.display = 'block';
 
       this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character, user.coins);
 
-      this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
+      this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache);
       this.multiplayerManager.initialize(token);
 
       this.coinManager.onCollect = () => {
@@ -311,6 +318,16 @@ class BlockStarPlanetGame {
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.onclick = () => this.logout();
+    }
+    
+    // --- NOWOŚĆ: Logika dla przycisku plusa przy monetach ---
+    const coinAddBtn = document.getElementById('coin-add-btn');
+    if (coinAddBtn) {
+        coinAddBtn.onclick = () => {
+            // Na razie tylko wyświetlamy komunikat w konsoli
+            console.log("Kliknięto przycisk doładowania monet.");
+            this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
+        };
     }
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
