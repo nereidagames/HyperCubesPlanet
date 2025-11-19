@@ -49,61 +49,13 @@
       .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
       @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
 
-      #auth-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: linear-gradient(to bottom, #87CEEB, #B0E0E6);
-        z-index: 99998;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        color: white;
-      }
-      .auth-container {
-        background: rgba(0, 0, 0, 0.5);
-        padding: 30px;
-        border-radius: 20px;
-        border: 3px solid white;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-        text-align: center;
-        width: 90%;
-        max-width: 400px;
-      }
-      .auth-container h2 {
-        margin-bottom: 25px;
-        font-size: 28px;
-      }
-      .auth-form {
-        display: none;
-        flex-direction: column;
-        gap: 15px;
-      }
-      .auth-form input {
-        font-family: 'Titan One', cursive;
-        padding: 12px;
-        border-radius: 8px;
-        border: 2px solid white;
-        text-align: center;
-        font-size: 18px;
-        background-color: rgba(255, 255, 255, 0.9);
-      }
-      .auth-buttons button, .auth-form button {
-        font-family: 'Titan One', cursive;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 8px;
-        font-size: 20px;
-        cursor: pointer;
-        color: white;
-        transition: transform 0.1s ease;
-      }
-      .auth-buttons button:active, .auth-form button:active {
-        transform: scale(0.95);
-      }
+      #auth-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99998; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
+      .auth-container { background: rgba(0, 0, 0, 0.5); padding: 30px; border-radius: 20px; border: 3px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: center; width: 90%; max-width: 400px; }
+      .auth-container h2 { margin-bottom: 25px; font-size: 28px; }
+      .auth-form { display: none; flex-direction: column; gap: 15px; }
+      .auth-form input { font-family: 'Titan One', cursive; padding: 12px; border-radius: 8px; border: 2px solid white; text-align: center; font-size: 18px; background-color: rgba(255, 255, 255, 0.9); }
+      .auth-buttons button, .auth-form button { font-family: 'Titan One', cursive; padding: 12px 20px; border: none; border-radius: 8px; font-size: 20px; cursor: pointer; color: white; transition: transform 0.1s ease; }
+      .auth-buttons button:active, .auth-form button:active { transform: scale(0.95); }
       .btn-primary { background-color: #2ed573; }
       .btn-secondary { background-color: #3498db; }
       .btn-danger { background-color: #e74c3c; }
@@ -142,95 +94,17 @@
       .btn-wiecej { background-image: url('icons/icon-more.png'); }
       .btn-download { background-image: url('icons/icon-download.png'); }
       
-      #coin-counter {
-        position: relative;
-        display: flex;
-        align-items: center;
-        height: 45px;
-        width: 180px;
-        padding: 0;
-        border: none;
-        background: none;
-        box-shadow: none;
-      }
-      .coin-bar-background {
-        position: absolute;
-        left: 25px;
-        right: 25px;
-        top: 0;
-        bottom: 0;
-        background-color: rgba(50, 30, 80, 0.7);
-        border: 2px solid #a29bfe;
-        border-radius: 25px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      .coin-icon {
-        position: absolute;
-        left: 0;
-        width: 45px;
-        height: 45px;
-        background-image: url('icons/icon-coin.png');
-        background-size: contain;
-        background-position: center;
-        background-repeat: no-repeat;
-        z-index: 1;
-        filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
-      }
-      #coin-value {
-        color: #ffd700;
-        font-size: 22px;
-        z-index: 1;
-        text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
-      }
-      #coin-add-btn {
-        position: absolute;
-        right: 0;
-        width: 45px;
-        height: 45px;
-        background-color: #74b9ff;
-        border: 2px solid white;
-        border-radius: 12px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        font-size: 36px;
-        font-weight: bold;
-        cursor: pointer;
-        z-index: 1;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        transition: transform 0.1s ease;
-      }
-      #coin-add-btn:active {
-        transform: scale(0.95);
-      }
+      #coin-counter { position: relative; display: flex; align-items: center; height: 50px; width: 170px; padding: 0; border: none; background: none; box-shadow: none; }
+      .coin-bar-background { position: absolute; left: 25px; right: 25px; top: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
+      .coin-icon { position: absolute; left: 0; width: 50px; height: 50px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; z-index: 1; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
+      #coin-value { color: #ffd700; font-size: 22px; z-index: 1; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000; }
+      #coin-add-btn { position: absolute; right: 0; width: 50px; height: 50px; background-color: #74b9ff; border: 2px solid white; border-radius: 15px; display: flex; justify-content: center; align-items: center; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s ease; padding-bottom: 4px; }
+      #coin-add-btn:active { transform: scale(0.95); }
 
       #mobile-game-controls { display: none; pointer-events: auto; }
       
-      #jump-button {
-        position: absolute;
-        bottom: 30px;
-        right: 30px;
-        width: 80px;
-        height: 80px;
-        background-color: transparent;
-        background-image: url('icons/icon-jump.png');
-        background-size: contain;
-        background-position: center;
-        background-repeat: no-repeat;
-        border: none;
-        cursor: pointer;
-        z-index: 1001;
-        border-radius: 0;
-        box-shadow: none;
-        display: block;
-      }
-      #jump-button:active {
-        transform: scale(0.95);
-      }
+      #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background-color: transparent; background-image: url('icons/icon-jump.png'); background-size: contain; background-position: center; background-repeat: no-repeat; border: none; cursor: pointer; z-index: 1001; border-radius: 0; box-shadow: none; display: block; }
+      #jump-button:active { transform: scale(0.95); }
       
       #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
       
@@ -238,15 +112,7 @@
       .build-ui-button { position: absolute; pointer-events: auto; cursor: pointer; background-color: #2c75ff; border: 3px solid white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 8px #0004; transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; }
       .build-ui-button:hover { background-color: #4c8cff; } .build-ui-button:active { transform: scale(0.95); }
       
-      #build-exit-button { 
-        top: 20px; 
-        left: 20px; 
-        width: 60px; 
-        height: 60px;
-        background: url('icons/icon-back.png') center center / contain no-repeat; 
-        border: none; 
-        box-shadow: none; 
-      }
+      #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
       #build-exit-button:hover { background-color: transparent; filter: brightness(1.2); }
       #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
       #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 28px; opacity: 0.5; cursor: not-allowed; }
@@ -256,32 +122,8 @@
       .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; } .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
       .prefab-item, .part-item { width: 100%; height: auto; padding: 10px; text-align: center; }
 
-      .panel-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 10001;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-      }
-      .panel-content {
-        background: #000c; 
-        border: 3px solid white; 
-        border-radius: 15px; 
-        padding: 20px; 
-        box-shadow: 0 10px 30px #0008; 
-        color: white; 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        width: auto; 
-        max-width: 90vw;
-      }
+      .panel-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 20px; }
+      .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
       .panel-content h2 { margin-bottom: 20px; } 
       .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
       .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; }
@@ -307,26 +149,8 @@
       .build-choice-icon { width: 120px; height: 120px; background-color: #75d040; border-radius: 15px; background-size: 90%; background-position: center; background-repeat: no-repeat; border: 3px solid white; box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
       .build-choice-label { font-size: 16px; color: white; }
       
-      #name-input-field {
-        font-family: 'Titan One', cursive;
-        padding: 10px;
-        border-radius: 8px;
-        border: 2px solid white;
-        text-align: center;
-        width: 100%;
-        margin-bottom: 20px;
-        font-size: 18px;
-      }
-      #name-submit-btn {
-        font-family: 'Titan One', cursive;
-        background: #2ed573;
-        color: white;
-        padding: 10px 30px;
-        border: none;
-        border-radius: 8px;
-        font-size: 20px;
-        cursor: pointer;
-      }
+      #name-input-field { font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; text-align: center; width: 100%; margin-bottom: 20px; font-size: 18px; }
+      #name-submit-btn { font-family: 'Titan One', cursive; background: #2ed573; color: white; padding: 10px 30px; border: none; border-radius: 8px; font-size: 20px; cursor: pointer; }
 
       @media (max-width: 768px) {
         .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
@@ -341,10 +165,7 @@
         .game-buttons { gap: 5px; }
         .game-btn { width: 48px; height: 48px; }
         
-        #coin-counter { 
-          height: 40px; 
-          width: 150px;
-        }
+        #coin-counter { height: 40px; width: 150px; }
         #coin-value { font-size: 18px; }
         .coin-icon, #coin-add-btn { width: 40px; height: 40px; }
         #coin-add-btn { font-size: 30px; border-radius: 10px; }
@@ -355,11 +176,7 @@
         .panel-content, #block-selection-panel, #prefab-selection-panel, #part-selection-panel { width: 90%; }
         #block-selection-panel, #prefab-selection-panel, #part-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: row; justify-content: center; }
 
-        .build-choice-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+        .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .build-choice-icon { width: 100px; height: 100px; }
         .build-choice-label { font-size: 14px; }
       }
@@ -594,4 +411,4 @@
       }
     </script>
   </body>
-  </html>
+            </html>
