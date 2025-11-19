@@ -142,10 +142,71 @@
       .btn-wiecej { background-image: url('icons/icon-more.png'); }
       .btn-download { background-image: url('icons/icon-download.png'); }
       
-      #coin-counter { background: rgba(0, 0, 0, 0.8); border-radius: 12px; padding: 10px 15px; border: 2px solid #fff; box-shadow: 0 6px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
-      .coin-icon { width: 30px; height: 30px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; }
-      .btn-friends { background: url('icons/icon-friends.png') center center / contain no-repeat; cursor: pointer; }
-      #coin-value { color: #ffd700; font-size: 22px; }
+      #coin-counter {
+        position: relative;
+        display: flex;
+        align-items: center;
+        height: 45px;
+        width: 180px;
+        padding: 0;
+        border: none;
+        background: none;
+        box-shadow: none;
+      }
+      .coin-bar-background {
+        position: absolute;
+        left: 25px;
+        right: 25px;
+        top: 0;
+        bottom: 0;
+        background-color: rgba(50, 30, 80, 0.7);
+        border: 2px solid #a29bfe;
+        border-radius: 25px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .coin-icon {
+        position: absolute;
+        left: 0;
+        width: 45px;
+        height: 45px;
+        background-image: url('icons/icon-coin.png');
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+        z-index: 1;
+        filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
+      }
+      #coin-value {
+        color: #ffd700;
+        font-size: 22px;
+        z-index: 1;
+        text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
+      }
+      #coin-add-btn {
+        position: absolute;
+        right: 0;
+        width: 45px;
+        height: 45px;
+        background-color: #74b9ff;
+        border: 2px solid white;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 36px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 1;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        transition: transform 0.1s ease;
+      }
+      #coin-add-btn:active {
+        transform: scale(0.95);
+      }
 
       #mobile-game-controls { display: none; pointer-events: auto; }
       
@@ -280,9 +341,13 @@
         .game-buttons { gap: 5px; }
         .game-btn { width: 48px; height: 48px; }
         
-        #coin-counter { padding: 5px 10px; gap: 5px; }
-        #coin-value { font-size: 14px; }
-        .coin-icon { width: 20px; height: 20px; }
+        #coin-counter { 
+          height: 40px; 
+          width: 150px;
+        }
+        #coin-value { font-size: 18px; }
+        .coin-icon, #coin-add-btn { width: 40px; height: 40px; }
+        #coin-add-btn { font-size: 30px; border-radius: 10px; }
         
         #jump-button { width: 70px; height: 70px; right: 15px; bottom: 15px; }
         #joystick-zone { left: 15px; bottom: 15px; }
@@ -384,7 +449,10 @@
               
               <div id="coin-counter">
                   <div class="coin-icon"></div>
-                  <div id="coin-value" class="text-outline">0</div>
+                  <div class="coin-bar-background">
+                      <div id="coin-value" class="text-outline">0</div>
+                  </div>
+                  <div id="coin-add-btn" class="ui-element">+</div>
               </div>
           </div>
         </div>
