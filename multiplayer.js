@@ -60,12 +60,9 @@ export class MultiplayerManager {
     switch (message.type) {
       case 'welcome':
         this.myId = message.id;
-        const nickname = localStorage.getItem('bsp_clone_player_name');
-        if (nickname) {
-            const skinName = SkinStorage.getLastUsedSkin();
-            const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
-            this.sendMessage({ type: 'playerReady', nickname: nickname, skinData: skinData });
-        }
+        const skinName = SkinStorage.getLastUsedSkin();
+        const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
+        this.sendMessage({ type: 'playerReady', skinData: skinData });
         break;
 
       case 'playerList':
@@ -79,13 +76,6 @@ export class MultiplayerManager {
       case 'playerJoined':
         if (message.id !== this.myId) {
           this.addOtherPlayer(message.id, message);
-        }
-        break;
-        
-      case 'updateNickname':
-        const playerToUpdate = this.otherPlayers.get(message.id);
-        if (playerToUpdate) {
-            playerToUpdate.nickname = message.nickname;
         }
         break;
 
@@ -112,6 +102,15 @@ export class MultiplayerManager {
             this.displayChatBubble(message.id, message.text);
         }
         break;
+        
+      case 'privateMessageReceived':
+        console.log("Otrzymano nową prywatną wiadomość od", message.sender.nickname);
+        // Dodać logikę powiadomienia, np. kropka przy ikonie poczty
+        break;
+        
+      case 'privateMessageError':
+        alert(`Błąd wiadomości: ${message.message}`);
+        break;
     }
   }
 
@@ -119,6 +118,14 @@ export class MultiplayerManager {
     if (this.ws && this.ws.readyState === this.ws.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
+  }
+
+  sendPrivateMessage(recipient, text) {
+      this.sendMessage({
+          type: 'sendPrivateMessage',
+          recipient: recipient,
+          text: text
+      });
   }
 
   addOtherPlayer(id, data) {
@@ -153,12 +160,8 @@ export class MultiplayerManager {
             skinContainer.add(block);
         });
     }
-    
-    // --- POPRAWKA: Prawidłowe obliczenie wysokości spoczynkowej ---
-    const playerHalfHeight = 0.8; // Zgodnie z playerDimensions.y / 2 w controls.js
-    const restingY = playerHalfHeight + this.sceneManager.FLOOR_TOP_Y;
 
-    playerContainer.position.set(data.position.x, restingY, data.position.z);
+    playerContainer.position.set(data.position.x, data.position.y, data.position.z);
     playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     this.scene.add(playerContainer);
     
