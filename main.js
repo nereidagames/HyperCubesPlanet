@@ -247,6 +247,10 @@ class BlockStarPlanetGame {
     window.location.reload();
   }
 
+  setupMailSystem() {
+    console.log("Inicjalizacja systemu poczty...");
+  }
+
   preloadInitialAssets() {
     const textureLoader = new THREE.TextureLoader(this.loadingManager);
     const allBlocks = this.blockManager.getAllBlockDefinitions();
@@ -319,12 +323,18 @@ class BlockStarPlanetGame {
     if (logoutBtn) {
         logoutBtn.onclick = () => this.logout();
     }
+
+    const mailButton = document.querySelector('.top-bar-item:nth-child(2)');
+    if(mailButton) {
+      mailButton.onclick = () => {
+        this.uiManager.openPanel('mail-panel');
+        this.setupMailSystem();
+      };
+    }
     
-    // --- NOWOŚĆ: Logika dla przycisku plusa przy monetach ---
     const coinAddBtn = document.getElementById('coin-add-btn');
     if (coinAddBtn) {
         coinAddBtn.onclick = () => {
-            // Na razie tylko wyświetlamy komunikat w konsoli
             console.log("Kliknięto przycisk doładowania monet.");
             this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
         };
