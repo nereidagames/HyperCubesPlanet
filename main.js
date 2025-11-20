@@ -67,6 +67,11 @@ class BlockStarPlanetGame {
 
     this.positionUpdateInterval = null;
 
+    this.mailState = {
+        conversations: [],
+        activeConversation: null
+    };
+
     this.setupRenderer();
     this.init();
   }
@@ -112,7 +117,8 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        this.startGame( { username: username, coins: 0 }, token);
+                        // W przyszłości można dodać weryfikację tokenu, na razie zakładamy, że jest ważny
+                        this.startGame( { username: username, coins: 0 /* saldo zostanie pobrane przy logowaniu */ }, token);
                     } else {
                         this.setupAuthScreen();
                     }
@@ -247,8 +253,111 @@ class BlockStarPlanetGame {
     window.location.reload();
   }
 
-  setupMailSystem() {
+  async setupMailSystem() {
     console.log("Inicjalizacja systemu poczty...");
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return;
+
+    const conversationsList = document.querySelector('.mail-conversations');
+    const chatView = document.querySelector('.mail-chat-view');
+    const chatUsername = document.getElementById('mail-chat-username');
+    const chatMessages = document.querySelector('.mail-chat-messages');
+    const replyForm = document.getElementById('mail-reply-form');
+    const replyInput = document.getElementById('mail-reply-input');
+    const newMailBtn = document.getElementById('new-mail-btn');
+    const newMailComposer = document.getElementById('new-mail-composer');
+    const newMailForm = document.getElementById('new-mail-form');
+    
+    const renderConversations = () => {
+        conversationsList.innerHTML = '';
+        this.mailState.conversations.forEach(convo => {
+            const convoItem = document.createElement('div');
+            convoItem.className = 'conversation-item';
+            convoItem.textContent = convo.other_username;
+            if (this.mailState.activeConversation === convo.other_username) {
+                convoItem.classList.add('active');
+            }
+            convoItem.onclick = () => openConversation(convo.other_username);
+            conversationsList.appendChild(convoItem);
+        });
+    };
+
+    const openConversation = async (username) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/messages/${username}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const messages = await response.json();
+            
+            chatUsername.textContent = username;
+            chatMessages.innerHTML = '';
+            const myUsername = localStorage.getItem(PLAYER_NAME_KEY);
+            messages.forEach(msg => {
+                const messageEl = document.createElement('div');
+                messageEl.className = 'mail-message';
+                messageEl.classList.add(msg.sender_username === myUsername ? 'sent' : 'received');
+                messageEl.textContent = msg.message_text;
+                chatMessages.appendChild(messageEl);
+            });
+            
+            this.mailState.activeConversation = username;
+            renderConversations();
+            chatView.style.display = 'flex';
+            newMailComposer.style.display = 'none';
+            replyForm.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (error) {
+            console.error("Błąd pobierania wiadomości:", error);
+        }
+    };
+    
+    newMailBtn.onclick = () => {
+        this.mailState.activeConversation = null;
+        renderConversations();
+        chatView.style.display = 'none';
+        replyForm.style.display = 'none';
+        newMailComposer.style.display = 'block';
+    };
+
+    newMailForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const recipientInput = document.getElementById('new-mail-recipient');
+        const textInput = document.getElementById('new-mail-text');
+        if (recipientInput.value && textInput.value && this.multiplayerManager) {
+            this.multiplayerManager.sendPrivateMessage(recipientInput.value, textInput.value);
+            const sentTo = recipientInput.value;
+            recipientInput.value = '';
+            textInput.value = '';
+            setTimeout(() => this.setupMailSystem().then(() => openConversation(sentTo)), 500);
+        }
+    });
+
+    replyForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = replyInput.value;
+        if (text && this.mailState.activeConversation && this.multiplayerManager) {
+            this.multiplayerManager.sendPrivateMessage(this.mailState.activeConversation, text);
+            replyInput.value = '';
+            const messageEl = document.createElement('div');
+            messageEl.className = 'mail-message sent';
+            messageEl.textContent = text;
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    });
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/messages`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.mailState.conversations = await response.json();
+        renderConversations();
+        chatView.style.display = 'none';
+        newMailComposer.style.display = 'none';
+        replyForm.style.display = 'none';
+    } catch (error) {
+        console.error("Błąd pobierania listy konwersacji:", error);
+    }
   }
 
   preloadInitialAssets() {
@@ -308,6 +417,15 @@ class BlockStarPlanetGame {
       }
     );
     this.uiManager.initialize(this.isMobile);
+    
+    const mailButton = document.querySelector('.top-bar-item:nth-child(2)');
+    if(mailButton) {
+      mailButton.onclick = () => {
+        this.uiManager.openPanel('mail-panel');
+        this.setupMailSystem();
+      };
+    }
+
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
@@ -323,19 +441,10 @@ class BlockStarPlanetGame {
     if (logoutBtn) {
         logoutBtn.onclick = () => this.logout();
     }
-
-    const mailButton = document.querySelector('.top-bar-item:nth-child(2)');
-    if(mailButton) {
-      mailButton.onclick = () => {
-        this.uiManager.openPanel('mail-panel');
-        this.setupMailSystem();
-      };
-    }
     
     const coinAddBtn = document.getElementById('coin-add-btn');
     if (coinAddBtn) {
         coinAddBtn.onclick = () => {
-            console.log("Kliknięto przycisk doładowania monet.");
             this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
         };
     }
@@ -753,4 +862,4 @@ class BlockStarPlanetGame {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
+document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });```
