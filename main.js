@@ -862,4 +862,5 @@ class BlockStarPlanetGame {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });```
+document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
+
