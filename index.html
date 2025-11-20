@@ -130,6 +130,26 @@
       .panel-item:hover { background: #4c8cff; } 
       .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
       
+      #mail-panel .panel-content { flex-direction: row; width: 80vw; max-width: 1000px; height: 70vh; padding: 15px; align-items: flex-start; }
+      .mail-sidebar { width: 30%; height: 100%; border-right: 2px solid rgba(255, 255, 255, 0.3); display: flex; flex-direction: column; }
+      .mail-sidebar-header { padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
+      .mail-sidebar-header h3 { font-size: 20px; }
+      #new-mail-btn { background: #2ed573; border-radius: 8px; width: 35px; height: 35px; font-size: 28px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+      .mail-conversations { flex-grow: 1; overflow-y: auto; padding: 5px; }
+      .conversation-item { padding: 15px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; background-color: rgba(255, 255, 255, 0.1); transition: background-color 0.2s ease; }
+      .conversation-item:hover, .conversation-item.active { background-color: rgba(255, 255, 255, 0.3); }
+      .mail-chat-view { width: 70%; height: 100%; display: flex; flex-direction: column; padding-left: 15px; }
+      #mail-chat-header { padding-bottom: 10px; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
+      .mail-chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px 0; display: flex; flex-direction: column; }
+      .mail-message { max-width: 70%; padding: 10px 15px; border-radius: 15px; margin-bottom: 10px; word-wrap: break-word; }
+      .mail-message.sent { background-color: #3498db; align-self: flex-end; border-bottom-right-radius: 3px; }
+      .mail-message.received { background-color: #95a5a6; color: #333; align-self: flex-start; border-bottom-left-radius: 3px; }
+      #mail-reply-form { display: flex; gap: 10px; padding-top: 10px; }
+      #mail-reply-input { flex-grow: 1; font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; font-size: 16px; }
+      #mail-reply-btn { font-family: 'Titan One', cursive; padding: 0 20px; border: none; border-radius: 8px; background: #2ed573; color: white; cursor: pointer; }
+      #new-mail-composer { display: none; padding: 20px; }
+      #new-mail-composer input { width: 100%; margin-bottom: 15px; }
+
       #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
       #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
 
@@ -292,6 +312,41 @@
     
     <div id="explore-exit-button" style="display: none;"></div>
 
+    <div id="mail-panel" class="panel-modal">
+      <div class="panel-content">
+        <div class="mail-sidebar">
+          <div class="mail-sidebar-header">
+            <h3 class="text-outline">Wiadomości</h3>
+            <div id="new-mail-btn" class="text-outline">+</div>
+          </div>
+          <div class="mail-conversations">
+            <!-- Tutaj będą dynamicznie dodawane konwersacje -->
+          </div>
+        </div>
+        <div class="mail-chat-view">
+          <div id="mail-chat-header">
+            <h2 id="mail-chat-username" class="text-outline">Wybierz konwersację</h2>
+          </div>
+          <div class="mail-chat-messages">
+            <!-- Tutaj będą dynamicznie dodawane wiadomości -->
+          </div>
+          <form id="mail-reply-form" style="display: none;">
+            <input type="text" id="mail-reply-input" placeholder="Napisz wiadomość..." autocomplete="off">
+            <button type="submit" id="mail-reply-btn" class="text-outline">Wyślij</button>
+          </form>
+          <div id="new-mail-composer" style="display: none;">
+             <h2 class="text-outline">Nowa wiadomość</h2>
+             <form id="new-mail-form" class="auth-form" style="display: flex;">
+                <input type="text" id="new-mail-recipient" placeholder="Nazwa odbiorcy...">
+                <input type="text" id="new-mail-text" placeholder="Treść wiadomości...">
+                <button type="submit" class="btn-primary text-outline">Wyślij</button>
+             </form>
+          </div>
+        </div>
+        <button class="panel-close-button" style="position: absolute; top: 10px; right: 10px;">X</button>
+      </div>
+    </div>
+
     <div id="discover-panel" class="panel-modal">
       <div class="panel-content">
         <h2 id="discover-panel-title" class="text-outline">Wybierz Świat</h2>
@@ -411,4 +466,4 @@
       }
     </script>
   </body>
-            </html>
+          </html>
