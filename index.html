@@ -147,7 +147,7 @@
       #mail-reply-form { display: flex; gap: 10px; padding-top: 10px; }
       #mail-reply-input { flex-grow: 1; font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; font-size: 16px; }
       #mail-reply-btn { font-family: 'Titan One', cursive; padding: 0 20px; border: none; border-radius: 8px; background: #2ed573; color: white; cursor: pointer; }
-      #new-mail-composer { display: none; padding: 20px; }
+      #new-mail-composer { display: none; padding: 20px; width: 70%; position: absolute; right: 15px; top: 15px; bottom: 15px;}
       #new-mail-composer input { width: 100%; margin-bottom: 15px; }
 
       #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
@@ -317,10 +317,10 @@
         <div class="mail-sidebar">
           <div class="mail-sidebar-header">
             <h3 class="text-outline">Wiadomości</h3>
-            <div id="new-mail-btn" class="text-outline">+</div>
+            <div id="new-mail-btn" class="text-outline ui-element">+</div>
           </div>
           <div class="mail-conversations">
-            <!-- Tutaj będą dynamicznie dodawane konwersacje -->
+            <!-- Dynamicznie dodawane konwersacje -->
           </div>
         </div>
         <div class="mail-chat-view">
@@ -328,22 +328,22 @@
             <h2 id="mail-chat-username" class="text-outline">Wybierz konwersację</h2>
           </div>
           <div class="mail-chat-messages">
-            <!-- Tutaj będą dynamicznie dodawane wiadomości -->
+            <!-- Dynamicznie dodawane wiadomości -->
           </div>
           <form id="mail-reply-form" style="display: none;">
             <input type="text" id="mail-reply-input" placeholder="Napisz wiadomość..." autocomplete="off">
             <button type="submit" id="mail-reply-btn" class="text-outline">Wyślij</button>
           </form>
-          <div id="new-mail-composer" style="display: none;">
+        </div>
+        <div id="new-mail-composer" style="display: none;">
              <h2 class="text-outline">Nowa wiadomość</h2>
              <form id="new-mail-form" class="auth-form" style="display: flex;">
                 <input type="text" id="new-mail-recipient" placeholder="Nazwa odbiorcy...">
                 <input type="text" id="new-mail-text" placeholder="Treść wiadomości...">
                 <button type="submit" class="btn-primary text-outline">Wyślij</button>
              </form>
-          </div>
         </div>
-        <button class="panel-close-button" style="position: absolute; top: 10px; right: 10px;">X</button>
+        <button class="panel-close-button ui-element" style="position: absolute; top: 10px; right: 10px;">X</button>
       </div>
     </div>
 
@@ -466,4 +466,4 @@
       }
     </script>
   </body>
-          </html>
+  </html>
