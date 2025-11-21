@@ -273,11 +273,11 @@ class BlockStarPlanetGame {
         this.mailState.conversations.forEach(convo => {
             const convoItem = document.createElement('div');
             convoItem.className = 'conversation-item';
-            convoItem.textContent = convo.username;
-            if (this.mailState.activeConversation === convo.username) {
+            convoItem.textContent = convo.other_username;
+            if (this.mailState.activeConversation === convo.other_username) {
                 convoItem.classList.add('active');
             }
-            convoItem.onclick = () => openConversation(convo.username);
+            convoItem.onclick = () => openConversation(convo.other_username);
             conversationsList.appendChild(convoItem);
         });
     };
