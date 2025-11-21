@@ -66,7 +66,7 @@ class BlockStarPlanetGame {
     this.previewPreviousMouseX = 0;
 
     this.positionUpdateInterval = null;
-
+    
     this.mailState = {
         conversations: [],
         activeConversation: null
@@ -117,8 +117,7 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // W przyszłości można dodać weryfikację tokenu, na razie zakładamy, że jest ważny
-                        this.startGame( { username: username, coins: 0 /* saldo zostanie pobrane przy logowaniu */ }, token);
+                        this.startGame( { username: username, coins: 0 }, token);
                     } else {
                         this.setupAuthScreen();
                     }
@@ -252,7 +251,7 @@ class BlockStarPlanetGame {
     localStorage.removeItem(PLAYER_NAME_KEY);
     window.location.reload();
   }
-
+  
   async setupMailSystem() {
     console.log("Inicjalizacja systemu poczty...");
     const token = localStorage.getItem(JWT_TOKEN_KEY);
@@ -260,6 +259,7 @@ class BlockStarPlanetGame {
 
     const conversationsList = document.querySelector('.mail-conversations');
     const chatView = document.querySelector('.mail-chat-view');
+    const chatHeader = document.getElementById('mail-chat-header');
     const chatUsername = document.getElementById('mail-chat-username');
     const chatMessages = document.querySelector('.mail-chat-messages');
     const replyForm = document.getElementById('mail-reply-form');
@@ -273,11 +273,11 @@ class BlockStarPlanetGame {
         this.mailState.conversations.forEach(convo => {
             const convoItem = document.createElement('div');
             convoItem.className = 'conversation-item';
-            convoItem.textContent = convo.other_username;
-            if (this.mailState.activeConversation === convo.other_username) {
+            convoItem.textContent = convo.username;
+            if (this.mailState.activeConversation === convo.username) {
                 convoItem.classList.add('active');
             }
-            convoItem.onclick = () => openConversation(convo.other_username);
+            convoItem.onclick = () => openConversation(convo.username);
             conversationsList.appendChild(convoItem);
         });
     };
@@ -302,9 +302,10 @@ class BlockStarPlanetGame {
             
             this.mailState.activeConversation = username;
             renderConversations();
-            chatView.style.display = 'flex';
-            newMailComposer.style.display = 'none';
+            chatHeader.style.display = 'block';
+            chatMessages.style.display = 'flex';
             replyForm.style.display = 'flex';
+            newMailComposer.style.display = 'none';
             chatMessages.scrollTop = chatMessages.scrollHeight;
         } catch (error) {
             console.error("Błąd pobierania wiadomości:", error);
@@ -314,7 +315,8 @@ class BlockStarPlanetGame {
     newMailBtn.onclick = () => {
         this.mailState.activeConversation = null;
         renderConversations();
-        chatView.style.display = 'none';
+        chatHeader.style.display = 'none';
+        chatMessages.style.display = 'none';
         replyForm.style.display = 'none';
         newMailComposer.style.display = 'block';
     };
@@ -323,12 +325,17 @@ class BlockStarPlanetGame {
         e.preventDefault();
         const recipientInput = document.getElementById('new-mail-recipient');
         const textInput = document.getElementById('new-mail-text');
-        if (recipientInput.value && textInput.value && this.multiplayerManager) {
-            this.multiplayerManager.sendPrivateMessage(recipientInput.value, textInput.value);
-            const sentTo = recipientInput.value;
+        const recipient = recipientInput.value;
+        const text = textInput.value;
+        if (recipient && text && this.multiplayerManager) {
+            this.multiplayerManager.sendPrivateMessage(recipient, text);
             recipientInput.value = '';
             textInput.value = '';
-            setTimeout(() => this.setupMailSystem().then(() => openConversation(sentTo)), 500);
+            setTimeout(() => {
+                this.setupMailSystem().then(() => {
+                    openConversation(recipient);
+                });
+            }, 500);
         }
     });
 
@@ -352,7 +359,10 @@ class BlockStarPlanetGame {
         });
         this.mailState.conversations = await response.json();
         renderConversations();
-        chatView.style.display = 'none';
+        chatHeader.style.display = 'block';
+        chatMessages.style.display = 'flex';
+        chatUsername.textContent = "Wybierz konwersację";
+        chatMessages.innerHTML = '';
         newMailComposer.style.display = 'none';
         replyForm.style.display = 'none';
     } catch (error) {
@@ -417,7 +427,7 @@ class BlockStarPlanetGame {
       }
     );
     this.uiManager.initialize(this.isMobile);
-    
+
     const mailButton = document.querySelector('.top-bar-item:nth-child(2)');
     if(mailButton) {
       mailButton.onclick = () => {
@@ -425,7 +435,7 @@ class BlockStarPlanetGame {
         this.setupMailSystem();
       };
     }
-
+    
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
@@ -863,4 +873,3 @@ class BlockStarPlanetGame {
 }
 
 document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
-
