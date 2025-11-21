@@ -2,6 +2,11 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
+    <!-- Tagi zapobiegające cache'owaniu HTML podczas developmentu -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>HyperCubesPlanet</title>
     
@@ -24,7 +29,9 @@
           "three": "https://esm.sh/three@0.160.0?dev",
           "three/": "https://esm.sh/three@0.160.0&dev/",
           "nipplejs": "https://esm.sh/nipplejs",
-          "three/addons/libs/stats.module.js": "https://esm.sh/three@0.160.0/examples/jsm/libs/stats.module.js"
+          "three/addons/libs/stats.module.js": "https://esm.sh/three@0.160.0/examples/jsm/libs/stats.module.js",
+          "three/examples/jsm/renderers/CSS2DRenderer.js": "https://esm.sh/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js",
+          "three/addons/renderers/CSS2DRenderer.js": "https://esm.sh/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js"
         }
       }
     </script>
@@ -454,10 +461,25 @@
 
     <script>
       if ('serviceWorker' in navigator) {
+        // Rejestracja Service Workera po załadowaniu strony
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/HyperCubesPlanet/sw.js')
+          navigator.serviceWorker.register('./sw.js')
             .then(registration => {
-              console.log('Service Worker zarejestrowany pomyślnie:', registration);
+              console.log('Service Worker zarejestrowany pomyślnie:', registration.scope);
+              
+              // Obsługa aktualizacji Service Workera
+              registration.onupdatefound = () => {
+                const installingWorker = registration.installing;
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('Dostępna nowa wersja aplikacji. Odśwież, aby zaktualizować.');
+                    } else {
+                      console.log('Aplikacja gotowa do działania offline.');
+                    }
+                  }
+                };
+              };
             })
             .catch(error => {
               console.log('Rejestracja Service Workera nie powiodła się:', error);
