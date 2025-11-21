@@ -142,7 +142,14 @@ class BlockStarPlanetGame {
 
       this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character, user.coins);
 
-      this.multiplayerManager = new MultiplayerManager(this.scene, this.uiManager, this.sceneManager, this.characterManager.materialsCache);
+      // POPRAWKA: Przekazanie coinManager do MultiplayerManager
+      this.multiplayerManager = new MultiplayerManager(
+          this.scene, 
+          this.uiManager, 
+          this.sceneManager, 
+          this.characterManager.materialsCache, 
+          this.coinManager
+      );
       this.multiplayerManager.initialize(token);
 
       this.coinManager.onCollect = () => {
@@ -510,6 +517,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
+    this.toggleMobileControls(false); // UKRYJ JOYSTICK POSTACI
     this.buildManager.enterBuildMode(size);
   }
 
@@ -517,6 +525,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'SkinBuilderMode';
     this.toggleMainUI(false);
+    this.toggleMobileControls(false); // UKRYJ JOYSTICK POSTACI
     this.skinBuilderManager.enterBuildMode();
   }
 
@@ -524,6 +533,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'PrefabBuilderMode';
     this.toggleMainUI(false);
+    this.toggleMobileControls(false); // UKRYJ JOYSTICK POSTACI
     this.prefabBuilderManager.enterBuildMode();
   }
 
@@ -531,6 +541,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'PartBuilderMode';
     this.toggleMainUI(false);
+    this.toggleMobileControls(false); // UKRYJ JOYSTICK POSTACI
     this.partBuilderManager.enterBuildMode();
   }
   
