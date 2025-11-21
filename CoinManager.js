@@ -8,7 +8,7 @@ export class CoinManager {
     
     this.coins = initialCoins;
     this.spawnedCoin = null;
-    this.onCollect = null; // Callback, który zostanie ustawiony w main.js
+    this.onCollect = null; // Callback, który zostanie ustawiony w main.js (wysyłanie do serwera)
 
     this.uiManager.updateCoinCounter(this.coins);
   }
@@ -26,7 +26,7 @@ export class CoinManager {
     return coin;
   }
 
-  // Ta metoda jest teraz wywoływana przez MultiplayerManager, gdy serwer każe stworzyć monetę
+  // Ta metoda jest wywoływana przez MultiplayerManager, gdy serwer każe stworzyć monetę
   spawnCoinAt(position) {
     if (this.spawnedCoin) {
         this.scene.remove(this.spawnedCoin);
@@ -49,7 +49,7 @@ export class CoinManager {
       }
   }
 
-  // Ta metoda jest wywoływana, gdy serwer potwierdzi zebranie monety przez nas
+  // Ta metoda jest wywoływana, gdy serwer potwierdzi zebranie monety przez nas i prześle nowy stan konta
   updateBalance(newBalance) {
       this.coins = newBalance;
       this.uiManager.updateCoinCounter(this.coins);
@@ -59,29 +59,33 @@ export class CoinManager {
   update(deltaTime) {
     if (this.spawnedCoin) {
       this.spawnedCoin.rotation.z += 2 * deltaTime;
+      
       // Sprawdzamy kolizję tylko dla lokalnego gracza
       if (this.player && this.onCollect) {
           const distance = this.player.position.distanceTo(this.spawnedCoin.position);
+          
+          // Próg zbierania po stronie klienta (wizualny)
           if (distance < 1.5) {
-            // Zamiast logiki, wywołujemy callback, który poinformuje main.js
+            // Wywołujemy callback, który wyśle { type: 'collectCoin' } do serwera
             this.onCollect(); 
-            // Natychmiast usuwamy monetę lokalnie dla płynności,
-            // serwer roześle potwierdzenie do wszystkich.
-            this.removeCoinGlobally();
+            
+            // Uwaga: Nie usuwamy monety lokalnie od razu "na sztywno" w tej wersji.
+            // Czekamy na potwierdzenie 'coinCollected' z serwera (w MultiplayerManager),
+            // żeby uniknąć sytuacji, że moneta znika, a serwer (anti-cheat) odrzucił zebranie.
+            // Jednak dla płynności (client-side prediction) można by ją ukryć.
+            // W tej prostej implementacji zostawiamy usuwanie dla 'removeCoinGlobally'.
           }
       }
     }
   }
 
-  // Ta metoda jest wywoływana przy zakupach w sklepie
+  // Ta metoda jest wywoływana przy zakupach w sklepie (niezależna od gry 3D)
   async spendCoins(amount) {
     if (this.coins < amount) {
         this.uiManager.showMessage('Masz za mało monet!', 'error');
         return false;
     }
     
-    // Ta logika musi pozostać, ponieważ zakupy to bezpośrednia interakcja z API,
-    // a nie zdarzenie w świecie gry.
     const token = localStorage.getItem('bsp_clone_jwt_token');
     if (!token) return false;
 
@@ -108,4 +112,4 @@ export class CoinManager {
         return false;
     }
   }
-      }
+}
