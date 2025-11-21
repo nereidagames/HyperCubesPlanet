@@ -4,11 +4,13 @@ import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
 
 export class MultiplayerManager {
-  constructor(scene, uiManager, sceneManager, materialsCache) {
+  // Dodano coinManager do konstruktora
+  constructor(scene, uiManager, sceneManager, materialsCache, coinManager) {
     this.scene = scene;
     this.uiManager = uiManager;
     this.sceneManager = sceneManager;
     this.materialsCache = materialsCache;
+    this.coinManager = coinManager; // Zapisujemy referencję
     this.textureLoader = new THREE.TextureLoader();
     this.otherPlayers = new Map();
     this.ws = null;
@@ -105,17 +107,36 @@ export class MultiplayerManager {
         
       case 'privateMessageReceived':
         console.log("Otrzymano nową prywatną wiadomość od", message.sender.nickname);
-        // Dodać logikę powiadomienia, np. kropka przy ikonie poczty
+        this.uiManager.showMessage(`Masz nową wiadomość od ${message.sender.nickname}`, 'info');
         break;
         
       case 'privateMessageError':
         alert(`Błąd wiadomości: ${message.message}`);
         break;
+
+      // --- NOWE OBSŁUGI MONET ---
+      case 'coinSpawned':
+        if (this.coinManager) {
+            this.coinManager.spawnCoinAt(message.position);
+        }
+        break;
+
+      case 'coinCollected':
+        if (this.coinManager) {
+            this.coinManager.removeCoinGlobally();
+        }
+        break;
+
+      case 'updateBalance':
+        if (this.coinManager) {
+            this.coinManager.updateBalance(message.newBalance);
+        }
+        break;
     }
   }
 
   sendMessage(data) {
-    if (this.ws && this.ws.readyState === this.ws.OPEN) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
   }
@@ -132,12 +153,12 @@ export class MultiplayerManager {
     if (this.otherPlayers.has(id)) return;
 
     const playerContainer = new THREE.Group();
-    const baseCharacter = createBaseCharacter();
-    playerContainer.add(baseCharacter);
+    const baseCharacter = createBaseCharacter(playerContainer); // Przekazano kontener
 
     const skinContainer = new THREE.Group();
     skinContainer.scale.setScalar(0.125);
-    skinContainer.position.y = 0.2;
+    // Dopasowanie pozycji skina u innych graczy (tak samo jak w character.js)
+    skinContainer.position.y = 1.2; 
     playerContainer.add(skinContainer);
     
     if (data.skinData) {
@@ -218,7 +239,8 @@ export class MultiplayerManager {
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
     
     const chatBubble = new CSS2DObject(div);
-    chatBubble.position.set(0, 1.8, 0);
+    // Podniesiono dymek wyżej, żeby był nad głową (spójnie z character.js)
+    chatBubble.position.set(0, 2.2, 0);
     
     playerData.mesh.add(chatBubble);
     playerData.chatBubble = chatBubble;
