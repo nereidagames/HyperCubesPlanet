@@ -1,10 +1,6 @@
-// POPRAWKA: Zmiana nazwy cache na v2.
-// Zawsze zmieniaj tę nazwę (np. na v3, v4), gdy aktualizujesz pliki w urlsToCache.
-// To zmusi przeglądarkę do pobrania nowych wersji plików.
-const CACHE_NAME = 'hypercubesplanet-cache-v2';
+const CACHE_NAME = 'hypercubesplanet-dev-v3';
 
-// Lista wszystkich plików, które muszą być dostępne offline, aby gra działała.
-// Upewnij się, że wszystkie kluczowe zasoby są tutaj wymienione.
+// Lista plików, które mają być dostępne offline.
 const urlsToCache = [
   './',
   './index.html',
@@ -52,7 +48,7 @@ const urlsToCache = [
   'icons/icon-smallworld.png',
   'icons/icon-mediumworld.png',
   'icons/icon-bigworld.png',
-  'icons/icon-download.png', // Dodano brakującą ikonę
+  'icons/icon-download.png',
 
   // Tekstury bloków
   'textures/ziemia.png',
@@ -62,7 +58,7 @@ const urlsToCache = [
   'textures/beton.png'
 ];
 
-// Instalacja Service Workera i zapisanie zasobów w pamięci podręcznej
+// Instalacja Service Workera
 self.addEventListener('install', event => {
   console.log('Service Worker: Instalacja...');
   event.waitUntil(
@@ -72,22 +68,19 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
       .then(() => {
-        // POPRAWKA: Wymuś aktywację nowego Service Workera od razu.
-        // Dzięki temu użytkownik nie musi zamykać i otwierać karty, aby dostać aktualizację.
+        // Wymuś natychmiastową aktywację
         self.skipWaiting();
       })
   );
 });
 
-// POPRAWKA: Dodano obsługę zdarzenia 'activate' do czyszczenia starych cache.
-// Jest to kluczowe dla prawidłowego zarządzania wersjami.
+// Aktywacja i czyszczenie starych cache
 self.addEventListener('activate', event => {
   console.log('Service Worker: Aktywacja...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          // Jeśli nazwa cache nie pasuje do aktualnej, usuwamy ją.
           if (cacheName !== CACHE_NAME) {
             console.log('Service Worker: Usuwanie starego cache:', cacheName);
             return caches.delete(cacheName);
@@ -95,39 +88,56 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-        // POPRAWKA: Przejmij kontrolę nad wszystkimi otwartymi kartami.
-        // To zapewnia, że wszystkie karty będą używać nowego Service Workera.
+        // Przejmij kontrolę nad kartami od razu
         return self.clients.claim();
     })
   );
 });
 
-// Przechwytywanie żądań sieciowych (strategia: Cache First, Falling Back to Network)
+// Strategia pobierania (Network First dla kodu, Cache First dla zasobów)
 self.addEventListener('fetch', event => {
-  // Ignoruj żądania, które nie są typu GET (np. POST do serwera WebSocket)
+  // Ignoruj żądania inne niż GET
   if (event.request.method !== 'GET') {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // Jeśli zasób jest w pamięci podręcznej, zwróć go. To działa offline.
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        // Jeśli zasobu nie ma w cache, pobierz go z sieci.
-        return fetch(event.request).then(networkResponse => {
-          // Opcjonalnie: można tutaj dodać logikę dynamicznego cachowania,
-          // ale dla zasobów gry lepiej trzymać się listy w 'urlsToCache'.
+  const url = new URL(event.request.url);
+
+  // Sprawdź, czy żądanie dotyczy plików kodu (HTML, JS, JSON)
+  // Dla tych plików używamy strategii "Network First" - zawsze próbuj pobrać świeże z sieci.
+  if (url.pathname.endsWith('.html') || 
+      url.pathname.endsWith('.js') || 
+      url.pathname.endsWith('.json') ||
+      url.pathname.endsWith('/')) { // Główny URL (index)
+      
+    event.respondWith(
+      fetch(event.request)
+        .then(networkResponse => {
+          // Jeśli udało się pobrać z sieci, zaktualizuj cache i zwróć odpowiedź
+          const clonedResponse = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clonedResponse));
           return networkResponse;
-        });
-      })
-      .catch(error => {
-        // Ta część może być użyta do zwrócenia strony "offline", jeśli zawiedzie zarówno cache, jak i sieć.
-        console.error('Service Worker: Błąd podczas pobierania zasobu:', error);
-        // Można zwrócić zapasowy obrazek lub stronę HTML.
-      })
-  );
+        })
+        .catch(() => {
+          // Jeśli brak sieci, spróbuj wziąć z cache
+          return caches.match(event.request);
+        })
+    );
+  } else {
+    // Dla obrazków, tekstur i ikon używamy strategii "Cache First" - bierz z cache dla szybkości.
+    event.respondWith(
+      caches.match(event.request)
+        .then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // Jeśli nie ma w cache, pobierz z sieci
+          return fetch(event.request).then(networkResponse => {
+             const clonedResponse = networkResponse.clone();
+             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clonedResponse));
+             return networkResponse;
+          });
+        })
+    );
+  }
 });
