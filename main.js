@@ -273,11 +273,11 @@ class BlockStarPlanetGame {
         this.mailState.conversations.forEach(convo => {
             const convoItem = document.createElement('div');
             convoItem.className = 'conversation-item';
-            convoItem.textContent = convo.other_username;
-            if (this.mailState.activeConversation === convo.other_username) {
+            convoItem.textContent = convo.username;
+            if (this.mailState.activeConversation === convo.username) {
                 convoItem.classList.add('active');
             }
-            convoItem.onclick = () => openConversation(convo.other_username);
+            convoItem.onclick = () => openConversation(convo.username);
             conversationsList.appendChild(convoItem);
         });
     };
@@ -302,10 +302,9 @@ class BlockStarPlanetGame {
             
             this.mailState.activeConversation = username;
             renderConversations();
-            chatHeader.style.display = 'block';
-            chatMessages.style.display = 'flex';
-            replyForm.style.display = 'flex';
+            chatView.style.display = 'flex';
             newMailComposer.style.display = 'none';
+            replyForm.style.display = 'flex';
             chatMessages.scrollTop = chatMessages.scrollHeight;
         } catch (error) {
             console.error("Błąd pobierania wiadomości:", error);
@@ -315,9 +314,7 @@ class BlockStarPlanetGame {
     newMailBtn.onclick = () => {
         this.mailState.activeConversation = null;
         renderConversations();
-        chatHeader.style.display = 'none';
-        chatMessages.style.display = 'none';
-        replyForm.style.display = 'none';
+        chatView.style.display = 'none';
         newMailComposer.style.display = 'block';
     };
 
@@ -359,8 +356,7 @@ class BlockStarPlanetGame {
         });
         this.mailState.conversations = await response.json();
         renderConversations();
-        chatHeader.style.display = 'block';
-        chatMessages.style.display = 'flex';
+        chatView.style.display = 'flex';
         chatUsername.textContent = "Wybierz konwersację";
         chatMessages.innerHTML = '';
         newMailComposer.style.display = 'none';
