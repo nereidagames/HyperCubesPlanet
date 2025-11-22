@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// POPRAWKA KRYTYCZNA: Funkcja tworzy model, którego spód stóp jest na y=0.
-// To standardowa praktyka, która rozwiązuje problemy z kolizją i pozycjonowaniem.
+// Funkcja tworzy model nóg.
+// POPRAWKA: Przesuwamy elementy w dół o 0.5 (połowa wysokości postaci), 
+// aby środek modelu (pivot) pokrywał się ze środkiem fizycznego hitboxa.
 export function createBaseCharacter(parentContainer) {
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
@@ -14,10 +15,11 @@ export function createBaseCharacter(parentContainer) {
     const bootDepth = 0.3;
     const legSeparation = 0.15;
     
-    // Spód butów jest na y=0, więc ich środek jest na y = bootHeight / 2
-    const bootCenterY = bootHeight / 2;
-    // Nogi są bezpośrednio nad butami
-    const legCenterY = bootHeight + legHeight / 2;
+    // Całkowita wysokość wizualna to ok 1.0. Przesuwamy wszystko w dół o 0.5.
+    const verticalOffset = -0.5; 
+
+    const bootCenterY = (bootHeight / 2) + verticalOffset;
+    const legCenterY = (bootHeight + legHeight / 2) + verticalOffset;
 
     // Lewa noga i but
     const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(legWidth, legHeight, legDepth), legMaterial);
@@ -57,16 +59,17 @@ export class CharacterManager {
     createBaseCharacter(this.character);
     
     this.skinContainer.scale.setScalar(0.125);
-    // Pozycja skina jest teraz wyżej, bo jest liczona od stóp postaci.
-    this.skinContainer.position.y = 1.2; 
+    
+    // POPRAWKA: Skin musi być teraz niżej, bo cały model został obniżony.
+    // Nogi kończą się na Y = 0.5 (względem środka), więc skin zaczyna się tam.
+    this.skinContainer.position.y = 0.5; 
     
     this.character.add(this.skinContainer);
     
-    // Spawnujemy postać wysoko, aby fizyka mogła ją poprawnie opuścić na ziemię.
-    this.character.position.set(0, 10, 0); 
+    this.character.position.set(0, 5, 0); 
     this.scene.add(this.character);
     this.setupShadow();
-    console.log("Bazowa postać gracza załadowana ze standardem 'origin at feet'.");
+    console.log("Postać gracza załadowana (zcentrowana).");
   }
   
   applySkin(skinData) {
@@ -101,7 +104,6 @@ export class CharacterManager {
       const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
       this.shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
       this.shadow.rotation.x = -Math.PI / 2;
-      // Cień jest teraz tuż nad ziemią (y=0), ale pod stopami postaci.
       this.shadow.position.y = 0.01; 
       this.scene.add(this.shadow);
   }
@@ -110,8 +112,9 @@ export class CharacterManager {
     if (this.character && this.shadow) {
       this.shadow.position.x = this.character.position.x;
       this.shadow.position.z = this.character.position.z;
-      // Ustawiamy Y cienia na Y podłogi, a nie postaci, aby nie lewitował.
-      this.shadow.position.y = 0.1;
+      // Cień zawsze na poziomie podłogi, niezależnie od skoku
+      // Zakładamy, że podłoga jest na ~0.1
+      this.shadow.position.y = 0.11;
     }
   }
   
@@ -124,8 +127,8 @@ export class CharacterManager {
     div.textContent = message;
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.9); color: black; padding: 8px 12px; border-radius: 15px; font-size: 13px; max-width: 150px; text-align: center; pointer-events: none;`;
     const chatBubble = new CSS2DObject(div);
-    // Dymek jest teraz wyżej, bo liczony od stóp.
-    chatBubble.position.set(0, 2.2, 0); 
+    // Dymek nad głową (teraz niżej, bo postać jest niższa fizycznie)
+    chatBubble.position.set(0, 1.5, 0); 
     this.character.add(chatBubble);
     this.character.chatBubble = chatBubble;
 
