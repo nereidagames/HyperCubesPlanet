@@ -330,7 +330,6 @@ class BlockStarPlanetGame {
         
         chatView.style.display = 'none';
         
-        // Wymuszenie widoczności (naprawa problemu z CSS)
         newMailComposer.style.display = 'block';
         if(newMailForm) newMailForm.style.display = 'flex';
         
@@ -479,7 +478,7 @@ class BlockStarPlanetGame {
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
     this.uiManager.onPartBuilderClick = () => this.switchToPartBuilderMode();
     
-    // --- ZAKTUALIZOWANE WYWOŁANIE PANELU ODKRYJ (Z MINIATURKAMI) ---
+    // --- AKTUALIZACJA: Odkryj z miniaturkami ---
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     
@@ -532,6 +531,9 @@ class BlockStarPlanetGame {
     if (lastSkinName) {
         const skinData = SkinStorage.loadSkin(lastSkinName);
         this.characterManager.applySkin(skinData);
+        // --- AKTUALIZACJA: Ustaw ikonę przy starcie ---
+        const thumbnail = SkinStorage.getThumbnail(lastSkinName);
+        this.uiManager.updatePlayerAvatar(thumbnail);
     }
 
     this.recreatePlayerController(this.sceneManager.collidableObjects);
@@ -632,7 +634,6 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
-  // --- ZAKTUALIZOWANA METODA UŻYWAJĄCA NOWEGO UI MANAGERA ---
   showDiscoverPanel(type) {
     if (type === 'worlds') {
         const savedWorlds = WorldStorage.getSavedWorldsList();
@@ -645,6 +646,11 @@ class BlockStarPlanetGame {
             const skinData = SkinStorage.loadSkin(skinName);
             this.characterManager.applySkin(skinData);
             SkinStorage.setLastUsedSkin(skinName);
+            
+            // --- AKTUALIZACJA: Ustaw ikonę przy zmianie skina ---
+            const thumbnail = SkinStorage.getThumbnail(skinName);
+            this.uiManager.updatePlayerAvatar(thumbnail);
+            
             this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
         });
     }
