@@ -259,7 +259,6 @@ class BlockStarPlanetGame {
     window.location.reload();
   }
   
-  // --- NAPRAWIONA OBSŁUGA POCZTY ---
   async setupMailSystem() {
     console.log("Inicjalizacja systemu poczty...");
     const token = localStorage.getItem(JWT_TOKEN_KEY);
@@ -275,7 +274,6 @@ class BlockStarPlanetGame {
     const newMailComposer = document.getElementById('new-mail-composer');
     const newMailForm = document.getElementById('new-mail-form');
     
-    // Upewniamy się, że elementy istnieją
     if (!newMailBtn || !newMailComposer || !newMailForm) {
         console.error("Krytyczny błąd: Brak elementów UI poczty w DOM.");
         return;
@@ -325,19 +323,15 @@ class BlockStarPlanetGame {
         }
     };
     
-    // POPRAWKA: Obsługa przycisku "+" - wymuszenie stylów
     newMailBtn.onclick = () => {
         console.log("Kliknięto przycisk + (Nowa Wiadomość)");
         this.mailState.activeConversation = null;
         renderConversations();
         
-        // Ukryj widok czatu
         chatView.style.display = 'none';
         
-        // Wymuszamy display: block dla kontenera
+        // Wymuszenie widoczności (naprawa problemu z CSS)
         newMailComposer.style.display = 'block';
-        
-        // Wymuszamy display: flex dla formularza (by nadpisać ewentualne css)
         if(newMailForm) newMailForm.style.display = 'flex';
         
         document.getElementById('new-mail-recipient').value = '';
@@ -404,7 +398,6 @@ class BlockStarPlanetGame {
         this.mailState.conversations = await response.json();
         renderConversations();
         
-        // Stan domyślny - pokaż pusty czat lub instrukcję
         chatView.style.display = 'flex';
         chatUsername.textContent = "Wybierz konwersację";
         chatMessages.innerHTML = '';
@@ -485,11 +478,14 @@ class BlockStarPlanetGame {
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
     this.uiManager.onPartBuilderClick = () => this.switchToPartBuilderMode();
+    
+    // --- ZAKTUALIZOWANE WYWOŁANIE PANELU ODKRYJ (Z MINIATURKAMI) ---
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
+    this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
+    
     this.uiManager.onPlayerAvatarClick = () => this.showPlayerPreview();
     this.uiManager.onShopOpen = () => this.populateShopUI();
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
-    this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
     
     const logoutBtn = document.getElementById('logout-btn');
@@ -636,48 +632,22 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
+  // --- ZAKTUALIZOWANA METODA UŻYWAJĄCA NOWEGO UI MANAGERA ---
   showDiscoverPanel(type) {
-    const list = document.getElementById('discover-list');
-    const title = document.getElementById('discover-panel-title');
-    list.innerHTML = '';
-    
     if (type === 'worlds') {
-        title.textContent = 'Wybierz Świat';
         const savedWorlds = WorldStorage.getSavedWorldsList();
-        if (savedWorlds.length === 0) {
-            list.innerHTML = '<p style="text-align: center;">Nie masz zapisanych światów!</p>';
-        } else {
-            savedWorlds.forEach(worldName => {
-                const item = document.createElement('div');
-                item.className = 'panel-item';
-                item.textContent = worldName;
-                item.onclick = () => { this.uiManager.closeAllPanels(); this.loadAndExploreWorld(worldName); };
-                list.appendChild(item);
-            });
-        }
+        this.uiManager.populateDiscoverPanel('worlds', savedWorlds, (worldName) => {
+            this.loadAndExploreWorld(worldName);
+        });
     } else if (type === 'skins') {
-        title.textContent = 'Wybierz Skina';
         const savedSkins = SkinStorage.getSavedSkinsList();
-        if (savedSkins.length === 0) {
-            list.innerHTML = '<p style="text-align: center;">Nie masz zapisanych skinów!</p>';
-        } else {
-            savedSkins.forEach(skinName => {
-                const item = document.createElement('div');
-                item.className = 'panel-item';
-                item.textContent = skinName;
-                item.onclick = () => {
-                    this.uiManager.closeAllPanels();
-                    const skinData = SkinStorage.loadSkin(skinName);
-                    this.characterManager.applySkin(skinData);
-                    SkinStorage.setLastUsedSkin(skinName);
-                    this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
-                };
-                list.appendChild(item);
-            });
-        }
+        this.uiManager.populateDiscoverPanel('skins', savedSkins, (skinName) => {
+            const skinData = SkinStorage.loadSkin(skinName);
+            this.characterManager.applySkin(skinData);
+            SkinStorage.setLastUsedSkin(skinName);
+            this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
+        });
     }
-
-    this.uiManager.openPanel('discover-panel');
   }
 
   loadAndExploreWorld(worldName) {
