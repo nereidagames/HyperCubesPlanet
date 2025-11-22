@@ -4,17 +4,20 @@ import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
 
 export class MultiplayerManager {
-  // Dodano coinManager do konstruktora
   constructor(scene, uiManager, sceneManager, materialsCache, coinManager) {
     this.scene = scene;
     this.uiManager = uiManager;
     this.sceneManager = sceneManager;
     this.materialsCache = materialsCache;
-    this.coinManager = coinManager; // Zapisujemy referencję
+    this.coinManager = coinManager; // Referencja do menadżera monet
     this.textureLoader = new THREE.TextureLoader();
     this.otherPlayers = new Map();
     this.ws = null;
     this.myId = null;
+    
+    // Callbacki dla UI (przypisywane w main.js)
+    this.onMessageSent = null;
+    this.onMessageReceived = null;
   }
 
   initialize(token) {
@@ -108,29 +111,30 @@ export class MultiplayerManager {
       case 'privateMessageReceived':
         console.log("Otrzymano nową prywatną wiadomość od", message.sender.nickname);
         this.uiManager.showMessage(`Masz nową wiadomość od ${message.sender.nickname}`, 'info');
+        // Odśwież UI w main.js
+        if (this.onMessageReceived) this.onMessageReceived(message);
+        break;
+
+      // NOWOŚĆ: Potwierdzenie wysłania wiadomości (dla przycisku +)
+      case 'privateMessageSent':
+        if (this.onMessageSent) this.onMessageSent(message);
         break;
         
       case 'privateMessageError':
         alert(`Błąd wiadomości: ${message.message}`);
         break;
 
-      // --- NOWE OBSŁUGI MONET ---
+      // Obsługa Monet
       case 'coinSpawned':
-        if (this.coinManager) {
-            this.coinManager.spawnCoinAt(message.position);
-        }
+        if (this.coinManager) this.coinManager.spawnCoinAt(message.position);
         break;
 
       case 'coinCollected':
-        if (this.coinManager) {
-            this.coinManager.removeCoinGlobally();
-        }
+        if (this.coinManager) this.coinManager.removeCoinGlobally();
         break;
 
       case 'updateBalance':
-        if (this.coinManager) {
-            this.coinManager.updateBalance(message.newBalance);
-        }
+        if (this.coinManager) this.coinManager.updateBalance(message.newBalance);
         break;
     }
   }
@@ -153,11 +157,12 @@ export class MultiplayerManager {
     if (this.otherPlayers.has(id)) return;
 
     const playerContainer = new THREE.Group();
-    const baseCharacter = createBaseCharacter(playerContainer); // Przekazano kontener
+    // Przekazujemy kontener do funkcji tworzącej postać
+    createBaseCharacter(playerContainer);
 
     const skinContainer = new THREE.Group();
     skinContainer.scale.setScalar(0.125);
-    // Dopasowanie pozycji skina u innych graczy (tak samo jak w character.js)
+    // Pozycja skina względem stóp postaci
     skinContainer.position.y = 1.2; 
     playerContainer.add(skinContainer);
     
@@ -186,6 +191,7 @@ export class MultiplayerManager {
     playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     this.scene.add(playerContainer);
     
+    // Dodaj do obiektów kolizyjnych, aby można było po nich skakać
     playerContainer.traverse((child) => {
         if (child.isMesh) {
             if (this.sceneManager && this.sceneManager.collidableObjects) {
@@ -209,6 +215,7 @@ export class MultiplayerManager {
     if (this.otherPlayers.has(id)) {
       const playerData = this.otherPlayers.get(id);
       
+      // Usuń z obiektów kolizyjnych
       if (this.sceneManager && this.sceneManager.collidableObjects) {
           this.sceneManager.collidableObjects = this.sceneManager.collidableObjects.filter(obj => {
               let keep = true;
@@ -239,7 +246,7 @@ export class MultiplayerManager {
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
     
     const chatBubble = new CSS2DObject(div);
-    // Podniesiono dymek wyżej, żeby był nad głową (spójnie z character.js)
+    // Dymek nad głową postaci
     chatBubble.position.set(0, 2.2, 0);
     
     playerData.mesh.add(chatBubble);
@@ -254,6 +261,7 @@ export class MultiplayerManager {
   }
 
   update(deltaTime) {
+    // Interpolacja ruchu innych graczy dla płynności
     this.otherPlayers.forEach((playerData) => {
       playerData.mesh.position.lerp(playerData.targetPosition, deltaTime * 15);
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
