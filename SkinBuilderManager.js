@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
+// Dodajemy import funkcji tworzącej nogi
+import { createBaseCharacter } from './character.js';
 
 export class SkinBuilderManager {
   constructor(game, loadingManager, blockManager) {
@@ -20,6 +22,9 @@ export class SkinBuilderManager {
     this.platform = null;
     this.platformSize = 16;
     this.cameraController = null;
+    
+    // Zmienna do przechowywania nóg w trybie budowania
+    this.baseCharacterVisuals = null;
 
     this.blockTypes = [];
     this.selectedBlockType = null;
@@ -72,14 +77,25 @@ export class SkinBuilderManager {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight.position.set(10, 20, 15);
     this.scene.add(directionalLight);
+    
     this.createBuildPlatform();
+    
+    // --- DODANIE NÓG DO TRYBU BUDOWANIA ---
+    this.baseCharacterVisuals = new THREE.Group();
+    createBaseCharacter(this.baseCharacterVisuals);
+    // Przesuwamy nogi w dół o 0.5, aby pas "stykał się" z poziomem 0, gdzie stawiamy klocki.
+    // Jest to odwrotność przesunięcia w CharacterManager (tam skin jest +0.5).
+    this.baseCharacterVisuals.position.set(0, -0.5, 0);
+    this.scene.add(this.baseCharacterVisuals);
+    // --------------------------------------
+
     this.createPreviewBlock();
     this.previewPart = new THREE.Group();
     this.scene.add(this.previewPart);
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
-    this.cameraController.distance = 25;
+    this.cameraController.distance = 20; // Zbliżamy kamerę, żeby lepiej widzieć postać
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
@@ -89,21 +105,17 @@ export class SkinBuilderManager {
   }
 
   createBuildPlatform() {
+    // Zmniejszamy platformę wizualnie, aby skupić się na postaci
     const geometry = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
-    const material = new THREE.MeshLambertMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.5 });
+    const material = new THREE.MeshLambertMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.3 }); // Bardziej przezroczysta
     this.platform = new THREE.Mesh(geometry, material);
-    this.platform.position.y = -0.5;
+    this.platform.position.y = -1.5; // Obniżamy platformę pod nogi
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
     const gridHelper = new THREE.GridHelper(this.platformSize, this.platformSize);
-    gridHelper.position.y = 0.01;
+    gridHelper.position.y = -1.0; // Grid pod nogami
     this.scene.add(gridHelper);
-
-    const edges = new THREE.EdgesGeometry(geometry);
-    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 }));
-    line.position.y = -0.5;
-    this.scene.add(line);
   }
 
   createPreviewBlock() {
@@ -279,6 +291,7 @@ export class SkinBuilderManager {
     newBlock.position.copy(this.previewBlock.position);
     this.scene.add(newBlock);
     this.placedBlocks.push(newBlock);
+    // Dodajemy do kolizji, aby można było budować na tym klocku
     this.collidableBuildObjects.push(newBlock);
     this.updateSaveButton();
   }
@@ -335,55 +348,52 @@ export class SkinBuilderManager {
     }
   }
 
-  // --- NOWA FUNKCJA DO GENEROWANIA MINIATUREK ---
   generateThumbnail() {
-    // 1. Utwórz tymczasowy, mały renderer (150x150 px wystarczy na miniaturkę)
     const width = 150;
     const height = 150;
     const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     thumbnailRenderer.setSize(width, height);
     
-    // 2. Utwórz tymczasową scenę
     const thumbnailScene = new THREE.Scene();
-    // Brak tła = przezroczystość, lub można dać jednolity kolor
-    // thumbnailScene.background = new THREE.Color(0x444444); 
-
-    // 3. Dodaj światło
+    
+    // Światła
     const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
     thumbnailScene.add(ambLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(5, 10, 7);
     thumbnailScene.add(dirLight);
 
-    // 4. Skopiuj tylko bloki do nowej sceny
-    // Obliczamy środek (bounding box), aby ustawić kamerę
     const box = new THREE.Box3();
-    if (this.placedBlocks.length === 0) return null;
 
-    this.placedBlocks.forEach(block => {
-        const clone = block.clone();
-        thumbnailScene.add(clone);
-        box.expandByObject(clone);
-    });
+    // --- DODANIE NÓG DO MINIATURKI ---
+    const thumbLegs = new THREE.Group();
+    createBaseCharacter(thumbLegs);
+    thumbLegs.position.set(0, -0.5, 0); // Ta sama pozycja co w edytorze
+    thumbnailScene.add(thumbLegs);
+    box.expandByObject(thumbLegs);
+    // --------------------------------
+
+    if (this.placedBlocks.length > 0) {
+        this.placedBlocks.forEach(block => {
+            const clone = block.clone();
+            thumbnailScene.add(clone);
+            box.expandByObject(clone);
+        });
+    }
 
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
 
-    // 5. Ustaw kamerę
     const thumbnailCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
-    // Ustaw kamerę w izometrii/pod kątem
-    const distance = maxDim * 2.5; 
-    thumbnailCamera.position.set(center.x + distance, center.y + distance * 0.5, center.z + distance);
+    const distance = maxDim * 2.0; 
+    // Ustawiamy kamerę tak, aby patrzyła na postać z przodu-boku
+    thumbnailCamera.position.set(center.x + distance * 0.8, center.y + distance * 0.2, center.z + distance);
     thumbnailCamera.lookAt(center);
 
-    // 6. Renderuj
     thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
-
-    // 7. Pobierz Data URL (Base64 image)
-    const dataURL = thumbnailRenderer.domElement.toDataURL('image/png');
     
-    // Posprzątaj
+    const dataURL = thumbnailRenderer.domElement.toDataURL('image/png');
     thumbnailRenderer.dispose();
     
     return dataURL;
@@ -400,7 +410,6 @@ export class SkinBuilderManager {
         texturePath: block.userData.texturePath
       }));
       
-      // Generuj miniaturkę
       const thumbnail = this.generateThumbnail();
 
       if (SkinStorage.saveSkin(skinName, blocksData, thumbnail)) {
@@ -415,7 +424,13 @@ export class SkinBuilderManager {
     this.removeBuildEventListeners();
     this.collidableBuildObjects = [];
     this.placedBlocks = [];
-    while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
+    
+    // Czyścimy scenę
+    while(this.scene.children.length > 0){ 
+        this.scene.remove(this.scene.children[0]); 
+    }
+    this.baseCharacterVisuals = null;
+
     document.getElementById('build-ui-container').style.display = 'none';
 
     if (this.game.isMobile) {
@@ -428,6 +443,7 @@ export class SkinBuilderManager {
     this.cameraController.update(deltaTime);
     this.raycaster.setFromCamera(this.mouse, this.game.camera);
     const intersects = this.raycaster.intersectObjects(this.collidableBuildObjects);
+    
     if (intersects.length > 0) {
       const intersect = intersects[0];
       const normal = intersect.face.normal.clone();
@@ -436,11 +452,20 @@ export class SkinBuilderManager {
         
       const buildAreaLimit = this.platformSize / 2;
       const buildHeightLimit = 20;
+      
+      // Sprawdzenie czy nie celujemy w same nogi (blokujemy budowanie WEWNĄTRZ nóg, ale pozwalamy NA nich)
+      let isTargetingLegs = false;
+      // W prosty sposób: jeśli intersect.object to grupa nóg (lub jej dziecko)
+      // Ale dodaliśmy grupę nóg do scene, a nie do collidableObjects (chyba że chcemy budować na nogach).
+      // W kodzie wyżej: nie dodałem baseCharacterVisuals do collidableBuildObjects.
+      // Więc raycaster przeleci przez nogi i trafi w platformę lub inne klocki.
+      // To jest OK zachowanie. Budujemy "wokół" nóg.
+      
       let isVisible = false;
       if (
           Math.abs(snappedPosition.x) < buildAreaLimit && 
           Math.abs(snappedPosition.z) < buildAreaLimit &&
-          snappedPosition.y >= 0 &&
+          snappedPosition.y >= 0 && // Zawsze budujemy od y=0 w górę
           snappedPosition.y < buildHeightLimit
       ) {
           isVisible = true;
