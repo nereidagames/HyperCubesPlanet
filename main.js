@@ -150,11 +150,36 @@ class BlockStarPlanetGame {
           this.characterManager.materialsCache, 
           this.coinManager
       );
+      
       this.multiplayerManager.initialize(token);
+
+      // --- OBSŁUGA ZDARZEŃ DLA PRZYJACIÓŁ I ZNAJOMYCH ---
+      // Przechwytujemy wiadomości z serwera, aby zaktualizować UI
+      const originalHandle = this.multiplayerManager.handleServerMessage.bind(this.multiplayerManager);
+      this.multiplayerManager.handleServerMessage = (msg) => {
+          originalHandle(msg); // Najpierw standardowa obsługa (ruch graczy itp.)
+          
+          // Obsługa zdarzeń przyjaciół
+          if (msg.type === 'friendRequestReceived') {
+              this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
+              this.uiManager.loadFriendsData(); // Odśwież listę w panelu
+          }
+          if (msg.type === 'friendRequestAccepted') {
+              this.uiManager.showMessage(`${msg.by} przyjął zaproszenie!`, 'success');
+              this.uiManager.loadFriendsData(); // Odśwież listę i pasek
+          }
+          if (msg.type === 'friendStatusChange') {
+              // Ktoś wszedł/wyszedł z gry -> odśwież pasek na górze
+              this.uiManager.loadFriendsData();
+          }
+      };
 
       this.coinManager.onCollect = () => {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
+
+      // Załaduj listę przyjaciół przy starcie
+      this.uiManager.loadFriendsData();
 
       this.animate();
       this.gameState = 'MainMenu';
@@ -241,6 +266,12 @@ class BlockStarPlanetGame {
               if (response.ok) {
                   authMessage.textContent = 'Zalogowano pomyślnie!';
                   authScreen.style.display = 'none';
+                  
+                  // Jeśli serwer zwrócił miniaturkę, zaktualizuj UI
+                  if (data.thumbnail) {
+                      this.uiManager.updatePlayerAvatar(data.thumbnail);
+                  }
+                  
                   this.startGame(data.user, data.token);
               } else {
                   authMessage.textContent = data.message || 'Błąd logowania.';
@@ -329,10 +360,8 @@ class BlockStarPlanetGame {
         renderConversations();
         
         chatView.style.display = 'none';
-        
         newMailComposer.style.display = 'block';
         if(newMailForm) newMailForm.style.display = 'flex';
-        
         document.getElementById('new-mail-recipient').value = '';
         document.getElementById('new-mail-text').value = '';
     };
@@ -396,7 +425,6 @@ class BlockStarPlanetGame {
         });
         this.mailState.conversations = await response.json();
         renderConversations();
-        
         chatView.style.display = 'flex';
         chatUsername.textContent = "Wybierz konwersację";
         chatMessages.innerHTML = '';
@@ -478,7 +506,6 @@ class BlockStarPlanetGame {
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
     this.uiManager.onPartBuilderClick = () => this.switchToPartBuilderMode();
     
-    // --- AKTUALIZACJA: Odkryj z miniaturkami ---
     this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
     
@@ -531,7 +558,7 @@ class BlockStarPlanetGame {
     if (lastSkinName) {
         const skinData = SkinStorage.loadSkin(lastSkinName);
         this.characterManager.applySkin(skinData);
-        // --- AKTUALIZACJA: Ustaw ikonę przy starcie ---
+        // Wczytaj miniaturkę z local storage na start
         const thumbnail = SkinStorage.getThumbnail(lastSkinName);
         this.uiManager.updatePlayerAvatar(thumbnail);
     }
@@ -634,6 +661,20 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
+  // Funkcja wysyłająca miniaturkę na serwer (aby inni ją widzieli w znajomych)
+  async uploadSkinThumbnail(thumbnail) {
+      const token = localStorage.getItem(JWT_TOKEN_KEY);
+      if(!token || !thumbnail) return;
+      
+      try {
+          await fetch(`${API_BASE_URL}/api/user/thumbnail`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ thumbnail })
+          });
+      } catch(e) { console.error("Błąd wysyłania miniaturki", e); }
+  }
+
   showDiscoverPanel(type) {
     if (type === 'worlds') {
         const savedWorlds = WorldStorage.getSavedWorldsList();
@@ -647,9 +688,10 @@ class BlockStarPlanetGame {
             this.characterManager.applySkin(skinData);
             SkinStorage.setLastUsedSkin(skinName);
             
-            // --- AKTUALIZACJA: Ustaw ikonę przy zmianie skina ---
+            // Pobierz miniaturkę, zaktualizuj ikonę i wyślij na serwer
             const thumbnail = SkinStorage.getThumbnail(skinName);
             this.uiManager.updatePlayerAvatar(thumbnail);
+            this.uploadSkinThumbnail(thumbnail);
             
             this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
         });
