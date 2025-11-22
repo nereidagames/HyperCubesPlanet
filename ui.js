@@ -1,6 +1,8 @@
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
 
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+
 export class UIManager {
   constructor(onSendMessage) {
     this.onSendMessage = onSendMessage;
@@ -16,34 +18,34 @@ export class UIManager {
     this.onShopOpen = null;
     this.onBuyBlock = null;
     this.onNameSubmit = null;
+    
+    // Dane przyjaciół
+    this.friendsList = [];
   }
   
   initialize(isMobile) {
     this.isMobile = isMobile;
     this.setupButtonHandlers();
     this.setupChatSystem();
+    this.setupFriendsSystem(); // Inicjalizacja modułu przyjaciół
     console.log('UI Manager initialized');
   }
 
-  // --- NOWA METODA DO AKTUALIZACJI IKONY GRACZA ---
   updatePlayerAvatar(thumbnail) {
       const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
       if (!avatarEl) return;
 
       if (thumbnail) {
-          // Jeśli jest miniaturka: usuń tekst, ustaw tło
           avatarEl.textContent = '';
           avatarEl.style.backgroundImage = `url(${thumbnail})`;
-          avatarEl.style.backgroundSize = 'cover'; // lub 'contain' zależnie od preferencji
+          avatarEl.style.backgroundSize = 'cover';
           avatarEl.style.backgroundPosition = 'center';
-          avatarEl.style.backgroundColor = '#4a90e2'; // Tło zostaje jako ramka/wypełnienie
+          avatarEl.style.backgroundColor = '#4a90e2';
       } else {
-          // Jeśli brak miniaturki (default): przywróć emoji
           avatarEl.style.backgroundImage = 'none';
           avatarEl.textContent = '👤';
       }
   }
-  // ------------------------------------------------
 
   updatePlayerName(name) {
     const nameDisplay = document.getElementById('player-name-display');
@@ -348,5 +350,292 @@ export class UIManager {
           });
       }
       this.openPanel('discover-panel');
+  }
+
+  // --- SYSTEM PRZYJACIÓŁ ---
+
+  setupFriendsSystem() {
+      const btnOpen = document.getElementById('btn-friends-open');
+      if (btnOpen) {
+          btnOpen.onclick = () => {
+              this.openPanel('friends-panel');
+              this.loadFriendsData();
+          };
+      }
+
+      // Zakładki
+      const tabs = document.querySelectorAll('.friends-tab');
+      tabs.forEach(tab => {
+          tab.onclick = () => {
+              tabs.forEach(t => t.classList.remove('active'));
+              document.querySelectorAll('.friends-view').forEach(v => v.classList.remove('active'));
+              
+              tab.classList.add('active');
+              const viewId = tab.getAttribute('data-tab');
+              document.getElementById(viewId).classList.add('active');
+          };
+      });
+
+      // Szukaj
+      const searchBtn = document.getElementById('friends-search-btn');
+      if (searchBtn) {
+          searchBtn.onclick = () => this.handleFriendSearch();
+      }
+  }
+
+  async loadFriendsData() {
+      const token = localStorage.getItem('bsp_clone_jwt_token');
+      if (!token) return;
+
+      try {
+          const response = await fetch(`${API_BASE_URL}/api/friends`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+              const data = await response.json();
+              this.friendsList = data.friends;
+              
+              this.renderFriendsList(data.friends);
+              this.renderRequestsList(data.requests);
+              this.updateTopBarFriends(data.friends);
+          }
+      } catch (err) {
+          console.error("Błąd pobierania przyjaciół:", err);
+      }
+  }
+
+  renderFriendsList(friends) {
+      const list = document.getElementById('friends-list');
+      list.innerHTML = '';
+      
+      if (!friends || friends.length === 0) {
+          list.innerHTML = '<p class="text-outline" style="text-align:center; margin-top:20px;">Brak przyjaciół.</p>';
+          return;
+      }
+
+      friends.forEach(f => {
+          const item = document.createElement('div');
+          item.className = 'friend-item';
+          
+          const avatar = document.createElement('div');
+          avatar.className = 'friend-avatar';
+          if (f.current_skin_thumbnail) {
+              avatar.style.backgroundImage = `url(${f.current_skin_thumbnail})`;
+          } else {
+              // Default
+              avatar.style.display = 'flex';
+              avatar.style.justifyContent = 'center';
+              avatar.style.alignItems = 'center';
+              avatar.textContent = '👤';
+              avatar.style.color = 'white';
+              avatar.style.fontSize = '24px';
+          }
+          
+          // Kolor obwódki zależny od statusu
+          if (f.isOnline) avatar.style.borderColor = '#2ed573'; // zielony
+          else avatar.style.borderColor = '#7f8c8d'; // szary
+
+          const info = document.createElement('div');
+          info.className = 'friend-info';
+          info.innerHTML = `
+            <div class="text-outline" style="font-size: 16px;">${f.username}</div>
+            <div style="font-size: 12px; color: ${f.isOnline ? '#2ed573' : '#ccc'};">
+                ${f.isOnline ? 'Online' : 'Offline'}
+            </div>
+          `;
+
+          item.appendChild(avatar);
+          item.appendChild(info);
+          list.appendChild(item);
+      });
+  }
+
+  renderRequestsList(requests) {
+      const list = document.getElementById('friends-requests');
+      list.innerHTML = '';
+      
+      if (!requests || requests.length === 0) {
+          list.innerHTML = '<p class="text-outline" style="text-align:center; margin-top:20px;">Brak nowych zaproszeń.</p>';
+          return;
+      }
+
+      requests.forEach(r => {
+          const item = document.createElement('div');
+          item.className = 'friend-item';
+          item.innerHTML = `
+            <div class="friend-info text-outline" style="font-size: 16px;">${r.username}</div>
+            <div class="friend-actions">
+                <button class="action-btn btn-accept">Akceptuj</button>
+            </div>
+          `;
+          
+          const btn = item.querySelector('.btn-accept');
+          btn.onclick = () => this.acceptFriendRequest(r.request_id);
+          
+          list.appendChild(item);
+      });
+  }
+
+  async handleFriendSearch() {
+      const input = document.getElementById('friends-search-input');
+      const query = input.value.trim();
+      if (!query) return;
+      
+      const token = localStorage.getItem('bsp_clone_jwt_token');
+      if (!token) return;
+
+      try {
+          const response = await fetch(`${API_BASE_URL}/api/friends/search`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ query })
+          });
+          
+          const results = await response.json();
+          const container = document.getElementById('friends-search-results');
+          container.innerHTML = '';
+          
+          if (results.length === 0) {
+              container.innerHTML = '<p class="text-outline" style="margin-top:10px;">Nikogo nie znaleziono.</p>';
+              return;
+          }
+
+          results.forEach(u => {
+              const item = document.createElement('div');
+              item.className = 'friend-item';
+              
+              // Awatar w wynikach wyszukiwania (klikalny podgląd)
+              const avatar = document.createElement('div');
+              avatar.className = 'friend-avatar';
+              if (u.current_skin_thumbnail) {
+                  avatar.style.backgroundImage = `url(${u.current_skin_thumbnail})`;
+                  avatar.style.cursor = 'pointer';
+                  avatar.onclick = () => this.showSkinPreviewFromUrl(u.current_skin_thumbnail);
+              } else {
+                  avatar.style.display = 'flex';
+                  avatar.style.justifyContent = 'center';
+                  avatar.style.alignItems = 'center';
+                  avatar.textContent = '👤';
+                  avatar.style.color = 'white';
+                  avatar.style.fontSize = '24px';
+              }
+
+              const info = document.createElement('div');
+              info.className = 'friend-info text-outline';
+              info.textContent = u.username;
+
+              const btn = document.createElement('button');
+              btn.className = 'action-btn btn-invite';
+              btn.textContent = 'Dodaj';
+              btn.onclick = () => this.sendFriendRequest(u.id);
+
+              item.appendChild(avatar);
+              item.appendChild(info);
+              item.appendChild(btn);
+              container.appendChild(item);
+          });
+
+      } catch (e) {
+          console.error("Błąd szukania:", e);
+      }
+  }
+
+  async sendFriendRequest(targetId) {
+      const token = localStorage.getItem('bsp_clone_jwt_token');
+      try {
+          const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ targetUserId: targetId })
+          });
+          const data = await res.json();
+          if (res.ok) this.showMessage(data.message, 'success');
+          else this.showMessage(data.message, 'error');
+      } catch(e) {
+          this.showMessage('Błąd sieci.', 'error');
+      }
+  }
+
+  async acceptFriendRequest(requestId) {
+      const token = localStorage.getItem('bsp_clone_jwt_token');
+      try {
+          const res = await fetch(`${API_BASE_URL}/api/friends/accept`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ requestId })
+          });
+          const data = await res.json();
+          if (res.ok) {
+              this.showMessage('Dodano do znajomych!', 'success');
+              this.loadFriendsData(); // Odśwież wszystko
+          } else {
+              this.showMessage(data.message, 'error');
+          }
+      } catch(e) {
+          this.showMessage('Błąd sieci.', 'error');
+      }
+  }
+
+  // Aktualizacja paska na górze ekranu
+  updateTopBarFriends(friends) {
+      const container = document.getElementById('active-friends-container');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      // Pokaż tylko tych online
+      const onlineFriends = friends.filter(f => f.isOnline);
+      
+      onlineFriends.forEach(f => {
+          const item = document.createElement('div');
+          item.className = 'active-friend-item';
+          
+          const avatar = document.createElement('div');
+          avatar.className = 'active-friend-avatar';
+          if (f.current_skin_thumbnail) {
+              avatar.style.backgroundImage = `url(${f.current_skin_thumbnail})`;
+          } else {
+              avatar.style.display = 'flex';
+              avatar.style.justifyContent = 'center';
+              avatar.style.alignItems = 'center';
+              avatar.textContent = '👤';
+              avatar.style.color = 'white';
+          }
+          
+          // Kliknięcie w miniaturkę na pasku pokazuje podgląd
+          avatar.onclick = () => this.showSkinPreviewFromUrl(f.current_skin_thumbnail);
+
+          const name = document.createElement('div');
+          name.className = 'active-friend-name text-outline';
+          name.textContent = f.username;
+
+          item.appendChild(avatar);
+          item.appendChild(name);
+          container.appendChild(item);
+      });
+  }
+
+  // Prosty podgląd (obrazek 2D w oknie 3D Preview)
+  showSkinPreviewFromUrl(url) {
+      if (!url) return;
+      
+      const panel = document.getElementById('player-preview-panel');
+      const container = document.getElementById('player-preview-renderer-container');
+      
+      // Wyczyść kontener (usuń canvas Three.js na chwilę lub dodaj img nad nim)
+      container.innerHTML = '';
+      container.style.backgroundColor = '#333';
+      
+      const img = document.createElement('img');
+      img.src = url;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+      
+      container.appendChild(img);
+      this.openPanel('player-preview-panel');
+      
+      // Uwaga: Oryginalny Three.js renderer zostanie utracony w DOM.
+      // W main.js funkcja showPlayerPreview() naprawia to (tworzy nowy renderer jeśli brak).
+      // Więc jest bezpiecznie.
   }
 }
