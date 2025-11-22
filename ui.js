@@ -1,3 +1,6 @@
+import { SkinStorage } from './SkinStorage.js';
+import { WorldStorage } from './WorldStorage.js';
+
 export class UIManager {
   constructor(onSendMessage) {
     this.onSendMessage = onSendMessage;
@@ -19,7 +22,6 @@ export class UIManager {
     this.isMobile = isMobile;
     this.setupButtonHandlers();
     this.setupChatSystem();
-    // --- POPRAWKA: Usunięto dodawanie statycznych wiadomości. Teraz zarządza tym multiplayer.js ---
     console.log('UI Manager initialized');
   }
 
@@ -253,4 +255,83 @@ export class UIManager {
       setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
     }, 2500);
   }
-    }
+
+  // Nowa, ulepszona metoda do wypełniania panelu Odkryj (z miniaturkami)
+  populateDiscoverPanel(type, items, onSelect) {
+      const list = document.getElementById('discover-list');
+      const title = document.getElementById('discover-panel-title');
+      list.innerHTML = '';
+      
+      if (type === 'worlds') {
+          title.textContent = 'Wybierz Świat';
+          if (items.length === 0) {
+              list.innerHTML = '<p style="text-align: center;">Brak zapisanych światów.</p>';
+          }
+          items.forEach(worldName => {
+              const item = document.createElement('div');
+              item.className = 'panel-item';
+              item.textContent = worldName;
+              item.onclick = () => { this.closeAllPanels(); onSelect(worldName); };
+              list.appendChild(item);
+          });
+      } else if (type === 'skins') {
+          title.textContent = 'Wybierz Skina';
+          if (items.length === 0) {
+              list.innerHTML = '<p style="text-align: center;">Brak zapisanych skinów.</p>';
+          }
+          items.forEach(skinName => {
+              const item = document.createElement('div');
+              item.className = 'panel-item skin-list-item';
+              item.style.display = 'flex';
+              item.style.alignItems = 'center';
+              item.style.padding = '10px';
+              
+              // Kontener na miniaturkę
+              const thumbContainer = document.createElement('div');
+              thumbContainer.style.width = '64px';
+              thumbContainer.style.height = '64px';
+              thumbContainer.style.backgroundColor = '#000';
+              thumbContainer.style.borderRadius = '8px';
+              thumbContainer.style.marginRight = '15px';
+              thumbContainer.style.overflow = 'hidden';
+              thumbContainer.style.flexShrink = '0';
+              thumbContainer.style.border = '2px solid white';
+              
+              // Pobieramy miniaturkę
+              const thumbData = SkinStorage.getThumbnail(skinName);
+              
+              if (thumbData) {
+                  const img = document.createElement('img');
+                  img.src = thumbData;
+                  img.style.width = '100%';
+                  img.style.height = '100%';
+                  img.style.objectFit = 'cover';
+                  thumbContainer.appendChild(img);
+              } else {
+                  // Znak zapytania jeśli brak miniaturki (stare skiny)
+                  thumbContainer.textContent = '?';
+                  thumbContainer.style.display = 'flex';
+                  thumbContainer.style.alignItems = 'center';
+                  thumbContainer.style.justifyContent = 'center';
+                  thumbContainer.style.color = 'white';
+                  thumbContainer.style.fontSize = '24px';
+              }
+              
+              const nameSpan = document.createElement('span');
+              nameSpan.textContent = skinName;
+              nameSpan.className = 'text-outline';
+              nameSpan.style.fontSize = '18px';
+              
+              item.appendChild(thumbContainer);
+              item.appendChild(nameSpan);
+              
+              item.onclick = () => { 
+                  this.closeAllPanels(); 
+                  onSelect(skinName); 
+              };
+              list.appendChild(item);
+          });
+      }
+      this.openPanel('discover-panel');
+  }
+}
