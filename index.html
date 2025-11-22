@@ -2,11 +2,9 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <!-- Tagi zapobiegające cache'owaniu HTML podczas developmentu -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>HyperCubesPlanet</title>
     
@@ -154,8 +152,12 @@
       #mail-reply-form { display: flex; gap: 10px; padding-top: 10px; }
       #mail-reply-input { flex-grow: 1; font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; font-size: 16px; }
       #mail-reply-btn { font-family: 'Titan One', cursive; padding: 0 20px; border: none; border-radius: 8px; background: #2ed573; color: white; cursor: pointer; }
-      #new-mail-composer { display: none; padding: 20px; width: 70%; position: absolute; right: 15px; top: 15px; bottom: 15px;}
-      #new-mail-composer input { width: 100%; margin-bottom: 15px; }
+      
+      /* POPRAWIONE: Usunięto zagnieżdżone style formularza logowania, dodano dedykowane style */
+      #new-mail-composer { display: none; padding: 20px; width: 70%; position: absolute; right: 15px; top: 15px; bottom: 15px; }
+      #new-mail-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+      #new-mail-form input { padding: 15px; border-radius: 10px; border: 2px solid white; font-family: 'Titan One', cursive; font-size: 16px; }
+      #new-mail-form button { padding: 15px; border-radius: 10px; border: none; font-family: 'Titan One', cursive; font-size: 18px; background-color: #2ed573; color: white; cursor: pointer; }
 
       #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
       #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
@@ -342,12 +344,14 @@
             <button type="submit" id="mail-reply-btn" class="text-outline">Wyślij</button>
           </form>
         </div>
+        
+        <!-- POPRAWIONE: Usunięto klasę auth-form, naprawiono widoczność formularza -->
         <div id="new-mail-composer" style="display: none;">
              <h2 class="text-outline">Nowa wiadomość</h2>
-             <form id="new-mail-form" class="auth-form" style="display: flex;">
-                <input type="text" id="new-mail-recipient" placeholder="Nazwa odbiorcy...">
-                <input type="text" id="new-mail-text" placeholder="Treść wiadomości...">
-                <button type="submit" class="btn-primary text-outline">Wyślij</button>
+             <form id="new-mail-form">
+                <input type="text" id="new-mail-recipient" placeholder="Nazwa odbiorcy..." required>
+                <input type="text" id="new-mail-text" placeholder="Treść wiadomości..." required>
+                <button type="submit" class="text-outline">Wyślij</button>
              </form>
         </div>
         <button class="panel-close-button ui-element" style="position: absolute; top: 10px; right: 10px;">X</button>
@@ -461,13 +465,10 @@
 
     <script>
       if ('serviceWorker' in navigator) {
-        // Rejestracja Service Workera po załadowaniu strony
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
             .then(registration => {
               console.log('Service Worker zarejestrowany pomyślnie:', registration.scope);
-              
-              // Obsługa aktualizacji Service Workera
               registration.onupdatefound = () => {
                 const installingWorker = registration.installing;
                 installingWorker.onstatechange = () => {
