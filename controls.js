@@ -8,9 +8,11 @@ class PlayerController {
     this.moveSpeed = options.moveSpeed || 8;
     this.jumpForce = options.jumpForce || 18;
     this.gravity = options.gravity || 50;
-    this.groundRestingY = options.groundRestingY || 0.6;
+    this.groundRestingY = options.groundRestingY || 0.1; // Obniżono domyślną podłogę
 
-    this.playerDimensions = new THREE.Vector3(0.6, 1.6, 0.6);
+    // POPRAWKA: Zmniejszono wysokość fizyczną do 1.0, aby pasowała do modelu
+    // Wcześniej było 1.6, co powodowało, że środek był za wysoko.
+    this.playerDimensions = new THREE.Vector3(0.6, 1.0, 0.6);
 
     this.velocity = new THREE.Vector3();
     this.isOnGround = true;
@@ -155,6 +157,7 @@ class PlayerController {
     for (const object of this.collidableObjects) {
         objectBox.setFromObject(object);
 
+        // Ignoruj podłogę dla kolizji bocznych
         if (objectBox.max.y < playerBox.min.y + epsilon) {
             continue;
         }
@@ -193,6 +196,7 @@ class PlayerController {
         }
     }
 
+    // Sprawdzenie czy jesteśmy na poziomie podłogi
     if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY + halfHeight;
@@ -238,6 +242,7 @@ class PlayerController {
             position: { left: '50%', top: '50%' },
             color: 'white',
             size: 100,
+            dynamicPage: true 
         };
         this.joystick = nipplejs.create(options);
 
