@@ -3,13 +3,20 @@ const LAST_SKIN_KEY = 'bsp_clone_last_skin';
 
 export class SkinStorage {
 
-  static saveSkin(skinName, blocksData) {
+  // Zaktualizowana metoda saveSkin - przyjmuje teraz thumbnail
+  static saveSkin(skinName, blocksData, thumbnail = null) {
     if (!skinName || skinName.trim() === '') {
       alert('Nazwa skina nie może być pusta!');
       return false;
     }
     const skins = this.getAllSkins();
-    skins[skinName] = blocksData;
+    
+    // Zapisujemy jako obiekt, nie samą tablicę
+    skins[skinName] = {
+        blocks: blocksData,
+        thumbnail: thumbnail
+    };
+
     try {
       localStorage.setItem(SKINS_STORAGE_KEY, JSON.stringify(skins));
       console.log(`Skin "${skinName}" saved successfully!`);
@@ -23,7 +30,25 @@ export class SkinStorage {
 
   static loadSkin(skinName) {
     const skins = this.getAllSkins();
-    return skins[skinName] || null;
+    const data = skins[skinName];
+    
+    if (!data) return null;
+
+    // Obsługa wsteczna (stare zapisy to tablice, nowe to obiekty)
+    if (Array.isArray(data)) {
+        return data; // Stary format
+    } else {
+        return data.blocks; // Nowy format
+    }
+  }
+  
+  static getThumbnail(skinName) {
+      const skins = this.getAllSkins();
+      const data = skins[skinName];
+      if (data && !Array.isArray(data) && data.thumbnail) {
+          return data.thumbnail;
+      }
+      return null; // Brak miniaturki lub stary format
   }
 
   static getSavedSkinsList() {
