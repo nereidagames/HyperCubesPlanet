@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
-import { HyperCubePartStorage } from './HyperCubePartStorage.js'; // NOWY IMPORT
+import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 
 export class SkinBuilderManager {
   constructor(game, loadingManager, blockManager) {
@@ -12,9 +12,9 @@ export class SkinBuilderManager {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.previewBlock = null;
-    this.previewPart = null; // NOWOŚĆ
-    this.currentBuildMode = 'block'; // 'block' lub 'part'
-    this.selectedPartData = null; // NOWOŚĆ
+    this.previewPart = null;
+    this.currentBuildMode = 'block';
+    this.selectedPartData = null;
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
@@ -28,8 +28,6 @@ export class SkinBuilderManager {
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
-
-    // POPRAWKA: Bindowanie nowej metody do obsługi contextmenu
     this.onContextMenu = this.onContextMenu.bind(this);
 
     this.longPressTimer = null;
@@ -40,7 +38,6 @@ export class SkinBuilderManager {
     this.onTouchMove = this.onTouchMove.bind(this);
   }
 
-  // POPRAWKA: Nowa metoda do obsługi zdarzenia
   onContextMenu(event) {
     event.preventDefault();
   }
@@ -123,7 +120,6 @@ export class SkinBuilderManager {
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Użycie nazwanej metody jako listenera
     window.addEventListener('contextmenu', this.onContextMenu);
 
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
@@ -134,7 +130,6 @@ export class SkinBuilderManager {
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'flex';
-        // Ukryj opcję prefabrykatów w tym trybie
         document.getElementById('add-choice-prefabs').style.display = 'none';
         document.getElementById('add-choice-parts').style.display = 'block';
     };
@@ -239,7 +234,6 @@ export class SkinBuilderManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Usunięcie listenera przy użyciu tej samej referencji
     window.removeEventListener('contextmenu', this.onContextMenu);
 
     window.removeEventListener('touchstart', this.onTouchStart);
@@ -341,6 +335,60 @@ export class SkinBuilderManager {
     }
   }
 
+  // --- NOWA FUNKCJA DO GENEROWANIA MINIATUREK ---
+  generateThumbnail() {
+    // 1. Utwórz tymczasowy, mały renderer (150x150 px wystarczy na miniaturkę)
+    const width = 150;
+    const height = 150;
+    const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    thumbnailRenderer.setSize(width, height);
+    
+    // 2. Utwórz tymczasową scenę
+    const thumbnailScene = new THREE.Scene();
+    // Brak tła = przezroczystość, lub można dać jednolity kolor
+    // thumbnailScene.background = new THREE.Color(0x444444); 
+
+    // 3. Dodaj światło
+    const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
+    thumbnailScene.add(ambLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(5, 10, 7);
+    thumbnailScene.add(dirLight);
+
+    // 4. Skopiuj tylko bloki do nowej sceny
+    // Obliczamy środek (bounding box), aby ustawić kamerę
+    const box = new THREE.Box3();
+    if (this.placedBlocks.length === 0) return null;
+
+    this.placedBlocks.forEach(block => {
+        const clone = block.clone();
+        thumbnailScene.add(clone);
+        box.expandByObject(clone);
+    });
+
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    // 5. Ustaw kamerę
+    const thumbnailCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    // Ustaw kamerę w izometrii/pod kątem
+    const distance = maxDim * 2.5; 
+    thumbnailCamera.position.set(center.x + distance, center.y + distance * 0.5, center.z + distance);
+    thumbnailCamera.lookAt(center);
+
+    // 6. Renderuj
+    thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+
+    // 7. Pobierz Data URL (Base64 image)
+    const dataURL = thumbnailRenderer.domElement.toDataURL('image/png');
+    
+    // Posprzątaj
+    thumbnailRenderer.dispose();
+    
+    return dataURL;
+  }
+
   saveSkin() {
     if (this.placedBlocks.length === 0) return;
     const skinName = prompt("Podaj nazwę dla swojego skina:", "Mój Nowy Skin");
@@ -352,7 +400,10 @@ export class SkinBuilderManager {
         texturePath: block.userData.texturePath
       }));
       
-      if (SkinStorage.saveSkin(skinName, blocksData)) {
+      // Generuj miniaturkę
+      const thumbnail = this.generateThumbnail();
+
+      if (SkinStorage.saveSkin(skinName, blocksData, thumbnail)) {
         alert(`Skin "${skinName}" został pomyślnie zapisany!`);
         this.game.switchToMainMenu();
       }
