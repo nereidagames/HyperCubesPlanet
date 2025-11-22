@@ -27,7 +27,7 @@ export class UIManager {
     this.isMobile = isMobile;
     this.setupButtonHandlers();
     this.setupChatSystem();
-    this.setupFriendsSystem(); // Inicjalizacja modułu przyjaciół
+    this.setupFriendsSystem();
     console.log('UI Manager initialized');
   }
 
@@ -387,10 +387,14 @@ export class UIManager {
       const token = localStorage.getItem('bsp_clone_jwt_token');
       if (!token) return;
 
+      const list = document.getElementById('friends-list');
+      const reqList = document.getElementById('friends-requests');
+
       try {
           const response = await fetch(`${API_BASE_URL}/api/friends`, {
               headers: { 'Authorization': `Bearer ${token}` }
           });
+          
           if (response.ok) {
               const data = await response.json();
               this.friendsList = data.friends;
@@ -398,9 +402,15 @@ export class UIManager {
               this.renderFriendsList(data.friends);
               this.renderRequestsList(data.requests);
               this.updateTopBarFriends(data.friends);
+          } else {
+              // OBSŁUGA BŁĘDU SERWERA
+              list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd serwera. Spróbuj później.</p>';
+              reqList.innerHTML = '';
           }
       } catch (err) {
+          // OBSŁUGA BŁĘDU SIECI
           console.error("Błąd pobierania przyjaciół:", err);
+          list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd połączenia.</p>';
       }
   }
 
@@ -422,7 +432,6 @@ export class UIManager {
           if (f.current_skin_thumbnail) {
               avatar.style.backgroundImage = `url(${f.current_skin_thumbnail})`;
           } else {
-              // Default
               avatar.style.display = 'flex';
               avatar.style.justifyContent = 'center';
               avatar.style.alignItems = 'center';
@@ -431,9 +440,8 @@ export class UIManager {
               avatar.style.fontSize = '24px';
           }
           
-          // Kolor obwódki zależny od statusu
-          if (f.isOnline) avatar.style.borderColor = '#2ed573'; // zielony
-          else avatar.style.borderColor = '#7f8c8d'; // szary
+          if (f.isOnline) avatar.style.borderColor = '#2ed573'; 
+          else avatar.style.borderColor = '#7f8c8d';
 
           const info = document.createElement('div');
           info.className = 'friend-info';
@@ -484,6 +492,9 @@ export class UIManager {
       const token = localStorage.getItem('bsp_clone_jwt_token');
       if (!token) return;
 
+      const container = document.getElementById('friends-search-results');
+      container.innerHTML = '<p class="text-outline" style="text-align:center; margin-top:20px;">Szukanie...</p>';
+
       try {
           const response = await fetch(`${API_BASE_URL}/api/friends/search`, {
               method: 'POST',
@@ -491,8 +502,9 @@ export class UIManager {
               body: JSON.stringify({ query })
           });
           
+          if (!response.ok) throw new Error('Search failed');
+
           const results = await response.json();
-          const container = document.getElementById('friends-search-results');
           container.innerHTML = '';
           
           if (results.length === 0) {
@@ -504,7 +516,6 @@ export class UIManager {
               const item = document.createElement('div');
               item.className = 'friend-item';
               
-              // Awatar w wynikach wyszukiwania (klikalny podgląd)
               const avatar = document.createElement('div');
               avatar.className = 'friend-avatar';
               if (u.current_skin_thumbnail) {
@@ -537,6 +548,7 @@ export class UIManager {
 
       } catch (e) {
           console.error("Błąd szukania:", e);
+          container.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c;">Błąd wyszukiwania.</p>';
       }
   }
 
@@ -576,13 +588,11 @@ export class UIManager {
       }
   }
 
-  // Aktualizacja paska na górze ekranu
   updateTopBarFriends(friends) {
       const container = document.getElementById('active-friends-container');
       if (!container) return;
       container.innerHTML = '';
       
-      // Pokaż tylko tych online
       const onlineFriends = friends.filter(f => f.isOnline);
       
       onlineFriends.forEach(f => {
@@ -601,7 +611,6 @@ export class UIManager {
               avatar.style.color = 'white';
           }
           
-          // Kliknięcie w miniaturkę na pasku pokazuje podgląd
           avatar.onclick = () => this.showSkinPreviewFromUrl(f.current_skin_thumbnail);
 
           const name = document.createElement('div');
@@ -614,14 +623,12 @@ export class UIManager {
       });
   }
 
-  // Prosty podgląd (obrazek 2D w oknie 3D Preview)
   showSkinPreviewFromUrl(url) {
       if (!url) return;
       
       const panel = document.getElementById('player-preview-panel');
       const container = document.getElementById('player-preview-renderer-container');
       
-      // Wyczyść kontener (usuń canvas Three.js na chwilę lub dodaj img nad nim)
       container.innerHTML = '';
       container.style.backgroundColor = '#333';
       
@@ -633,9 +640,5 @@ export class UIManager {
       
       container.appendChild(img);
       this.openPanel('player-preview-panel');
-      
-      // Uwaga: Oryginalny Three.js renderer zostanie utracony w DOM.
-      // W main.js funkcja showPlayerPreview() naprawia to (tworzy nowy renderer jeśli brak).
-      // Więc jest bezpiecznie.
   }
 }
