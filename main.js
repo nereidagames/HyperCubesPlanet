@@ -325,18 +325,19 @@ class BlockStarPlanetGame {
         }
     };
     
-    // POPRAWKA: Obsługa przycisku "+"
+    // POPRAWKA: Obsługa przycisku "+" - wymuszenie stylów
     newMailBtn.onclick = () => {
         console.log("Kliknięto przycisk + (Nowa Wiadomość)");
         this.mailState.activeConversation = null;
         renderConversations();
         
+        // Ukryj widok czatu
         chatView.style.display = 'none';
         
         // Wymuszamy display: block dla kontenera
         newMailComposer.style.display = 'block';
         
-        // Wymuszamy display: flex dla formularza (naprawa konfliktu z klasą .auth-form)
+        // Wymuszamy display: flex dla formularza (by nadpisać ewentualne css)
         if(newMailForm) newMailForm.style.display = 'flex';
         
         document.getElementById('new-mail-recipient').value = '';
@@ -403,7 +404,7 @@ class BlockStarPlanetGame {
         this.mailState.conversations = await response.json();
         renderConversations();
         
-        // Stan domyślny
+        // Stan domyślny - pokaż pusty czat lub instrukcję
         chatView.style.display = 'flex';
         chatUsername.textContent = "Wybierz konwersację";
         chatMessages.innerHTML = '';
