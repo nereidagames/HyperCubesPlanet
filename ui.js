@@ -19,7 +19,6 @@ export class UIManager {
     this.onBuyBlock = null;
     this.onNameSubmit = null;
     
-    // Dane przyjaciół
     this.friendsList = [];
   }
   
@@ -352,7 +351,7 @@ export class UIManager {
       this.openPanel('discover-panel');
   }
 
-  // --- SYSTEM PRZYJACIÓŁ ---
+  // --- SYSTEM PRZYJACIÓŁ (POPRAWIONY) ---
 
   setupFriendsSystem() {
       const btnOpen = document.getElementById('btn-friends-open');
@@ -363,7 +362,7 @@ export class UIManager {
           };
       }
 
-      // Zakładki
+      // Obsługa zakładek - DODANO ODŚWIEŻANIE DANYCH PRZY PRZEŁĄCZANIU
       const tabs = document.querySelectorAll('.friends-tab');
       tabs.forEach(tab => {
           tab.onclick = () => {
@@ -373,10 +372,14 @@ export class UIManager {
               tab.classList.add('active');
               const viewId = tab.getAttribute('data-tab');
               document.getElementById(viewId).classList.add('active');
+              
+              // Ważne: Odśwież dane po zmianie zakładki!
+              if (viewId === 'friends-list' || viewId === 'friends-requests') {
+                  this.loadFriendsData();
+              }
           };
       });
 
-      // Szukaj
       const searchBtn = document.getElementById('friends-search-btn');
       if (searchBtn) {
           searchBtn.onclick = () => this.handleFriendSearch();
@@ -389,6 +392,9 @@ export class UIManager {
 
       const list = document.getElementById('friends-list');
       const reqList = document.getElementById('friends-requests');
+
+      // Loader
+      if (list) list.innerHTML = '<p class="text-outline" style="text-align:center; margin-top:20px;">Odświeżanie...</p>';
 
       try {
           const response = await fetch(`${API_BASE_URL}/api/friends`, {
@@ -403,13 +409,11 @@ export class UIManager {
               this.renderRequestsList(data.requests);
               this.updateTopBarFriends(data.friends);
           } else {
-              // OBSŁUGA BŁĘDU SERWERA
-              list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd serwera. Spróbuj później.</p>';
-              reqList.innerHTML = '';
+              console.error("Błąd API przyjaciół:", response.status);
+              list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Nie udało się pobrać listy.</p>';
           }
       } catch (err) {
-          // OBSŁUGA BŁĘDU SIECI
-          console.error("Błąd pobierania przyjaciół:", err);
+          console.error("Błąd sieci (przyjaciele):", err);
           list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd połączenia.</p>';
       }
   }
@@ -470,16 +474,43 @@ export class UIManager {
       requests.forEach(r => {
           const item = document.createElement('div');
           item.className = 'friend-item';
-          item.innerHTML = `
-            <div class="friend-info text-outline" style="font-size: 16px;">${r.username}</div>
-            <div class="friend-actions">
-                <button class="action-btn btn-accept">Akceptuj</button>
-            </div>
-          `;
           
-          const btn = item.querySelector('.btn-accept');
-          btn.onclick = () => this.acceptFriendRequest(r.request_id);
+          // Budujemy HTML ręcznie lub elementami, ważne by dodać zdarzenie onclick
+          // Dodajemy też avatar, żeby było ładniej
           
+          const avatar = document.createElement('div');
+          avatar.className = 'friend-avatar';
+          if (r.current_skin_thumbnail) {
+              avatar.style.backgroundImage = `url(${r.current_skin_thumbnail})`;
+          } else {
+              avatar.style.display = 'flex';
+              avatar.style.justifyContent = 'center';
+              avatar.style.alignItems = 'center';
+              avatar.textContent = '👤';
+              avatar.style.color = 'white';
+              avatar.style.fontSize = '20px';
+          }
+
+          const info = document.createElement('div');
+          info.className = 'friend-info text-outline';
+          info.style.fontSize = '16px';
+          info.textContent = r.username;
+
+          const actions = document.createElement('div');
+          actions.className = 'friend-actions';
+          
+          const btn = document.createElement('button');
+          btn.className = 'action-btn btn-accept';
+          btn.textContent = 'Akceptuj';
+          btn.onclick = () => {
+              console.log("Kliknięto akceptuj dla ID:", r.request_id);
+              this.acceptFriendRequest(r.request_id);
+          };
+
+          actions.appendChild(btn);
+          item.appendChild(avatar);
+          item.appendChild(info);
+          item.appendChild(actions);
           list.appendChild(item);
       });
   }
@@ -502,8 +533,6 @@ export class UIManager {
               body: JSON.stringify({ query })
           });
           
-          if (!response.ok) throw new Error('Search failed');
-
           const results = await response.json();
           container.innerHTML = '';
           
@@ -579,11 +608,12 @@ export class UIManager {
           const data = await res.json();
           if (res.ok) {
               this.showMessage('Dodano do znajomych!', 'success');
-              this.loadFriendsData(); // Odśwież wszystko
+              this.loadFriendsData(); // Odśwież po akceptacji
           } else {
               this.showMessage(data.message, 'error');
           }
       } catch(e) {
+          console.error(e);
           this.showMessage('Błąd sieci.', 'error');
       }
   }
