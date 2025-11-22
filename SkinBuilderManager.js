@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
-// Dodajemy import funkcji tworzącej nogi
 import { createBaseCharacter } from './character.js';
 
 export class SkinBuilderManager {
@@ -20,10 +19,9 @@ export class SkinBuilderManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
-    this.platformSize = 16;
+    this.platformSize = 16; // 16x16 to standardowa wielkość skina
     this.cameraController = null;
     
-    // Zmienna do przechowywania nóg w trybie budowania
     this.baseCharacterVisuals = null;
 
     this.blockTypes = [];
@@ -70,8 +68,11 @@ export class SkinBuilderManager {
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
-    this.scene.background = new THREE.Color(0x34495e);
-    this.scene.fog = new THREE.Fog(0x34495e, 20, 100);
+    
+    // Ciemniejsze tło edytora, żeby lepiej widzieć
+    this.scene.background = new THREE.Color(0x2c3e50);
+    this.scene.fog = new THREE.Fog(0x2c3e50, 30, 100);
+    
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     this.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
@@ -80,14 +81,21 @@ export class SkinBuilderManager {
     
     this.createBuildPlatform();
     
-    // --- DODANIE NÓG DO TRYBU BUDOWANIA ---
+    // --- POPRAWIONE NOGI ---
     this.baseCharacterVisuals = new THREE.Group();
     createBaseCharacter(this.baseCharacterVisuals);
-    // Przesuwamy nogi w dół o 0.5, aby pas "stykał się" z poziomem 0, gdzie stawiamy klocki.
-    // Jest to odwrotność przesunięcia w CharacterManager (tam skin jest +0.5).
-    this.baseCharacterVisuals.position.set(0, -0.5, 0);
+    
+    // SKALOWANIE: Powiększamy nogi 8 razy, aby pasowały do siatki 1x1
+    // (W grze skin jest zmniejszany 0.125x, więc tutaj robimy odwrotność)
+    this.baseCharacterVisuals.scale.setScalar(8);
+    
+    // POZYCJA: Obniżamy nogi tak, aby pas był równo z podłogą (Y=0)
+    // Oryginalny środek modelu w character.js jest lekko przesunięty, 
+    // po przeskalowaniu x8 musimy go obniżyć o ok. 4.0 jednostki.
+    this.baseCharacterVisuals.position.set(0, -4.0, 0);
+    
     this.scene.add(this.baseCharacterVisuals);
-    // --------------------------------------
+    // -----------------------
 
     this.createPreviewBlock();
     this.previewPart = new THREE.Group();
@@ -95,7 +103,8 @@ export class SkinBuilderManager {
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
-    this.cameraController.distance = 20; // Zbliżamy kamerę, żeby lepiej widzieć postać
+    // Kamera trochę dalej, bo model jest teraz duży
+    this.cameraController.distance = 30; 
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
@@ -105,17 +114,33 @@ export class SkinBuilderManager {
   }
 
   createBuildPlatform() {
-    // Zmniejszamy platformę wizualnie, aby skupić się na postaci
+    // Platforma pomocnicza (podłoga)
     const geometry = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
-    const material = new THREE.MeshLambertMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.3 }); // Bardziej przezroczysta
+    
+    // Przezroczysta, żeby widać było nogi pod spodem
+    const material = new THREE.MeshLambertMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.2 });
+    
     this.platform = new THREE.Mesh(geometry, material);
-    this.platform.position.y = -1.5; // Obniżamy platformę pod nogi
+    
+    // POPRAWKA WYSOKOŚCI:
+    // Ustawiamy środek platformy na Y = -0.5.
+    // Dzięki temu jej GÓRNA ścianka jest na poziomie Y = 0.0.
+    // To kluczowe dla raycastera, żeby stawiał bloki od poziomu 0 w górę.
+    this.platform.position.y = -0.5; 
+    
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
+    // Grid helper idealnie na poziomie 0
     const gridHelper = new THREE.GridHelper(this.platformSize, this.platformSize);
-    gridHelper.position.y = -1.0; // Grid pod nogami
+    gridHelper.position.y = 0.01; // Lekko wyżej żeby nie migotał
     this.scene.add(gridHelper);
+    
+    // Krawędzie platformy
+    const edges = new THREE.EdgesGeometry(geometry);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 }));
+    line.position.y = -0.5;
+    this.scene.add(line);
   }
 
   createPreviewBlock() {
@@ -291,7 +316,8 @@ export class SkinBuilderManager {
     newBlock.position.copy(this.previewBlock.position);
     this.scene.add(newBlock);
     this.placedBlocks.push(newBlock);
-    // Dodajemy do kolizji, aby można było budować na tym klocku
+    
+    // Dodajemy do kolizji, aby można było stawiać klocki na klockach
     this.collidableBuildObjects.push(newBlock);
     this.updateSaveButton();
   }
@@ -356,7 +382,7 @@ export class SkinBuilderManager {
     
     const thumbnailScene = new THREE.Scene();
     
-    // Światła
+    // Oświetlenie
     const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
     thumbnailScene.add(ambLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -365,10 +391,11 @@ export class SkinBuilderManager {
 
     const box = new THREE.Box3();
 
-    // --- DODANIE NÓG DO MINIATURKI ---
+    // --- DODANIE NÓG DO MINIATURKI (Też przeskalowane) ---
     const thumbLegs = new THREE.Group();
     createBaseCharacter(thumbLegs);
-    thumbLegs.position.set(0, -0.5, 0); // Ta sama pozycja co w edytorze
+    thumbLegs.scale.setScalar(8);
+    thumbLegs.position.set(0, -4.0, 0); // Ta sama pozycja co w edytorze
     thumbnailScene.add(thumbLegs);
     box.expandByObject(thumbLegs);
     // --------------------------------
@@ -387,7 +414,6 @@ export class SkinBuilderManager {
 
     const thumbnailCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
     const distance = maxDim * 2.0; 
-    // Ustawiamy kamerę tak, aby patrzyła na postać z przodu-boku
     thumbnailCamera.position.set(center.x + distance * 0.8, center.y + distance * 0.2, center.z + distance);
     thumbnailCamera.lookAt(center);
 
@@ -425,7 +451,6 @@ export class SkinBuilderManager {
     this.collidableBuildObjects = [];
     this.placedBlocks = [];
     
-    // Czyścimy scenę
     while(this.scene.children.length > 0){ 
         this.scene.remove(this.scene.children[0]); 
     }
@@ -453,19 +478,21 @@ export class SkinBuilderManager {
       const buildAreaLimit = this.platformSize / 2;
       const buildHeightLimit = 20;
       
-      // Sprawdzenie czy nie celujemy w same nogi (blokujemy budowanie WEWNĄTRZ nóg, ale pozwalamy NA nich)
-      let isTargetingLegs = false;
-      // W prosty sposób: jeśli intersect.object to grupa nóg (lub jej dziecko)
-      // Ale dodaliśmy grupę nóg do scene, a nie do collidableObjects (chyba że chcemy budować na nogach).
-      // W kodzie wyżej: nie dodałem baseCharacterVisuals do collidableBuildObjects.
-      // Więc raycaster przeleci przez nogi i trafi w platformę lub inne klocki.
-      // To jest OK zachowanie. Budujemy "wokół" nóg.
-      
       let isVisible = false;
+      
+      // Upewnij się, że platforma jest poprawnie skonfigurowana w raycasterze.
+      // Jeśli platforma jest na Y=-0.5, jej górna ścianka jest na Y=0.
+      // Raycaster trafia w Y=0. Normalna to (0, 1, 0).
+      // Punkt trafienia = (x, 0, z).
+      // (x, 0, z) + (0, 0.5, 0) = (x, 0.5, z).
+      // floor() daje (xf, 0, zf).
+      // addScalar(0.5) daje (xf+0.5, 0.5, zf+0.5).
+      // Wynikowa pozycja klocka: Y=0.5. To jest poprawne (środek klocka).
+      
       if (
           Math.abs(snappedPosition.x) < buildAreaLimit && 
           Math.abs(snappedPosition.z) < buildAreaLimit &&
-          snappedPosition.y >= 0 && // Zawsze budujemy od y=0 w górę
+          snappedPosition.y >= 0 && // Tylko powyżej podłogi
           snappedPosition.y < buildHeightLimit
       ) {
           isVisible = true;
