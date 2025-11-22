@@ -67,7 +67,6 @@ class BlockStarPlanetGame {
 
     this.positionUpdateInterval = null;
     
-    // Stan poczty
     this.mailState = {
         conversations: [],
         activeConversation: null
@@ -118,7 +117,24 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        this.startGame( { username: username, coins: 0 }, token);
+                        // POPRAWKA: Pobieramy dane użytkownika z serwera (monety!)
+                        fetch(`${API_BASE_URL}/api/user/me`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        })
+                        .then(res => {
+                            if (res.ok) return res.json();
+                            throw new Error('Token invalid');
+                        })
+                        .then(data => {
+                            // Aktualizujemy miniaturkę
+                            if (data.thumbnail) this.uiManager.updatePlayerAvatar(data.thumbnail);
+                            // Startujemy z monetami z serwera
+                            this.startGame(data.user, token);
+                        })
+                        .catch(() => {
+                            // Jak coś pójdzie nie tak, pokaż logowanie
+                            this.setupAuthScreen();
+                        });
                     } else {
                         this.setupAuthScreen();
                     }
@@ -153,23 +169,20 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      // --- OBSŁUGA ZDARZEŃ DLA PRZYJACIÓŁ I ZNAJOMYCH ---
-      // Przechwytujemy wiadomości z serwera, aby zaktualizować UI
+      // Obsługa zdarzeń WebSocket
       const originalHandle = this.multiplayerManager.handleServerMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleServerMessage = (msg) => {
-          originalHandle(msg); // Najpierw standardowa obsługa (ruch graczy itp.)
+          originalHandle(msg); 
           
-          // Obsługa zdarzeń przyjaciół
           if (msg.type === 'friendRequestReceived') {
               this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
-              this.uiManager.loadFriendsData(); // Odśwież listę w panelu
+              this.uiManager.loadFriendsData();
           }
           if (msg.type === 'friendRequestAccepted') {
               this.uiManager.showMessage(`${msg.by} przyjął zaproszenie!`, 'success');
-              this.uiManager.loadFriendsData(); // Odśwież listę i pasek
+              this.uiManager.loadFriendsData();
           }
           if (msg.type === 'friendStatusChange') {
-              // Ktoś wszedł/wyszedł z gry -> odśwież pasek na górze
               this.uiManager.loadFriendsData();
           }
       };
@@ -178,7 +191,7 @@ class BlockStarPlanetGame {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
 
-      // Załaduj listę przyjaciół przy starcie
+      // Załaduj znajomych na starcie
       this.uiManager.loadFriendsData();
 
       this.animate();
@@ -267,7 +280,6 @@ class BlockStarPlanetGame {
                   authMessage.textContent = 'Zalogowano pomyślnie!';
                   authScreen.style.display = 'none';
                   
-                  // Jeśli serwer zwrócił miniaturkę, zaktualizuj UI
                   if (data.thumbnail) {
                       this.uiManager.updatePlayerAvatar(data.thumbnail);
                   }
@@ -291,6 +303,7 @@ class BlockStarPlanetGame {
   }
   
   async setupMailSystem() {
+    // (Kod poczty bez zmian - jest poprawny w tej wersji)
     console.log("Inicjalizacja systemu poczty...");
     const token = localStorage.getItem(JWT_TOKEN_KEY);
     if (!token) return;
@@ -355,10 +368,8 @@ class BlockStarPlanetGame {
     };
     
     newMailBtn.onclick = () => {
-        console.log("Kliknięto przycisk + (Nowa Wiadomość)");
         this.mailState.activeConversation = null;
         renderConversations();
-        
         chatView.style.display = 'none';
         newMailComposer.style.display = 'block';
         if(newMailForm) newMailForm.style.display = 'flex';
@@ -368,7 +379,6 @@ class BlockStarPlanetGame {
 
     newMailForm.onsubmit = (e) => {
         e.preventDefault();
-        console.log("Wysyłanie nowej wiadomości...");
         const recipientInput = document.getElementById('new-mail-recipient');
         const textInput = document.getElementById('new-mail-text');
         const recipient = recipientInput.value.trim();
@@ -393,7 +403,6 @@ class BlockStarPlanetGame {
     };
 
     this.multiplayerManager.onMessageSent = (data) => {
-        console.log("Potwierdzenie wysłania:", data);
         if (newMailComposer.style.display === 'block') {
             const exists = this.mailState.conversations.some(c => c.username === data.recipient);
             if (!exists) {
@@ -558,9 +567,9 @@ class BlockStarPlanetGame {
     if (lastSkinName) {
         const skinData = SkinStorage.loadSkin(lastSkinName);
         this.characterManager.applySkin(skinData);
-        // Wczytaj miniaturkę z local storage na start
         const thumbnail = SkinStorage.getThumbnail(lastSkinName);
         this.uiManager.updatePlayerAvatar(thumbnail);
+        this.uiManager.uploadSkinThumbnail(thumbnail);
     }
 
     this.recreatePlayerController(this.sceneManager.collidableObjects);
@@ -661,20 +670,6 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
-  // Funkcja wysyłająca miniaturkę na serwer (aby inni ją widzieli w znajomych)
-  async uploadSkinThumbnail(thumbnail) {
-      const token = localStorage.getItem(JWT_TOKEN_KEY);
-      if(!token || !thumbnail) return;
-      
-      try {
-          await fetch(`${API_BASE_URL}/api/user/thumbnail`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body: JSON.stringify({ thumbnail })
-          });
-      } catch(e) { console.error("Błąd wysyłania miniaturki", e); }
-  }
-
   showDiscoverPanel(type) {
     if (type === 'worlds') {
         const savedWorlds = WorldStorage.getSavedWorldsList();
@@ -688,10 +683,9 @@ class BlockStarPlanetGame {
             this.characterManager.applySkin(skinData);
             SkinStorage.setLastUsedSkin(skinName);
             
-            // Pobierz miniaturkę, zaktualizuj ikonę i wyślij na serwer
             const thumbnail = SkinStorage.getThumbnail(skinName);
             this.uiManager.updatePlayerAvatar(thumbnail);
-            this.uploadSkinThumbnail(thumbnail);
+            this.uiManager.uploadSkinThumbnail(thumbnail);
             
             this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
         });
