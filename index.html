@@ -2,9 +2,11 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
+    <!-- Tagi zapobiegające cache'owaniu HTML (ważne przy deweloperce) -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <title>HyperCubesPlanet</title>
     
@@ -135,6 +137,16 @@
       .panel-item:hover { background: #4c8cff; } 
       .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
       
+      /* Nowy styl dla elementów listy z miniaturką */
+      .skin-list-item {
+          display: flex;
+          align-items: center;
+          transition: transform 0.1s ease, background-color 0.2s ease;
+      }
+      .skin-list-item:active {
+          transform: scale(0.98);
+      }
+
       #mail-panel .panel-content { flex-direction: row; width: 80vw; max-width: 1000px; height: 70vh; padding: 15px; align-items: flex-start; }
       .mail-sidebar { width: 30%; height: 100%; border-right: 2px solid rgba(255, 255, 255, 0.3); display: flex; flex-direction: column; }
       .mail-sidebar-header { padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
@@ -153,7 +165,7 @@
       #mail-reply-input { flex-grow: 1; font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; font-size: 16px; }
       #mail-reply-btn { font-family: 'Titan One', cursive; padding: 0 20px; border: none; border-radius: 8px; background: #2ed573; color: white; cursor: pointer; }
       
-      /* POPRAWIONE: Usunięto zagnieżdżone style formularza logowania, dodano dedykowane style */
+      /* POPRAWIONE STYLE POCZTY */
       #new-mail-composer { display: none; padding: 20px; width: 70%; position: absolute; right: 15px; top: 15px; bottom: 15px; }
       #new-mail-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
       #new-mail-form input { padding: 15px; border-radius: 10px; border: 2px solid white; font-family: 'Titan One', cursive; font-size: 16px; }
@@ -344,8 +356,6 @@
             <button type="submit" id="mail-reply-btn" class="text-outline">Wyślij</button>
           </form>
         </div>
-        
-        <!-- POPRAWIONE: Usunięto klasę auth-form, naprawiono widoczność formularza -->
         <div id="new-mail-composer" style="display: none;">
              <h2 class="text-outline">Nowa wiadomość</h2>
              <form id="new-mail-form">
