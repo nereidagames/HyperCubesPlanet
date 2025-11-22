@@ -143,7 +143,6 @@ class BlockStarPlanetGame {
 
       this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character, user.coins);
 
-      // POPRAWKA: Przekazanie coinManager do MultiplayerManager
       this.multiplayerManager = new MultiplayerManager(
           this.scene, 
           this.uiManager, 
@@ -153,7 +152,6 @@ class BlockStarPlanetGame {
       );
       this.multiplayerManager.initialize(token);
 
-      // Ustawienie callbacka wysyłającego żądanie zebrania monety
       this.coinManager.onCollect = () => {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
@@ -261,7 +259,7 @@ class BlockStarPlanetGame {
     window.location.reload();
   }
   
-  // --- POPRAWIONA OBSŁUGA POCZTY ---
+  // --- NAPRAWIONA OBSŁUGA POCZTY ---
   async setupMailSystem() {
     console.log("Inicjalizacja systemu poczty...");
     const token = localStorage.getItem(JWT_TOKEN_KEY);
@@ -277,6 +275,12 @@ class BlockStarPlanetGame {
     const newMailComposer = document.getElementById('new-mail-composer');
     const newMailForm = document.getElementById('new-mail-form');
     
+    // Upewniamy się, że elementy istnieją
+    if (!newMailBtn || !newMailComposer || !newMailForm) {
+        console.error("Krytyczny błąd: Brak elementów UI poczty w DOM.");
+        return;
+    }
+
     const renderConversations = () => {
         conversationsList.innerHTML = '';
         this.mailState.conversations.forEach(convo => {
@@ -311,6 +315,7 @@ class BlockStarPlanetGame {
             
             this.mailState.activeConversation = username;
             renderConversations();
+            
             chatView.style.display = 'flex';
             newMailComposer.style.display = 'none';
             replyForm.style.display = 'flex';
@@ -320,20 +325,27 @@ class BlockStarPlanetGame {
         }
     };
     
-    // Obsługa przycisku + (nowa wiadomość)
+    // POPRAWKA: Obsługa przycisku "+"
     newMailBtn.onclick = () => {
+        console.log("Kliknięto przycisk + (Nowa Wiadomość)");
         this.mailState.activeConversation = null;
         renderConversations();
+        
         chatView.style.display = 'none';
+        
+        // Wymuszamy display: block dla kontenera
         newMailComposer.style.display = 'block';
+        
+        // Wymuszamy display: flex dla formularza (naprawa konfliktu z klasą .auth-form)
+        if(newMailForm) newMailForm.style.display = 'flex';
         
         document.getElementById('new-mail-recipient').value = '';
         document.getElementById('new-mail-text').value = '';
     };
 
-    // Wysyłanie nowej wiadomości
     newMailForm.onsubmit = (e) => {
         e.preventDefault();
+        console.log("Wysyłanie nowej wiadomości...");
         const recipientInput = document.getElementById('new-mail-recipient');
         const textInput = document.getElementById('new-mail-text');
         const recipient = recipientInput.value.trim();
@@ -343,14 +355,12 @@ class BlockStarPlanetGame {
         }
     };
 
-    // Odpowiadanie na wiadomość
     replyForm.onsubmit = (e) => {
         e.preventDefault();
         const text = replyInput.value.trim();
         if (text && this.mailState.activeConversation && this.multiplayerManager) {
             this.multiplayerManager.sendPrivateMessage(this.mailState.activeConversation, text);
             replyInput.value = '';
-            // Dodajemy od razu do UI dla płynności (potwierdzenie i tak przyjdzie)
             const messageEl = document.createElement('div');
             messageEl.className = 'mail-message sent';
             messageEl.textContent = text;
@@ -359,11 +369,9 @@ class BlockStarPlanetGame {
         }
     };
 
-    // Callback: Potwierdzenie wysłania wiadomości
     this.multiplayerManager.onMessageSent = (data) => {
-        // Jeśli byliśmy w trybie tworzenia nowej wiadomości
+        console.log("Potwierdzenie wysłania:", data);
         if (newMailComposer.style.display === 'block') {
-            // Dodaj do listy konwersacji jeśli jeszcze nie ma
             const exists = this.mailState.conversations.some(c => c.username === data.recipient);
             if (!exists) {
                 this.mailState.conversations.unshift({ username: data.recipient });
@@ -372,7 +380,6 @@ class BlockStarPlanetGame {
         }
     };
 
-    // Callback: Otrzymanie wiadomości
     this.multiplayerManager.onMessageReceived = (data) => {
         if (this.mailState.activeConversation === data.sender.nickname && chatView.style.display === 'flex') {
             const messageEl = document.createElement('div');
@@ -381,7 +388,6 @@ class BlockStarPlanetGame {
             chatMessages.appendChild(messageEl);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         } else {
-            // Odśwież listę rozmów
             const exists = this.mailState.conversations.some(c => c.username === data.sender.nickname);
             if (!exists) {
                 this.mailState.conversations.unshift({ username: data.sender.nickname });
@@ -390,13 +396,14 @@ class BlockStarPlanetGame {
         }
     };
 
-    // Inicjalne pobranie rozmów
     try {
         const response = await fetch(`${API_BASE_URL}/api/messages`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         this.mailState.conversations = await response.json();
         renderConversations();
+        
+        // Stan domyślny
         chatView.style.display = 'flex';
         chatUsername.textContent = "Wybierz konwersację";
         chatMessages.innerHTML = '';
@@ -551,7 +558,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); // UKRYJ STEROWANIE POSTACIĄ
+    this.toggleMobileControls(false);
     this.buildManager.enterBuildMode(size);
   }
 
@@ -559,7 +566,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'SkinBuilderMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); // UKRYJ STEROWANIE POSTACIĄ
+    this.toggleMobileControls(false);
     this.skinBuilderManager.enterBuildMode();
   }
 
@@ -567,7 +574,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'PrefabBuilderMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); // UKRYJ STEROWANIE POSTACIĄ
+    this.toggleMobileControls(false);
     this.prefabBuilderManager.enterBuildMode();
   }
 
@@ -575,7 +582,7 @@ class BlockStarPlanetGame {
     if (this.gameState !== 'MainMenu') return;
     this.gameState = 'PartBuilderMode';
     this.toggleMainUI(false);
-    this.toggleMobileControls(false); // UKRYJ STEROWANIE POSTACIĄ
+    this.toggleMobileControls(false);
     this.partBuilderManager.enterBuildMode();
   }
   
@@ -598,7 +605,7 @@ class BlockStarPlanetGame {
 
     this.gameState = 'MainMenu';
     this.toggleMainUI(true);
-    this.toggleMobileControls(true); // PRZYWRÓĆ STEROWANIE POSTACIĄ
+    this.toggleMobileControls(true); 
     
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController.target = this.characterManager.character;
