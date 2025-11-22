@@ -25,6 +25,26 @@ export class UIManager {
     console.log('UI Manager initialized');
   }
 
+  // --- NOWA METODA DO AKTUALIZACJI IKONY GRACZA ---
+  updatePlayerAvatar(thumbnail) {
+      const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
+      if (!avatarEl) return;
+
+      if (thumbnail) {
+          // Jeśli jest miniaturka: usuń tekst, ustaw tło
+          avatarEl.textContent = '';
+          avatarEl.style.backgroundImage = `url(${thumbnail})`;
+          avatarEl.style.backgroundSize = 'cover'; // lub 'contain' zależnie od preferencji
+          avatarEl.style.backgroundPosition = 'center';
+          avatarEl.style.backgroundColor = '#4a90e2'; // Tło zostaje jako ramka/wypełnienie
+      } else {
+          // Jeśli brak miniaturki (default): przywróć emoji
+          avatarEl.style.backgroundImage = 'none';
+          avatarEl.textContent = '👤';
+      }
+  }
+  // ------------------------------------------------
+
   updatePlayerName(name) {
     const nameDisplay = document.getElementById('player-name-display');
     if (nameDisplay) {
@@ -256,7 +276,6 @@ export class UIManager {
     }, 2500);
   }
 
-  // Nowa, ulepszona metoda do wypełniania panelu Odkryj (z miniaturkami)
   populateDiscoverPanel(type, items, onSelect) {
       const list = document.getElementById('discover-list');
       const title = document.getElementById('discover-panel-title');
@@ -286,7 +305,6 @@ export class UIManager {
               item.style.alignItems = 'center';
               item.style.padding = '10px';
               
-              // Kontener na miniaturkę
               const thumbContainer = document.createElement('div');
               thumbContainer.style.width = '64px';
               thumbContainer.style.height = '64px';
@@ -297,9 +315,7 @@ export class UIManager {
               thumbContainer.style.flexShrink = '0';
               thumbContainer.style.border = '2px solid white';
               
-              // Pobieramy miniaturkę
               const thumbData = SkinStorage.getThumbnail(skinName);
-              
               if (thumbData) {
                   const img = document.createElement('img');
                   img.src = thumbData;
@@ -308,7 +324,6 @@ export class UIManager {
                   img.style.objectFit = 'cover';
                   thumbContainer.appendChild(img);
               } else {
-                  // Znak zapytania jeśli brak miniaturki (stare skiny)
                   thumbContainer.textContent = '?';
                   thumbContainer.style.display = 'flex';
                   thumbContainer.style.alignItems = 'center';
