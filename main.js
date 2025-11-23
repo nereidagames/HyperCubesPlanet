@@ -117,7 +117,7 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // Pobieramy aktualne dane użytkownika z serwera
+                        // Pobieranie danych użytkownika (monety, miniaturka, ID)
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -126,9 +126,11 @@ class BlockStarPlanetGame {
                             throw new Error('Token invalid');
                         })
                         .then(data => {
+                            // Ustawienie miniaturki
                             if (data.thumbnail && this.uiManager) {
                                 this.uiManager.updatePlayerAvatar(data.thumbnail);
                             }
+                            // Start gry
                             this.startGame(data.user, token);
                         })
                         .catch((err) => {
@@ -152,7 +154,7 @@ class BlockStarPlanetGame {
   startGame(user, token) {
       localStorage.setItem(PLAYER_NAME_KEY, user.username);
       localStorage.setItem(JWT_TOKEN_KEY, token);
-      localStorage.setItem('bsp_clone_user_id', user.id);
+      localStorage.setItem('bsp_clone_user_id', user.id); // ID do weryfikacji skina
 
       this.uiManager.updatePlayerName(user.username);
       
@@ -170,8 +172,10 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      const originalHandle = this.multiplayerManager.handleServerMessage.bind(this.multiplayerManager);
-      this.multiplayerManager.handleServerMessage = (msg) => {
+      // --- INTERCEPTOWANIE WIADOMOŚCI (Update dla przyjaciół) ---
+      // Uwaga: w nowym multiplayer.js metoda nazywa się handleMessage
+      const originalHandle = this.multiplayerManager.handleMessage.bind(this.multiplayerManager);
+      this.multiplayerManager.handleMessage = (msg) => {
           originalHandle(msg); 
           
           if (msg.type === 'friendRequestReceived') {
@@ -187,25 +191,28 @@ class BlockStarPlanetGame {
           }
       };
 
+      // Callback zbierania monet (wysyła pakiet do serwera)
       this.coinManager.onCollect = () => {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
 
+      // Ładowanie znajomych
       this.uiManager.loadFriendsData();
 
       this.animate();
       this.gameState = 'MainMenu';
       
+      // --- PĘTLA WYSYŁANIA POZYCJI ---
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
-        if (this.gameState === 'MainMenu' && this.multiplayerManager && this.characterManager.character) {
-          this.multiplayerManager.sendMessage({
-            type: 'playerMove',
-            position: this.characterManager.character.position,
-            quaternion: this.characterManager.character.quaternion
-          });
+        if (this.gameState === 'MainMenu' && this.characterManager.character) {
+          // Używamy nowej metody z multiplayer.js
+          this.multiplayerManager.sendMyPosition(
+            this.characterManager.character.position,
+            this.characterManager.character.quaternion
+          );
         }
-      }, 100);
+      }, 50); // Co 50ms dla płynności
 
       console.log('Game initialized successfully!');
   }
@@ -360,8 +367,9 @@ class BlockStarPlanetGame {
       
     this.uiManager = new UIManager(
       (message) => { 
+        // Czat globalny
         if (this.multiplayerManager) {
-            this.multiplayerManager.sendMessage({ type: 'chatMessage', text: message });
+            this.multiplayerManager.sendMessage({ type: 'chat', text: message });
         }
       }
     );
@@ -375,24 +383,20 @@ class BlockStarPlanetGame {
       };
     }
     
-    // PODPIĘCIE CALLBACKÓW UI
-    
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
     this.uiManager.onPartBuilderClick = () => this.switchToPartBuilderMode();
     
-    // POPRAWKA: Używamy metody z UIManager do otwierania paneli
     this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
     
-    // Callback wyboru skina (z walidacją właściciela)
+    // --- WYBÓR SKINA (Z SERWERA) ---
     this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
         const myId = parseInt(localStorage.getItem('bsp_clone_user_id') || "0");
 
         if (ownerId && ownerId !== myId) {
-            this.uiManager.showMessage("To nie Twój skin! (Tryb podglądu)", "info");
-            // Tutaj w przyszłości można dodać logikę kupowania skina
+            this.uiManager.showMessage("To nie Twój skin!", "info");
             return;
         }
 
@@ -405,13 +409,17 @@ class BlockStarPlanetGame {
             this.uiManager.updatePlayerAvatar(thumbnail);
             this.uiManager.uploadSkinThumbnail(thumbnail);
             
+            // Wyślij do serwera info o nowym skinie, żeby inni widzieli
+            if (this.multiplayerManager && this.multiplayerManager.ws) {
+                this.multiplayerManager.ws.send(JSON.stringify({ type: 'mySkin', skinData: blocksData }));
+            }
+            
             this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
         } else {
             this.uiManager.showMessage("Błąd pobierania skina.", "error");
         }
     };
 
-    // Callback wyboru świata
     this.uiManager.onWorldSelect = (worldName) => {
         this.loadAndExploreWorld(worldName);
     };
@@ -461,7 +469,7 @@ class BlockStarPlanetGame {
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
-    // Wczytaj ostatnio używanego skina
+    // Wczytanie ostatniego skina na starcie
     const lastSkinId = SkinStorage.getLastUsedSkinId();
     if (lastSkinId) {
         const blocksData = await SkinStorage.loadSkinData(lastSkinId);
