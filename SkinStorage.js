@@ -1,76 +1,100 @@
-const SKINS_STORAGE_KEY = 'bsp_clone_skins';
-const LAST_SKIN_KEY = 'bsp_clone_last_skin';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const LAST_SKIN_ID_KEY = 'bsp_clone_last_skin_id'; // Zmieniono klucz na ID
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class SkinStorage {
 
-  // Zaktualizowana metoda saveSkin - przyjmuje teraz thumbnail
-  static saveSkin(skinName, blocksData, thumbnail = null) {
+  // Zapisz skin na serwerze
+  static async saveSkin(skinName, blocksData, thumbnail = null) {
     if (!skinName || skinName.trim() === '') {
       alert('Nazwa skina nie może być pusta!');
       return false;
     }
-    const skins = this.getAllSkins();
     
-    // Zapisujemy jako obiekt, nie samą tablicę
-    skins[skinName] = {
-        blocks: blocksData,
-        thumbnail: thumbnail
-    };
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return false;
 
     try {
-      localStorage.setItem(SKINS_STORAGE_KEY, JSON.stringify(skins));
-      console.log(`Skin "${skinName}" saved successfully!`);
-      return true;
+        const response = await fetch(`${API_BASE_URL}/api/skins`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+                name: skinName, 
+                blocks: blocksData, 
+                thumbnail: thumbnail 
+            })
+        });
+
+        if (response.ok) {
+            console.log(`Skin "${skinName}" saved to server!`);
+            return true;
+        } else {
+            console.error("Błąd zapisu skina");
+            return false;
+        }
     } catch (error) {
-      console.error('Error saving skin to localStorage:', error);
-      alert('Nie udało się zapisać skina. Pamięć przeglądarki może być pełna.');
-      return false;
+        console.error('Error saving skin:', error);
+        alert('Błąd sieci podczas zapisywania.');
+        return false;
     }
   }
 
-  static loadSkin(skinName) {
-    const skins = this.getAllSkins();
-    const data = skins[skinName];
-    
-    if (!data) return null;
+  // Pobierz konkretnego skina (jego bloki) z serwera
+  static async loadSkinData(skinId) {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return null;
 
-    // Obsługa wsteczna (stare zapisy to tablice, nowe to obiekty)
-    if (Array.isArray(data)) {
-        return data; // Stary format
-    } else {
-        return data.blocks; // Nowy format
-    }
-  }
-  
-  static getThumbnail(skinName) {
-      const skins = this.getAllSkins();
-      const data = skins[skinName];
-      if (data && !Array.isArray(data) && data.thumbnail) {
-          return data.thumbnail;
-      }
-      return null; // Brak miniaturki lub stary format
-  }
-
-  static getSavedSkinsList() {
-    const skins = this.getAllSkins();
-    return Object.keys(skins);
-  }
-
-  static getAllSkins() {
     try {
-      const skinsData = localStorage.getItem(SKINS_STORAGE_KEY);
-      return skinsData ? JSON.parse(skinsData) : {};
+        const response = await fetch(`${API_BASE_URL}/api/skins/${skinId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            return await response.json(); // Zwraca tablicę bloków
+        }
     } catch (error) {
-      console.error('Error reading skins from localStorage:', error);
-      return {};
+        console.error('Error loading skin:', error);
     }
+    return null;
+  }
+
+  // Pobierz listę MOICH skinów (meta dane: nazwa, id, miniaturka)
+  static async getMySkins() {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return [];
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/skins/mine`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.ok ? await response.json() : [];
+    } catch(e) { return []; }
+  }
+
+  // Pobierz listę WSZYSTKICH skinów
+  static async getAllSkins() {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return [];
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/skins/all`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.ok ? await response.json() : [];
+    } catch(e) { return []; }
   }
   
-  static setLastUsedSkin(skinName) {
-      localStorage.setItem(LAST_SKIN_KEY, skinName);
+  // Lokalne zapisywanie ID ostatnio używanego skina
+  static setLastUsedSkinId(skinId) {
+      localStorage.setItem(LAST_SKIN_ID_KEY, skinId);
   }
   
-  static getLastUsedSkin() {
-      return localStorage.getItem(LAST_SKIN_KEY);
+  static getLastUsedSkinId() {
+      return localStorage.getItem(LAST_SKIN_ID_KEY);
   }
+  
+  // Metody kompatybilności (nieużywane w nowej wersji, ale zostawione by nie wywalić błędów w starym kodzie jeśli coś zostało)
+  static loadSkin(skinName) { return null; }
+  static getThumbnail(skinName) { return null; }
+  static getSavedSkinsList() { return []; }
 }
