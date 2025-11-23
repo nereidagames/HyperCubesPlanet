@@ -117,7 +117,7 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // Pobieramy aktualne dane użytkownika (monety, miniaturka) z serwera
+                        // Pobieramy aktualne dane użytkownika (monety, miniaturka, ID) z serwera
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -130,7 +130,7 @@ class BlockStarPlanetGame {
                             if (data.thumbnail && this.uiManager) {
                                 this.uiManager.updatePlayerAvatar(data.thumbnail);
                             }
-                            // Startujemy grę z aktualnymi monetami
+                            // Startujemy grę
                             this.startGame(data.user, token);
                         })
                         .catch((err) => {
@@ -154,6 +154,9 @@ class BlockStarPlanetGame {
   startGame(user, token) {
       localStorage.setItem(PLAYER_NAME_KEY, user.username);
       localStorage.setItem(JWT_TOKEN_KEY, token);
+      
+      // WAŻNE: Zapisujemy ID użytkownika, aby móc sprawdzać właściciela skina
+      localStorage.setItem('bsp_clone_user_id', user.id);
 
       this.uiManager.updatePlayerName(user.username);
       
@@ -174,9 +177,8 @@ class BlockStarPlanetGame {
       // --- INTERCEPTOWANIE WIADOMOŚCI Z SERWERA (DLA UI) ---
       const originalHandle = this.multiplayerManager.handleServerMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleServerMessage = (msg) => {
-          originalHandle(msg); // Wykonaj standardową logikę
+          originalHandle(msg); 
           
-          // Obsługa powiadomień UI
           if (msg.type === 'friendRequestReceived') {
               this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
               this.uiManager.loadFriendsData();
@@ -302,15 +304,15 @@ class BlockStarPlanetGame {
   logout() {
     localStorage.removeItem(JWT_TOKEN_KEY);
     localStorage.removeItem(PLAYER_NAME_KEY);
+    localStorage.removeItem('bsp_clone_user_id');
     window.location.reload();
   }
   
   async setupMailSystem() {
-    // Logika poczty jest w pełni w UI.js w tej wersji architektury, 
-    // ale wywołanie zostawiamy tutaj dla przycisku w Top Bar
+    // Delegacja do UIManager, gdzie jest cała logika DOM
     if (this.uiManager) {
         this.uiManager.openPanel('mail-panel');
-        this.uiManager.setupMailSystem(); // To wywołuje setup w UI
+        this.uiManager.setupMailSystem(); 
     }
   }
 
@@ -376,12 +378,11 @@ class BlockStarPlanetGame {
     if(mailButton) {
       mailButton.onclick = () => {
         this.uiManager.openPanel('mail-panel');
-        // W nowym UI.js logika jest wewnątrz, ale tu wywołujemy inicjalizację
         this.uiManager.setupMailSystem(); 
       };
     }
     
-    // --- CALLBACKI Z UI ---
+    // --- PODPIĘCIE CALLBACKÓW UI ---
     
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
@@ -391,19 +392,25 @@ class BlockStarPlanetGame {
     this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
     
-    // OBSŁUGA WYBORU SKINA (z serwera)
-    this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail) => {
-        // 1. Pobierz dane bloków
+    // LOGIKA WYBORU SKINA
+    this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
+        // Pobierz moje ID
+        const myId = parseInt(localStorage.getItem('bsp_clone_user_id') || "0");
+
+        // Blokada cudzych skinów
+        if (ownerId && ownerId !== myId) {
+            this.uiManager.showMessage("To nie Twój skin! (Tylko do podglądu)", "info");
+            // Można tu ewentualnie otworzyć okno podglądu, ale nie nakładamy skina
+            return;
+        }
+
+        // Jeśli skin jest mój, pobieramy i nakładamy
         const blocksData = await SkinStorage.loadSkinData(skinId);
-        
         if (blocksData) {
-            // 2. Nałóż skina
             this.characterManager.applySkin(blocksData);
             
-            // 3. Zapisz ID lokalnie
             SkinStorage.setLastUsedSkinId(skinId);
             
-            // 4. Zaktualizuj awatar w UI i na serwerze (profil)
             this.uiManager.updatePlayerAvatar(thumbnail);
             this.uiManager.uploadSkinThumbnail(thumbnail);
             
@@ -413,7 +420,6 @@ class BlockStarPlanetGame {
         }
     };
 
-    // OBSŁUGA WYBORU ŚWIATA
     this.uiManager.onWorldSelect = (worldName) => {
         this.loadAndExploreWorld(worldName);
     };
@@ -424,10 +430,16 @@ class BlockStarPlanetGame {
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
     
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) logoutBtn.onclick = () => this.logout();
+    if (logoutBtn) {
+        logoutBtn.onclick = () => this.logout();
+    }
     
     const coinAddBtn = document.getElementById('coin-add-btn');
-    if (coinAddBtn) coinAddBtn.onclick = () => { this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info"); };
+    if (coinAddBtn) {
+        coinAddBtn.onclick = () => {
+            this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
+        };
+    }
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
 
@@ -457,14 +469,13 @@ class BlockStarPlanetGame {
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
-    // Wczytaj ostatnio używany skin (pobierając z serwera po ID)
+    // Wczytaj ostatnio używanego skina (jeśli istnieje ID)
     const lastSkinId = SkinStorage.getLastUsedSkinId();
     if (lastSkinId) {
         const blocksData = await SkinStorage.loadSkinData(lastSkinId);
         if (blocksData) {
             this.characterManager.applySkin(blocksData);
         }
-        // Miniaturkę ładujemy w setupLoadingManager, więc tu nie trzeba
     }
 
     this.recreatePlayerController(this.sceneManager.collidableObjects);
