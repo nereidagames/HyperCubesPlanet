@@ -7,6 +7,8 @@ export class UIManager {
   constructor(onSendMessage) {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
+    
+    // Callbacki (przypisywane w main.js)
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -18,7 +20,10 @@ export class UIManager {
     this.onShopOpen = null;
     this.onBuyBlock = null;
     this.onNameSubmit = null;
+    this.onSkinSelect = null; // Nowy callback do wybierania skina z serwera
+    this.onWorldSelect = null; // Nowy callback do wybierania świata
     
+    // Dane wewnętrzne
     this.friendsList = [];
   }
   
@@ -27,8 +32,11 @@ export class UIManager {
     this.setupButtonHandlers();
     this.setupChatSystem();
     this.setupFriendsSystem();
+    this.setupDiscoverTabs(); // Obsługa zakładek w panelu Odkryj
     console.log('UI Manager initialized');
   }
+
+  // --- ZARZĄDZANIE AVATAREM I NAZWĄ ---
 
   updatePlayerAvatar(thumbnail) {
       const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
@@ -53,6 +61,8 @@ export class UIManager {
     }
   }
 
+  // --- ZARZĄDZANIE PANELAMI ---
+
   openPanel(panelId) {
     const panel = document.getElementById(panelId);
     if (panel) {
@@ -73,6 +83,8 @@ export class UIManager {
     });
   }
   
+  // --- UI GRY (FPS, MONETY, STEROWANIE) ---
+
   updateFPSToggleText(isEnabled) {
     const fpsStatus = document.getElementById('fps-status');
     if (fpsStatus) {
@@ -92,7 +104,10 @@ export class UIManager {
     if(mobileControlsDiv) mobileControlsDiv.style.display = showMobile ? 'block' : 'none';
   }
 
+  // --- OBSŁUGA PRZYCISKÓW ---
+
   setupButtonHandlers() {
+    // Zamykanie paneli X
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         const panel = btn.closest('.panel-modal');
         if (panel) {
@@ -104,21 +119,26 @@ export class UIManager {
             });
         }
     });
+    // Zapobieganie zamykaniu przy kliknięciu w treść
     document.querySelectorAll('.panel-content').forEach(content => {
         content.addEventListener('click', e => e.stopPropagation());
     });
 
+    // Główne przyciski menu
     document.querySelectorAll('.game-btn').forEach(button => {
       const buttonType = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
 
+    // Avatar gracza
     const playerBtn = document.getElementById('player-avatar-button');
     if (playerBtn) playerBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
 
+    // Czat toggle
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
+    // Przyciski w panelu wyboru budowania
     const newWorldBtn = document.getElementById('build-choice-new-world');
     const newSkinBtn = document.getElementById('build-choice-new-skin');
     const newPrefabBtn = document.getElementById('build-choice-new-prefab');
@@ -141,6 +161,7 @@ export class UIManager {
         if (this.onPartBuilderClick) this.onPartBuilderClick();
     };
 
+    // Wybór rozmiaru świata
     const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
     const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
     const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
@@ -149,9 +170,11 @@ export class UIManager {
     if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
     if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
 
+    // Opcje
     const toggleFPSBtn = document.getElementById('toggle-fps-btn');
     if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
 
+    // Input nazwy
     const nameInputPanel = document.getElementById('name-input-panel');
     const nameInputField = document.getElementById('name-input-field');
     const nameSubmitBtn = document.getElementById('name-submit-btn');
@@ -189,6 +212,8 @@ export class UIManager {
     if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
+  // --- SKLEP ---
+
   populateShop(allBlocks, isOwnedCallback) {
     const shopList = document.getElementById('shop-list');
     if (!shopList) return;
@@ -197,7 +222,6 @@ export class UIManager {
     allBlocks.forEach(block => {
         const item = document.createElement('div');
         item.className = 'shop-item';
-
         const isOwned = isOwnedCallback(block.name);
 
         item.innerHTML = `
@@ -226,6 +250,8 @@ export class UIManager {
     });
   }
 
+  // --- CZAT ---
+
   setupChatSystem() { this.setupChatInput(); }
   
   addChatMessage(message) {
@@ -235,7 +261,6 @@ export class UIManager {
     messageElement.className = 'chat-message text-outline';
     messageElement.textContent = message;
     chatArea.appendChild(messageElement);
-    
     chatArea.scrollTop = chatArea.scrollHeight;
   }
   
@@ -277,116 +302,150 @@ export class UIManager {
     }, 2500);
   }
 
-  populateDiscoverPanel(type, items, onSelect) {
+  // --- PANEL ODKRYJ (Worlds & Skins z miniaturkami i zakładkami) ---
+
+  setupDiscoverTabs() {
+      const tabs = document.querySelectorAll('#discover-tabs .friends-tab');
+      tabs.forEach(tab => {
+          tab.onclick = () => {
+              document.querySelectorAll('#discover-tabs .friends-tab').forEach(t => t.classList.remove('active'));
+              tab.classList.add('active');
+              const mode = tab.getAttribute('data-tab'); // 'all' lub 'mine'
+              this.refreshSkinList(mode);
+          };
+      });
+      
+      // Zamknij
+      const closeBtn = document.getElementById('discover-close-button');
+      if(closeBtn) closeBtn.onclick = () => this.closeAllPanels();
+  }
+
+  showDiscoverPanel(type) {
+    const title = document.getElementById('discover-panel-title');
+    const tabs = document.getElementById('discover-tabs');
+    const list = document.getElementById('discover-list');
+    list.innerHTML = '<p class="text-outline" style="text-align:center">Ładowanie...</p>';
+    
+    this.openPanel('discover-panel');
+
+    if (type === 'worlds') {
+        title.textContent = 'Wybierz Świat';
+        tabs.style.display = 'none';
+        
+        // Światy (na razie lokalnie)
+        const savedWorlds = WorldStorage.getSavedWorldsList();
+        this.renderDiscoverList('worlds', savedWorlds);
+        
+    } else if (type === 'skins') {
+        title.textContent = 'Wybierz Skina';
+        tabs.style.display = 'flex';
+        // Domyślnie kliknij 'Wszystkie' by pobrać listę
+        const defaultTab = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
+        if(defaultTab) defaultTab.click();
+    }
+  }
+
+  async refreshSkinList(mode) {
       const list = document.getElementById('discover-list');
-      const title = document.getElementById('discover-panel-title');
+      list.innerHTML = '<p class="text-outline" style="text-align:center">Pobieranie skinów...</p>';
+      
+      let skins = [];
+      if (mode === 'mine') {
+          skins = await SkinStorage.getMySkins();
+      } else {
+          skins = await SkinStorage.getAllSkins();
+      }
+      
+      this.renderDiscoverList('skins', skins);
+  }
+
+  renderDiscoverList(type, items) {
+      const list = document.getElementById('discover-list');
       list.innerHTML = '';
       
-      if (type === 'worlds') {
-          title.textContent = 'Wybierz Świat';
-          if (items.length === 0) {
-              list.innerHTML = '<p style="text-align: center;">Brak zapisanych światów.</p>';
-          }
-          items.forEach(worldName => {
-              // --- ULEPSZONY WIDOK ŚWIATA (Z MINIATURKĄ) ---
-              const item = document.createElement('div');
-              item.className = 'panel-item skin-list-item';
-              item.style.display = 'flex';
-              item.style.alignItems = 'center';
-              item.style.padding = '10px';
-              
-              const thumbContainer = document.createElement('div');
-              thumbContainer.style.width = '80px'; // Trochę szersza dla świata
-              thumbContainer.style.height = '60px';
-              thumbContainer.style.backgroundColor = '#87CEEB';
-              thumbContainer.style.borderRadius = '8px';
-              thumbContainer.style.marginRight = '15px';
-              thumbContainer.style.overflow = 'hidden';
-              thumbContainer.style.flexShrink = '0';
-              thumbContainer.style.border = '2px solid white';
-              
-              const thumbData = WorldStorage.getThumbnail(worldName);
-              if (thumbData) {
-                  const img = document.createElement('img');
-                  img.src = thumbData;
-                  img.style.width = '100%';
-                  img.style.height = '100%';
-                  img.style.objectFit = 'cover';
-                  thumbContainer.appendChild(img);
-              } else {
-                  thumbContainer.textContent = '🌍';
-                  thumbContainer.style.display = 'flex';
-                  thumbContainer.style.alignItems = 'center';
-                  thumbContainer.style.justifyContent = 'center';
-                  thumbContainer.style.fontSize = '24px';
-              }
-              
-              const nameSpan = document.createElement('span');
-              nameSpan.textContent = worldName;
-              nameSpan.className = 'text-outline';
-              nameSpan.style.fontSize = '18px';
-              
-              item.appendChild(thumbContainer);
-              item.appendChild(nameSpan);
-
-              item.onclick = () => { this.closeAllPanels(); onSelect(worldName); };
-              list.appendChild(item);
-          });
-      } else if (type === 'skins') {
-          title.textContent = 'Wybierz Skina';
-          if (items.length === 0) {
-              list.innerHTML = '<p style="text-align: center;">Brak zapisanych skinów.</p>';
-          }
-          items.forEach(skinName => {
-              const item = document.createElement('div');
-              item.className = 'panel-item skin-list-item';
-              item.style.display = 'flex';
-              item.style.alignItems = 'center';
-              item.style.padding = '10px';
-              
-              const thumbContainer = document.createElement('div');
-              thumbContainer.style.width = '64px';
-              thumbContainer.style.height = '64px';
-              thumbContainer.style.backgroundColor = '#000';
-              thumbContainer.style.borderRadius = '8px';
-              thumbContainer.style.marginRight = '15px';
-              thumbContainer.style.overflow = 'hidden';
-              thumbContainer.style.flexShrink = '0';
-              thumbContainer.style.border = '2px solid white';
-              
-              const thumbData = SkinStorage.getThumbnail(skinName);
-              if (thumbData) {
-                  const img = document.createElement('img');
-                  img.src = thumbData;
-                  img.style.width = '100%';
-                  img.style.height = '100%';
-                  img.style.objectFit = 'cover';
-                  thumbContainer.appendChild(img);
-              } else {
-                  thumbContainer.textContent = '?';
-                  thumbContainer.style.display = 'flex';
-                  thumbContainer.style.alignItems = 'center';
-                  thumbContainer.style.justifyContent = 'center';
-                  thumbContainer.style.color = 'white';
-                  thumbContainer.style.fontSize = '24px';
-              }
-              
-              const nameSpan = document.createElement('span');
-              nameSpan.textContent = skinName;
-              nameSpan.className = 'text-outline';
-              nameSpan.style.fontSize = '18px';
-              
-              item.appendChild(thumbContainer);
-              item.appendChild(nameSpan);
-              
-              item.onclick = () => { 
-                  this.closeAllPanels(); 
-                  onSelect(skinName); 
-              };
-              list.appendChild(item);
-          });
+      if (!items || items.length === 0) {
+          list.innerHTML = '<p class="text-outline" style="text-align:center">Brak elementów.</p>';
+          return;
       }
-      this.openPanel('discover-panel');
+
+      items.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'panel-item skin-list-item';
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.padding = '10px';
+          
+          // Kontener miniaturki
+          const thumbContainer = document.createElement('div');
+          thumbContainer.style.width = (type === 'worlds') ? '80px' : '64px';
+          thumbContainer.style.height = '64px';
+          thumbContainer.style.backgroundColor = (type === 'worlds') ? '#87CEEB' : '#000';
+          thumbContainer.style.borderRadius = '8px';
+          thumbContainer.style.marginRight = '15px';
+          thumbContainer.style.overflow = 'hidden';
+          thumbContainer.style.flexShrink = '0';
+          thumbContainer.style.border = '2px solid white';
+          
+          let thumbSrc = null;
+          let label = '';
+          
+          if (type === 'worlds') {
+              label = item; // item to string (nazwa świata)
+              thumbSrc = WorldStorage.getThumbnail(item);
+          } else {
+              // item to obiekt skina z DB { id, name, thumbnail, creator }
+              label = item.name;
+              if (item.creator) label += ` (od ${item.creator})`;
+              thumbSrc = item.thumbnail;
+          }
+          
+          if (thumbSrc) {
+              const img = document.createElement('img');
+              img.src = thumbSrc;
+              img.style.width = '100%';
+              img.style.height = '100%';
+              img.style.objectFit = 'cover';
+              thumbContainer.appendChild(img);
+          } else {
+              thumbContainer.textContent = (type === 'worlds') ? '🌍' : '?';
+              thumbContainer.style.display = 'flex';
+              thumbContainer.style.alignItems = 'center';
+              thumbContainer.style.justifyContent = 'center';
+              thumbContainer.style.color = 'white';
+              thumbContainer.style.fontSize = '24px';
+          }
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = label;
+          nameSpan.className = 'text-outline';
+          nameSpan.style.fontSize = '18px';
+          
+          div.appendChild(thumbContainer);
+          div.appendChild(nameSpan);
+          
+          // Akcja kliknięcia
+          div.onclick = () => {
+              this.closeAllPanels();
+              if (type === 'worlds') {
+                   if (this.onWorldSelect) this.onWorldSelect(item);
+              } else {
+                   // Wybrano skina (przekazujemy ID, nazwę i miniaturkę)
+                   if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail);
+              }
+          };
+          list.appendChild(div);
+      });
+  }
+
+  // --- POPULATE PANEL (dla kompatybilności wstecznej z main.js) ---
+  populateDiscoverPanel(type, items, onSelect) {
+      // Ta metoda była używana wcześniej, teraz logika jest w renderDiscoverList
+      // Ale jeśli main.js wywołuje to bezpośrednio dla czegoś innego, zostawiam wrapper
+      this.renderDiscoverList(type, items);
+      // Musimy ręcznie podpiąć onSelect bo renderDiscoverList korzysta z this.onSkinSelect
+      // W nowej architekturze to nie jest potrzebne, ale dla bezpieczeństwa:
+      if(type === 'worlds') this.onWorldSelect = onSelect;
+      // Dla skinów onSkinSelect jest już inny (z ID), więc ta metoda jest deprecated dla skinów z serwera
   }
 
   // --- SYSTEM PRZYJACIÓŁ ---
@@ -403,12 +462,18 @@ export class UIManager {
       const tabs = document.querySelectorAll('.friends-tab');
       tabs.forEach(tab => {
           tab.onclick = () => {
-              tabs.forEach(t => t.classList.remove('active'));
+              // Ignoruj, jeśli to zakładki w panelu Discover
+              if(tab.parentElement.id === 'discover-tabs') return;
+
+              tabs.forEach(t => {
+                  if(t.parentElement.id !== 'discover-tabs') t.classList.remove('active');
+              });
               document.querySelectorAll('.friends-view').forEach(v => v.classList.remove('active'));
               
               tab.classList.add('active');
               const viewId = tab.getAttribute('data-tab');
-              document.getElementById(viewId).classList.add('active');
+              const view = document.getElementById(viewId);
+              if(view) view.classList.add('active');
               
               if (viewId === 'friends-list' || viewId === 'friends-requests') {
                   this.loadFriendsData();
@@ -444,10 +509,10 @@ export class UIManager {
               this.renderRequestsList(data.requests);
               this.updateTopBarFriends(data.friends);
           } else {
-              list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Nie udało się pobrać listy.</p>';
+              if(list) list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd serwera.</p>';
           }
       } catch (err) {
-          list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd połączenia.</p>';
+          if(list) list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd połączenia.</p>';
       }
   }
 
@@ -582,6 +647,7 @@ export class UIManager {
           });
 
       } catch (e) {
+          console.error("Błąd szukania:", e);
           container.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c;">Błąd wyszukiwania.</p>';
       }
   }
@@ -613,7 +679,7 @@ export class UIManager {
           const data = await res.json();
           if (res.ok) {
               this.showMessage('Dodano do znajomych!', 'success');
-              this.loadFriendsData();
+              this.loadFriendsData(); 
           } else {
               this.showMessage(data.message, 'error');
           }
