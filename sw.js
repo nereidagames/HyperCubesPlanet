@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hypercubesplanet-dev-v3';
+const CACHE_NAME = 'hypercubesplanet-dev-v4'; // ZMIANA WERSJI NA V4
 
 // Lista plików, które mają być dostępne offline.
 const urlsToCache = [
@@ -60,23 +60,20 @@ const urlsToCache = [
 
 // Instalacja Service Workera
 self.addEventListener('install', event => {
-  console.log('Service Worker: Instalacja...');
+  console.log('Service Worker v4: Instalacja...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Cache otwarty, cachowanie plików...');
+        console.log('Service Worker v4: Cache otwarty');
         return cache.addAll(urlsToCache);
       })
-      .then(() => {
-        // Wymuś natychmiastową aktywację
-        self.skipWaiting();
-      })
+      .then(() => self.skipWaiting())
   );
 });
 
 // Aktywacja i czyszczenie starych cache
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Aktywacja...');
+  console.log('Service Worker v4: Aktywacja...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -87,57 +84,32 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    }).then(() => {
-        // Przejmij kontrolę nad kartami od razu
-        return self.clients.claim();
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
-// Strategia pobierania (Network First dla kodu, Cache First dla zasobów)
+// Strategia Network First dla kodu
 self.addEventListener('fetch', event => {
-  // Ignoruj żądania inne niż GET
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
+  if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Sprawdź, czy żądanie dotyczy plików kodu (HTML, JS, JSON)
-  // Dla tych plików używamy strategii "Network First" - zawsze próbuj pobrać świeże z sieci.
   if (url.pathname.endsWith('.html') || 
       url.pathname.endsWith('.js') || 
       url.pathname.endsWith('.json') ||
-      url.pathname.endsWith('/')) { // Główny URL (index)
+      url.pathname.endsWith('/')) {
       
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
-          // Jeśli udało się pobrać z sieci, zaktualizuj cache i zwróć odpowiedź
           const clonedResponse = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clonedResponse));
           return networkResponse;
         })
-        .catch(() => {
-          // Jeśli brak sieci, spróbuj wziąć z cache
-          return caches.match(event.request);
-        })
+        .catch(() => caches.match(event.request))
     );
   } else {
-    // Dla obrazków, tekstur i ikon używamy strategii "Cache First" - bierz z cache dla szybkości.
     event.respondWith(
-      caches.match(event.request)
-        .then(cachedResponse => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Jeśli nie ma w cache, pobierz z sieci
-          return fetch(event.request).then(networkResponse => {
-             const clonedResponse = networkResponse.clone();
-             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clonedResponse));
-             return networkResponse;
-          });
-        })
+      caches.match(event.request).then(cached => cached || fetch(event.request))
     );
   }
 });
