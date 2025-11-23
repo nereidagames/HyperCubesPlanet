@@ -288,9 +288,47 @@ export class UIManager {
               list.innerHTML = '<p style="text-align: center;">Brak zapisanych światów.</p>';
           }
           items.forEach(worldName => {
+              // --- ULEPSZONY WIDOK ŚWIATA (Z MINIATURKĄ) ---
               const item = document.createElement('div');
-              item.className = 'panel-item';
-              item.textContent = worldName;
+              item.className = 'panel-item skin-list-item';
+              item.style.display = 'flex';
+              item.style.alignItems = 'center';
+              item.style.padding = '10px';
+              
+              const thumbContainer = document.createElement('div');
+              thumbContainer.style.width = '80px'; // Trochę szersza dla świata
+              thumbContainer.style.height = '60px';
+              thumbContainer.style.backgroundColor = '#87CEEB';
+              thumbContainer.style.borderRadius = '8px';
+              thumbContainer.style.marginRight = '15px';
+              thumbContainer.style.overflow = 'hidden';
+              thumbContainer.style.flexShrink = '0';
+              thumbContainer.style.border = '2px solid white';
+              
+              const thumbData = WorldStorage.getThumbnail(worldName);
+              if (thumbData) {
+                  const img = document.createElement('img');
+                  img.src = thumbData;
+                  img.style.width = '100%';
+                  img.style.height = '100%';
+                  img.style.objectFit = 'cover';
+                  thumbContainer.appendChild(img);
+              } else {
+                  thumbContainer.textContent = '🌍';
+                  thumbContainer.style.display = 'flex';
+                  thumbContainer.style.alignItems = 'center';
+                  thumbContainer.style.justifyContent = 'center';
+                  thumbContainer.style.fontSize = '24px';
+              }
+              
+              const nameSpan = document.createElement('span');
+              nameSpan.textContent = worldName;
+              nameSpan.className = 'text-outline';
+              nameSpan.style.fontSize = '18px';
+              
+              item.appendChild(thumbContainer);
+              item.appendChild(nameSpan);
+
               item.onclick = () => { this.closeAllPanels(); onSelect(worldName); };
               list.appendChild(item);
           });
@@ -351,7 +389,7 @@ export class UIManager {
       this.openPanel('discover-panel');
   }
 
-  // --- SYSTEM PRZYJACIÓŁ (POPRAWIONY) ---
+  // --- SYSTEM PRZYJACIÓŁ ---
 
   setupFriendsSystem() {
       const btnOpen = document.getElementById('btn-friends-open');
@@ -362,7 +400,6 @@ export class UIManager {
           };
       }
 
-      // Obsługa zakładek - DODANO ODŚWIEŻANIE DANYCH PRZY PRZEŁĄCZANIU
       const tabs = document.querySelectorAll('.friends-tab');
       tabs.forEach(tab => {
           tab.onclick = () => {
@@ -373,7 +410,6 @@ export class UIManager {
               const viewId = tab.getAttribute('data-tab');
               document.getElementById(viewId).classList.add('active');
               
-              // Ważne: Odśwież dane po zmianie zakładki!
               if (viewId === 'friends-list' || viewId === 'friends-requests') {
                   this.loadFriendsData();
               }
@@ -393,7 +429,6 @@ export class UIManager {
       const list = document.getElementById('friends-list');
       const reqList = document.getElementById('friends-requests');
 
-      // Loader
       if (list) list.innerHTML = '<p class="text-outline" style="text-align:center; margin-top:20px;">Odświeżanie...</p>';
 
       try {
@@ -409,11 +444,9 @@ export class UIManager {
               this.renderRequestsList(data.requests);
               this.updateTopBarFriends(data.friends);
           } else {
-              console.error("Błąd API przyjaciół:", response.status);
               list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Nie udało się pobrać listy.</p>';
           }
       } catch (err) {
-          console.error("Błąd sieci (przyjaciele):", err);
           list.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c; margin-top:20px;">Błąd połączenia.</p>';
       }
   }
@@ -474,43 +507,16 @@ export class UIManager {
       requests.forEach(r => {
           const item = document.createElement('div');
           item.className = 'friend-item';
+          item.innerHTML = `
+            <div class="friend-info text-outline" style="font-size: 16px;">${r.username}</div>
+            <div class="friend-actions">
+                <button class="action-btn btn-accept">Akceptuj</button>
+            </div>
+          `;
           
-          // Budujemy HTML ręcznie lub elementami, ważne by dodać zdarzenie onclick
-          // Dodajemy też avatar, żeby było ładniej
+          const btn = item.querySelector('.btn-accept');
+          btn.onclick = () => this.acceptFriendRequest(r.request_id);
           
-          const avatar = document.createElement('div');
-          avatar.className = 'friend-avatar';
-          if (r.current_skin_thumbnail) {
-              avatar.style.backgroundImage = `url(${r.current_skin_thumbnail})`;
-          } else {
-              avatar.style.display = 'flex';
-              avatar.style.justifyContent = 'center';
-              avatar.style.alignItems = 'center';
-              avatar.textContent = '👤';
-              avatar.style.color = 'white';
-              avatar.style.fontSize = '20px';
-          }
-
-          const info = document.createElement('div');
-          info.className = 'friend-info text-outline';
-          info.style.fontSize = '16px';
-          info.textContent = r.username;
-
-          const actions = document.createElement('div');
-          actions.className = 'friend-actions';
-          
-          const btn = document.createElement('button');
-          btn.className = 'action-btn btn-accept';
-          btn.textContent = 'Akceptuj';
-          btn.onclick = () => {
-              console.log("Kliknięto akceptuj dla ID:", r.request_id);
-              this.acceptFriendRequest(r.request_id);
-          };
-
-          actions.appendChild(btn);
-          item.appendChild(avatar);
-          item.appendChild(info);
-          item.appendChild(actions);
           list.appendChild(item);
       });
   }
@@ -576,7 +582,6 @@ export class UIManager {
           });
 
       } catch (e) {
-          console.error("Błąd szukania:", e);
           container.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c;">Błąd wyszukiwania.</p>';
       }
   }
@@ -608,12 +613,11 @@ export class UIManager {
           const data = await res.json();
           if (res.ok) {
               this.showMessage('Dodano do znajomych!', 'success');
-              this.loadFriendsData(); // Odśwież po akceptacji
+              this.loadFriendsData();
           } else {
               this.showMessage(data.message, 'error');
           }
       } catch(e) {
-          console.error(e);
           this.showMessage('Błąd sieci.', 'error');
       }
   }
