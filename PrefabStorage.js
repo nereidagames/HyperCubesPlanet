@@ -1,15 +1,21 @@
-
 const PREFABS_STORAGE_KEY = 'bsp_clone_prefabs';
 
 export class PrefabStorage {
 
-  static savePrefab(prefabName, blocksData) {
+  // Dodano parametr thumbnail
+  static savePrefab(prefabName, blocksData, thumbnail = null) {
     if (!prefabName || prefabName.trim() === '') {
       alert('Nazwa prefabrykatu nie może być pusta!');
       return false;
     }
     const prefabs = this.getAllPrefabs();
-    prefabs[prefabName] = blocksData;
+    
+    // Zapisz jako obiekt
+    prefabs[prefabName] = {
+        blocks: blocksData,
+        thumbnail: thumbnail
+    };
+
     try {
       localStorage.setItem(PREFABS_STORAGE_KEY, JSON.stringify(prefabs));
       console.log(`Prefab "${prefabName}" saved successfully!`);
@@ -23,7 +29,26 @@ export class PrefabStorage {
 
   static loadPrefab(prefabName) {
     const prefabs = this.getAllPrefabs();
-    return prefabs[prefabName] || null;
+    const data = prefabs[prefabName];
+    
+    if (!data) return null;
+
+    // Wsteczna kompatybilność
+    if (Array.isArray(data)) {
+        return data;
+    } else {
+        return data.blocks;
+    }
+  }
+  
+  // Pobieranie miniaturki
+  static getThumbnail(prefabName) {
+      const prefabs = this.getAllPrefabs();
+      const data = prefabs[prefabName];
+      if (data && !Array.isArray(data) && data.thumbnail) {
+          return data.thumbnail;
+      }
+      return null;
   }
 
   static getSavedPrefabsList() {
