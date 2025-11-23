@@ -2,7 +2,7 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <!-- Zapobieganie cache'owaniu -->
+    <!-- Zapobieganie cache'owaniu (dla deweloperki) -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -37,8 +37,6 @@
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; touch-action: none; }
-      
-      /* Klasa pomocnicza do obrysu tekstu */
       .text-outline { text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000; }
 
       /* EKRAN ŁADOWANIA */
@@ -131,9 +129,8 @@
       #jump-button:active { transform: scale(0.95); }
       #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
       
-      /* PANEL BUDOWANIA (UI) - POPRAWIONE KOLORY */
+      /* PANEL BUDOWANIA (UI) */
       #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; display: none; }
-      
       .build-ui-button { 
           position: absolute; 
           pointer-events: auto; 
@@ -147,15 +144,11 @@
           font-size: 24px; 
           box-shadow: 0 4px 8px #0004; 
           transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; 
-          
-          /* ZMIANA KOLORU CZCIONKI NA BIAŁY Z OBRYSEM */
           color: white;
           text-shadow: 1.5px 1.5px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
           font-family: 'Titan One', cursive;
       }
-      
-      .build-ui-button:hover { background-color: #4c8cff; } 
-      .build-ui-button:active { transform: scale(0.95); }
+      .build-ui-button:hover { background-color: #4c8cff; } .build-ui-button:active { transform: scale(0.95); }
       
       #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
       #build-exit-button:hover { background-color: transparent; filter: brightness(1.2); }
@@ -164,17 +157,7 @@
       #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
       
       #block-selection-panel, #prefab-selection-panel, #part-selection-panel { position: absolute; bottom: 20px; left: 90px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-direction: column; gap: 10px; width: 250px; pointer-events: auto; max-height: 200px; overflow-y: auto; }
-      
-      /* ELEMENTY LISTY W PANELACH BUDOWANIA - BIAŁY TEKST */
-      .block-item, .prefab-item, .part-item { 
-          width: 50px; 
-          height: 50px; 
-          border: 2px solid #ddd; 
-          border-radius: 5px; 
-          cursor: pointer; 
-          transition: transform 0.1s ease;
-          color: white; /* BIAŁY TEKST */
-      } 
+      .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; color: white; } 
       .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
       .prefab-item, .part-item { width: 100%; height: auto; padding: 10px; text-align: center; }
 
@@ -183,18 +166,7 @@
       .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
       .panel-content h2 { margin-bottom: 20px; } 
       .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-      
-      /* ELEMENTY LIST - BIAŁY TEKST */
-      .panel-item { 
-          background: #2c75ff; 
-          padding: 15px; 
-          border-radius: 8px; 
-          cursor: pointer; 
-          text-align: center; 
-          font-weight: normal; 
-          transition: background-color 0.2s ease; 
-          color: white; /* BIAŁY TEKST */
-      }
+      .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; color: white; }
       .panel-item:hover { background: #4c8cff; } 
       .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; color: white; }
       
@@ -362,16 +334,14 @@
               <div class="player-name text-outline">Poczta</div>
             </div>
             
-            <!-- NOWY PRZYCISK PRZYJACIÓŁ -->
+            <!-- PRZYCISK PRZYJACIÓŁ -->
             <div id="btn-friends-open" class="top-bar-item">
               <div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: #e67e22;"></div>
               <div class="player-name text-outline">Przyjaciele</div>
             </div>
             
             <!-- PASEK AKTYWNYCH ZNAJOMYCH -->
-            <div id="active-friends-container">
-                <!-- Tu będą dynamicznie dodawane główki -->
-            </div>
+            <div id="active-friends-container"></div>
           </div>
             
           <div class="chat-container ui-element">
@@ -410,7 +380,7 @@
         </div>
     </div>
     
-    <!-- NOWY PANEL PRZYJACIÓŁ -->
+    <!-- PANEL PRZYJACIÓŁ -->
     <div id="friends-panel" class="panel-modal">
         <div class="panel-content">
             <div class="friends-tabs">
@@ -458,17 +428,13 @@
             <h3 class="text-outline">Wiadomości</h3>
             <div id="new-mail-btn" class="text-outline ui-element">+</div>
           </div>
-          <div class="mail-conversations">
-            <!-- Dynamicznie dodawane konwersacje -->
-          </div>
+          <div class="mail-conversations"></div>
         </div>
         <div class="mail-chat-view">
           <div id="mail-chat-header">
             <h2 id="mail-chat-username" class="text-outline">Wybierz konwersację</h2>
           </div>
-          <div class="mail-chat-messages">
-            <!-- Dynamicznie dodawane wiadomości -->
-          </div>
+          <div class="mail-chat-messages"></div>
           <form id="mail-reply-form" style="display: none;">
             <input type="text" id="mail-reply-input" placeholder="Napisz wiadomość..." autocomplete="off">
             <button type="submit" id="mail-reply-btn" class="text-outline">Wyślij</button>
@@ -486,9 +452,16 @@
       </div>
     </div>
 
+    <!-- ZAKTUALIZOWANY PANEL ODKRYJ -->
     <div id="discover-panel" class="panel-modal">
       <div class="panel-content">
-        <h2 id="discover-panel-title" class="text-outline">Wybierz Świat</h2>
+        <!-- Zakładki (Moje / Wszystkie) -->
+        <div class="friends-tabs" id="discover-tabs" style="display:none; width: 100%; margin-bottom: 10px;">
+            <div class="friends-tab active" data-tab="all">Wszystkie</div>
+            <div class="friends-tab" data-tab="mine">Moje</div>
+        </div>
+        
+        <h2 id="discover-panel-title" class="text-outline">Wybierz</h2>
         <div id="discover-list" class="panel-list"></div>
         <div id="discover-close-button" class="panel-close-button text-outline">Zamknij</div>
       </div>
