@@ -2,13 +2,20 @@ const PARTS_STORAGE_KEY = 'bsp_clone_hypercube_parts';
 
 export class HyperCubePartStorage {
 
-  static savePart(partName, blocksData) {
+  // Dodano parametr thumbnail
+  static savePart(partName, blocksData, thumbnail = null) {
     if (!partName || partName.trim() === '') {
       alert('Nazwa części nie może być pusta!');
       return false;
     }
     const parts = this.getAllParts();
-    parts[partName] = blocksData;
+    
+    // Zapisujemy obiekt zamiast samej tablicy
+    parts[partName] = {
+        blocks: blocksData,
+        thumbnail: thumbnail
+    };
+
     try {
       localStorage.setItem(PARTS_STORAGE_KEY, JSON.stringify(parts));
       console.log(`HyperCube Part "${partName}" saved successfully!`);
@@ -22,7 +29,25 @@ export class HyperCubePartStorage {
 
   static loadPart(partName) {
     const parts = this.getAllParts();
-    return parts[partName] || null;
+    const data = parts[partName];
+    if (!data) return null;
+
+    // Kompatybilność wsteczna (jeśli stary zapis to tablica)
+    if (Array.isArray(data)) {
+        return data;
+    } else {
+        return data.blocks;
+    }
+  }
+  
+  // Nowa metoda do pobierania miniaturki
+  static getThumbnail(partName) {
+      const parts = this.getAllParts();
+      const data = parts[partName];
+      if (data && !Array.isArray(data) && data.thumbnail) {
+          return data.thumbnail;
+      }
+      return null;
   }
 
   static getSavedPartsList() {
