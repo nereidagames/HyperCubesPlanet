@@ -19,7 +19,7 @@ export class SkinBuilderManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
-    this.platformSize = 16; // 16x16 to standardowa wielkość skina
+    this.platformSize = 16; // Standardowa wielkość
     this.cameraController = null;
     
     this.baseCharacterVisuals = null;
@@ -69,7 +69,6 @@ export class SkinBuilderManager {
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
     
-    // Ciemniejsze tło edytora, żeby lepiej widzieć
     this.scene.background = new THREE.Color(0x2c3e50);
     this.scene.fog = new THREE.Fog(0x2c3e50, 30, 100);
     
@@ -81,21 +80,18 @@ export class SkinBuilderManager {
     
     this.createBuildPlatform();
     
-    // --- POPRAWIONE NOGI ---
+    // --- NOGI POSTACI (Przeskalowane x8) ---
     this.baseCharacterVisuals = new THREE.Group();
     createBaseCharacter(this.baseCharacterVisuals);
     
-    // SKALOWANIE: Powiększamy nogi 8 razy, aby pasowały do siatki 1x1
-    // (W grze skin jest zmniejszany 0.125x, więc tutaj robimy odwrotność)
+    // Skalujemy x8, bo w grze skin jest 0.125. Tutaj budujemy 1:1.
     this.baseCharacterVisuals.scale.setScalar(8);
     
-    // POZYCJA: Obniżamy nogi tak, aby pas był równo z podłogą (Y=0)
-    // Oryginalny środek modelu w character.js jest lekko przesunięty, 
-    // po przeskalowaniu x8 musimy go obniżyć o ok. 4.0 jednostki.
+    // Obniżamy nogi tak, aby pas był na poziomie Y=0
     this.baseCharacterVisuals.position.set(0, -4.0, 0);
     
     this.scene.add(this.baseCharacterVisuals);
-    // -----------------------
+    // ---------------------------------------
 
     this.createPreviewBlock();
     this.previewPart = new THREE.Group();
@@ -103,8 +99,7 @@ export class SkinBuilderManager {
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
-    // Kamera trochę dalej, bo model jest teraz duży
-    this.cameraController.distance = 30; 
+    this.cameraController.distance = 30;
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
@@ -114,29 +109,20 @@ export class SkinBuilderManager {
   }
 
   createBuildPlatform() {
-    // Platforma pomocnicza (podłoga)
     const geometry = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
-    
-    // Przezroczysta, żeby widać było nogi pod spodem
     const material = new THREE.MeshLambertMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.2 });
     
     this.platform = new THREE.Mesh(geometry, material);
-    
-    // POPRAWKA WYSOKOŚCI:
-    // Ustawiamy środek platformy na Y = -0.5.
-    // Dzięki temu jej GÓRNA ścianka jest na poziomie Y = 0.0.
-    // To kluczowe dla raycastera, żeby stawiał bloki od poziomu 0 w górę.
+    // Platforma tuż pod poziomem 0
     this.platform.position.y = -0.5; 
     
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
-    // Grid helper idealnie na poziomie 0
     const gridHelper = new THREE.GridHelper(this.platformSize, this.platformSize);
-    gridHelper.position.y = 0.01; // Lekko wyżej żeby nie migotał
+    gridHelper.position.y = 0.01;
     this.scene.add(gridHelper);
     
-    // Krawędzie platformy
     const edges = new THREE.EdgesGeometry(geometry);
     const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 }));
     line.position.y = -0.5;
@@ -201,17 +187,63 @@ export class SkinBuilderManager {
       });
   }
 
+  // --- POPRAWIONY PANEL WYBORU CZĘŚCI (Z MINIATURKAMI) ---
   showPartSelectionPanel() {
       const panel = document.getElementById('part-selection-panel');
       panel.innerHTML = '';
       const partNames = HyperCubePartStorage.getSavedPartsList();
+      
       if (partNames.length === 0) {
           panel.innerHTML = '<div class="panel-item text-outline">Brak części</div>';
       } else {
           partNames.forEach(name => {
               const item = document.createElement('div');
-              item.className = 'panel-item text-outline part-item';
-              item.textContent = name;
+              item.className = 'panel-item part-item';
+              item.style.display = 'flex';
+              item.style.alignItems = 'center';
+              item.style.padding = '5px';
+              item.style.justifyContent = 'flex-start';
+              item.style.height = 'auto';
+              item.style.minHeight = '60px';
+
+              // Kontener na miniaturkę
+              const thumbContainer = document.createElement('div');
+              thumbContainer.style.width = '50px';
+              thumbContainer.style.height = '50px';
+              thumbContainer.style.backgroundColor = '#333';
+              thumbContainer.style.borderRadius = '5px';
+              thumbContainer.style.marginRight = '10px';
+              thumbContainer.style.overflow = 'hidden';
+              thumbContainer.style.flexShrink = '0';
+              thumbContainer.style.border = '1px solid white';
+
+              // Pobranie miniaturki
+              const thumbData = HyperCubePartStorage.getThumbnail(name);
+              if (thumbData) {
+                  const img = document.createElement('img');
+                  img.src = thumbData;
+                  img.style.width = '100%';
+                  img.style.height = '100%';
+                  img.style.objectFit = 'cover';
+                  thumbContainer.appendChild(img);
+              } else {
+                  thumbContainer.textContent = '🧩';
+                  thumbContainer.style.display = 'flex';
+                  thumbContainer.style.alignItems = 'center';
+                  thumbContainer.style.justifyContent = 'center';
+                  thumbContainer.style.color = 'white';
+                  thumbContainer.style.fontSize = '20px';
+              }
+
+              const textSpan = document.createElement('span');
+              textSpan.textContent = name;
+              textSpan.className = 'text-outline';
+              textSpan.style.fontSize = '14px';
+              textSpan.style.wordBreak = 'break-word';
+
+              item.appendChild(thumbContainer);
+              item.appendChild(textSpan);
+
               item.onclick = () => {
                   this.selectPart(name);
                   panel.style.display = 'none';
@@ -316,8 +348,6 @@ export class SkinBuilderManager {
     newBlock.position.copy(this.previewBlock.position);
     this.scene.add(newBlock);
     this.placedBlocks.push(newBlock);
-    
-    // Dodajemy do kolizji, aby można było stawiać klocki na klockach
     this.collidableBuildObjects.push(newBlock);
     this.updateSaveButton();
   }
@@ -374,6 +404,7 @@ export class SkinBuilderManager {
     }
   }
 
+  // --- GENEROWANIE MINIATURKI (Z NOGAMI) ---
   generateThumbnail() {
     const width = 150;
     const height = 150;
@@ -382,7 +413,6 @@ export class SkinBuilderManager {
     
     const thumbnailScene = new THREE.Scene();
     
-    // Oświetlenie
     const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
     thumbnailScene.add(ambLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -391,15 +421,15 @@ export class SkinBuilderManager {
 
     const box = new THREE.Box3();
 
-    // --- DODANIE NÓG DO MINIATURKI (Też przeskalowane) ---
+    // Dodaj nogi do miniaturki
     const thumbLegs = new THREE.Group();
     createBaseCharacter(thumbLegs);
-    thumbLegs.scale.setScalar(8);
-    thumbLegs.position.set(0, -4.0, 0); // Ta sama pozycja co w edytorze
+    thumbLegs.scale.setScalar(8); // Też przeskalowane x8
+    thumbLegs.position.set(0, -4.0, 0);
     thumbnailScene.add(thumbLegs);
     box.expandByObject(thumbLegs);
-    // --------------------------------
 
+    // Dodaj klocki
     if (this.placedBlocks.length > 0) {
         this.placedBlocks.forEach(block => {
             const clone = block.clone();
@@ -479,20 +509,10 @@ export class SkinBuilderManager {
       const buildHeightLimit = 20;
       
       let isVisible = false;
-      
-      // Upewnij się, że platforma jest poprawnie skonfigurowana w raycasterze.
-      // Jeśli platforma jest na Y=-0.5, jej górna ścianka jest na Y=0.
-      // Raycaster trafia w Y=0. Normalna to (0, 1, 0).
-      // Punkt trafienia = (x, 0, z).
-      // (x, 0, z) + (0, 0.5, 0) = (x, 0.5, z).
-      // floor() daje (xf, 0, zf).
-      // addScalar(0.5) daje (xf+0.5, 0.5, zf+0.5).
-      // Wynikowa pozycja klocka: Y=0.5. To jest poprawne (środek klocka).
-      
       if (
           Math.abs(snappedPosition.x) < buildAreaLimit && 
           Math.abs(snappedPosition.z) < buildAreaLimit &&
-          snappedPosition.y >= 0 && // Tylko powyżej podłogi
+          snappedPosition.y >= 0 &&
           snappedPosition.y < buildHeightLimit
       ) {
           isVisible = true;
