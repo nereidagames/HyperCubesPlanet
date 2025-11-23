@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { PrefabStorage } from './PrefabStorage.js';
 
-// Ten manager jest bardzo podobny do SkinBuilderManager, ale dla prefabrykatów
 export class PrefabBuilderManager {
   constructor(game, loadingManager, blockManager) {
     this.game = game;
@@ -15,7 +14,7 @@ export class PrefabBuilderManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
-    this.platformSize = 32; // Mniejsza platforma dla prefabrykatów
+    this.platformSize = 32;
     this.cameraController = null;
 
     this.blockTypes = [];
@@ -25,8 +24,6 @@ export class PrefabBuilderManager {
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
-
-    // POPRAWKA: Bindowanie nowej metody do obsługi contextmenu
     this.onContextMenu = this.onContextMenu.bind(this);
 
     this.longPressTimer = null;
@@ -37,7 +34,6 @@ export class PrefabBuilderManager {
     this.onTouchMove = this.onTouchMove.bind(this);
   }
 
-  // POPRAWKA: Nowa metoda do obsługi zdarzenia
   onContextMenu(event) {
     event.preventDefault();
   }
@@ -64,19 +60,23 @@ export class PrefabBuilderManager {
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
-    this.scene.background = new THREE.Color(0x2c3e50); // Inne tło
+    
+    // Tło dla edytora prefabrykatów
+    this.scene.background = new THREE.Color(0x2c3e50);
     this.scene.fog = new THREE.Fog(0x2c3e50, 20, 150);
+    
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     this.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight.position.set(10, 20, 15);
     this.scene.add(directionalLight);
+    
     this.createBuildPlatform();
     this.createPreviewBlock();
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
-    this.cameraController.distance = 35; // Nieco dalsza kamera
+    this.cameraController.distance = 35;
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
@@ -117,7 +117,6 @@ export class PrefabBuilderManager {
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Użycie nazwanej metody jako listenera
     window.addEventListener('contextmenu', this.onContextMenu);
 
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
@@ -172,7 +171,6 @@ export class PrefabBuilderManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Usunięcie listenera przy użyciu tej samej referencji
     window.removeEventListener('contextmenu', this.onContextMenu);
 
     window.removeEventListener('touchstart', this.onTouchStart);
@@ -233,6 +231,49 @@ export class PrefabBuilderManager {
     }
   }
 
+  // --- GENEROWANIE MINIATURKI DLA PREFABRYKATU ---
+  generateThumbnail() {
+    const width = 150;
+    const height = 150;
+    const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    thumbnailRenderer.setSize(width, height);
+    
+    const thumbnailScene = new THREE.Scene();
+    const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
+    thumbnailScene.add(ambLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(5, 10, 7);
+    thumbnailScene.add(dirLight);
+
+    const box = new THREE.Box3();
+
+    if (this.placedBlocks.length > 0) {
+        this.placedBlocks.forEach(block => {
+            const clone = block.clone();
+            thumbnailScene.add(clone);
+            box.expandByObject(clone);
+        });
+    } else {
+        return null;
+    }
+
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    const thumbnailCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    const distance = maxDim * 2.0; 
+    thumbnailCamera.position.set(center.x + distance * 0.8, center.y + distance * 0.5, center.z + distance);
+    thumbnailCamera.lookAt(center);
+
+    thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+    
+    const dataURL = thumbnailRenderer.domElement.toDataURL('image/png');
+    thumbnailRenderer.dispose();
+    
+    return dataURL;
+  }
+
   savePrefab() {
     if (this.placedBlocks.length === 0) return;
     const prefabName = prompt("Podaj nazwę dla swojego prefabrykatu:", "Moja Konstrukcja");
@@ -244,7 +285,10 @@ export class PrefabBuilderManager {
         texturePath: block.userData.texturePath
       }));
       
-      if (PrefabStorage.savePrefab(prefabName, blocksData)) {
+      // Generuj miniaturkę
+      const thumbnail = this.generateThumbnail();
+      
+      if (PrefabStorage.savePrefab(prefabName, blocksData, thumbnail)) {
         alert(`Prefabrykat "${prefabName}" został pomyślnie zapisany!`);
         this.game.switchToMainMenu();
       }
