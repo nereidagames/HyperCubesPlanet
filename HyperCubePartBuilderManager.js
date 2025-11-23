@@ -24,8 +24,6 @@ export class HyperCubePartBuilderManager {
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
-
-    // POPRAWKA: Bindowanie nowej metody do obsługi contextmenu
     this.onContextMenu = this.onContextMenu.bind(this);
 
     this.longPressTimer = null;
@@ -36,7 +34,6 @@ export class HyperCubePartBuilderManager {
     this.onTouchMove = this.onTouchMove.bind(this);
   }
 
-  // POPRAWKA: Nowa metoda do obsługi zdarzenia
   onContextMenu(event) {
     event.preventDefault();
   }
@@ -63,13 +60,17 @@ export class HyperCubePartBuilderManager {
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
-    this.scene.background = new THREE.Color(0x5e3434); // Czerwonawe tło dla odróżnienia
+    
+    // Ciemniejsze tło dla kontrastu
+    this.scene.background = new THREE.Color(0x5e3434); 
     this.scene.fog = new THREE.Fog(0x5e3434, 20, 100);
+    
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     this.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight.position.set(10, 20, 15);
     this.scene.add(directionalLight);
+    
     this.createBuildPlatform();
     this.createPreviewBlock();
     
@@ -116,7 +117,6 @@ export class HyperCubePartBuilderManager {
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Użycie nazwanej metody jako listenera
     window.addEventListener('contextmenu', this.onContextMenu);
 
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
@@ -171,7 +171,6 @@ export class HyperCubePartBuilderManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Usunięcie listenera przy użyciu tej samej referencji
     window.removeEventListener('contextmenu', this.onContextMenu);
 
     window.removeEventListener('touchstart', this.onTouchStart);
@@ -232,6 +231,53 @@ export class HyperCubePartBuilderManager {
     }
   }
 
+  // --- GENEROWANIE MINIATURKI CZĘŚCI ---
+  generateThumbnail() {
+    const width = 150;
+    const height = 150;
+    const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    thumbnailRenderer.setSize(width, height);
+    
+    const thumbnailScene = new THREE.Scene();
+    // Brak tła (alpha) lub neutralne tło
+    // thumbnailScene.background = new THREE.Color(0x444444); 
+
+    const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
+    thumbnailScene.add(ambLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(5, 10, 7);
+    thumbnailScene.add(dirLight);
+
+    const box = new THREE.Box3();
+
+    // Kopiujemy tylko klocki (części nie mają nóg, to tylko element budulcowy)
+    if (this.placedBlocks.length > 0) {
+        this.placedBlocks.forEach(block => {
+            const clone = block.clone();
+            thumbnailScene.add(clone);
+            box.expandByObject(clone);
+        });
+    } else {
+        return null;
+    }
+
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    const thumbnailCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    const distance = maxDim * 2.0; 
+    thumbnailCamera.position.set(center.x + distance * 0.8, center.y + distance * 0.5, center.z + distance);
+    thumbnailCamera.lookAt(center);
+
+    thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+    
+    const dataURL = thumbnailRenderer.domElement.toDataURL('image/png');
+    thumbnailRenderer.dispose();
+    
+    return dataURL;
+  }
+
   savePart() {
     if (this.placedBlocks.length === 0) return;
     const partName = prompt("Podaj nazwę dla swojej części HyperCube:", "Moja Część");
@@ -243,7 +289,10 @@ export class HyperCubePartBuilderManager {
         texturePath: block.userData.texturePath
       }));
       
-      if (HyperCubePartStorage.savePart(partName, blocksData)) {
+      // Generujemy miniaturkę
+      const thumbnail = this.generateThumbnail();
+      
+      if (HyperCubePartStorage.savePart(partName, blocksData, thumbnail)) {
         alert(`Część "${partName}" została pomyślnie zapisana!`);
         this.game.switchToMainMenu();
       }
