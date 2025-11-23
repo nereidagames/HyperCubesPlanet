@@ -28,8 +28,6 @@ export class BuildManager {
     this.materials = {};
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
-
-    // POPRAWKA: Bindowanie nowej metody do obsługi contextmenu
     this.onContextMenu = this.onContextMenu.bind(this);
 
     this.longPressTimer = null;
@@ -40,13 +38,11 @@ export class BuildManager {
     this.onTouchMove = this.onTouchMove.bind(this);
   }
 
-  // POPRAWKA: Nowa metoda do obsługi zdarzenia
   onContextMenu(event) {
     event.preventDefault();
   }
 
   preloadTextures() {
-    console.log("Preloading textures for build mode...");
     const allBlocks = this.blockManager.getAllBlockDefinitions();
     allBlocks.forEach(blockType => {
       if (!this.materials[blockType.texturePath]) {
@@ -70,14 +66,17 @@ export class BuildManager {
     document.getElementById('build-ui-container').style.display = 'block';
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
+    
     this.scene.background = new THREE.Color(0x87CEEB);
     this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+    
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     this.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     directionalLight.position.set(50, 50, 50);
     directionalLight.castShadow = true; 
     this.scene.add(directionalLight);
+    
     this.createBuildPlatform();
     this.createPreviewBlock();
     this.previewPrefab = new THREE.Group();
@@ -122,7 +121,6 @@ export class BuildManager {
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Użycie nazwanej metody jako listenera
     window.addEventListener('contextmenu', this.onContextMenu);
 
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
@@ -133,7 +131,6 @@ export class BuildManager {
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'flex';
-        // POPRAWKA: Ukryj opcję Części, pokaż opcję Prefabrykatów
         document.getElementById('add-choice-parts').style.display = 'none';
         document.getElementById('add-choice-prefabs').style.display = 'block';
     };
@@ -199,7 +196,6 @@ export class BuildManager {
       }
       this.previewPrefab.visible = false;
       this.previewBlock.visible = true;
-      console.log(`Selected block: ${blockType.name}`);
   }
 
   selectPrefab(prefabName) {
@@ -223,7 +219,6 @@ export class BuildManager {
 
       this.previewBlock.visible = false;
       this.previewPrefab.visible = true;
-      console.log(`Selected prefab: ${prefabName}`);
   }
 
   toggleCameraMode() {
@@ -240,7 +235,6 @@ export class BuildManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
-    // POPRAWKA: Usunięcie listenera przy użyciu tej samej referencji
     window.removeEventListener('contextmenu', this.onContextMenu);
 
     window.removeEventListener('touchstart', this.onTouchStart);
@@ -346,12 +340,64 @@ export class BuildManager {
     }
   }
 
+  // --- GENEROWANIE MINIATURKI ŚWIATA ---
+  generateThumbnail() {
+    const width = 200; // Trochę większe dla świata
+    const height = 150;
+    const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
+    thumbnailRenderer.setSize(width, height);
+    thumbnailRenderer.setClearColor(0x87CEEB); // Błękitne tło
+    
+    const thumbnailScene = new THREE.Scene();
+    
+    // Światło
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
+    thumbnailScene.add(ambLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(50, 50, 50);
+    thumbnailScene.add(dirLight);
+
+    // Dodaj podłogę, żeby świat nie wisiał w próżni
+    const floorGeo = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
+    const floorMat = new THREE.MeshLambertMaterial({ color: 0x559022 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.position.y = -0.5;
+    thumbnailScene.add(floor);
+
+    // Kopiuj bloki
+    if (this.placedBlocks.length > 0) {
+        this.placedBlocks.forEach(block => {
+            const clone = block.clone();
+            thumbnailScene.add(clone);
+        });
+    }
+
+    // Ustaw kamerę z lotu ptaka (izometrycznie)
+    const thumbnailCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    // Oddal kamerę tak, żeby objąć cały rozmiar mapy
+    const distance = this.platformSize * 1.5; 
+    thumbnailCamera.position.set(distance, distance * 0.8, distance);
+    thumbnailCamera.lookAt(0, 0, 0);
+
+    thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+    
+    const dataURL = thumbnailRenderer.domElement.toDataURL('image/jpeg', 0.8); // JPEG dla mniejszego rozmiaru
+    thumbnailRenderer.dispose();
+    
+    return dataURL;
+  }
+
   saveWorld() {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
+      
+      // Generuj miniaturkę
+      const thumbnail = this.generateThumbnail();
+
       const worldData = {
         size: this.platformSize,
+        thumbnail: thumbnail, // Zapisz miniaturkę w obiekcie
         blocks: this.placedBlocks.map(block => ({
             x: block.position.x,
             y: block.position.y,
