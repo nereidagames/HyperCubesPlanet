@@ -117,7 +117,7 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // POPRAWKA: Pobieramy dane użytkownika z serwera (monety!)
+                        // Pobieramy aktualne dane użytkownika (monety, miniaturka) z serwera
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -126,13 +126,15 @@ class BlockStarPlanetGame {
                             throw new Error('Token invalid');
                         })
                         .then(data => {
-                            // Aktualizujemy miniaturkę
-                            if (data.thumbnail) this.uiManager.updatePlayerAvatar(data.thumbnail);
-                            // Startujemy z monetami z serwera
+                            // Ustawiamy miniaturkę w UI
+                            if (data.thumbnail && this.uiManager) {
+                                this.uiManager.updatePlayerAvatar(data.thumbnail);
+                            }
+                            // Startujemy grę z aktualnymi monetami
                             this.startGame(data.user, token);
                         })
-                        .catch(() => {
-                            // Jak coś pójdzie nie tak, pokaż logowanie
+                        .catch((err) => {
+                            console.warn("Błąd weryfikacji tokenu:", err);
                             this.setupAuthScreen();
                         });
                     } else {
@@ -169,11 +171,12 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      // Obsługa zdarzeń WebSocket
+      // --- INTERCEPTOWANIE WIADOMOŚCI Z SERWERA (DLA UI) ---
       const originalHandle = this.multiplayerManager.handleServerMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleServerMessage = (msg) => {
-          originalHandle(msg); 
+          originalHandle(msg); // Wykonaj standardową logikę
           
+          // Obsługa powiadomień UI
           if (msg.type === 'friendRequestReceived') {
               this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
               this.uiManager.loadFriendsData();
@@ -191,7 +194,7 @@ class BlockStarPlanetGame {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
 
-      // Załaduj znajomych na starcie
+      // Załaduj listę przyjaciół
       this.uiManager.loadFriendsData();
 
       this.animate();
@@ -303,144 +306,11 @@ class BlockStarPlanetGame {
   }
   
   async setupMailSystem() {
-    // (Kod poczty bez zmian - jest poprawny w tej wersji)
-    console.log("Inicjalizacja systemu poczty...");
-    const token = localStorage.getItem(JWT_TOKEN_KEY);
-    if (!token) return;
-
-    const conversationsList = document.querySelector('.mail-conversations');
-    const chatView = document.querySelector('.mail-chat-view');
-    const chatUsername = document.getElementById('mail-chat-username');
-    const chatMessages = document.querySelector('.mail-chat-messages');
-    const replyForm = document.getElementById('mail-reply-form');
-    const replyInput = document.getElementById('mail-reply-input');
-    const newMailBtn = document.getElementById('new-mail-btn');
-    const newMailComposer = document.getElementById('new-mail-composer');
-    const newMailForm = document.getElementById('new-mail-form');
-    
-    if (!newMailBtn || !newMailComposer || !newMailForm) {
-        console.error("Krytyczny błąd: Brak elementów UI poczty w DOM.");
-        return;
-    }
-
-    const renderConversations = () => {
-        conversationsList.innerHTML = '';
-        this.mailState.conversations.forEach(convo => {
-            const convoItem = document.createElement('div');
-            convoItem.className = 'conversation-item';
-            convoItem.textContent = convo.username;
-            if (this.mailState.activeConversation === convo.username) {
-                convoItem.classList.add('active');
-            }
-            convoItem.onclick = () => openConversation(convo.username);
-            conversationsList.appendChild(convoItem);
-        });
-    };
-
-    const openConversation = async (username) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/messages/${username}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const messages = await response.json();
-            
-            chatUsername.textContent = username;
-            chatMessages.innerHTML = '';
-            const myUsername = localStorage.getItem(PLAYER_NAME_KEY);
-            messages.forEach(msg => {
-                const messageEl = document.createElement('div');
-                messageEl.className = 'mail-message';
-                messageEl.classList.add(msg.sender_username === myUsername ? 'sent' : 'received');
-                messageEl.textContent = msg.message_text;
-                chatMessages.appendChild(messageEl);
-            });
-            
-            this.mailState.activeConversation = username;
-            renderConversations();
-            
-            chatView.style.display = 'flex';
-            newMailComposer.style.display = 'none';
-            replyForm.style.display = 'flex';
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        } catch (error) {
-            console.error("Błąd pobierania wiadomości:", error);
-        }
-    };
-    
-    newMailBtn.onclick = () => {
-        this.mailState.activeConversation = null;
-        renderConversations();
-        chatView.style.display = 'none';
-        newMailComposer.style.display = 'block';
-        if(newMailForm) newMailForm.style.display = 'flex';
-        document.getElementById('new-mail-recipient').value = '';
-        document.getElementById('new-mail-text').value = '';
-    };
-
-    newMailForm.onsubmit = (e) => {
-        e.preventDefault();
-        const recipientInput = document.getElementById('new-mail-recipient');
-        const textInput = document.getElementById('new-mail-text');
-        const recipient = recipientInput.value.trim();
-        const text = textInput.value.trim();
-        if (recipient && text && this.multiplayerManager) {
-            this.multiplayerManager.sendPrivateMessage(recipient, text);
-        }
-    };
-
-    replyForm.onsubmit = (e) => {
-        e.preventDefault();
-        const text = replyInput.value.trim();
-        if (text && this.mailState.activeConversation && this.multiplayerManager) {
-            this.multiplayerManager.sendPrivateMessage(this.mailState.activeConversation, text);
-            replyInput.value = '';
-            const messageEl = document.createElement('div');
-            messageEl.className = 'mail-message sent';
-            messageEl.textContent = text;
-            chatMessages.appendChild(messageEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-    };
-
-    this.multiplayerManager.onMessageSent = (data) => {
-        if (newMailComposer.style.display === 'block') {
-            const exists = this.mailState.conversations.some(c => c.username === data.recipient);
-            if (!exists) {
-                this.mailState.conversations.unshift({ username: data.recipient });
-            }
-            openConversation(data.recipient);
-        }
-    };
-
-    this.multiplayerManager.onMessageReceived = (data) => {
-        if (this.mailState.activeConversation === data.sender.nickname && chatView.style.display === 'flex') {
-            const messageEl = document.createElement('div');
-            messageEl.className = 'mail-message received';
-            messageEl.textContent = data.text;
-            chatMessages.appendChild(messageEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        } else {
-            const exists = this.mailState.conversations.some(c => c.username === data.sender.nickname);
-            if (!exists) {
-                this.mailState.conversations.unshift({ username: data.sender.nickname });
-                renderConversations();
-            }
-        }
-    };
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/messages`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        this.mailState.conversations = await response.json();
-        renderConversations();
-        chatView.style.display = 'flex';
-        chatUsername.textContent = "Wybierz konwersację";
-        chatMessages.innerHTML = '';
-        newMailComposer.style.display = 'none';
-        replyForm.style.display = 'none';
-    } catch (error) {
-        console.error("Błąd pobierania listy konwersacji:", error);
+    // Logika poczty jest w pełni w UI.js w tej wersji architektury, 
+    // ale wywołanie zostawiamy tutaj dla przycisku w Top Bar
+    if (this.uiManager) {
+        this.uiManager.openPanel('mail-panel');
+        this.uiManager.setupMailSystem(); // To wywołuje setup w UI
     }
   }
 
@@ -506,34 +376,58 @@ class BlockStarPlanetGame {
     if(mailButton) {
       mailButton.onclick = () => {
         this.uiManager.openPanel('mail-panel');
-        this.setupMailSystem();
+        // W nowym UI.js logika jest wewnątrz, ale tu wywołujemy inicjalizację
+        this.uiManager.setupMailSystem(); 
       };
     }
+    
+    // --- CALLBACKI Z UI ---
     
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
     this.uiManager.onPartBuilderClick = () => this.switchToPartBuilderMode();
     
-    this.uiManager.onPlayClick = () => this.showDiscoverPanel('worlds');
-    this.uiManager.onDiscoverClick = () => this.showDiscoverPanel('skins');
+    this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
+    this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
     
+    // OBSŁUGA WYBORU SKINA (z serwera)
+    this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail) => {
+        // 1. Pobierz dane bloków
+        const blocksData = await SkinStorage.loadSkinData(skinId);
+        
+        if (blocksData) {
+            // 2. Nałóż skina
+            this.characterManager.applySkin(blocksData);
+            
+            // 3. Zapisz ID lokalnie
+            SkinStorage.setLastUsedSkinId(skinId);
+            
+            // 4. Zaktualizuj awatar w UI i na serwerze (profil)
+            this.uiManager.updatePlayerAvatar(thumbnail);
+            this.uiManager.uploadSkinThumbnail(thumbnail);
+            
+            this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
+        } else {
+            this.uiManager.showMessage("Błąd pobierania skina.", "error");
+        }
+    };
+
+    // OBSŁUGA WYBORU ŚWIATA
+    this.uiManager.onWorldSelect = (worldName) => {
+        this.loadAndExploreWorld(worldName);
+    };
+
     this.uiManager.onPlayerAvatarClick = () => this.showPlayerPreview();
     this.uiManager.onShopOpen = () => this.populateShopUI();
     this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
     
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.onclick = () => this.logout();
-    }
+    if (logoutBtn) logoutBtn.onclick = () => this.logout();
     
     const coinAddBtn = document.getElementById('coin-add-btn');
-    if (coinAddBtn) {
-        coinAddBtn.onclick = () => {
-            this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
-        };
-    }
+    if (coinAddBtn) coinAddBtn.onclick = () => { this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info"); };
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
 
@@ -563,13 +457,14 @@ class BlockStarPlanetGame {
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
-    const lastSkinName = SkinStorage.getLastUsedSkin();
-    if (lastSkinName) {
-        const skinData = SkinStorage.loadSkin(lastSkinName);
-        this.characterManager.applySkin(skinData);
-        const thumbnail = SkinStorage.getThumbnail(lastSkinName);
-        this.uiManager.updatePlayerAvatar(thumbnail);
-        this.uiManager.uploadSkinThumbnail(thumbnail);
+    // Wczytaj ostatnio używany skin (pobierając z serwera po ID)
+    const lastSkinId = SkinStorage.getLastUsedSkinId();
+    if (lastSkinId) {
+        const blocksData = await SkinStorage.loadSkinData(lastSkinId);
+        if (blocksData) {
+            this.characterManager.applySkin(blocksData);
+        }
+        // Miniaturkę ładujemy w setupLoadingManager, więc tu nie trzeba
     }
 
     this.recreatePlayerController(this.sceneManager.collidableObjects);
@@ -668,28 +563,6 @@ class BlockStarPlanetGame {
           groundRestingY: this.sceneManager.FLOOR_TOP_Y
       });
       this.playerController.setIsMobile(this.isMobile);
-  }
-
-  showDiscoverPanel(type) {
-    if (type === 'worlds') {
-        const savedWorlds = WorldStorage.getSavedWorldsList();
-        this.uiManager.populateDiscoverPanel('worlds', savedWorlds, (worldName) => {
-            this.loadAndExploreWorld(worldName);
-        });
-    } else if (type === 'skins') {
-        const savedSkins = SkinStorage.getSavedSkinsList();
-        this.uiManager.populateDiscoverPanel('skins', savedSkins, (skinName) => {
-            const skinData = SkinStorage.loadSkin(skinName);
-            this.characterManager.applySkin(skinData);
-            SkinStorage.setLastUsedSkin(skinName);
-            
-            const thumbnail = SkinStorage.getThumbnail(skinName);
-            this.uiManager.updatePlayerAvatar(thumbnail);
-            this.uiManager.uploadSkinThumbnail(thumbnail);
-            
-            this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
-        });
-    }
   }
 
   loadAndExploreWorld(worldName) {
