@@ -2,13 +2,14 @@ const WORLDS_STORAGE_KEY = 'bsp_clone_worlds';
 
 export class WorldStorage {
 
-  static saveWorld(worldName, blocksData) {
+  static saveWorld(worldName, worldData) {
     if (!worldName || worldName.trim() === '') {
       alert('Nazwa świata nie może być pusta!');
       return false;
     }
     const worlds = this.getAllWorlds();
-    worlds[worldName] = blocksData;
+    // worldData zawiera teraz { size, blocks, thumbnail }
+    worlds[worldName] = worldData;
     try {
       localStorage.setItem(WORLDS_STORAGE_KEY, JSON.stringify(worlds));
       console.log(`World "${worldName}" saved successfully!`);
@@ -22,7 +23,24 @@ export class WorldStorage {
 
   static loadWorld(worldName) {
     const worlds = this.getAllWorlds();
-    return worlds[worldName] || null;
+    const data = worlds[worldName];
+    
+    // Obsługa wsteczna (gdyby ktoś miał stary format, co jest mało prawdopodobne w tym projekcie, ale bezpieczniej)
+    if (Array.isArray(data)) {
+        // Stary format to była tablica bloków
+        return { size: 64, blocks: data };
+    }
+    return data || null;
+  }
+  
+  // NOWA METODA
+  static getThumbnail(worldName) {
+      const worlds = this.getAllWorlds();
+      const data = worlds[worldName];
+      if (data && data.thumbnail) {
+          return data.thumbnail;
+      }
+      return null;
   }
 
   static getSavedWorldsList() {
