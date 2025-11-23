@@ -9,20 +9,19 @@ export class MultiplayerManager {
     this.uiManager = uiManager;
     this.sceneManager = sceneManager;
     this.materialsCache = materialsCache;
-    this.coinManager = coinManager; // Referencja do menadżera monet
+    this.coinManager = coinManager; 
     this.textureLoader = new THREE.TextureLoader();
     this.otherPlayers = new Map();
     this.ws = null;
     this.myId = null;
     
-    // Callbacki dla UI (przypisywane w main.js)
     this.onMessageSent = null;
     this.onMessageReceived = null;
   }
 
   initialize(token) {
     if (!token) {
-        console.error("Brak tokenu JWT, nie można połączyć z multiplayerem.");
+        console.error("Brak tokenu JWT.");
         return;
     }
     const serverUrl = `wss://hypercubes-nexus-server.onrender.com?token=${token}`;
@@ -44,7 +43,7 @@ export class MultiplayerManager {
 
       this.ws.onclose = () => {
         console.log('Rozłączono z serwerem WebSocket.');
-        this.uiManager.addChatMessage('<Rozłączono z Nexusem. Połączenie zostało przerwane.>');
+        this.uiManager.addChatMessage('<Rozłączono z Nexusem.>');
         this.otherPlayers.forEach((playerData, id) => {
             this.removeOtherPlayer(id);
         });
@@ -52,12 +51,11 @@ export class MultiplayerManager {
 
       this.ws.onerror = (error) => {
         console.error('Błąd WebSocket:', error);
-        this.uiManager.addChatMessage('<Błąd połączenia z Nexusem. Serwer może być niedostępny. Spróbuj odświeżyć stronę.>');
+        this.uiManager.addChatMessage('<Błąd połączenia z Nexusem.>');
       };
 
     } catch (error) {
-        console.error("Nie udało się połączyć z serwerem WebSocket:", error);
-        this.uiManager.addChatMessage('<Krytyczny błąd przy próbie połączenia z serwerem.>');
+        console.error("Nie udało się połączyć:", error);
     }
   }
 
@@ -81,6 +79,7 @@ export class MultiplayerManager {
       case 'playerJoined':
         if (message.id !== this.myId) {
           this.addOtherPlayer(message.id, message);
+          this.uiManager.addChatMessage(`<${message.nickname} dołączył do gry>`);
         }
         break;
 
@@ -92,6 +91,7 @@ export class MultiplayerManager {
         if (message.id !== this.myId) {
             const playerData = this.otherPlayers.get(message.id);
             if (playerData) {
+              // Interpolacja pozycji
               playerData.targetPosition.set(message.position.x, message.position.y, message.position.z);
               playerData.targetQuaternion.set(message.quaternion._x, message.quaternion._y, message.quaternion._z, message.quaternion._w);
             }
@@ -109,13 +109,10 @@ export class MultiplayerManager {
         break;
         
       case 'privateMessageReceived':
-        console.log("Otrzymano nową prywatną wiadomość od", message.sender.nickname);
-        this.uiManager.showMessage(`Masz nową wiadomość od ${message.sender.nickname}`, 'info');
-        // Odśwież UI w main.js
+        this.uiManager.showMessage(`Wiadomość od ${message.sender.nickname}`, 'info');
         if (this.onMessageReceived) this.onMessageReceived(message);
         break;
 
-      // NOWOŚĆ: Potwierdzenie wysłania wiadomości (dla przycisku +)
       case 'privateMessageSent':
         if (this.onMessageSent) this.onMessageSent(message);
         break;
@@ -124,7 +121,6 @@ export class MultiplayerManager {
         alert(`Błąd wiadomości: ${message.message}`);
         break;
 
-      // Obsługa Monet
       case 'coinSpawned':
         if (this.coinManager) this.coinManager.spawnCoinAt(message.position);
         break;
@@ -157,12 +153,10 @@ export class MultiplayerManager {
     if (this.otherPlayers.has(id)) return;
 
     const playerContainer = new THREE.Group();
-    // Przekazujemy kontener do funkcji tworzącej postać
     createBaseCharacter(playerContainer);
 
     const skinContainer = new THREE.Group();
     skinContainer.scale.setScalar(0.125);
-    // Pozycja skina względem stóp postaci
     skinContainer.position.y = 1.2; 
     playerContainer.add(skinContainer);
     
@@ -191,7 +185,9 @@ export class MultiplayerManager {
     playerContainer.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
     this.scene.add(playerContainer);
     
-    // Dodaj do obiektów kolizyjnych, aby można było po nich skakać
+    // POPRAWKA: NIE dodajemy innych graczy do collidableObjects
+    // Dzięki temu gracze mogą przez siebie przenikać i nie są "wyrzucani" z mapy.
+    /* 
     playerContainer.traverse((child) => {
         if (child.isMesh) {
             if (this.sceneManager && this.sceneManager.collidableObjects) {
@@ -199,6 +195,7 @@ export class MultiplayerManager {
             }
         }
     });
+    */
     
     const playerData = {
       mesh: playerContainer,
@@ -208,14 +205,14 @@ export class MultiplayerManager {
     };
 
     this.otherPlayers.set(id, playerData);
-    console.log(`Stworzono postać dla gracza: ${data.nickname}`);
   }
 
   removeOtherPlayer(id) {
     if (this.otherPlayers.has(id)) {
       const playerData = this.otherPlayers.get(id);
       
-      // Usuń z obiektów kolizyjnych
+      // POPRAWKA: Nie musimy usuwać z kolizji, bo ich tam nie dodaliśmy
+      /*
       if (this.sceneManager && this.sceneManager.collidableObjects) {
           this.sceneManager.collidableObjects = this.sceneManager.collidableObjects.filter(obj => {
               let keep = true;
@@ -227,10 +224,10 @@ export class MultiplayerManager {
               return keep;
           });
       }
+      */
 
       this.scene.remove(playerData.mesh);
       this.otherPlayers.delete(id);
-      console.log(`Usunięto postać gracza ${id}`);
     }
   }
 
@@ -246,7 +243,6 @@ export class MultiplayerManager {
     div.style.cssText = `background-color: rgba(255, 255, 255, 0.8); color: #333; padding: 8px 12px; border-radius: 15px; font-size: 12px; max-width: 150px; text-align: center; pointer-events: none;`;
     
     const chatBubble = new CSS2DObject(div);
-    // Dymek nad głową postaci
     chatBubble.position.set(0, 2.2, 0);
     
     playerData.mesh.add(chatBubble);
@@ -261,8 +257,8 @@ export class MultiplayerManager {
   }
 
   update(deltaTime) {
-    // Interpolacja ruchu innych graczy dla płynności
     this.otherPlayers.forEach((playerData) => {
+      // Płynna interpolacja ruchu (Lerp)
       playerData.mesh.position.lerp(playerData.targetPosition, deltaTime * 15);
       playerData.mesh.quaternion.slerp(playerData.targetQuaternion, deltaTime * 15);
     });
