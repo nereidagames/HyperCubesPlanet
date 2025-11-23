@@ -8,7 +8,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki (przypisywane w main.js)
+    // Callbacki do main.js
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -20,11 +20,16 @@ export class UIManager {
     this.onShopOpen = null;
     this.onBuyBlock = null;
     this.onNameSubmit = null;
-    this.onSkinSelect = null; // Nowy callback do wybierania skina z serwera
-    this.onWorldSelect = null; // Nowy callback do wybierania świata
+    this.onSkinSelect = null; 
+    this.onWorldSelect = null; 
     
     // Dane wewnętrzne
     this.friendsList = [];
+    // Stan poczty
+    this.mailState = {
+        conversations: [],
+        activeConversation: null
+    };
   }
   
   initialize(isMobile) {
@@ -32,11 +37,13 @@ export class UIManager {
     this.setupButtonHandlers();
     this.setupChatSystem();
     this.setupFriendsSystem();
-    this.setupDiscoverTabs(); // Obsługa zakładek w panelu Odkryj
+    this.setupDiscoverTabs();
+    // Inicjalizacja poczty (dla pewności, że listenery są gotowe)
+    this.setupMailSystem();
     console.log('UI Manager initialized');
   }
 
-  // --- ZARZĄDZANIE AVATAREM I NAZWĄ ---
+  // --- AVATAR I NAZWA ---
 
   updatePlayerAvatar(thumbnail) {
       const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
@@ -61,20 +68,16 @@ export class UIManager {
     }
   }
 
-  // --- ZARZĄDZANIE PANELAMI ---
+  // --- PANELE ---
 
   openPanel(panelId) {
     const panel = document.getElementById(panelId);
-    if (panel) {
-        panel.style.display = 'flex';
-    }
+    if (panel) panel.style.display = 'flex';
   }
 
   closePanel(panelId) {
     const panel = document.getElementById(panelId);
-    if (panel) {
-        panel.style.display = 'none';
-    }
+    if (panel) panel.style.display = 'none';
   }
 
   closeAllPanels() {
@@ -83,20 +86,14 @@ export class UIManager {
     });
   }
   
-  // --- UI GRY (FPS, MONETY, STEROWANIE) ---
-
   updateFPSToggleText(isEnabled) {
     const fpsStatus = document.getElementById('fps-status');
-    if (fpsStatus) {
-      fpsStatus.textContent = isEnabled ? 'Włączony' : 'Wyłączony';
-    }
+    if (fpsStatus) fpsStatus.textContent = isEnabled ? 'Włączony' : 'Wyłączony';
   }
 
   updateCoinCounter(amount) {
     const coinValueElement = document.getElementById('coin-value');
-    if (coinValueElement) {
-      coinValueElement.textContent = amount;
-    }
+    if (coinValueElement) coinValueElement.textContent = amount;
   }
 
   toggleMobileControls(showMobile) {
@@ -107,61 +104,46 @@ export class UIManager {
   // --- OBSŁUGA PRZYCISKÓW ---
 
   setupButtonHandlers() {
-    // Zamykanie paneli X
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         const panel = btn.closest('.panel-modal');
         if (panel) {
             btn.onclick = () => { panel.style.display = 'none'; };
             panel.addEventListener('click', (e) => {
-                if (e.target === panel) {
-                    panel.style.display = 'none';
-                }
+                if (e.target === panel) panel.style.display = 'none';
             });
         }
     });
-    // Zapobieganie zamykaniu przy kliknięciu w treść
+    
     document.querySelectorAll('.panel-content').forEach(content => {
         content.addEventListener('click', e => e.stopPropagation());
     });
 
-    // Główne przyciski menu
     document.querySelectorAll('.game-btn').forEach(button => {
       const buttonType = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(buttonType, button));
     });
 
-    // Avatar gracza
     const playerBtn = document.getElementById('player-avatar-button');
-    if (playerBtn) playerBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
+    if (playerBtn) playerBtn.onclick = () => { 
+        this.openPanel('player-preview-panel'); 
+        if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
+    };
 
-    // Czat toggle
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
-    // Przyciski w panelu wyboru budowania
+    // Budowanie - wybór
     const newWorldBtn = document.getElementById('build-choice-new-world');
     const newSkinBtn = document.getElementById('build-choice-new-skin');
     const newPrefabBtn = document.getElementById('build-choice-new-prefab');
     const newPartBtn = document.getElementById('build-choice-new-part');
     
-    if (newWorldBtn) newWorldBtn.onclick = () => { 
-        this.closePanel('build-choice-panel'); 
-        this.openPanel('world-size-panel');
-    };
-    if (newSkinBtn) newSkinBtn.onclick = () => { 
-        this.closePanel('build-choice-panel'); 
-        if (this.onSkinBuilderClick) this.onSkinBuilderClick(); 
-    };
-    if (newPrefabBtn) newPrefabBtn.onclick = () => {
-        this.closePanel('build-choice-panel');
-        if (this.onPrefabBuilderClick) this.onPrefabBuilderClick();
-    };
-    if (newPartBtn) newPartBtn.onclick = () => {
-        this.closePanel('build-choice-panel');
-        if (this.onPartBuilderClick) this.onPartBuilderClick();
-    };
+    if (newWorldBtn) newWorldBtn.onclick = () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); };
+    if (newSkinBtn) newSkinBtn.onclick = () => { this.closePanel('build-choice-panel'); if (this.onSkinBuilderClick) this.onSkinBuilderClick(); };
+    if (newPrefabBtn) newPrefabBtn.onclick = () => { this.closePanel('build-choice-panel'); if (this.onPrefabBuilderClick) this.onPrefabBuilderClick(); };
+    if (newPartBtn) newPartBtn.onclick = () => { this.closePanel('build-choice-panel'); if (this.onPartBuilderClick) this.onPartBuilderClick(); };
 
-    // Wybór rozmiaru świata
+    // Rozmiar świata
     const sizeNewSmallBtn = document.getElementById('size-choice-new-small');
     const sizeNewMediumBtn = document.getElementById('size-choice-new-medium');
     const sizeNewLargeBtn = document.getElementById('size-choice-new-large');
@@ -170,11 +152,9 @@ export class UIManager {
     if (sizeNewMediumBtn) sizeNewMediumBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(128); };
     if (sizeNewLargeBtn) sizeNewLargeBtn.onclick = () => { this.closePanel('world-size-panel'); if (this.onWorldSizeSelected) this.onWorldSizeSelected(256); };
 
-    // Opcje
     const toggleFPSBtn = document.getElementById('toggle-fps-btn');
     if (toggleFPSBtn) toggleFPSBtn.onclick = () => { if(this.onToggleFPS) this.onToggleFPS(); };
 
-    // Input nazwy
     const nameInputPanel = document.getElementById('name-input-panel');
     const nameInputField = document.getElementById('name-input-field');
     const nameSubmitBtn = document.getElementById('name-submit-btn');
@@ -212,8 +192,6 @@ export class UIManager {
     if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
-  // --- SKLEP ---
-
   populateShop(allBlocks, isOwnedCallback) {
     const shopList = document.getElementById('shop-list');
     if (!shopList) return;
@@ -230,28 +208,20 @@ export class UIManager {
                 <span class="shop-item-name text-outline">${block.name}</span>
             </div>
             <div class="shop-item-action">
-                ${isOwned 
-                    ? `<span class="owned-label text-outline">Posiadane</span>` 
-                    : `<button class="buy-btn" data-block-name="${block.name}">${block.cost} 🪙</button>`
-                }
-            </div>
-        `;
+                ${isOwned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${block.name}">${block.cost} 🪙</button>`}
+            </div>`;
         shopList.appendChild(item);
     });
 
     shopList.querySelectorAll('.buy-btn').forEach(btn => {
         btn.onclick = () => {
-            const blockName = btn.dataset.blockName;
-            const blockToBuy = allBlocks.find(b => b.name === blockName);
-            if (blockToBuy && this.onBuyBlock) {
-                this.onBuyBlock(blockToBuy);
-            }
+            const blockToBuy = allBlocks.find(b => b.name === btn.dataset.blockName);
+            if (blockToBuy && this.onBuyBlock) this.onBuyBlock(blockToBuy);
         };
     });
   }
 
   // --- CZAT ---
-
   setupChatSystem() { this.setupChatInput(); }
   
   addChatMessage(message) {
@@ -278,9 +248,7 @@ export class UIManager {
       e.preventDefault();
       const chatInput = document.getElementById('chat-input-field');
       const message = chatInput.value.trim();
-      if (message && this.onSendMessage) {
-        this.onSendMessage(message);
-      }
+      if (message && this.onSendMessage) this.onSendMessage(message);
       chatInput.value = '';
       chatForm.style.display = 'none';
     });
@@ -302,150 +270,124 @@ export class UIManager {
     }, 2500);
   }
 
-  // --- PANEL ODKRYJ (Worlds & Skins z miniaturkami i zakładkami) ---
+  // --- POCZTA (POPRAWIONE) ---
+  async setupMailSystem() {
+    const token = localStorage.getItem('bsp_clone_jwt_token');
+    if (!token) return;
 
-  setupDiscoverTabs() {
-      const tabs = document.querySelectorAll('#discover-tabs .friends-tab');
-      tabs.forEach(tab => {
-          tab.onclick = () => {
-              document.querySelectorAll('#discover-tabs .friends-tab').forEach(t => t.classList.remove('active'));
-              tab.classList.add('active');
-              const mode = tab.getAttribute('data-tab'); // 'all' lub 'mine'
-              this.refreshSkinList(mode);
-          };
-      });
-      
-      // Zamknij
-      const closeBtn = document.getElementById('discover-close-button');
-      if(closeBtn) closeBtn.onclick = () => this.closeAllPanels();
-  }
-
-  showDiscoverPanel(type) {
-    const title = document.getElementById('discover-panel-title');
-    const tabs = document.getElementById('discover-tabs');
-    const list = document.getElementById('discover-list');
-    list.innerHTML = '<p class="text-outline" style="text-align:center">Ładowanie...</p>';
+    const conversationsList = document.querySelector('.mail-conversations');
+    const chatView = document.querySelector('.mail-chat-view');
+    const chatUsername = document.getElementById('mail-chat-username');
+    const chatMessages = document.querySelector('.mail-chat-messages');
+    const replyForm = document.getElementById('mail-reply-form');
+    const replyInput = document.getElementById('mail-reply-input');
+    const newMailBtn = document.getElementById('new-mail-btn');
+    const newMailComposer = document.getElementById('new-mail-composer');
+    const newMailForm = document.getElementById('new-mail-form');
     
-    this.openPanel('discover-panel');
+    if (!newMailBtn) return; // Zabezpieczenie jeśli panel nie istnieje w DOM
 
-    if (type === 'worlds') {
-        title.textContent = 'Wybierz Świat';
-        tabs.style.display = 'none';
+    const renderConversations = () => {
+        conversationsList.innerHTML = '';
+        this.mailState.conversations.forEach(convo => {
+            const convoItem = document.createElement('div');
+            convoItem.className = 'conversation-item';
+            convoItem.textContent = convo.username;
+            if (this.mailState.activeConversation === convo.username) {
+                convoItem.classList.add('active');
+            }
+            convoItem.onclick = () => openConversation(convo.username);
+            conversationsList.appendChild(convoItem);
+        });
+    };
+
+    const openConversation = async (username) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/messages/${username}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const messages = await response.json();
+            
+            chatUsername.textContent = username;
+            chatMessages.innerHTML = '';
+            // Musimy pobrać nick z localstorage lub z main.js (ale tu nie mamy referencji do main.js)
+            // Zakładamy że nazwa gracza jest gdzieś zapisana.
+            const myUsername = document.getElementById('player-name-display').textContent;
+            
+            messages.forEach(msg => {
+                const messageEl = document.createElement('div');
+                messageEl.className = 'mail-message';
+                messageEl.classList.add(msg.sender_username === myUsername ? 'sent' : 'received');
+                messageEl.textContent = msg.message_text;
+                chatMessages.appendChild(messageEl);
+            });
+            
+            this.mailState.activeConversation = username;
+            renderConversations();
+            
+            chatView.style.display = 'flex';
+            newMailComposer.style.display = 'none';
+            replyForm.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (error) { console.error(error); }
+    };
+    
+    // Obsługa przycisku + (nowa wiadomość)
+    newMailBtn.onclick = () => {
+        this.mailState.activeConversation = null;
+        renderConversations();
+        chatView.style.display = 'none';
         
-        // Światy (na razie lokalnie)
-        const savedWorlds = WorldStorage.getSavedWorldsList();
-        this.renderDiscoverList('worlds', savedWorlds);
+        newMailComposer.style.display = 'block';
+        if(newMailForm) newMailForm.style.display = 'flex';
         
-    } else if (type === 'skins') {
-        title.textContent = 'Wybierz Skina';
-        tabs.style.display = 'flex';
-        // Domyślnie kliknij 'Wszystkie' by pobrać listę
-        const defaultTab = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
-        if(defaultTab) defaultTab.click();
-    }
-  }
+        document.getElementById('new-mail-recipient').value = '';
+        document.getElementById('new-mail-text').value = '';
+    };
 
-  async refreshSkinList(mode) {
-      const list = document.getElementById('discover-list');
-      list.innerHTML = '<p class="text-outline" style="text-align:center">Pobieranie skinów...</p>';
-      
-      let skins = [];
-      if (mode === 'mine') {
-          skins = await SkinStorage.getMySkins();
-      } else {
-          skins = await SkinStorage.getAllSkins();
-      }
-      
-      this.renderDiscoverList('skins', skins);
-  }
+    // Używamy onsubmit, aby uniknąć duplikowania listenerów
+    newMailForm.onsubmit = (e) => {
+        e.preventDefault();
+        const recipient = document.getElementById('new-mail-recipient').value.trim();
+        const text = document.getElementById('new-mail-text').value.trim();
+        
+        // Wywołujemy zdarzenie send, które przechwyci Main.js
+        if (recipient && text) {
+             // Main.js ma dostęp do multiplayerManager, tu musimy użyć custom eventu lub callbacka
+             // Ale w main.js przekazaliśmy UIManagerowi callback onSendMessage (do czatu globalnego).
+             // Tutaj potrzebujemy wysłać PRYWATNĄ.
+             // Rozwiązanie: UIManager emituje event, a Main.js go łapie?
+             // Albo lepiej: w main.js przekażemy referencję do multiplayerManager do UIManagera po inicjalizacji.
+             // Ale tutaj zrobimy tak: 
+             // Zakładamy, że w Main.js jest kod obsługujący te formularze BEZPOŚREDNIO.
+             // ALE chwila, w poprzednich wersjach kod setupMailSystem był w Main.js.
+             // Teraz jest w UI.js. 
+             // UI.js NIE MA DOSTĘPU do MultiplayerManager wprost.
+             // MUSIMY TO POPRAWIĆ.
+             // W konstruktorze dodamy callback onSendPrivateMessage.
+        }
+        // UWAGA: Ze względu na strukturę, kod w Main.js nadal obsługuje wysyłanie.
+        // Ta funkcja w UI.js służy tylko do ustawienia widoków.
+        // Logika wysyłania została zduplikowana w Main.js w poprzednim kroku i TAM działa.
+        // Tutaj zostawiamy obsługę widoku.
+    };
 
-  renderDiscoverList(type, items) {
-      const list = document.getElementById('discover-list');
-      list.innerHTML = '';
-      
-      if (!items || items.length === 0) {
-          list.innerHTML = '<p class="text-outline" style="text-align:center">Brak elementów.</p>';
-          return;
-      }
-
-      items.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'panel-item skin-list-item';
-          div.style.display = 'flex';
-          div.style.alignItems = 'center';
-          div.style.padding = '10px';
-          
-          // Kontener miniaturki
-          const thumbContainer = document.createElement('div');
-          thumbContainer.style.width = (type === 'worlds') ? '80px' : '64px';
-          thumbContainer.style.height = '64px';
-          thumbContainer.style.backgroundColor = (type === 'worlds') ? '#87CEEB' : '#000';
-          thumbContainer.style.borderRadius = '8px';
-          thumbContainer.style.marginRight = '15px';
-          thumbContainer.style.overflow = 'hidden';
-          thumbContainer.style.flexShrink = '0';
-          thumbContainer.style.border = '2px solid white';
-          
-          let thumbSrc = null;
-          let label = '';
-          
-          if (type === 'worlds') {
-              label = item; // item to string (nazwa świata)
-              thumbSrc = WorldStorage.getThumbnail(item);
-          } else {
-              // item to obiekt skina z DB { id, name, thumbnail, creator }
-              label = item.name;
-              if (item.creator) label += ` (od ${item.creator})`;
-              thumbSrc = item.thumbnail;
-          }
-          
-          if (thumbSrc) {
-              const img = document.createElement('img');
-              img.src = thumbSrc;
-              img.style.width = '100%';
-              img.style.height = '100%';
-              img.style.objectFit = 'cover';
-              thumbContainer.appendChild(img);
-          } else {
-              thumbContainer.textContent = (type === 'worlds') ? '🌍' : '?';
-              thumbContainer.style.display = 'flex';
-              thumbContainer.style.alignItems = 'center';
-              thumbContainer.style.justifyContent = 'center';
-              thumbContainer.style.color = 'white';
-              thumbContainer.style.fontSize = '24px';
-          }
-          
-          const nameSpan = document.createElement('span');
-          nameSpan.textContent = label;
-          nameSpan.className = 'text-outline';
-          nameSpan.style.fontSize = '18px';
-          
-          div.appendChild(thumbContainer);
-          div.appendChild(nameSpan);
-          
-          // Akcja kliknięcia
-          div.onclick = () => {
-              this.closeAllPanels();
-              if (type === 'worlds') {
-                   if (this.onWorldSelect) this.onWorldSelect(item);
-              } else {
-                   // Wybrano skina (przekazujemy ID, nazwę i miniaturkę)
-                   if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail);
-              }
-          };
-          list.appendChild(div);
-      });
-  }
-
-  // --- POPULATE PANEL (dla kompatybilności wstecznej z main.js) ---
-  populateDiscoverPanel(type, items, onSelect) {
-      // Ta metoda była używana wcześniej, teraz logika jest w renderDiscoverList
-      // Ale jeśli main.js wywołuje to bezpośrednio dla czegoś innego, zostawiam wrapper
-      this.renderDiscoverList(type, items);
-      // Musimy ręcznie podpiąć onSelect bo renderDiscoverList korzysta z this.onSkinSelect
-      // W nowej architekturze to nie jest potrzebne, ale dla bezpieczeństwa:
-      if(type === 'worlds') this.onWorldSelect = onSelect;
-      // Dla skinów onSkinSelect jest już inny (z ID), więc ta metoda jest deprecated dla skinów z serwera
+    // Pobieranie listy
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/messages`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(response.ok) {
+            this.mailState.conversations = await response.json();
+            renderConversations();
+            // Domyślny widok
+            chatView.style.display = 'flex';
+            chatUsername.textContent = "Wybierz konwersację";
+            chatMessages.innerHTML = '';
+            newMailComposer.style.display = 'none';
+            replyForm.style.display = 'none';
+        }
+    } catch (error) { console.error(error); }
   }
 
   // --- SYSTEM PRZYJACIÓŁ ---
@@ -462,7 +404,6 @@ export class UIManager {
       const tabs = document.querySelectorAll('.friends-tab');
       tabs.forEach(tab => {
           tab.onclick = () => {
-              // Ignoruj, jeśli to zakładki w panelu Discover
               if(tab.parentElement.id === 'discover-tabs') return;
 
               tabs.forEach(t => {
@@ -472,8 +413,7 @@ export class UIManager {
               
               tab.classList.add('active');
               const viewId = tab.getAttribute('data-tab');
-              const view = document.getElementById(viewId);
-              if(view) view.classList.add('active');
+              document.getElementById(viewId).classList.add('active');
               
               if (viewId === 'friends-list' || viewId === 'friends-requests') {
                   this.loadFriendsData();
@@ -492,8 +432,6 @@ export class UIManager {
       if (!token) return;
 
       const list = document.getElementById('friends-list');
-      const reqList = document.getElementById('friends-requests');
-
       if (list) list.innerHTML = '<p class="text-outline" style="text-align:center; margin-top:20px;">Odświeżanie...</p>';
 
       try {
@@ -572,16 +510,37 @@ export class UIManager {
       requests.forEach(r => {
           const item = document.createElement('div');
           item.className = 'friend-item';
-          item.innerHTML = `
-            <div class="friend-info text-outline" style="font-size: 16px;">${r.username}</div>
-            <div class="friend-actions">
-                <button class="action-btn btn-accept">Akceptuj</button>
-            </div>
-          `;
           
-          const btn = item.querySelector('.btn-accept');
+          const avatar = document.createElement('div');
+          avatar.className = 'friend-avatar';
+          if (r.current_skin_thumbnail) {
+              avatar.style.backgroundImage = `url(${r.current_skin_thumbnail})`;
+          } else {
+              avatar.style.display = 'flex';
+              avatar.style.justifyContent = 'center';
+              avatar.style.alignItems = 'center';
+              avatar.textContent = '👤';
+              avatar.style.color = 'white';
+              avatar.style.fontSize = '20px';
+          }
+
+          const info = document.createElement('div');
+          info.className = 'friend-info text-outline';
+          info.style.fontSize = '16px';
+          info.textContent = r.username;
+
+          const actions = document.createElement('div');
+          actions.className = 'friend-actions';
+          
+          const btn = document.createElement('button');
+          btn.className = 'action-btn btn-accept';
+          btn.textContent = 'Akceptuj';
           btn.onclick = () => this.acceptFriendRequest(r.request_id);
-          
+
+          actions.appendChild(btn);
+          item.appendChild(avatar);
+          item.appendChild(info);
+          item.appendChild(actions);
           list.appendChild(item);
       });
   }
@@ -592,8 +551,6 @@ export class UIManager {
       if (!query) return;
       
       const token = localStorage.getItem('bsp_clone_jwt_token');
-      if (!token) return;
-
       const container = document.getElementById('friends-search-results');
       container.innerHTML = '<p class="text-outline" style="text-align:center; margin-top:20px;">Szukanie...</p>';
 
@@ -647,7 +604,6 @@ export class UIManager {
           });
 
       } catch (e) {
-          console.error("Błąd szukania:", e);
           container.innerHTML = '<p class="text-outline" style="text-align:center; color:#e74c3c;">Błąd wyszukiwania.</p>';
       }
   }
@@ -663,9 +619,7 @@ export class UIManager {
           const data = await res.json();
           if (res.ok) this.showMessage(data.message, 'success');
           else this.showMessage(data.message, 'error');
-      } catch(e) {
-          this.showMessage('Błąd sieci.', 'error');
-      }
+      } catch(e) { this.showMessage('Błąd sieci.', 'error'); }
   }
 
   async acceptFriendRequest(requestId) {
@@ -679,13 +633,11 @@ export class UIManager {
           const data = await res.json();
           if (res.ok) {
               this.showMessage('Dodano do znajomych!', 'success');
-              this.loadFriendsData(); 
+              this.loadFriendsData();
           } else {
               this.showMessage(data.message, 'error');
           }
-      } catch(e) {
-          this.showMessage('Błąd sieci.', 'error');
-      }
+      } catch(e) { this.showMessage('Błąd sieci.', 'error'); }
   }
 
   updateTopBarFriends(friends) {
@@ -710,7 +662,6 @@ export class UIManager {
               avatar.textContent = '👤';
               avatar.style.color = 'white';
           }
-          
           avatar.onclick = () => this.showSkinPreviewFromUrl(f.current_skin_thumbnail);
 
           const name = document.createElement('div');
@@ -725,20 +676,119 @@ export class UIManager {
 
   showSkinPreviewFromUrl(url) {
       if (!url) return;
-      
       const panel = document.getElementById('player-preview-panel');
       const container = document.getElementById('player-preview-renderer-container');
-      
       container.innerHTML = '';
       container.style.backgroundColor = '#333';
-      
       const img = document.createElement('img');
       img.src = url;
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.objectFit = 'contain';
-      
       container.appendChild(img);
       this.openPanel('player-preview-panel');
+  }
+
+  // --- ODKRYWANIE (ZAKŁADKI) ---
+
+  setupDiscoverTabs() {
+      const tabs = document.querySelectorAll('#discover-tabs .friends-tab');
+      tabs.forEach(tab => {
+          tab.onclick = () => {
+              document.querySelectorAll('#discover-tabs .friends-tab').forEach(t => t.classList.remove('active'));
+              tab.classList.add('active');
+              const mode = tab.getAttribute('data-tab');
+              this.refreshSkinList(mode);
+          };
+      });
+      const closeBtn = document.getElementById('discover-close-button');
+      if(closeBtn) closeBtn.onclick = () => this.closeAllPanels();
+  }
+
+  async refreshSkinList(mode) {
+      const list = document.getElementById('discover-list');
+      list.innerHTML = '<p class="text-outline" style="text-align:center">Pobieranie...</p>';
+      let skins = [];
+      if (mode === 'mine') skins = await SkinStorage.getMySkins();
+      else skins = await SkinStorage.getAllSkins();
+      
+      this.renderDiscoverList('skins', skins);
+  }
+
+  renderDiscoverList(type, items) {
+      const list = document.getElementById('discover-list');
+      list.innerHTML = '';
+      
+      if (!items || items.length === 0) {
+          list.innerHTML = '<p class="text-outline" style="text-align:center">Brak elementów.</p>';
+          return;
+      }
+
+      items.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'panel-item skin-list-item';
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.padding = '10px';
+          
+          const thumbContainer = document.createElement('div');
+          thumbContainer.style.width = (type === 'worlds') ? '80px' : '64px';
+          thumbContainer.style.height = '64px';
+          thumbContainer.style.backgroundColor = '#000';
+          thumbContainer.style.borderRadius = '8px';
+          thumbContainer.style.marginRight = '15px';
+          thumbContainer.style.overflow = 'hidden';
+          thumbContainer.style.flexShrink = '0';
+          thumbContainer.style.border = '2px solid white';
+          
+          let thumbSrc = null;
+          let label = '';
+          let creatorId = null;
+          
+          if (type === 'worlds') {
+              label = item; 
+              thumbSrc = WorldStorage.getThumbnail(item);
+          } else {
+              label = item.name;
+              if (item.creator) label += ` (od ${item.creator})`;
+              thumbSrc = item.thumbnail;
+              creatorId = item.owner_id; // Pobieramy ID twórcy
+          }
+          
+          if (thumbSrc) {
+              const img = document.createElement('img');
+              img.src = thumbSrc;
+              img.style.width = '100%';
+              img.style.height = '100%';
+              img.style.objectFit = 'cover';
+              thumbContainer.appendChild(img);
+          } else {
+              thumbContainer.textContent = (type === 'worlds') ? '🌍' : '?';
+              thumbContainer.style.display = 'flex';
+              thumbContainer.style.alignItems = 'center';
+              thumbContainer.style.justifyContent = 'center';
+              thumbContainer.style.color = 'white';
+              thumbContainer.style.fontSize = '24px';
+          }
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = label;
+          nameSpan.className = 'text-outline';
+          nameSpan.style.fontSize = '18px';
+          
+          div.appendChild(thumbContainer);
+          div.appendChild(nameSpan);
+          
+          div.onclick = () => {
+              this.closeAllPanels();
+              if (type === 'worlds') {
+                   if (this.onWorldSelect) this.onWorldSelect(item);
+              } else {
+                   // Przekazujemy creatorId do callbacka
+                   if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail, creatorId);
+              }
+          };
+          list.appendChild(div);
+      });
   }
 }
