@@ -117,7 +117,6 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // Pobieramy dane usera
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -170,7 +169,6 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      // --- OBSŁUGA KOMUNIKATÓW Z SERWERA ---
       const originalHandle = this.multiplayerManager.handleMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleMessage = (msg) => {
           originalHandle(msg); 
@@ -194,7 +192,6 @@ class BlockStarPlanetGame {
           }
       };
 
-      // Callbacki UI do wysyłania danych
       this.uiManager.onSendPrivateMessage = (recipient, text) => {
           if (this.multiplayerManager) this.multiplayerManager.sendPrivateMessage(recipient, text);
       };
@@ -208,10 +205,8 @@ class BlockStarPlanetGame {
       this.animate();
       this.gameState = 'MainMenu';
       
-      // --- PĘTLA WYSYŁANIA POZYCJI ---
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
-        // Wysyłamy pozycję tylko w trybach, gdzie gracz chodzi (MainMenu i ExploreMode)
         if ((this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') && this.characterManager.character) {
           this.multiplayerManager.sendMyPosition(
             this.characterManager.character.position,
@@ -291,11 +286,7 @@ class BlockStarPlanetGame {
               if (response.ok) {
                   authMessage.textContent = 'Zalogowano pomyślnie!';
                   authScreen.style.display = 'none';
-                  
-                  if (data.thumbnail) {
-                      this.uiManager.updatePlayerAvatar(data.thumbnail);
-                  }
-                  
+                  if (data.thumbnail) this.uiManager.updatePlayerAvatar(data.thumbnail);
                   this.startGame(data.user, data.token);
               } else {
                   authMessage.textContent = data.message || 'Błąd logowania.';
@@ -364,7 +355,6 @@ class BlockStarPlanetGame {
           if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
             deferredPrompt = null;
             installButton.style.display = 'none';
           }
@@ -374,7 +364,7 @@ class BlockStarPlanetGame {
     this.uiManager = new UIManager(
       (message) => { 
         if (this.multiplayerManager) {
-            this.multiplayerManager.sendMessage({ type: 'chatMessage', text: message });
+            this.multiplayerManager.sendMessage({ type: 'chat', text: message });
         }
       }
     );
@@ -396,15 +386,12 @@ class BlockStarPlanetGame {
     this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
     
-    // WYBÓR SKINA
     this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
         const myId = parseInt(localStorage.getItem('bsp_clone_user_id') || "0");
-
         if (ownerId && ownerId !== myId) {
-            this.uiManager.showMessage("To nie Twój skin!", "info");
+            this.uiManager.showMessage("To nie Twój skin! (Tryb podglądu)", "info");
             return;
         }
-
         const blocksData = await SkinStorage.loadSkinData(skinId);
         if (blocksData) {
             this.characterManager.applySkin(blocksData);
@@ -416,16 +403,14 @@ class BlockStarPlanetGame {
             }
             this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
         } else {
-            this.uiManager.showMessage("Błąd skina.", "error");
+            this.uiManager.showMessage("Błąd pobierania skina.", "error");
         }
     };
 
-    // --- WYBÓR ŚWIATA (MULTIPLAYER) ---
     this.uiManager.onWorldSelect = async (worldItem) => {
         if (!worldItem.id) return;
         const worldData = await WorldStorage.loadWorldData(worldItem.id);
         if (worldData) {
-            // Wstrzykujemy ID do obiektu, żeby loadAndExploreWorld wiedział gdzie dołączyć
             worldData.id = worldItem.id; 
             this.loadAndExploreWorld(worldData);
         } else {
@@ -439,16 +424,12 @@ class BlockStarPlanetGame {
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
     
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.onclick = () => this.logout();
-    }
+    if (logoutBtn) logoutBtn.onclick = () => this.logout();
     
     const coinAddBtn = document.getElementById('coin-add-btn');
-    if (coinAddBtn) {
-        coinAddBtn.onclick = () => {
-            this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
-        };
-    }
+    if (coinAddBtn) coinAddBtn.onclick = () => {
+        this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
+    };
 
     document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
 
@@ -535,22 +516,24 @@ class BlockStarPlanetGame {
     this.partBuilderManager.enterBuildMode();
   }
   
-  // --- POWRÓT DO NEXUSA ---
   switchToMainMenu() {
     if (this.gameState === 'MainMenu') return;
     
-    // Jeśli wracamy z ExploreMode, musimy powiadomić serwer
+    // --- WYJŚCIE Z EKSPLORACJI (POWRÓT DO NEXUSA) ---
     if (this.gameState === 'ExploreMode') {
         if (this.multiplayerManager) {
-            this.multiplayerManager.joinWorld('nexus'); // Dołącz do głównego lobby
+            // Dołącz z powrotem do Nexusa
+            this.multiplayerManager.joinWorld('nexus');
+            // PRZYWRÓĆ SCENĘ NEXUSA DLA MULTIPLAYERA
+            this.multiplayerManager.setScene(this.scene);
         }
         
-        // Przywróć postać na scenę główną
         this.scene.add(this.characterManager.character);
         this.characterManager.character.position.set(0, 5, 0); 
         document.getElementById('explore-exit-button').style.display = 'none';
+        
+        // Możesz też usunąć coinManager ze świata, ale serwer i tak obsługuje monety tylko w Nexusie
     } else {
-        // Wyjście z trybów budowania
         if (this.gameState === 'BuildMode') this.buildManager.exitBuildMode();
         else if (this.gameState === 'SkinBuilderMode') this.skinBuilderManager.exitBuildMode();
         else if (this.gameState === 'PrefabBuilderMode') this.prefabBuilderManager.exitBuildMode();
@@ -561,7 +544,6 @@ class BlockStarPlanetGame {
     this.toggleMainUI(true);
     this.toggleMobileControls(true); 
     
-    // Odtwórz fizykę dla Nexusa
     this.recreatePlayerController(this.sceneManager.collidableObjects);
     this.cameraController.target = this.characterManager.character;
   }
@@ -590,7 +572,6 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
-  // --- ŁADOWANIE ŚWIATA I DOŁĄCZANIE DO POKOJU ---
   loadAndExploreWorld(worldData) {
     if (!worldData) return;
 
@@ -605,7 +586,7 @@ class BlockStarPlanetGame {
         worldSize = worldData.size || 64;
     }
     
-    // 1. Wyślij info do serwera, że wchodzimy do pokoju
+    // 1. Dołącz do pokoju na serwerze
     if (this.multiplayerManager && worldData.id) {
         this.multiplayerManager.joinWorld(worldData.id);
     }
@@ -615,7 +596,7 @@ class BlockStarPlanetGame {
     this.toggleMobileControls(true);
     document.getElementById('explore-exit-button').style.display = 'flex';
     
-    // 2. Zbuduj scenę świata
+    // 2. Zbuduj scenę
     this.exploreScene = new THREE.Scene();
     this.exploreScene.background = new THREE.Color(0x87CEEB);
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -664,26 +645,36 @@ class BlockStarPlanetGame {
       }
     });
 
-    // Bariery
     const barrierHeight = 100;
     const halfSize = worldSize / 2;
     const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
-    const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
-    wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5); this.exploreScene.add(wallZ1); allCollidables.push(wallZ1);
-    const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
-    wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5); this.exploreScene.add(wallZ2); allCollidables.push(wallZ2);
-    const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
-    wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0); this.exploreScene.add(wallX1); allCollidables.push(wallX1);
-    const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
-    wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0); this.exploreScene.add(wallX2); allCollidables.push(wallX2);
 
-    // Przenieś postać do nowej sceny
+    const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
+    wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5);
+    this.exploreScene.add(wallZ1);
+    allCollidables.push(wallZ1);
+
+    const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
+    wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5);
+    this.exploreScene.add(wallZ2);
+    allCollidables.push(wallZ2);
+    
+    const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
+    wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0);
+    this.exploreScene.add(wallX1);
+    allCollidables.push(wallX1);
+    
+    const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
+    wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0);
+    this.exploreScene.add(wallX2);
+    allCollidables.push(wallX2);
+
     this.exploreScene.add(this.characterManager.character);
     this.characterManager.character.position.set(0, 5, 0);
     
-    // Przełącz managera multiplayer na nową scenę (ważne dla renderowania innych graczy!)
+    // --- KLUCZOWA ZMIANA: PRZEŁĄCZ RENDEROWANIE INNYCH GRACZY NA NOWĄ SCENĘ ---
     if(this.multiplayerManager) {
-        this.multiplayerManager.scene = this.exploreScene;
+        this.multiplayerManager.setScene(this.exploreScene);
     }
 
     this.recreatePlayerController(allCollidables);
@@ -780,7 +771,6 @@ class BlockStarPlanetGame {
     
     if (this.gameState === 'Loading') return;
 
-    // --- LOGIKA DLA GŁÓWNEGO MENU I EKSPLORACJI ---
     if (this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') {
         if(this.playerController && this.cameraController) {
             const rot = this.cameraController.update(deltaTime);
@@ -788,18 +778,16 @@ class BlockStarPlanetGame {
         }
         if (this.characterManager) this.characterManager.update(deltaTime);
         
-        // Aktualizuj pozycje innych graczy (niezależnie od sceny)
+        // Aktualizuj interpolację ruchu innych graczy (niezależnie od sceny)
         if (this.multiplayerManager) this.multiplayerManager.update(deltaTime);
         
         if (this.coinManager) this.coinManager.update(deltaTime);
         
         // Renderuj odpowiednią scenę
         const targetScene = (this.gameState === 'ExploreMode') ? this.exploreScene : this.scene;
-        if (targetScene) {
-            this.renderer.render(targetScene, this.camera);
-            this.css2dRenderer.render(targetScene, this.camera);
-        }
-        
+        this.renderer.render(targetScene, this.camera);
+        this.css2dRenderer.render(targetScene, this.camera);
+
     } else if (this.gameState === 'BuildMode') {
         this.buildManager.update(deltaTime);
         this.renderer.render(this.buildManager.scene, this.camera);
