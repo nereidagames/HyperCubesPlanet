@@ -12,7 +12,7 @@ export class MultiplayerManager {
     this.coinManager = coinManager;
     
     this.textureLoader = new THREE.TextureLoader();
-    this.remotePlayers = {}; // { id: { mesh, targetPos, targetRot } }
+    this.remotePlayers = {}; 
     this.ws = null;
     this.myId = null;
     
@@ -21,6 +21,14 @@ export class MultiplayerManager {
 
     this.lastSentPosition = new THREE.Vector3();
     this.lastSentQuaternion = new THREE.Quaternion();
+  }
+
+  // --- NOWA METODA: ZMIANA SCENY ---
+  // Wywoływana gdy gracz zmienia świat, aby inni gracze renderowali się w dobrym miejscu
+  setScene(newScene) {
+      this.scene = newScene;
+      // Czyścimy graczy ze starej sceny, żeby nie wisieli w pamięci
+      this.removeAllRemotePlayers(); 
   }
 
   initialize(token) {
@@ -39,7 +47,6 @@ export class MultiplayerManager {
         console.log('WS: Połączono!');
         this.uiManager.addChatMessage('<Połączono!>');
 
-        // Wyślij swój skin po połączeniu
         const skinName = SkinStorage.getLastUsedSkin();
         const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
         
@@ -68,21 +75,17 @@ export class MultiplayerManager {
     }
   }
 
-  // --- NOWA METODA: ZMIANA ŚWIATA ---
   joinWorld(worldId) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          console.log(`Dołączanie do świata: ${worldId || 'nexus'}`);
+          console.log(`Dołączanie do pokoju: ${worldId || 'nexus'}`);
           
-          // 1. Wyślij info do serwera
           this.ws.send(JSON.stringify({
               type: 'joinWorld',
-              worldId: worldId // ID świata lub null/'nexus'
+              worldId: worldId 
           }));
 
-          // 2. Wyczyść graczy z poprzedniej lokacji (lokalnie)
           this.removeAllRemotePlayers();
           
-          // 3. Wyczyść monetę (jeśli była w poprzednim świecie)
           if (this.coinManager) {
               this.coinManager.removeCoinGlobally();
           }
@@ -93,15 +96,13 @@ export class MultiplayerManager {
     switch (msg.type) {
       case 'init':
         this.myId = msg.id;
-        // Załaduj graczy z Nexusa na start
         this.removeAllRemotePlayers();
         msg.players.forEach(p => this.createRemotePlayer(p));
         if (msg.coin && this.coinManager) this.coinManager.spawnCoinAt(msg.coin);
         break;
 
-      // Otrzymanie listy graczy (np. po wejściu do nowego świata)
       case 'playerList':
-        this.removeAllRemotePlayers(); // Czyścimy starych
+        this.removeAllRemotePlayers(); 
         msg.players.forEach(p => this.createRemotePlayer(p));
         break;
 
@@ -116,8 +117,6 @@ export class MultiplayerManager {
 
       case 'playerLeft':
         this.removeRemotePlayer(msg.id);
-        // Nie wyświetlamy "wyszedł" przy zmianie świata przez nas samych, 
-        // ale serwer wysyła to tylko do tych co zostali, więc jest ok.
         break;
         
       case 'chat':
@@ -125,7 +124,6 @@ export class MultiplayerManager {
         this.displayChatBubble(msg.id, msg.text);
         break;
         
-      // Powiadomienia UI
       case 'friendRequestReceived':
         this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
@@ -145,7 +143,6 @@ export class MultiplayerManager {
         if (this.onMessageSent) this.onMessageSent(msg);
         break;
 
-      // Monety (tylko w Nexusie)
       case 'coinSpawned':
         if (this.coinManager) this.coinManager.spawnCoinAt(msg.position);
         break;
@@ -216,10 +213,9 @@ export class MultiplayerManager {
     group.position.set(data.x, data.y, data.z);
     group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
 
-    // Nickname
     const div = document.createElement('div');
     div.className = 'text-outline';
-    div.textContent = data.nickname || data.username; // Kompatybilność
+    div.textContent = data.nickname || data.username;
     div.style.color = 'white';
     div.style.fontSize = '14px';
     div.style.fontWeight = 'bold';
@@ -227,6 +223,7 @@ export class MultiplayerManager {
     label.position.set(0, 2.2, 0);
     group.add(label);
 
+    // Dodajemy do AKTUALNEJ sceny (Nexus lub Explore)
     this.scene.add(group);
     
     this.remotePlayers[data.id] = {
