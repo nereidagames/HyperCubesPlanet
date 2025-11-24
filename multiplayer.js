@@ -23,11 +23,10 @@ export class MultiplayerManager {
     this.lastSentQuaternion = new THREE.Quaternion();
   }
 
-  // --- NOWA METODA: ZMIANA SCENY ---
-  // Wywoływana gdy gracz zmienia świat, aby inni gracze renderowali się w dobrym miejscu
   setScene(newScene) {
       this.scene = newScene;
-      // Czyścimy graczy ze starej sceny, żeby nie wisieli w pamięci
+      // Przy zmianie sceny (np. wejście do świata) musimy przenieść lub odtworzyć graczy
+      // Najbezpieczniej wyczyścić i pozwolić serwerowi wysłać listę ponownie (co robi joinWorld)
       this.removeAllRemotePlayers(); 
   }
 
@@ -51,7 +50,7 @@ export class MultiplayerManager {
         const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
         
         this.ws.send(JSON.stringify({ 
-            type: 'mySkin', 
+            type: 'playerReady', // Zmieniono na playerReady dla spójności z serwerem
             skinData: skinData 
         }));
       };
@@ -95,10 +94,13 @@ export class MultiplayerManager {
   handleMessage(msg) {
     switch (msg.type) {
       case 'init':
+      case 'welcome': // Obsługa obu typów powitań
         this.myId = msg.id;
-        this.removeAllRemotePlayers();
-        msg.players.forEach(p => this.createRemotePlayer(p));
-        if (msg.coin && this.coinManager) this.coinManager.spawnCoinAt(msg.coin);
+        // Serwer może wysłać listę w 'init', ale zazwyczaj wysyła osobno 'playerList'
+        if (msg.players) {
+            this.removeAllRemotePlayers();
+            msg.players.forEach(p => this.createRemotePlayer(p));
+        }
         break;
 
       case 'playerList':
@@ -108,9 +110,13 @@ export class MultiplayerManager {
 
       case 'playerJoined':
         this.createRemotePlayer(msg);
-        this.uiManager.addChatMessage(`<${msg.username} dołączył>`);
+        // POPRAWKA: Używamy msg.nickname (z serwera)
+        const name = msg.nickname || msg.username || "Gracz";
+        this.uiManager.addChatMessage(`<${name} dołączył>`);
         break;
 
+      // Obsługa ruchu (nazwa z serwera to 'playerMove', ale dla pewności obsługujemy też stare 'updateMove')
+      case 'playerMove':
       case 'updateMove':
         this.updateRemotePlayerTarget(msg);
         break;
@@ -120,10 +126,12 @@ export class MultiplayerManager {
         break;
         
       case 'chat':
-        this.uiManager.addChatMessage(`${msg.username}: ${msg.text}`);
+      case 'chatMessage': // Serwer wysyła chatMessage
+        this.uiManager.addChatMessage(`${msg.nickname}: ${msg.text}`);
         this.displayChatBubble(msg.id, msg.text);
         break;
         
+      // Powiadomienia
       case 'friendRequestReceived':
         this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
@@ -143,6 +151,7 @@ export class MultiplayerManager {
         if (this.onMessageSent) this.onMessageSent(msg);
         break;
 
+      // Monety
       case 'coinSpawned':
         if (this.coinManager) this.coinManager.spawnCoinAt(msg.position);
         break;
@@ -161,9 +170,9 @@ export class MultiplayerManager {
               Math.abs(quaternion.x - this.lastSentQuaternion.x) > 0.01) {
               
               this.ws.send(JSON.stringify({
-                  type: 'move',
-                  x: position.x, y: position.y, z: position.z,
-                  qx: quaternion.x, qy: quaternion.y, qz: quaternion.z, qw: quaternion.w
+                  type: 'playerMove', // Zmieniono na playerMove (tak jak w serwerze)
+                  position: { x: position.x, y: position.y, z: position.z },
+                  quaternion: { _x: quaternion.x, _y: quaternion.y, _z: quaternion.z, _w: quaternion.w }
               }));
               
               this.lastSentPosition.copy(position);
@@ -210,12 +219,24 @@ export class MultiplayerManager {
         group.add(skinContainer);
     }
 
-    group.position.set(data.x, data.y, data.z);
-    group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
+    // --- POPRAWKA POZYCJI ---
+    // Serwer wysyła obiekt { position: {x,y,z}, quaternion: {_x,_y...} }
+    // Musimy to poprawnie rozpakować
+    if (data.position) {
+        group.position.set(data.position.x, data.position.y, data.position.z);
+    } else if (data.x !== undefined) { // Fallback dla starych wersji
+        group.position.set(data.x, data.y, data.z);
+    }
+
+    if (data.quaternion) {
+        group.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
+    } else if (data.qx !== undefined) {
+        group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
+    }
 
     const div = document.createElement('div');
     div.className = 'text-outline';
-    div.textContent = data.nickname || data.username;
+    div.textContent = data.nickname || data.username || "Gracz";
     div.style.color = 'white';
     div.style.fontSize = '14px';
     div.style.fontWeight = 'bold';
@@ -223,22 +244,30 @@ export class MultiplayerManager {
     label.position.set(0, 2.2, 0);
     group.add(label);
 
-    // Dodajemy do AKTUALNEJ sceny (Nexus lub Explore)
+    // Dodajemy do AKTUALNEJ sceny (zmienia się dynamicznie przez setScene)
     this.scene.add(group);
     
     this.remotePlayers[data.id] = {
         mesh: group,
-        targetPos: new THREE.Vector3(data.x, data.y, data.z),
-        targetRot: new THREE.Quaternion(data.qx, data.qy, data.qz, data.qw),
+        // Inicjalizujemy cel interpolacji aktualną pozycją
+        targetPos: group.position.clone(),
+        targetRot: group.quaternion.clone(),
         chatBubble: null
     };
+    
+    console.log(`Utworzono gracza ${data.nickname} na pozycji`, group.position);
   }
 
   updateRemotePlayerTarget(data) {
       const p = this.remotePlayers[data.id];
       if (p) {
-          p.targetPos.set(data.x, data.y, data.z);
-          p.targetRot.set(data.qx, data.qy, data.qz, data.qw);
+          // POPRAWKA: Rozpakowanie obiektu position/quaternion z serwera
+          if (data.position) {
+              p.targetPos.set(data.position.x, data.position.y, data.position.z);
+          }
+          if (data.quaternion) {
+              p.targetRot.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
+          }
       }
   }
 
@@ -284,8 +313,9 @@ export class MultiplayerManager {
   update(deltaTime) {
     for (const id in this.remotePlayers) {
       const p = this.remotePlayers[id];
-      p.mesh.position.lerp(p.targetPos, deltaTime * 10);
-      p.mesh.quaternion.slerp(p.targetRot, deltaTime * 10);
+      // Płynna interpolacja do celu
+      p.mesh.position.lerp(p.targetPos, deltaTime * 15);
+      p.mesh.quaternion.slerp(p.targetRot, deltaTime * 15);
     }
   }
 }
