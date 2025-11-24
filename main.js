@@ -117,7 +117,6 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // Pobieranie danych użytkownika (monety, miniaturka, ID)
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -126,11 +125,9 @@ class BlockStarPlanetGame {
                             throw new Error('Token invalid');
                         })
                         .then(data => {
-                            // Ustawienie miniaturki
                             if (data.thumbnail && this.uiManager) {
                                 this.uiManager.updatePlayerAvatar(data.thumbnail);
                             }
-                            // Start gry
                             this.startGame(data.user, token);
                         })
                         .catch((err) => {
@@ -154,7 +151,7 @@ class BlockStarPlanetGame {
   startGame(user, token) {
       localStorage.setItem(PLAYER_NAME_KEY, user.username);
       localStorage.setItem(JWT_TOKEN_KEY, token);
-      localStorage.setItem('bsp_clone_user_id', user.id); // ID do weryfikacji skina
+      localStorage.setItem('bsp_clone_user_id', user.id);
 
       this.uiManager.updatePlayerName(user.username);
       
@@ -172,8 +169,16 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      // --- INTERCEPTOWANIE WIADOMOŚCI (Update dla przyjaciół) ---
-      // Uwaga: w nowym multiplayer.js metoda nazywa się handleMessage
+      // --- PODPIĘCIE CALLBACKÓW Z UI DO LOGIKI GRY ---
+
+      // 1. Wysyłanie prywatnych wiadomości (Nowość)
+      this.uiManager.onSendPrivateMessage = (recipient, text) => {
+          if(this.multiplayerManager) {
+              this.multiplayerManager.sendPrivateMessage(recipient, text);
+          }
+      };
+
+      // 2. Obsługa komunikatów z serwera
       const originalHandle = this.multiplayerManager.handleMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleMessage = (msg) => {
           originalHandle(msg); 
@@ -189,30 +194,41 @@ class BlockStarPlanetGame {
           if (msg.type === 'friendStatusChange') {
               this.uiManager.loadFriendsData();
           }
+          // Potwierdzenie wysłania wiadomości - UI samo to obsługuje w ui.js
+          if (msg.type === 'privateMessageSent') {
+              if (this.uiManager.onMessageSent) this.uiManager.onMessageSent(msg);
+          }
+          if (msg.type === 'privateMessageReceived') {
+              if (this.uiManager.onMessageReceived) this.uiManager.onMessageReceived(msg);
+          }
+      };
+      
+      // Callbacki z multiplayer.js do UI
+      this.multiplayerManager.onMessageSent = (msg) => {
+          this.uiManager.onMessageSent && this.uiManager.onMessageSent(msg);
+      };
+      this.multiplayerManager.onMessageReceived = (msg) => {
+          this.uiManager.onMessageReceived && this.uiManager.onMessageReceived(msg);
       };
 
-      // Callback zbierania monet (wysyła pakiet do serwera)
       this.coinManager.onCollect = () => {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
 
-      // Ładowanie znajomych
       this.uiManager.loadFriendsData();
 
       this.animate();
       this.gameState = 'MainMenu';
       
-      // --- PĘTLA WYSYŁANIA POZYCJI ---
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if (this.gameState === 'MainMenu' && this.characterManager.character) {
-          // Używamy nowej metody z multiplayer.js
           this.multiplayerManager.sendMyPosition(
             this.characterManager.character.position,
             this.characterManager.character.quaternion
           );
         }
-      }, 50); // Co 50ms dla płynności
+      }, 50);
 
       console.log('Game initialized successfully!');
   }
@@ -367,7 +383,6 @@ class BlockStarPlanetGame {
       
     this.uiManager = new UIManager(
       (message) => { 
-        // Czat globalny
         if (this.multiplayerManager) {
             this.multiplayerManager.sendMessage({ type: 'chat', text: message });
         }
@@ -391,25 +406,21 @@ class BlockStarPlanetGame {
     this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
     
-    // --- WYBÓR SKINA (Z SERWERA) ---
     this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
         const myId = parseInt(localStorage.getItem('bsp_clone_user_id') || "0");
 
         if (ownerId && ownerId !== myId) {
-            this.uiManager.showMessage("To nie Twój skin!", "info");
+            this.uiManager.showMessage("To nie Twój skin! (Tryb podglądu)", "info");
             return;
         }
 
         const blocksData = await SkinStorage.loadSkinData(skinId);
         if (blocksData) {
             this.characterManager.applySkin(blocksData);
-            
             SkinStorage.setLastUsedSkinId(skinId);
-            
             this.uiManager.updatePlayerAvatar(thumbnail);
             this.uiManager.uploadSkinThumbnail(thumbnail);
             
-            // Wyślij do serwera info o nowym skinie, żeby inni widzieli
             if (this.multiplayerManager && this.multiplayerManager.ws) {
                 this.multiplayerManager.ws.send(JSON.stringify({ type: 'mySkin', skinData: blocksData }));
             }
@@ -469,7 +480,6 @@ class BlockStarPlanetGame {
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
-    // Wczytanie ostatniego skina na starcie
     const lastSkinId = SkinStorage.getLastUsedSkinId();
     if (lastSkinId) {
         const blocksData = await SkinStorage.loadSkinData(lastSkinId);
