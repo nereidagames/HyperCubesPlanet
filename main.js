@@ -117,6 +117,7 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
+                        // Pobieramy dane gracza (monety, miniaturka) z serwera przed startem
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -125,9 +126,11 @@ class BlockStarPlanetGame {
                             throw new Error('Token invalid');
                         })
                         .then(data => {
+                            // Aktualizujemy miniaturkę w UI
                             if (data.thumbnail && this.uiManager) {
                                 this.uiManager.updatePlayerAvatar(data.thumbnail);
                             }
+                            // Startujemy grę z aktualnymi danymi
                             this.startGame(data.user, token);
                         })
                         .catch((err) => {
@@ -151,12 +154,13 @@ class BlockStarPlanetGame {
   startGame(user, token) {
       localStorage.setItem(PLAYER_NAME_KEY, user.username);
       localStorage.setItem(JWT_TOKEN_KEY, token);
-      localStorage.setItem('bsp_clone_user_id', user.id);
+      localStorage.setItem('bsp_clone_user_id', user.id); // ID potrzebne do weryfikacji skina
 
       this.uiManager.updatePlayerName(user.username);
       
       document.querySelector('.ui-overlay').style.display = 'block';
 
+      // Inicjalizacja menedżera monet z ilością pobraną z serwera
       this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character, user.coins);
 
       this.multiplayerManager = new MultiplayerManager(
@@ -169,16 +173,16 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      // --- PODPIĘCIE CALLBACKÓW Z UI DO LOGIKI GRY ---
-
-      // 1. Wysyłanie prywatnych wiadomości (Nowość)
+      // --- PODPIĘCIE LOGIKI DO UI ---
+      
+      // 1. Wysyłanie wiadomości prywatnych (z formularza w UI)
       this.uiManager.onSendPrivateMessage = (recipient, text) => {
-          if(this.multiplayerManager) {
+          if (this.multiplayerManager) {
               this.multiplayerManager.sendPrivateMessage(recipient, text);
           }
       };
 
-      // 2. Obsługa komunikatów z serwera
+      // 2. Obsługa wiadomości przychodzących z serwera (aktualizacja UI)
       const originalHandle = this.multiplayerManager.handleMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleMessage = (msg) => {
           originalHandle(msg); 
@@ -194,7 +198,7 @@ class BlockStarPlanetGame {
           if (msg.type === 'friendStatusChange') {
               this.uiManager.loadFriendsData();
           }
-          // Potwierdzenie wysłania wiadomości - UI samo to obsługuje w ui.js
+          // Przekazywanie wiadomości prywatnych do UI
           if (msg.type === 'privateMessageSent') {
               if (this.uiManager.onMessageSent) this.uiManager.onMessageSent(msg);
           }
@@ -203,23 +207,18 @@ class BlockStarPlanetGame {
           }
       };
       
-      // Callbacki z multiplayer.js do UI
-      this.multiplayerManager.onMessageSent = (msg) => {
-          this.uiManager.onMessageSent && this.uiManager.onMessageSent(msg);
-      };
-      this.multiplayerManager.onMessageReceived = (msg) => {
-          this.uiManager.onMessageReceived && this.uiManager.onMessageReceived(msg);
-      };
-
+      // Zbieranie monet
       this.coinManager.onCollect = () => {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
 
+      // Ładowanie listy przyjaciół na starcie
       this.uiManager.loadFriendsData();
 
       this.animate();
       this.gameState = 'MainMenu';
       
+      // Pętla wysyłania pozycji (50ms = 20 razy na sekundę)
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if (this.gameState === 'MainMenu' && this.characterManager.character) {
@@ -302,6 +301,7 @@ class BlockStarPlanetGame {
                   authMessage.textContent = 'Zalogowano pomyślnie!';
                   authScreen.style.display = 'none';
                   
+                  // Jeśli logowanie zwróciło miniaturkę, ustaw ją od razu
                   if (data.thumbnail) {
                       this.uiManager.updatePlayerAvatar(data.thumbnail);
                   }
@@ -383,6 +383,7 @@ class BlockStarPlanetGame {
       
     this.uiManager = new UIManager(
       (message) => { 
+        // Czat globalny
         if (this.multiplayerManager) {
             this.multiplayerManager.sendMessage({ type: 'chat', text: message });
         }
@@ -398,6 +399,7 @@ class BlockStarPlanetGame {
       };
     }
     
+    // --- CALLBACKI UI ---
     this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
     this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
     this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
@@ -406,6 +408,7 @@ class BlockStarPlanetGame {
     this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
     
+    // Wybór skina
     this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
         const myId = parseInt(localStorage.getItem('bsp_clone_user_id') || "0");
 
@@ -417,10 +420,13 @@ class BlockStarPlanetGame {
         const blocksData = await SkinStorage.loadSkinData(skinId);
         if (blocksData) {
             this.characterManager.applySkin(blocksData);
+            
             SkinStorage.setLastUsedSkinId(skinId);
+            
             this.uiManager.updatePlayerAvatar(thumbnail);
             this.uiManager.uploadSkinThumbnail(thumbnail);
             
+            // Poinformuj innych graczy o zmianie skina
             if (this.multiplayerManager && this.multiplayerManager.ws) {
                 this.multiplayerManager.ws.send(JSON.stringify({ type: 'mySkin', skinData: blocksData }));
             }
@@ -431,8 +437,17 @@ class BlockStarPlanetGame {
         }
     };
 
-    this.uiManager.onWorldSelect = (worldName) => {
-        this.loadAndExploreWorld(worldName);
+    // Wybór świata
+    this.uiManager.onWorldSelect = async (worldItem) => {
+        // worldItem to obiekt z listy. Pobieramy pełne dane.
+        if (!worldItem.id) return; // Zabezpieczenie
+        
+        const worldData = await WorldStorage.loadWorldData(worldItem.id);
+        if (worldData) {
+            this.loadAndExploreWorld(worldData);
+        } else {
+            this.uiManager.showMessage("Nie udało się pobrać świata.", "error");
+        }
     };
 
     this.uiManager.onPlayerAvatarClick = () => this.showPlayerPreview();
@@ -480,6 +495,7 @@ class BlockStarPlanetGame {
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
     
+    // Załaduj ostatnio używanego skina przy starcie
     const lastSkinId = SkinStorage.getLastUsedSkinId();
     if (lastSkinId) {
         const blocksData = await SkinStorage.loadSkinData(lastSkinId);
@@ -586,18 +602,18 @@ class BlockStarPlanetGame {
       this.playerController.setIsMobile(this.isMobile);
   }
 
-  loadAndExploreWorld(worldName) {
-    const worldSaveData = WorldStorage.loadWorld(worldName);
-    if (!worldSaveData) { alert(`Nie udało się wczytać świata: ${worldName}`); return; }
+  loadAndExploreWorld(worldData) {
+    if (!worldData) return;
 
     let worldBlocksData;
     let worldSize;
-    if (Array.isArray(worldSaveData)) {
-        worldBlocksData = worldSaveData;
+    
+    if (Array.isArray(worldData)) {
+        worldBlocksData = worldData;
         worldSize = 64;
     } else {
-        worldBlocksData = worldSaveData.blocks;
-        worldSize = worldSaveData.size || 64;
+        worldBlocksData = worldData.blocks || [];
+        worldSize = worldData.size || 64;
     }
     
     this.gameState = 'ExploreMode';
