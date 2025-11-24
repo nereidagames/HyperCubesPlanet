@@ -22,7 +22,7 @@ export class UIManager {
     this.onNameSubmit = null;
     this.onSkinSelect = null; 
     this.onWorldSelect = null; 
-    this.onSendPrivateMessage = null;
+    this.onSendPrivateMessage = null; // Callback do wysyłania prywatnych wiadomości
     this.onMessageSent = null;
     this.onMessageReceived = null;
     
@@ -215,14 +215,61 @@ export class UIManager {
 
   // --- CZAT ---
   setupChatSystem() { this.setupChatInput(); }
-  addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
-  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
-  setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
-  showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
+  
+  addChatMessage(message) {
+    const chatArea = document.querySelector('.chat-area');
+    if (!chatArea) return;
+    const messageElement = document.createElement('div');
+    messageElement.className = 'chat-message text-outline';
+    messageElement.textContent = message;
+    chatArea.appendChild(messageElement);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+  
+  handleChatClick() {
+    const chatForm = document.getElementById('chat-form');
+    if(chatForm) chatForm.style.display = 'flex';
+    const chatInput = document.getElementById('chat-input-field');
+    if(chatInput) chatInput.focus();
+  }
+  
+  setupChatInput() {
+    const chatForm = document.getElementById('chat-form');
+    if(!chatForm) return;
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const chatInput = document.getElementById('chat-input-field');
+      const message = chatInput.value.trim();
+      if (message && this.onSendMessage) {
+        this.onSendMessage(message);
+      }
+      chatInput.value = '';
+      chatForm.style.display = 'none';
+    });
+  }
+  
+  showMessage(text, type = 'info') {
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: ${type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : '#3498db')}; color: white; padding: 15px 25px; border-radius: 10px; font-weight: bold; z-index: 10000; box-shadow: 0 6px 12px rgba(0,0,0,0.4); opacity: 0; transition: all 0.3s ease;`;
+    messageDiv.classList.add('text-outline');
+    messageDiv.textContent = text;
+    document.body.appendChild(messageDiv);
+    setTimeout(() => {
+      messageDiv.style.opacity = '1';
+      messageDiv.style.transform = 'translate(-50%, -50%) translateY(-10px)';
+    }, 10);
+    setTimeout(() => {
+      messageDiv.style.opacity = '0';
+      setTimeout(() => { if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv); }, 300);
+    }, 2500);
+  }
 
-  // --- ODKRYWANIE (NAPRAWIONE) ---
+  // --- PANEL ODKRYJ (Worlds & Skins) ---
 
   setupDiscoverTabs() {
+      // Zabezpieczenie
+      if (!document.getElementById('discover-tabs')) return;
+      
       const tabs = document.querySelectorAll('#discover-tabs .friends-tab');
       tabs.forEach(tab => {
           tab.onclick = () => {
@@ -236,23 +283,26 @@ export class UIManager {
       if(closeBtn) closeBtn.onclick = () => this.closeAllPanels();
   }
 
-  showDiscoverPanel(type) {
+  async showDiscoverPanel(type) {
     const title = document.getElementById('discover-panel-title');
     const tabs = document.getElementById('discover-tabs');
     const list = document.getElementById('discover-list');
     
-    if(list) list.innerHTML = '<p class="text-outline" style="text-align:center">Ładowanie...</p>';
-    
+    if (!list) return;
+
+    list.innerHTML = '<p class="text-outline" style="text-align:center">Ładowanie...</p>';
     this.openPanel('discover-panel');
 
     if (type === 'worlds') {
         if(title) title.textContent = 'Wybierz Świat';
         if(tabs) tabs.style.display = 'none';
         
-        const savedWorlds = WorldStorage.getSavedWorldsList();
-        // POPRAWKA: używamy this.populateDiscoverPanel (nie this.uiManager...)
-        this.populateDiscoverPanel('worlds', savedWorlds, (worldName) => {
-             if (this.onWorldSelect) this.onWorldSelect(worldName);
+        // POBIERANIE Z SERWERA
+        const savedWorlds = await WorldStorage.getAllWorlds();
+        
+        // POPRAWKA: Bezpośrednie wywołanie metody klasy
+        this.populateDiscoverPanel('worlds', savedWorlds, (worldItem) => {
+             if (this.onWorldSelect) this.onWorldSelect(worldItem);
         });
         
     } else if (type === 'skins') {
@@ -282,7 +332,6 @@ export class UIManager {
       });
   }
 
-  // Poprzednio renderDiscoverList, teraz zunifikowane z populateDiscoverPanel
   populateDiscoverPanel(type, items, onSelect) {
       const list = document.getElementById('discover-list');
       if (!list) return;
@@ -316,10 +365,17 @@ export class UIManager {
           let ownerId = null;
           
           if (type === 'worlds') {
-              label = item; // item to string (nazwa)
-              thumbSrc = WorldStorage.getThumbnail(item);
+              label = item; // w przypadku world storage getAllWorlds zwraca tylko nazwy? Nie, zwraca obiekty teraz
+              // WorldStorage.getAllWorlds() zwraca obiekty {id, name, thumbnail...}
+              // Musimy to obsłużyć
+              if(typeof item === 'string') {
+                  label = item; // Stary system
+              } else {
+                  label = item.name;
+                  if(item.creator) label += ` (od ${item.creator})`;
+                  thumbSrc = item.thumbnail;
+              }
           } else {
-              // item to obiekt skina { id, name, thumbnail, creator, owner_id }
               label = item.name;
               if (item.creator) label += ` (od ${item.creator})`;
               thumbSrc = item.thumbnail;
@@ -354,9 +410,10 @@ export class UIManager {
           div.onclick = () => {
               this.closeAllPanels();
               if (type === 'worlds') {
-                   onSelect(item);
+                   // Dla światów przekazujemy obiekt świata (lub nazwę dla starych)
+                   // Main.js spodziewa się nazwy (w starej wersji) lub obiektu
+                   onSelect(item.name || item); 
               } else {
-                   // Przekazujemy rozpakowane dane skina
                    onSelect(skinId, item.name, item.thumbnail, ownerId);
               }
           };
@@ -373,7 +430,7 @@ export class UIManager {
       const tabs = document.querySelectorAll('.friends-tab');
       tabs.forEach(tab => {
           tab.onclick = () => {
-              if(tab.parentElement.id === 'discover-tabs') return;
+              if(tab.parentElement.id === 'discover-tabs') return; 
               tabs.forEach(t => { if(t.parentElement.id !== 'discover-tabs') t.classList.remove('active'); });
               document.querySelectorAll('.friends-view').forEach(v => v.classList.remove('active'));
               tab.classList.add('active');
@@ -449,9 +506,11 @@ export class UIManager {
         try {
             const response = await fetch(`${API_BASE_URL}/api/messages/${username}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const messages = await response.json();
+            
             chatUsername.textContent = username;
             chatMessages.innerHTML = '';
             const myUsername = localStorage.getItem('bsp_clone_player_name');
+            
             messages.forEach(msg => {
                 const messageEl = document.createElement('div');
                 messageEl.className = 'mail-message';
@@ -459,9 +518,14 @@ export class UIManager {
                 messageEl.textContent = msg.message_text;
                 chatMessages.appendChild(messageEl);
             });
+            
             this.mailState.activeConversation = username;
             renderConversations();
-            chatView.style.display = 'flex'; newMailComposer.style.display = 'none'; replyForm.style.display = 'flex'; chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            chatView.style.display = 'flex';
+            newMailComposer.style.display = 'none';
+            replyForm.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         } catch (error) { console.error(error); }
     };
     
@@ -477,19 +541,27 @@ export class UIManager {
 
     newMailForm.onsubmit = (e) => {
         e.preventDefault();
-        const r = document.getElementById('new-mail-recipient').value.trim();
-        const t = document.getElementById('new-mail-text').value.trim();
-        if (r && t && this.onSendPrivateMessage) this.onSendPrivateMessage(r, t);
+        const recipient = document.getElementById('new-mail-recipient').value.trim();
+        const text = document.getElementById('new-mail-text').value.trim();
+        
+        if (recipient && text && this.onSendPrivateMessage) {
+            this.onSendPrivateMessage(recipient, text);
+        }
     };
 
     replyForm.onsubmit = (e) => {
         e.preventDefault();
-        const t = replyInput.value.trim();
-        if (t && this.mailState.activeConversation && this.onSendPrivateMessage) {
-            this.onSendPrivateMessage(this.mailState.activeConversation, t);
+        const text = replyInput.value.trim();
+        
+        if (text && this.mailState.activeConversation && this.onSendPrivateMessage) {
+            this.onSendPrivateMessage(this.mailState.activeConversation, text);
             replyInput.value = '';
-            const el = document.createElement('div'); el.className = 'mail-message sent'; el.textContent = t;
-            chatMessages.appendChild(el); chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            const messageEl = document.createElement('div');
+            messageEl.className = 'mail-message sent';
+            messageEl.textContent = text;
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     };
 
@@ -498,7 +570,11 @@ export class UIManager {
         if(response.ok) {
             this.mailState.conversations = await response.json();
             renderConversations();
-            chatView.style.display = 'flex'; chatUsername.textContent = "Wybierz konwersację"; chatMessages.innerHTML = ''; newMailComposer.style.display = 'none'; replyForm.style.display = 'none';
+            chatView.style.display = 'flex';
+            chatUsername.textContent = "Wybierz konwersację";
+            chatMessages.innerHTML = '';
+            newMailComposer.style.display = 'none';
+            replyForm.style.display = 'none';
         }
     } catch (error) { console.error(error); }
   }
