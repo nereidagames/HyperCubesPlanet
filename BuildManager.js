@@ -165,62 +165,17 @@ export class BuildManager {
       });
   }
 
-  // --- PANEL PREFABRYKATÓW Z MINIATURKAMI ---
   showPrefabSelectionPanel() {
       const panel = document.getElementById('prefab-selection-panel');
       panel.innerHTML = '';
       const prefabNames = PrefabStorage.getSavedPrefabsList();
-      
       if (prefabNames.length === 0) {
           panel.innerHTML = '<div class="panel-item text-outline">Brak prefabrykatów</div>';
       } else {
           prefabNames.forEach(name => {
               const item = document.createElement('div');
-              item.className = 'panel-item prefab-item';
-              item.style.display = 'flex';
-              item.style.alignItems = 'center';
-              item.style.padding = '5px';
-              item.style.justifyContent = 'flex-start';
-              item.style.height = 'auto';
-              item.style.minHeight = '60px';
-
-              // Miniaturka
-              const thumbContainer = document.createElement('div');
-              thumbContainer.style.width = '50px';
-              thumbContainer.style.height = '50px';
-              thumbContainer.style.backgroundColor = '#333';
-              thumbContainer.style.borderRadius = '5px';
-              thumbContainer.style.marginRight = '10px';
-              thumbContainer.style.overflow = 'hidden';
-              thumbContainer.style.flexShrink = '0';
-              thumbContainer.style.border = '1px solid white';
-
-              const thumbData = PrefabStorage.getThumbnail(name);
-              if (thumbData) {
-                  const img = document.createElement('img');
-                  img.src = thumbData;
-                  img.style.width = '100%';
-                  img.style.height = '100%';
-                  img.style.objectFit = 'cover';
-                  thumbContainer.appendChild(img);
-              } else {
-                  thumbContainer.textContent = '🏗️';
-                  thumbContainer.style.display = 'flex';
-                  thumbContainer.style.alignItems = 'center';
-                  thumbContainer.style.justifyContent = 'center';
-                  thumbContainer.style.color = 'white';
-                  thumbContainer.style.fontSize = '20px';
-              }
-
-              const textSpan = document.createElement('span');
-              textSpan.textContent = name;
-              textSpan.className = 'text-outline';
-              textSpan.style.fontSize = '14px';
-              textSpan.style.wordBreak = 'break-word';
-
-              item.appendChild(thumbContainer);
-              item.appendChild(textSpan);
-
+              item.className = 'panel-item text-outline prefab-item';
+              item.textContent = name;
               item.onclick = () => {
                   this.selectPrefab(name);
                   panel.style.display = 'none';
@@ -385,13 +340,13 @@ export class BuildManager {
     }
   }
 
-  // --- GENEROWANIE MINIATURKI ŚWIATA (BEZ ZMIAN) ---
+  // --- GENEROWANIE MINIATURKI ŚWIATA ---
   generateThumbnail() {
-    const width = 200;
+    const width = 200; // Trochę większe dla świata
     const height = 150;
     const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
     thumbnailRenderer.setSize(width, height);
-    thumbnailRenderer.setClearColor(0x87CEEB);
+    thumbnailRenderer.setClearColor(0x87CEEB); // Błękitne niebo
     
     const thumbnailScene = new THREE.Scene();
     const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -400,12 +355,14 @@ export class BuildManager {
     dirLight.position.set(50, 50, 50);
     thumbnailScene.add(dirLight);
 
+    // Dodaj podłogę do zdjęcia
     const floorGeo = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
     const floorMat = new THREE.MeshLambertMaterial({ color: 0x559022 });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.position.y = -0.5;
     thumbnailScene.add(floor);
 
+    // Kopiuj bloki
     if (this.placedBlocks.length > 0) {
         this.placedBlocks.forEach(block => {
             const clone = block.clone();
@@ -413,6 +370,7 @@ export class BuildManager {
         });
     }
 
+    // Ustaw kamerę z lotu ptaka
     const thumbnailCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     const distance = this.platformSize * 1.5; 
     thumbnailCamera.position.set(distance, distance * 0.8, distance);
@@ -426,7 +384,7 @@ export class BuildManager {
     return dataURL;
   }
 
-  saveWorld() {
+  async saveWorld() {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
@@ -444,8 +402,11 @@ export class BuildManager {
         }))
       };
       
-      if (WorldStorage.saveWorld(worldName, worldData)) {
-        alert(`Świat "${worldName}" został pomyślnie zapisany!`);
+      // Zapis na serwerze
+      const success = await WorldStorage.saveWorld(worldName, worldData);
+      
+      if (success) {
+        alert(`Świat "${worldName}" został pomyślnie zapisany na serwerze!`);
         this.game.switchToMainMenu();
       }
     }
