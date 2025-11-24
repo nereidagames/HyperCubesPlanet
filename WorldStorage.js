@@ -1,60 +1,73 @@
-const WORLDS_STORAGE_KEY = 'bsp_clone_worlds';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class WorldStorage {
 
-  static saveWorld(worldName, worldData) {
-    if (!worldName || worldName.trim() === '') {
-      alert('Nazwa świata nie może być pusta!');
-      return false;
-    }
-    const worlds = this.getAllWorlds();
-    // worldData zawiera teraz { size, blocks, thumbnail }
-    worlds[worldName] = worldData;
+  // Zapisz świat na serwerze
+  static async saveWorld(worldName, worldData) {
+    if (!worldName) return false;
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return false;
+
     try {
-      localStorage.setItem(WORLDS_STORAGE_KEY, JSON.stringify(worlds));
-      console.log(`World "${worldName}" saved successfully!`);
-      return true;
+        const response = await fetch(`${API_BASE_URL}/api/worlds`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+                name: worldName, 
+                world_data: worldData, // Cały obiekt świata (size, blocks, itp.)
+                thumbnail: worldData.thumbnail 
+            })
+        });
+
+        if (response.ok) {
+            console.log(`World "${worldName}" saved to server!`);
+            return true;
+        } else {
+            console.error("Błąd zapisu świata");
+            return false;
+        }
     } catch (error) {
-      console.error('Error saving world to localStorage:', error);
-      alert('Nie udało się zapisać świata. Pamięć przeglądarki może być pełna.');
-      return false;
+        console.error('Error saving world:', error);
+        return false;
     }
   }
 
-  static loadWorld(worldName) {
-    const worlds = this.getAllWorlds();
-    const data = worlds[worldName];
-    
-    // Obsługa wsteczna (gdyby ktoś miał stary format, co jest mało prawdopodobne w tym projekcie, ale bezpieczniej)
-    if (Array.isArray(data)) {
-        // Stary format to była tablica bloków
-        return { size: 64, blocks: data };
+  // Pobierz dane konkretnego świata
+  static async loadWorldData(worldId) {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return null;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/worlds/${worldId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            return await response.json(); // Zwraca obiekt world_data
+        }
+    } catch (error) {
+        console.error('Error loading world:', error);
     }
-    return data || null;
+    return null;
+  }
+
+  // Pobierz listę wszystkich światów (do menu Zagraj)
+  static async getAllWorlds() {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return [];
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/worlds/all`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.ok ? await response.json() : [];
+    } catch(e) { return []; }
   }
   
-  // NOWA METODA
-  static getThumbnail(worldName) {
-      const worlds = this.getAllWorlds();
-      const data = worlds[worldName];
-      if (data && data.thumbnail) {
-          return data.thumbnail;
-      }
-      return null;
-  }
-
-  static getSavedWorldsList() {
-    const worlds = this.getAllWorlds();
-    return Object.keys(worlds);
-  }
-
-  static getAllWorlds() {
-    try {
-      const worldsData = localStorage.getItem(WORLDS_STORAGE_KEY);
-      return worldsData ? JSON.parse(worldsData) : {};
-    } catch (error) {
-      console.error('Error reading worlds from localStorage:', error);
-      return {};
-    }
-  }
+  // Metody kompatybilności (nieużywane, ale dla bezpieczeństwa)
+  static loadWorld(name) { return null; }
+  static getThumbnail(name) { return null; }
+  static getSavedWorldsList() { return []; }
 }
