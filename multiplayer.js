@@ -12,15 +12,13 @@ export class MultiplayerManager {
     this.coinManager = coinManager;
     
     this.textureLoader = new THREE.TextureLoader();
-    this.remotePlayers = {}; // Przechowuje innych graczy { id: { mesh, targetPos, targetRot } }
+    this.remotePlayers = {}; // { id: { mesh, targetPos, targetRot } }
     this.ws = null;
     this.myId = null;
     
-    // Callbacki UI
     this.onMessageSent = null;
     this.onMessageReceived = null;
 
-    // Do optymalizacji wysyłania
     this.lastSentPosition = new THREE.Vector3();
     this.lastSentQuaternion = new THREE.Quaternion();
   }
@@ -41,7 +39,7 @@ export class MultiplayerManager {
         console.log('WS: Połączono!');
         this.uiManager.addChatMessage('<Połączono!>');
 
-        // KROK 1: Wyślij swój skin do serwera, aby inni go widzieli
+        // Wyślij swój skin po połączeniu
         const skinName = SkinStorage.getLastUsedSkin();
         const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
         
@@ -57,14 +55,12 @@ export class MultiplayerManager {
       };
 
       this.ws.onclose = () => {
-        console.log('WS: Rozłączono.');
         this.uiManager.addChatMessage('<Rozłączono z serwerem.>');
         this.removeAllRemotePlayers();
       };
 
       this.ws.onerror = (error) => {
         console.error('WS: Błąd', error);
-        this.uiManager.addChatMessage('<Błąd połączenia.>');
       };
 
     } catch (error) {
@@ -72,88 +68,98 @@ export class MultiplayerManager {
     }
   }
 
+  // --- NOWA METODA: ZMIANA ŚWIATA ---
+  joinWorld(worldId) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          console.log(`Dołączanie do świata: ${worldId || 'nexus'}`);
+          
+          // 1. Wyślij info do serwera
+          this.ws.send(JSON.stringify({
+              type: 'joinWorld',
+              worldId: worldId // ID świata lub null/'nexus'
+          }));
+
+          // 2. Wyczyść graczy z poprzedniej lokacji (lokalnie)
+          this.removeAllRemotePlayers();
+          
+          // 3. Wyczyść monetę (jeśli była w poprzednim świecie)
+          if (this.coinManager) {
+              this.coinManager.removeCoinGlobally();
+          }
+      }
+  }
+
   handleMessage(msg) {
     switch (msg.type) {
-      // 1. Inicjalizacja - dostajemy swoje ID i listę obecnych graczy
       case 'init':
         this.myId = msg.id;
-        console.log("Otrzymano init. Moje ID:", this.myId);
+        // Załaduj graczy z Nexusa na start
+        this.removeAllRemotePlayers();
         msg.players.forEach(p => this.createRemotePlayer(p));
-        // Jeśli jest moneta na serwerze, zrespawnuj ją
-        if (msg.coin && this.coinManager) {
-            this.coinManager.spawnCoinAt(msg.coin);
-        }
+        if (msg.coin && this.coinManager) this.coinManager.spawnCoinAt(msg.coin);
         break;
 
-      // 2. Ktoś nowy wszedł
+      // Otrzymanie listy graczy (np. po wejściu do nowego świata)
+      case 'playerList':
+        this.removeAllRemotePlayers(); // Czyścimy starych
+        msg.players.forEach(p => this.createRemotePlayer(p));
+        break;
+
       case 'playerJoined':
         this.createRemotePlayer(msg);
         this.uiManager.addChatMessage(`<${msg.username} dołączył>`);
         break;
 
-      // 3. Ktoś się rusza
       case 'updateMove':
         this.updateRemotePlayerTarget(msg);
         break;
 
-      // 4. Ktoś wyszedł
       case 'playerLeft':
         this.removeRemotePlayer(msg.id);
-        this.uiManager.addChatMessage(`<Gracz wyszedł>`);
+        // Nie wyświetlamy "wyszedł" przy zmianie świata przez nas samych, 
+        // ale serwer wysyła to tylko do tych co zostali, więc jest ok.
         break;
         
-      // 5. Czat
       case 'chat':
         this.uiManager.addChatMessage(`${msg.username}: ${msg.text}`);
         this.displayChatBubble(msg.id, msg.text);
         break;
         
-      // 6. Poczta / Powiadomienia
+      // Powiadomienia UI
       case 'friendRequestReceived':
         this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
-        // Odświeżamy listę w UI (jeśli UIManager ma dostęp do tej metody)
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
         break;
-        
       case 'friendRequestAccepted':
         this.uiManager.showMessage(`${msg.by} przyjął zaproszenie!`, 'success');
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
         break;
-
       case 'friendStatusChange':
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
         break;
-        
       case 'privateMessageReceived':
         this.uiManager.showMessage(`Wiadomość od ${msg.sender.nickname}`, 'info');
         if (this.onMessageReceived) this.onMessageReceived(msg);
         break;
-
       case 'privateMessageSent':
         if (this.onMessageSent) this.onMessageSent(msg);
         break;
 
-      // 7. Monety
+      // Monety (tylko w Nexusie)
       case 'coinSpawned':
         if (this.coinManager) this.coinManager.spawnCoinAt(msg.position);
         break;
-
       case 'coinCollected':
         if (this.coinManager) this.coinManager.removeCoinGlobally();
         break;
-
       case 'updateBalance':
         if (this.coinManager) this.coinManager.updateBalance(msg.newBalance);
         break;
     }
   }
 
-  // --- WYSYŁANIE DANYCH ---
-
-  // Wywoływane z main.js w pętli setInterval (np. co 50ms)
   sendMyPosition(position, quaternion) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          // Optymalizacja: wyślij tylko jeśli pozycja się zmieniła
           if (position.distanceTo(this.lastSentPosition) > 0.01 || 
               Math.abs(quaternion.x - this.lastSentQuaternion.x) > 0.01) {
               
@@ -179,28 +185,19 @@ export class MultiplayerManager {
       this.sendMessage({ type: 'sendPrivateMessage', recipient, text });
   }
 
-  // --- ZARZĄDZANIE INNYMI GRACZAMI ---
-
   createRemotePlayer(data) {
-    if (this.remotePlayers[data.id]) return; // Już istnieje
-
-    console.log(`Tworzenie gracza remote: ${data.username}`);
+    if (this.remotePlayers[data.id]) return; 
 
     const group = new THREE.Group();
-    
-    // 1. Dodaj nogi
     createBaseCharacter(group);
 
-    // 2. Dodaj skin
     if (data.skinData) {
         const skinContainer = new THREE.Group();
         skinContainer.scale.setScalar(0.125);
-        skinContainer.position.y = 0.5; // Dopasowanie do nóg
+        skinContainer.position.y = 0.5;
         
         data.skinData.forEach(block => {
             const geo = new THREE.BoxGeometry(1, 1, 1);
-            
-            // Cache materiałów
             let mat = this.materialsCache[block.texturePath];
             if (!mat) {
                 const tex = this.textureLoader.load(block.texturePath);
@@ -208,7 +205,6 @@ export class MultiplayerManager {
                 mat = new THREE.MeshLambertMaterial({ map: tex });
                 this.materialsCache[block.texturePath] = mat;
             }
-            
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(block.x, block.y, block.z);
             mesh.castShadow = true;
@@ -217,14 +213,13 @@ export class MultiplayerManager {
         group.add(skinContainer);
     }
 
-    // 3. Pozycja początkowa
     group.position.set(data.x, data.y, data.z);
     group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
 
-    // 4. Nickname nad głową
+    // Nickname
     const div = document.createElement('div');
     div.className = 'text-outline';
-    div.textContent = data.username;
+    div.textContent = data.nickname || data.username; // Kompatybilność
     div.style.color = 'white';
     div.style.fontSize = '14px';
     div.style.fontWeight = 'bold';
@@ -233,8 +228,6 @@ export class MultiplayerManager {
     group.add(label);
 
     this.scene.add(group);
-
-    // WAŻNE: Nie dodajemy do collidableObjects!
     
     this.remotePlayers[data.id] = {
         mesh: group,
@@ -291,13 +284,10 @@ export class MultiplayerManager {
     }, 5000);
   }
 
-  // Interpolacja ruchu w pętli gry
   update(deltaTime) {
     for (const id in this.remotePlayers) {
       const p = this.remotePlayers[id];
-      // Lerp pozycji (wygładzanie)
       p.mesh.position.lerp(p.targetPos, deltaTime * 10);
-      // Slerp rotacji
       p.mesh.quaternion.slerp(p.targetRot, deltaTime * 10);
     }
   }
