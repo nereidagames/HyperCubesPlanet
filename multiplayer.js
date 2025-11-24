@@ -12,7 +12,7 @@ export class MultiplayerManager {
     this.coinManager = coinManager;
     
     this.textureLoader = new THREE.TextureLoader();
-    this.remotePlayers = {}; 
+    this.remotePlayers = {}; // { id: { mesh, targetPos, targetRot } }
     this.ws = null;
     this.myId = null;
     
@@ -25,8 +25,6 @@ export class MultiplayerManager {
 
   setScene(newScene) {
       this.scene = newScene;
-      // Przy zmianie sceny (np. wejście do świata) musimy przenieść lub odtworzyć graczy
-      // Najbezpieczniej wyczyścić i pozwolić serwerowi wysłać listę ponownie (co robi joinWorld)
       this.removeAllRemotePlayers(); 
   }
 
@@ -50,7 +48,7 @@ export class MultiplayerManager {
         const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
         
         this.ws.send(JSON.stringify({ 
-            type: 'playerReady', // Zmieniono na playerReady dla spójności z serwerem
+            type: 'playerReady', 
             skinData: skinData 
         }));
       };
@@ -83,6 +81,7 @@ export class MultiplayerManager {
               worldId: worldId 
           }));
 
+          // Czyścimy lokalnie od razu, żeby nie było duchów
           this.removeAllRemotePlayers();
           
           if (this.coinManager) {
@@ -94,9 +93,8 @@ export class MultiplayerManager {
   handleMessage(msg) {
     switch (msg.type) {
       case 'init':
-      case 'welcome': // Obsługa obu typów powitań
+      case 'welcome':
         this.myId = msg.id;
-        // Serwer może wysłać listę w 'init', ale zazwyczaj wysyła osobno 'playerList'
         if (msg.players) {
             this.removeAllRemotePlayers();
             msg.players.forEach(p => this.createRemotePlayer(p));
@@ -109,13 +107,12 @@ export class MultiplayerManager {
         break;
 
       case 'playerJoined':
+        // Dodajemy gracza (funkcja createRemotePlayer sama zadba o usunięcie duplikatów)
         this.createRemotePlayer(msg);
-        // POPRAWKA: Używamy msg.nickname (z serwera)
         const name = msg.nickname || msg.username || "Gracz";
         this.uiManager.addChatMessage(`<${name} dołączył>`);
         break;
 
-      // Obsługa ruchu (nazwa z serwera to 'playerMove', ale dla pewności obsługujemy też stare 'updateMove')
       case 'playerMove':
       case 'updateMove':
         this.updateRemotePlayerTarget(msg);
@@ -126,7 +123,7 @@ export class MultiplayerManager {
         break;
         
       case 'chat':
-      case 'chatMessage': // Serwer wysyła chatMessage
+      case 'chatMessage':
         this.uiManager.addChatMessage(`${msg.nickname}: ${msg.text}`);
         this.displayChatBubble(msg.id, msg.text);
         break;
@@ -170,7 +167,7 @@ export class MultiplayerManager {
               Math.abs(quaternion.x - this.lastSentQuaternion.x) > 0.01) {
               
               this.ws.send(JSON.stringify({
-                  type: 'playerMove', // Zmieniono na playerMove (tak jak w serwerze)
+                  type: 'playerMove', 
                   position: { x: position.x, y: position.y, z: position.z },
                   quaternion: { _x: quaternion.x, _y: quaternion.y, _z: quaternion.z, _w: quaternion.w }
               }));
@@ -192,7 +189,14 @@ export class MultiplayerManager {
   }
 
   createRemotePlayer(data) {
-    if (this.remotePlayers[data.id]) return; 
+    // 1. Zabezpieczenie: Nigdy nie twórz modelu dla samego siebie
+    if (data.id === this.myId) return; 
+
+    // 2. Zabezpieczenie: Jeśli gracz już istnieje, usuń go CAŁKOWICIE przed stworzeniem nowego.
+    // To eliminuje "duchy" (stare modele stojące w miejscu spawnu).
+    if (this.remotePlayers[data.id]) {
+        this.removeRemotePlayer(data.id);
+    }
 
     const group = new THREE.Group();
     createBaseCharacter(group);
@@ -219,12 +223,10 @@ export class MultiplayerManager {
         group.add(skinContainer);
     }
 
-    // --- POPRAWKA POZYCJI ---
-    // Serwer wysyła obiekt { position: {x,y,z}, quaternion: {_x,_y...} }
-    // Musimy to poprawnie rozpakować
+    // Rozpakowanie pozycji (obsługa obu formatów dla pewności)
     if (data.position) {
         group.position.set(data.position.x, data.position.y, data.position.z);
-    } else if (data.x !== undefined) { // Fallback dla starych wersji
+    } else if (data.x !== undefined) {
         group.position.set(data.x, data.y, data.z);
     }
 
@@ -234,6 +236,7 @@ export class MultiplayerManager {
         group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
     }
 
+    // Nickname
     const div = document.createElement('div');
     div.className = 'text-outline';
     div.textContent = data.nickname || data.username || "Gracz";
@@ -244,24 +247,19 @@ export class MultiplayerManager {
     label.position.set(0, 2.2, 0);
     group.add(label);
 
-    // Dodajemy do AKTUALNEJ sceny (zmienia się dynamicznie przez setScene)
     this.scene.add(group);
     
     this.remotePlayers[data.id] = {
         mesh: group,
-        // Inicjalizujemy cel interpolacji aktualną pozycją
         targetPos: group.position.clone(),
         targetRot: group.quaternion.clone(),
         chatBubble: null
     };
-    
-    console.log(`Utworzono gracza ${data.nickname} na pozycji`, group.position);
   }
 
   updateRemotePlayerTarget(data) {
       const p = this.remotePlayers[data.id];
       if (p) {
-          // POPRAWKA: Rozpakowanie obiektu position/quaternion z serwera
           if (data.position) {
               p.targetPos.set(data.position.x, data.position.y, data.position.z);
           }
@@ -274,15 +272,26 @@ export class MultiplayerManager {
   removeRemotePlayer(id) {
       const p = this.remotePlayers[id];
       if (p) {
+          // Usuń z aktualnej sceny
           this.scene.remove(p.mesh);
+          
+          // Wyczyść geometrię i materiały (opcjonalne, dla pamięci)
+          p.mesh.traverse(child => {
+              if (child.isMesh) {
+                  if(child.geometry) child.geometry.dispose();
+                  // Materiałów nie usuwamy bo są w cache
+              }
+          });
+          
           delete this.remotePlayers[id];
       }
   }
   
   removeAllRemotePlayers() {
-      for (const id in this.remotePlayers) {
-          this.scene.remove(this.remotePlayers[id].mesh);
-      }
+      // Iterujemy po wszystkich kluczach (ID graczy)
+      Object.keys(this.remotePlayers).forEach(id => {
+          this.removeRemotePlayer(id);
+      });
       this.remotePlayers = {};
   }
 
@@ -313,7 +322,7 @@ export class MultiplayerManager {
   update(deltaTime) {
     for (const id in this.remotePlayers) {
       const p = this.remotePlayers[id];
-      // Płynna interpolacja do celu
+      // Płynna interpolacja
       p.mesh.position.lerp(p.targetPos, deltaTime * 15);
       p.mesh.quaternion.slerp(p.targetRot, deltaTime * 15);
     }
