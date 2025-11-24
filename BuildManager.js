@@ -340,13 +340,12 @@ export class BuildManager {
     }
   }
 
-  // --- GENEROWANIE MINIATURKI ŚWIATA ---
   generateThumbnail() {
-    const width = 200; // Trochę większe dla świata
+    const width = 200; 
     const height = 150;
     const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
     thumbnailRenderer.setSize(width, height);
-    thumbnailRenderer.setClearColor(0x87CEEB); // Błękitne niebo
+    thumbnailRenderer.setClearColor(0x87CEEB); 
     
     const thumbnailScene = new THREE.Scene();
     const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -355,14 +354,12 @@ export class BuildManager {
     dirLight.position.set(50, 50, 50);
     thumbnailScene.add(dirLight);
 
-    // Dodaj podłogę do zdjęcia
     const floorGeo = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
     const floorMat = new THREE.MeshLambertMaterial({ color: 0x559022 });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.position.y = -0.5;
     thumbnailScene.add(floor);
 
-    // Kopiuj bloki
     if (this.placedBlocks.length > 0) {
         this.placedBlocks.forEach(block => {
             const clone = block.clone();
@@ -370,7 +367,6 @@ export class BuildManager {
         });
     }
 
-    // Ustaw kamerę z lotu ptaka
     const thumbnailCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     const distance = this.platformSize * 1.5; 
     thumbnailCamera.position.set(distance, distance * 0.8, distance);
@@ -384,11 +380,18 @@ export class BuildManager {
     return dataURL;
   }
 
+  // ASYNCHRONICZNY ZAPIS
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
       
+      // Zmień przycisk na "Zapisywanie..."
+      const saveBtn = document.getElementById('build-save-button');
+      const originalText = saveBtn.textContent;
+      saveBtn.textContent = "Zapisywanie...";
+      saveBtn.style.cursor = 'wait';
+
       const thumbnail = this.generateThumbnail();
 
       const worldData = {
@@ -402,9 +405,11 @@ export class BuildManager {
         }))
       };
       
-      // Zapis na serwerze
       const success = await WorldStorage.saveWorld(worldName, worldData);
       
+      saveBtn.textContent = originalText;
+      saveBtn.style.cursor = 'pointer';
+
       if (success) {
         alert(`Świat "${worldName}" został pomyślnie zapisany na serwerze!`);
         this.game.switchToMainMenu();
