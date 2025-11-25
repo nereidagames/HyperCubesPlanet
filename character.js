@@ -1,142 +1,458 @@
 import * as THREE from 'three';
-import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import nipplejs from 'nipplejs';
 
-// Funkcja tworzy model nóg.
-// POPRAWKA: Przesuwamy elementy w dół o 0.5 (połowa wysokości postaci), 
-// aby środek modelu (pivot) pokrywał się ze środkiem fizycznego hitboxa.
-export function createBaseCharacter(parentContainer) {
-    const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
-    const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+export class PlayerController {
+  constructor(player, collidableObjects, options = {}) {
+    this.player = player;
+    this.collidableObjects = collidableObjects;
+    this.moveSpeed = options.moveSpeed || 8;
+    this.jumpForce = options.jumpForce || 18;
+    this.gravity = options.gravity || 50;
+    this.groundRestingY = options.groundRestingY || 0.1;
 
-    const legWidth = 0.25;
-    const legHeight = 0.8;
-    const legDepth = 0.25;
-    const bootHeight = 0.2;
-    const bootDepth = 0.3;
-    const legSeparation = 0.15;
+    // Wymiary gracza (hitbox)
+    this.playerDimensions = new THREE.Vector3(0.6, 1.0, 0.6);
+
+    this.velocity = new THREE.Vector3();
+    this.isOnGround = true;
     
-    // Całkowita wysokość wizualna to ok 1.0. Przesuwamy wszystko w dół o 0.5.
-    const verticalOffset = -0.5; 
-
-    const bootCenterY = (bootHeight / 2) + verticalOffset;
-    const legCenterY = (bootHeight + legHeight / 2) + verticalOffset;
-
-    // Lewa noga i but
-    const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(legWidth, legHeight, legDepth), legMaterial);
-    leftLeg.position.set(-legSeparation, legCenterY, 0);
-    parentContainer.add(leftLeg);
-
-    const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(legWidth, bootHeight, bootDepth), bootMaterial);
-    leftBoot.position.set(-legSeparation, bootCenterY, 0.025);
-    parentContainer.add(leftBoot);
-
-    // Prawa noga i but
-    const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(legWidth, legHeight, legDepth), legMaterial);
-    rightLeg.position.set(legSeparation, legCenterY, 0);
-    parentContainer.add(rightLeg);
-
-    const rightBoot = new THREE.Mesh(new THREE.BoxGeometry(legWidth, bootHeight, bootDepth), bootMaterial);
-    rightBoot.position.set(legSeparation, bootCenterY, 0.025);
-    parentContainer.add(rightBoot);
-}
-
-export class CharacterManager {
-  constructor(scene) {
-    this.scene = scene;
-    this.character = null;
-    this.shadow = null;
-    this.skinContainer = new THREE.Group();
-    this.textureLoader = new THREE.TextureLoader();
-    this.materialsCache = {};
-  }
-  
-  loadCharacter() {
-    if (this.character) {
-        this.scene.remove(this.character);
-    }
-    this.character = new THREE.Group();
+    this.maxJumps = 2;
+    this.jumpsRemaining = this.maxJumps;
     
-    createBaseCharacter(this.character);
-    
-    this.skinContainer.scale.setScalar(0.125);
-    
-    // POPRAWKA: Skin musi być teraz niżej, bo cały model został obniżony.
-    // Nogi kończą się na Y = 0.5 (względem środka), więc skin zaczyna się tam.
-    this.skinContainer.position.y = 0.5; 
-    
-    this.character.add(this.skinContainer);
-    
-    this.character.position.set(0, 5, 0); 
-    this.scene.add(this.character);
-    this.setupShadow();
-    console.log("Postać gracza załadowana (zcentrowana).");
-  }
-  
-  applySkin(skinData) {
-    while(this.skinContainer.children.length > 0){ 
-        this.skinContainer.remove(this.skinContainer.children[0]); 
-    }
-    if (!skinData || !Array.isArray(skinData) || skinData.length === 0) {
-        return;
-    }
-    
-    skinData.forEach(blockData => {
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        let material = this.materialsCache[blockData.texturePath];
-        if (!material) {
-            const texture = this.textureLoader.load(blockData.texturePath);
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            material = new THREE.MeshLambertMaterial({ map: texture });
-            this.materialsCache[blockData.texturePath] = material;
-        }
-        const block = new THREE.Mesh(geometry, material);
-        block.position.set(blockData.x, blockData.y, blockData.z);
-        block.castShadow = true;
-        block.receiveShadow = true;
-        this.skinContainer.add(block);
-    });
+    this.keys = {};
+    this.isMobile = false;
+    this.canJump = true;
+    this.joystickDirection = new THREE.Vector2();
+    this.joystick = null;
+
+    // Cache dla obiektów fizycznych (unikamy tworzenia ich w pętli renderowania)
+    this.playerBox = new THREE.Box3();
+    this.objectBox = new THREE.Box3();
   }
 
-  setupShadow() {
-      if (this.shadow) this.scene.remove(this.shadow);
-      const shadowGeometry = new THREE.CircleGeometry(0.4, 32);
-      const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
-      this.shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
-      this.shadow.rotation.x = -Math.PI / 2;
-      this.shadow.position.y = 0.01; 
-      this.scene.add(this.shadow);
-  }
-
-  update(deltaTime) {
-    if (this.character && this.shadow) {
-      this.shadow.position.x = this.character.position.x;
-      this.shadow.position.z = this.character.position.z;
-      // Cień zawsze na poziomie podłogi, niezależnie od skoku
-      // Zakładamy, że podłoga jest na ~0.1
-      this.shadow.position.y = 0.11;
-    }
-  }
-  
-  displayChatBubble(message) {
-    if (!this.character) return;
-    if (this.character.chatBubble) this.character.remove(this.character.chatBubble);
+  setIsMobile(isMobile) {
+    this.isMobile = isMobile;
     
-    const div = document.createElement('div');
-    div.className = 'chat-bubble';
-    div.textContent = message;
-    div.style.cssText = `background-color: rgba(255, 255, 255, 0.9); color: black; padding: 8px 12px; border-radius: 15px; font-size: 13px; max-width: 150px; text-align: center; pointer-events: none;`;
-    const chatBubble = new CSS2DObject(div);
-    // Dymek nad głową (teraz niżej, bo postać jest niższa fizycznie)
-    chatBubble.position.set(0, 1.5, 0); 
-    this.character.add(chatBubble);
-    this.character.chatBubble = chatBubble;
+    const mobileControls = document.getElementById('mobile-game-controls');
+    const joystickZone = document.getElementById('joystick-zone');
+    if (mobileControls) mobileControls.style.display = isMobile ? 'block' : 'none';
+    if (joystickZone) joystickZone.style.display = isMobile ? 'block' : 'none';
 
-    setTimeout(() => {
-      if (this.character && this.character.chatBubble === chatBubble) {
-        this.character.remove(chatBubble);
-        this.character.chatBubble = null;
+    this.setupInput();
+  }
+
+  setupInput() {
+    this.cleanupInput();
+
+    this.handleKeyDown = (e) => {
+      this.keys[e.code] = true;
+      if (e.code === 'Space' && this.canJump) {
+        this.jump();
+        this.canJump = false; 
       }
-    }, 5000);
+    };
+
+    this.handleKeyUp = (e) => {
+      this.keys[e.code] = false;
+      if (e.code === 'Space') {
+        this.canJump = true;
+      }
+    };
+
+    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
+    
+    if (this.isMobile) {
+      this.setupMobileControls();
+    }
+  }
+  
+  cleanupInput() {
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    const jumpButton = document.getElementById('jump-button');
+    if (jumpButton && this.handleMobileJumpStart) {
+        jumpButton.removeEventListener('touchstart', this.handleMobileJumpStart);
+        jumpButton.removeEventListener('touchend', this.handleMobileJumpEnd);
+    }
+    if (this.joystick) {
+        this.joystick.destroy();
+        this.joystick = null;
+    }
+  }
+  
+  jump() {
+    if (this.jumpsRemaining > 0) {
+        this.velocity.y = this.jumpForce;
+        this.jumpsRemaining--;
+        this.isOnGround = false;
+    }
+  }
+  
+  update(deltaTime, cameraRotation) {
+    // Grawitacja
+    if (!this.isOnGround) {
+      this.velocity.y -= this.gravity * deltaTime;
+    }
+
+    // Obliczanie wektora ruchu
+    const moveDirection = new THREE.Vector3();
+    if (!this.isMobile) {
+        const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
+        const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
+        if (this.keys['KeyW']) moveDirection.add(forward);
+        if (this.keys['KeyS']) moveDirection.sub(forward);
+        if (this.keys['KeyA']) moveDirection.sub(right);
+        if (this.keys['KeyD']) moveDirection.add(right);
+    } else {
+        moveDirection.set(this.joystickDirection.x, 0, -this.joystickDirection.y);
+        moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
+    }
+
+    // Obracanie modelu w stronę ruchu
+    if (moveDirection.length() > 0) {
+      moveDirection.normalize();
+      const angle = Math.atan2(moveDirection.x, moveDirection.z);
+      this.player.rotation.y = angle;
+    }
+    this.velocity.x = moveDirection.x * this.moveSpeed;
+    this.velocity.z = moveDirection.z * this.moveSpeed;
+
+    this.applyMovementAndCollisions(deltaTime);
+  }
+
+  // --- POPRAWIONA DETEKCJA KOLIZJI (Z FILTROWANIEM) ---
+  applyMovementAndCollisions(deltaTime) {
+    const halfHeight = this.playerDimensions.y / 2;
+    const halfWidth = this.playerDimensions.x / 2;
+    const halfDepth = this.playerDimensions.z / 2;
+    const epsilon = 0.001;
+
+    // KROK 1: Filtrowanie obiektów (Spatial Partitioning)
+    // Zamiast sprawdzać 5000 bloków, sprawdzamy tylko te w pobliżu gracza + duże obiekty (podłoga/ściany)
+    
+    const playerPos = this.player.position;
+    const candidates = [];
+    const checkRange = 3.0; // Sprawdzamy bloki w promieniu 3 metrów
+    const verticalRange = 4.0; // Trochę więcej w pionie dla spadania
+
+    for (let i = 0; i < this.collidableObjects.length; i++) {
+        const obj = this.collidableObjects[i];
+
+        // Sprawdź, czy obiekt jest "duży" (np. podłoga, ściany graniczne)
+        let isLarge = false;
+        if (obj.geometry) {
+            // PlaneGeometry to zazwyczaj podłoga
+            if (obj.geometry.type === 'PlaneGeometry') {
+                isLarge = true;
+            } 
+            // Jeśli obiekt ma parametry (np. BoxGeometry) i jest większy niż standardowy blok 1x1
+            else if (obj.geometry.parameters) {
+                if (obj.geometry.parameters.width > 1.1 || 
+                    obj.geometry.parameters.height > 1.1 || 
+                    obj.geometry.parameters.depth > 1.1) {
+                    isLarge = true;
+                }
+            }
+        }
+
+        if (isLarge) {
+            // Duże obiekty sprawdzamy zawsze
+            candidates.push(obj);
+        } else {
+            // Małe bloki (1x1x1) filtrujemy po dystansie
+            const dx = Math.abs(obj.position.x - playerPos.x);
+            const dz = Math.abs(obj.position.z - playerPos.z);
+            const dy = Math.abs(obj.position.y - playerPos.y);
+
+            if (dx < checkRange && dz < checkRange && dy < verticalRange) {
+                candidates.push(obj);
+            }
+        }
+    }
+
+    let landedOnBlock = false;
+
+    // --- Kolizja pionowa (Y) ---
+    const verticalMovement = this.velocity.y * deltaTime;
+    this.player.position.y += verticalMovement;
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+
+    for (const object of candidates) {
+        this.objectBox.setFromObject(object);
+        if (this.playerBox.intersectsBox(this.objectBox)) {
+            if (verticalMovement < 0) { // Spadanie
+                this.player.position.y = this.objectBox.max.y + halfHeight;
+                this.velocity.y = 0;
+                this.isOnGround = true;
+                this.jumpsRemaining = this.maxJumps;
+                this.canJump = true;
+                landedOnBlock = true;
+            } else if (verticalMovement > 0) { // Skok w sufit
+                this.player.position.y = this.objectBox.min.y - halfHeight - epsilon;
+                this.velocity.y = 0;
+            }
+        }
+    }
+    
+    // Aktualizacja Boxa po ruchu Y
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+
+    // --- Kolizja pozioma (X) ---
+    const horizontalMovementX = this.velocity.x * deltaTime;
+    this.player.position.x += horizontalMovementX;
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+
+    for (const object of candidates) {
+        this.objectBox.setFromObject(object);
+
+        // Ignoruj podłogę przy kolizji bocznej, jeśli jesteśmy nad nią
+        if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
+
+        if (this.playerBox.intersectsBox(this.objectBox)) {
+            if (horizontalMovementX > 0) {
+                this.player.position.x = this.objectBox.min.x - halfWidth - epsilon;
+            } else if (horizontalMovementX < 0) {
+                this.player.position.x = this.objectBox.max.x + halfWidth + epsilon;
+            }
+            this.velocity.x = 0;
+            break; 
+        }
+    }
+
+    // --- Kolizja pozioma (Z) ---
+    const horizontalMovementZ = this.velocity.z * deltaTime;
+    this.player.position.z += horizontalMovementZ;
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+
+    for (const object of candidates) {
+        this.objectBox.setFromObject(object);
+
+        if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
+
+        if (this.playerBox.intersectsBox(this.objectBox)) {
+            if (horizontalMovementZ > 0) {
+                this.player.position.z = this.objectBox.min.z - halfDepth - epsilon;
+            } else if (horizontalMovementZ < 0) {
+                this.player.position.z = this.objectBox.max.z + halfDepth + epsilon;
+            }
+            this.velocity.z = 0;
+            break;
+        }
+    }
+
+    // --- Logika podłogi / spadania ---
+    // Sprawdzenie czy jesteśmy poniżej "podłogi świata" (bezpiecznik)
+    if (this.player.position.y <= this.groundRestingY + halfHeight) {
+        if (!landedOnBlock) {
+            this.player.position.y = this.groundRestingY + halfHeight;
+            if (!this.isOnGround) {
+                this.velocity.y = 0;
+                this.isOnGround = true;
+                this.jumpsRemaining = this.maxJumps;
+                this.canJump = true;
+            }
+        }
+    } else {
+        if (!landedOnBlock) {
+            this.isOnGround = false;
+        }
+    }
+  }
+  
+  destroy() { this.cleanupInput(); }
+
+  setupMobileControls() {
+    const jumpButton = document.getElementById('jump-button');
+    if (jumpButton) {
+        this.handleMobileJumpStart = (e) => {
+            e.preventDefault();
+            if (this.canJump) {
+                this.jump();
+                this.canJump = false;
+            }
+        };
+        this.handleMobileJumpEnd = (e) => {
+            e.preventDefault();
+            this.canJump = true;
+        };
+        jumpButton.addEventListener('touchstart', this.handleMobileJumpStart, { passive: false });
+        jumpButton.addEventListener('touchend', this.handleMobileJumpEnd, { passive: false });
+    }
+
+    const joystickZone = document.getElementById('joystick-zone');
+    if (joystickZone) {
+        const options = {
+            zone: joystickZone,
+            mode: 'static',
+            position: { left: '50%', top: '50%' },
+            color: 'white',
+            size: 100,
+            dynamicPage: true 
+        };
+        this.joystick = nipplejs.create(options);
+
+        this.joystick.on('move', (evt, data) => {
+            if (data.vector) {
+                this.joystickDirection.set(data.vector.x, data.vector.y);
+            }
+        });
+
+        this.joystick.on('end', () => {
+            this.joystickDirection.set(0, 0);
+        });
+    }
   }
 }
+
+export class ThirdPersonCameraController {
+    constructor(camera, target, domElement, options = {}) {
+        this.camera = camera;
+        this.target = target;
+        this.domElement = domElement;
+        this.distance = options.distance || 5;
+        this.height = options.height || 2;
+        this.rotationSpeed = options.rotationSpeed || 0.005;
+        this.rotation = 0;
+        this.isDragging = false;
+        this.mousePosition = { x: 0, y: 0 };
+        this.enabled = true;
+        this.pitch = 0.5;
+        this.minPitch = -Math.PI / 2 + 0.001;
+        this.maxPitch = Math.PI / 2 - 0.001;
+        this.floorY = options.floorY || 0;
+        this.isMobile = false;
+        this.cameraTouchId = null;
+        this.setupControls();
+    }
+
+    setIsMobile(isMobile) {
+        this.isMobile = isMobile;
+        this.cleanupControls();
+        this.setupControls();
+    }
+
+    setupControls() {
+        this.handleMouseDown = (e) => {
+            if (!this.enabled || e.target.closest('.ui-element')) return;
+            this.isDragging = true;
+            this.mousePosition = { x: e.clientX, y: e.clientY };
+        };
+
+        this.handleMouseMove = (e) => {
+            if (!this.enabled || !this.isDragging) return;
+            const clientX = e.clientX;
+            const clientY = e.clientY;
+            const deltaX = clientX - this.mousePosition.x;
+            const deltaY = clientY - this.mousePosition.y;
+            const sensitivity = this.rotationSpeed;
+            this.rotation -= deltaX * sensitivity;
+            this.pitch += deltaY * sensitivity;
+            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+            this.mousePosition = { x: clientX, y: clientY };
+        };
+
+        this.handleMouseUp = () => {
+            this.isDragging = false;
+        };
+
+        this.handleTouchStart = (e) => {
+            if (!this.enabled) return;
+            for (const touch of e.changedTouches) {
+                if (this.cameraTouchId === null && !touch.target.closest('#joystick-zone') && !touch.target.closest('#jump-button') && !touch.target.closest('.ui-element')) {
+                    this.cameraTouchId = touch.identifier;
+                    this.isDragging = true;
+                    this.mousePosition = { x: touch.clientX, y: touch.clientY };
+                    break;
+                }
+            }
+        };
+
+        this.handleTouchMove = (e) => {
+            if (!this.enabled || !this.isDragging) return;
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === this.cameraTouchId) {
+                    const clientX = touch.clientX;
+                    const clientY = touch.clientY;
+                    const deltaX = clientX - this.mousePosition.x;
+                    const deltaY = clientY - this.mousePosition.y;
+                    const sensitivity = this.rotationSpeed * 2.5;
+                    this.rotation -= deltaX * sensitivity;
+                    this.pitch += deltaY * sensitivity;
+                    this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+                    this.mousePosition = { x: clientX, y: clientY };
+                    break;
+                }
+            }
+        };
+
+        this.handleTouchEnd = (e) => {
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === this.cameraTouchId) {
+                    this.cameraTouchId = null;
+                    this.isDragging = false;
+                    break;
+                }
+            }
+        };
+
+        this.domElement.addEventListener('mousedown', this.handleMouseDown);
+        document.addEventListener('mousemove', this.handleMouseMove);
+        document.addEventListener('mouseup', this.handleMouseUp);
+        this.domElement.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+        document.addEventListener('touchmove', this.handleTouchMove, { passive: true });
+        document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+    }
+
+    cleanupControls() {
+        this.domElement.removeEventListener('mousedown', this.handleMouseDown);
+        document.removeEventListener('mousemove', this.handleMouseMove);
+        document.removeEventListener('mouseup', this.handleMouseUp);
+        this.domElement.removeEventListener('touchstart', this.handleTouchStart);
+        document.removeEventListener('touchmove', this.handleTouchMove);
+        document.removeEventListener('touchend', this.handleTouchEnd);
+    }
+
+    update() {
+        if (!this.enabled || !this.target) return 0;
+        
+        let currentDistance = this.distance;
+        const targetPosition = new THREE.Vector3(this.target.position.x, this.target.position.y + 1, this.target.position.z);
+        
+        const horizontalDistance = currentDistance * Math.cos(this.pitch);
+        const verticalDistance = currentDistance * Math.sin(this.pitch);
+        
+        const offset = new THREE.Vector3(
+            Math.sin(this.rotation) * horizontalDistance, 
+            verticalDistance, 
+            Math.cos(this.rotation) * horizontalDistance
+        );
+        
+        const idealCameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
+
+        const cameraFloorClearance = 0.5;
+        if (idealCameraPosition.y < this.floorY + cameraFloorClearance) {
+            const newVerticalDistance = this.floorY + cameraFloorClearance - targetPosition.y;
+            currentDistance = newVerticalDistance / Math.sin(this.pitch);
+            currentDistance = Math.max(currentDistance, 1.5);
+            
+            const newHorizontalDistance = currentDistance * Math.cos(this.pitch);
+            offset.set(
+                Math.sin(this.rotation) * newHorizontalDistance, 
+                newVerticalDistance, 
+                Math.cos(this.rotation) * newHorizontalDistance
+            );
+        }
+        
+        this.camera.position.copy(targetPosition).add(offset);
+        this.camera.lookAt(targetPosition);
+        
+        return this.rotation;
+    }
+
+    destroy() {
+        this.cleanupControls();
+    }
+}
+
+export class FirstPersonCameraController {}
