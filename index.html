@@ -1,385 +1,493 @@
 <!DOCTYPE html>
+
 <html lang="pl">
-  <head>
-    <meta charset="UTF-8" />
-    <!-- Zapobieganie cache'owaniu (dla deweloperki) -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
+<head>
+<meta charset="UTF-8" />
+<!-- Zapobieganie cache'owaniu -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+<title>HyperCubesPlanet</title>
+
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2c3e50">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/favicon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://esm.sh/three@0.160.0?dev",
+      "three/": "https://esm.sh/three@0.160.0&dev/",
+      "nipplejs": "https://esm.sh/nipplejs",
+      "three/addons/libs/stats.module.js": "https://esm.sh/three@0.160.0/examples/jsm/libs/stats.module.js",
+      "three/examples/jsm/renderers/CSS2DRenderer.js": "https://esm.sh/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js",
+      "three/addons/renderers/CSS2DRenderer.js": "https://esm.sh/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js",
+      "three/addons/utils/BufferGeometryUtils.js": "https://esm.sh/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js"
+    }
+  }
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .text-outline { text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000; }
+
+  /* EKRAN ŁADOWANIA */
+  #loading-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; transition: opacity 0.5s ease-out; overflow: hidden; }
+  .loading-content { display: flex; flex-direction: column; align-items: center; gap: 40px; z-index: 2; }
+  #loading-logo { width: 50vw; max-width: 600px; height: auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3)); animation: logo-breath 4s ease-in-out infinite; }
+  #progress-bar { width: 80vw; max-width: 500px; height: 35px; background-color: rgba(0, 0, 0, 0.2); border: 3px solid white; border-radius: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; position: relative; }
+  #progress-bar-fill { width: 0%; height: 100%; background: linear-gradient(to right, #2ed573, #7bed9f); border-radius: 20px; transition: width 0.3s ease-out; }
+  #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 16px; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); white-space: nowrap; }
+  @keyframes logo-breath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  
+  /* CHMURY */
+  .clouds-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1; }
+  .cloud { position: absolute; background: white; border-radius: 50%; opacity: 0.8; filter: blur(2px); animation: move-cloud linear infinite; }
+  .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
+  .cloud1 { width: 150px; height: 150px; top: 10%; animation-duration: 40s; } .cloud1::before { width: 100px; height: 100px; top: -50px; left: 20px; } .cloud1::after { width: 120px; height: 120px; top: -30px; right: 10px; }
+  .cloud2 { width: 200px; height: 200px; top: 30%; animation-duration: 30s; animation-delay: -5s; } .cloud2::before { width: 120px; height: 120px; top: -80px; left: 40px; } .cloud2::after { width: 150px; height: 150px; top: -50px; right: 20px; }
+  .cloud3 { width: 120px; height: 120px; top: 60%; animation-duration: 50s; animation-delay: -15s; } .cloud3::before { width: 80px; height: 80px; top: -40px; left: 10px; } .cloud3::after { width: 90px; height: 90px; top: -20px; right: 5px; }
+  .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
+  @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
+
+  /* EKRAN LOGOWANIA - POPRAWIONY */
+  #auth-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99998; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
+  
+  .auth-container { 
+      background: rgba(0, 0, 0, 0.6); 
+      padding: 40px 30px; 
+      border-radius: 25px; 
+      border: 4px solid white; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+      text-align: center; 
+      width: 90%; 
+      max-width: 450px; 
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+  }
+
+  /* Styl dla widoku wyboru logowanie/rejestracja */
+  #welcome-view {
+      display: flex;
+      flex-direction: column; /* Ustawienie w pionie */
+      gap: 20px; /* Odstęp między przyciskami */
+      width: 100%;
+  }
+
+  /* Style przycisków autoryzacji */
+  #welcome-view button, .auth-form button {
+      appearance: none; /* Usuwa domyślne style systemowe */
+      -webkit-appearance: none;
+      font-family: 'Titan One', cursive;
+      padding: 15px 0;
+      border: 3px solid white;
+      border-radius: 12px;
+      font-size: 20px;
+      cursor: pointer;
+      color: white;
+      width: 100%; /* Pełna szerokość */
+      display: block;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      text-shadow: 1px 1px 0 #000;
+  }
+
+  #welcome-view button:active, .auth-form button:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 rgba(0,0,0,0.3);
+  }
+
+  .btn-primary { background-color: #2ed573; }
+  .btn-secondary { background-color: #3498db; }
+  .btn-danger { background-color: #e74c3c; }
+  .btn-back { background-color: #e74c3c; margin-top: 10px; }
+
+  .auth-form { display: none; flex-direction: column; gap: 15px; width: 100%; }
+  .auth-form input { 
+      font-family: 'Titan One', cursive; 
+      padding: 15px; 
+      border-radius: 12px; 
+      border: 3px solid white; 
+      text-align: center; 
+      font-size: 18px; 
+      background-color: rgba(255, 255, 255, 0.95); 
+      width: 100%;
+      color: #333;
+  }
+  .auth-form input::placeholder { color: #999; }
+  
+  #auth-message { margin-top: 10px; color: #ffdd59; font-size: 15px; min-height: 20px; text-shadow: 1px 1px 2px black; }
+  
+  /* GŁÓWNY KONTENER GRY */
+  #gameContainer { position: relative; width: 100vw; height: 100vh; }
+  canvas { display: block; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; display: none; }
+  .ui-element { pointer-events: auto; }
+  
+  /* GÓRNY PASEK */
+  .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 60px; background: rgba(0, 0, 0, 0.9); display: flex; align-items: center; padding: 5px 15px; gap: 15px; border-radius: 0; }
+  .top-bar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+  .player-avatar { width: 45px; height: 45px; background-color: #4a90e2; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; background-size: cover; background-position: center; }
+  .player-name { color: white; font-size: 10px; }
+  
+  /* Pasek Aktywnych Znajomych */
+  #active-friends-container { display: flex; gap: 10px; margin-left: 20px; overflow-x: auto; max-width: 40vw; align-items: center; height: 100%; padding-right: 10px; scrollbar-width: none; }
+  #active-friends-container::-webkit-scrollbar { display: none; }
+  .active-friend-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; flex-shrink: 0; transition: transform 0.1s; }
+  .active-friend-item:hover { transform: scale(1.1); }
+  .active-friend-avatar { width: 40px; height: 40px; background-color: #333; border: 2px solid #2ed573; border-radius: 8px; background-size: cover; background-position: center; }
+  .active-friend-name { color: #2ed573; font-size: 9px; margin-top: 2px; text-shadow: 1px 1px 0 #000; }
+
+  /* CZAT */
+  .chat-container { position: absolute; top: 70px; left: 10px; display: flex; align-items: flex-start; gap: 5px; }
+  .chat-area { position: static; width: 300px; height: 100px; background: rgba(255, 255, 255, 0.4); border-radius: 10px; padding: 8px; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); overflow-y: auto; }
+  .chat-area::-webkit-scrollbar { width: 5px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.5); border-radius: 10px; }
+  .chat-message { color: white; font-size: 13px; margin: 2px 0; }
+  #chat-toggle-button { width: 35px; height: 35px; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 20px; }
+  #chat-form { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
+  #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: 'Titan One', cursive; }
+  #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: 'Titan One', cursive; }
+  
+  /* UI PO PRAWEJ */
+  .right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 15px; align-items: flex-end; }
+  .game-buttons { display: flex; gap: 15px; align-items: center; }
+  .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
+  .game-btn:active { transform: scale(0.95); }
+  .btn-zagraj { background-image: url('icons/icon-play.png'); background-size: 110%; } 
+  .btn-buduj { background-image: url('icons/icon-build.png'); } 
+  .btn-kup { background-image: url('icons/icon-shop.png'); } 
+  .btn-odkryj { background-image: url('icons/icon-discover.png'); } 
+  .btn-wiecej { background-image: url('icons/icon-more.png'); }
+  .btn-download { background-image: url('icons/icon-download.png'); }
+  
+  /* LICZNIK MONET */
+  #coin-counter { position: relative; display: flex; align-items: center; height: 50px; width: 170px; padding: 0; border: none; background: none; box-shadow: none; }
+  .coin-bar-background { position: absolute; left: 25px; right: 25px; top: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
+  .coin-icon { position: absolute; left: 0; width: 50px; height: 50px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; z-index: 1; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
+  #coin-value { color: #ffd700; font-size: 22px; z-index: 1; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000; }
+  #coin-add-btn { position: absolute; right: 0; width: 50px; height: 50px; background-color: #74b9ff; border: 2px solid white; border-radius: 15px; display: flex; justify-content: center; align-items: center; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s ease; padding-bottom: 4px; }
+  #coin-add-btn:active { transform: scale(0.95); }
+
+  /* STEROWANIE MOBILNE */
+  #mobile-game-controls { display: none; pointer-events: auto; }
+  #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background-color: transparent; background-image: url('icons/icon-jump.png'); background-size: contain; background-position: center; background-repeat: no-repeat; border: none; cursor: pointer; z-index: 1001; border-radius: 0; box-shadow: none; display: block; }
+  #jump-button:active { transform: scale(0.95); }
+  #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
+  
+  /* PANEL BUDOWANIA (UI) */
+  #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; display: none; }
+  
+  .build-ui-button { 
+      position: absolute; 
+      pointer-events: auto; 
+      cursor: pointer; 
+      background-color: #2c75ff; 
+      border: 3px solid white; 
+      border-radius: 10px; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      font-size: 24px; 
+      box-shadow: 0 4px 8px #0004; 
+      transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; 
+      color: white;
+      text-shadow: 1.5px 1.5px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+      font-family: 'Titan One', cursive;
+  }
+  .build-ui-button:hover { background-color: #4c8cff; } 
+  .build-ui-button:active { transform: scale(0.95); }
+  
+  #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
+  #build-exit-button:hover { background-color: transparent; filter: brightness(1.2); }
+  #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
+  #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 24px; }
+  #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
+  
+  #build-tools-right { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
+  .tool-btn { 
+      width: 60px; height: 60px; 
+      background-color: rgba(0, 0, 0, 0.6); 
+      border: 3px solid white; 
+      border-radius: 10px; 
+      cursor: pointer; 
+      display: flex; justify-content: center; align-items: center; 
+      font-size: 30px; color: white; 
+      transition: transform 0.1s, background-color 0.1s; 
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+  .tool-btn.active { background-color: #2ed573; transform: scale(1.1); border-color: #ffd700; }
+  .tool-btn:active { transform: scale(0.9); }
+
+  #block-selection-panel, #prefab-selection-panel, #part-selection-panel { position: absolute; bottom: 20px; left: 90px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-direction: column; gap: 10px; width: 250px; pointer-events: auto; max-height: 200px; overflow-y: auto; }
+  .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; color: white; } 
+  .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
+  .prefab-item, .part-item { width: 100%; height: auto; padding: 10px; text-align: center; }
+
+  /* MODALE */
+  .panel-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 20px; }
+  .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
+  .panel-content h2 { margin-bottom: 20px; } 
+  .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; color: white; }
+  .panel-item:hover { background: #4c8cff; } 
+  .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; color: white; }
+  
+  .skin-list-item { display: flex; align-items: center; transition: transform 0.1s ease, background-color 0.2s ease; color: white; }
+  .skin-list-item:active { transform: scale(0.98); }
+
+  /* PRZYJACIELE */
+  #friends-panel .panel-content { width: 80vw; max-width: 800px; height: 70vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .friends-tabs { display: flex; width: 100%; background: rgba(0,0,0,0.5); border-bottom: 2px solid white; }
+  .friends-tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-size: 18px; transition: background 0.2s; color: white; }
+  .friends-tab.active { background: #3498db; color: white; }
+  .friends-tab:hover { background: rgba(255,255,255,0.1); }
+  
+  .friends-view { flex: 1; width: 100%; padding: 20px; overflow-y: auto; display: none; flex-direction: column; gap: 10px; }
+  .friends-view.active { display: flex; }
+  
+  .friend-item { display: flex; align-items: center; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; gap: 15px; color: white; }
+  .friend-avatar { width: 50px; height: 50px; background: #000; border-radius: 50%; background-size: cover; background-position: center; border: 2px solid white; flex-shrink: 0; }
+  .friend-info { flex: 1; }
+  .friend-actions { display: flex; gap: 10px; }
+  .action-btn { padding: 8px 15px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Titan One', cursive; font-size: 14px; color: white; }
+  .btn-accept { background: #2ed573; }
+  .btn-invite { background: #3498db; }
+  
+  #friends-search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+  #friends-search-input { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid white; font-family: 'Titan One', cursive; }
+  #friends-search-btn { padding: 10px 20px; border-radius: 8px; background: #f1c40f; border: none; cursor: pointer; font-family: 'Titan One', cursive; }
+
+  /* POCZTA */
+  #mail-panel .panel-content { flex-direction: row; width: 80vw; max-width: 1000px; height: 70vh; padding: 15px; align-items: flex-start; }
+  .mail-sidebar { width: 30%; height: 100%; border-right: 2px solid rgba(255, 255, 255, 0.3); display: flex; flex-direction: column; }
+  .mail-sidebar-header { padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
+  .mail-sidebar-header h3 { font-size: 20px; }
+  #new-mail-btn { background: #2ed573; border-radius: 8px; width: 35px; height: 35px; font-size: 28px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+  .mail-conversations { flex-grow: 1; overflow-y: auto; padding: 5px; }
+  .conversation-item { padding: 15px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; background-color: rgba(255, 255, 255, 0.1); transition: background-color 0.2s ease; color: white; }
+  .conversation-item:hover, .conversation-item.active { background-color: rgba(255, 255, 255, 0.3); }
+  .mail-chat-view { width: 70%; height: 100%; display: flex; flex-direction: column; padding-left: 15px; }
+  #mail-chat-header { padding-bottom: 10px; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
+  .mail-chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px 0; display: flex; flex-direction: column; }
+  .mail-message { max-width: 70%; padding: 10px 15px; border-radius: 15px; margin-bottom: 10px; word-wrap: break-word; }
+  .mail-message.sent { background-color: #3498db; align-self: flex-end; border-bottom-right-radius: 3px; }
+  .mail-message.received { background-color: #95a5a6; color: #333; align-self: flex-start; border-bottom-left-radius: 3px; }
+  #mail-reply-form { display: flex; gap: 10px; padding-top: 10px; }
+  #mail-reply-input { flex-grow: 1; font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; font-size: 16px; }
+  #mail-reply-btn { font-family: 'Titan One', cursive; padding: 0 20px; border: none; border-radius: 8px; background: #2ed573; color: white; cursor: pointer; }
+  
+  #new-mail-composer { display: none; padding: 20px; width: 70%; position: absolute; right: 15px; top: 15px; bottom: 15px; }
+  #new-mail-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+  #new-mail-form input { padding: 15px; border-radius: 10px; border: 2px solid white; font-family: 'Titan One', cursive; font-size: 16px; }
+  #new-mail-form button { padding: 15px; border-radius: 10px; border: none; font-family: 'Titan One', cursive; font-size: 18px; background-color: #2ed573; color: white; cursor: pointer; }
+
+  #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
+  #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
+
+  .shop-item { display: flex; align-items: center; justify-content: space-between; background: #333; padding: 10px; border-radius: 8px; width: 100%; color: white; }
+  .shop-item-info { display: flex; align-items: center; gap: 15px; }
+  .shop-item-icon { width: 40px; height: 40px; background-size: cover; border: 2px solid #555; border-radius: 5px; }
+  .shop-item-name { font-size: 16px; }
+  .shop-item-action .buy-btn { background: #ffd700; color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-family: 'Titan One', cursive; display: flex; align-items: center; gap: 5px; }
+  .shop-item-action .buy-btn:hover { background: #ffeb3b; }
+  .shop-item-action .owned-label { color: #2ed573; font-weight: bold; }
+
+  #player-preview-renderer-container { width: 100%; flex-grow: 1; border: 2px solid white; border-radius: 10px; cursor: ew-resize; min-height: 300px; }
+
+  .build-choice-grid { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; }
+  .build-choice-item { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: transform 0.2s ease; color: white; }
+  .build-choice-item:hover { transform: scale(1.05); }
+  .build-choice-icon { width: 120px; height: 120px; background-color: #75d040; border-radius: 15px; background-size: 90%; background-position: center; background-repeat: no-repeat; border: 3px solid white; box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
+  .build-choice-label { font-size: 16px; color: white; text-align: center; max-width: 120px; line-height: 1.2; }
+  
+  #name-input-field { font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; text-align: center; width: 100%; margin-bottom: 20px; font-size: 18px; }
+  #name-submit-btn { font-family: 'Titan One', cursive; background: #2ed573; color: white; padding: 10px 30px; border: none; border-radius: 8px; font-size: 20px; cursor: pointer; }
+
+  @media (max-width: 768px) {
+    .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
+    .player-avatar { width: 40px; height: 40px; }
+    .player-name { font-size: 9px; }
+    #active-friends-container { margin-left: 10px; max-width: 30vw; }
+    .active-friend-avatar { width: 32px; height: 32px; }
     
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
-    <title>HyperCubesPlanet</title>
+    .chat-container { top: 60px; }
+    .chat-area { width: 200px; height: 80px; }
+    #chat-toggle-button { width: 30px; height: 30px; font-size: 16px; }
+
+    .right-ui { top: 60px; right: 10px; }
+    .game-buttons { gap: 5px; }
+    .game-btn { width: 48px; height: 48px; }
     
-    <link rel="icon" type="image/png" href="icons/favicon.png">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2c3e50">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icons/favicon.png">
+    #coin-counter { height: 40px; width: 150px; }
+    #coin-value { font-size: 18px; }
+    .coin-icon, #coin-add-btn { width: 40px; height: 40px; }
+    #coin-add-btn { font-size: 30px; border-radius: 10px; }
+    
+    #jump-button { width: 70px; height: 70px; right: 15px; bottom: 15px; }
+    #joystick-zone { left: 15px; bottom: 15px; }
+    
+    .panel-content, #block-selection-panel, #prefab-selection-panel, #part-selection-panel { width: 90%; }
+    #block-selection-panel, #prefab-selection-panel, #part-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: row; justify-content: center; }
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
-
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://esm.sh/three@0.160.0?dev",
-          "three/": "https://esm.sh/three@0.160.0&dev/",
-          "nipplejs": "https://esm.sh/nipplejs",
-          "three/addons/libs/stats.module.js": "https://esm.sh/three@0.160.0/examples/jsm/libs/stats.module.js",
-          "three/examples/jsm/renderers/CSS2DRenderer.js": "https://esm.sh/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js",
-          "three/addons/renderers/CSS2DRenderer.js": "https://esm.sh/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js"
-        }
-      }
-    </script>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Titan One', cursive; overflow: hidden; background: #000; letter-spacing: 0.5px; touch-action: none; }
-      .text-outline { text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000; }
-
-      /* EKRAN ŁADOWANIA */
-      #loading-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; transition: opacity 0.5s ease-out; overflow: hidden; }
-      .loading-content { display: flex; flex-direction: column; align-items: center; gap: 40px; z-index: 2; }
-      #loading-logo { width: 50vw; max-width: 600px; height: auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.3)); animation: logo-breath 4s ease-in-out infinite; }
-      #progress-bar { width: 80vw; max-width: 500px; height: 35px; background-color: rgba(0, 0, 0, 0.2); border: 3px solid white; border-radius: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; position: relative; }
-      #progress-bar-fill { width: 0%; height: 100%; background: linear-gradient(to right, #2ed573, #7bed9f); border-radius: 20px; transition: width 0.3s ease-out; }
-      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 16px; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); white-space: nowrap; }
-      @keyframes logo-breath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-      
-      /* CHMURY */
-      .clouds-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1; }
-      .cloud { position: absolute; background: white; border-radius: 50%; opacity: 0.8; filter: blur(2px); animation: move-cloud linear infinite; }
-      .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
-      .cloud1 { width: 150px; height: 150px; top: 10%; animation-duration: 40s; } .cloud1::before { width: 100px; height: 100px; top: -50px; left: 20px; } .cloud1::after { width: 120px; height: 120px; top: -30px; right: 10px; }
-      .cloud2 { width: 200px; height: 200px; top: 30%; animation-duration: 30s; animation-delay: -5s; } .cloud2::before { width: 120px; height: 120px; top: -80px; left: 40px; } .cloud2::after { width: 150px; height: 150px; top: -50px; right: 20px; }
-      .cloud3 { width: 120px; height: 120px; top: 60%; animation-duration: 50s; animation-delay: -15s; } .cloud3::before { width: 80px; height: 80px; top: -40px; left: 10px; } .cloud3::after { width: 90px; height: 90px; top: -20px; right: 5px; }
-      .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
-      @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
-
-      /* EKRAN LOGOWANIA */
-      #auth-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99998; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
-      .auth-container { background: rgba(0, 0, 0, 0.5); padding: 30px; border-radius: 20px; border: 3px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: center; width: 90%; max-width: 400px; }
-      .auth-form { display: none; flex-direction: column; gap: 15px; }
-      .auth-form input { font-family: 'Titan One', cursive; padding: 12px; border-radius: 8px; border: 2px solid white; text-align: center; font-size: 18px; background-color: rgba(255, 255, 255, 0.9); }
-      .auth-buttons button, .auth-form button { font-family: 'Titan One', cursive; padding: 12px 20px; border: none; border-radius: 8px; font-size: 20px; cursor: pointer; color: white; transition: transform 0.1s ease; }
-      .auth-buttons button:active, .auth-form button:active { transform: scale(0.95); }
-      .btn-primary { background-color: #2ed573; }
-      .btn-secondary { background-color: #3498db; }
-      .btn-danger { background-color: #e74c3c; }
-      .btn-back { background-color: #e74c3c; margin-top: 10px; }
-      .auth-buttons { display: flex; flex-direction: column; gap: 15px; }
-      #auth-message { margin-top: 15px; color: #ffdd59; font-size: 14px; min-height: 20px; }
-      
-      /* GŁÓWNY KONTENER GRY */
-      #gameContainer { position: relative; width: 100vw; height: 100vh; }
-      canvas { display: block; cursor: grab; }
-      canvas:active { cursor: grabbing; }
-      .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; display: none; }
-      .ui-element { pointer-events: auto; }
-      
-      /* GÓRNY PASEK */
-      .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 60px; background: rgba(0, 0, 0, 0.9); display: flex; align-items: center; padding: 5px 15px; gap: 15px; border-radius: 0; }
-      .top-bar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
-      .player-avatar { width: 45px; height: 45px; background-color: #4a90e2; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; background-size: cover; background-position: center; }
-      .player-name { color: white; font-size: 10px; }
-      
-      /* Pasek Aktywnych Znajomych */
-      #active-friends-container { display: flex; gap: 10px; margin-left: 20px; overflow-x: auto; max-width: 40vw; align-items: center; height: 100%; padding-right: 10px; scrollbar-width: none; }
-      #active-friends-container::-webkit-scrollbar { display: none; }
-      .active-friend-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; flex-shrink: 0; transition: transform 0.1s; }
-      .active-friend-item:hover { transform: scale(1.1); }
-      .active-friend-avatar { width: 40px; height: 40px; background-color: #333; border: 2px solid #2ed573; border-radius: 8px; background-size: cover; background-position: center; }
-      .active-friend-name { color: #2ed573; font-size: 9px; margin-top: 2px; text-shadow: 1px 1px 0 #000; }
-
-      /* CZAT */
-      .chat-container { position: absolute; top: 70px; left: 10px; display: flex; align-items: flex-start; gap: 5px; }
-      .chat-area { position: static; width: 300px; height: 100px; background: rgba(255, 255, 255, 0.4); border-radius: 10px; padding: 8px; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); overflow-y: auto; }
-      .chat-area::-webkit-scrollbar { width: 5px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.5); border-radius: 10px; }
-      .chat-message { color: white; font-size: 13px; margin: 2px 0; }
-      #chat-toggle-button { width: 35px; height: 35px; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 20px; }
-      #chat-form { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
-      #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: 'Titan One', cursive; }
-      #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: 'Titan One', cursive; }
-      
-      /* UI PO PRAWEJ */
-      .right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 15px; align-items: flex-end; }
-      .game-buttons { display: flex; gap: 15px; align-items: center; }
-      .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
-      .game-btn:active { transform: scale(0.95); }
-      .btn-zagraj { background-image: url('icons/icon-play.png'); background-size: 110%; } 
-      .btn-buduj { background-image: url('icons/icon-build.png'); } 
-      .btn-kup { background-image: url('icons/icon-shop.png'); } 
-      .btn-odkryj { background-image: url('icons/icon-discover.png'); } 
-      .btn-wiecej { background-image: url('icons/icon-more.png'); }
-      .btn-download { background-image: url('icons/icon-download.png'); }
-      
-      /* LICZNIK MONET */
-      #coin-counter { position: relative; display: flex; align-items: center; height: 50px; width: 170px; padding: 0; border: none; background: none; box-shadow: none; }
-      .coin-bar-background { position: absolute; left: 25px; right: 25px; top: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
-      .coin-icon { position: absolute; left: 0; width: 50px; height: 50px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; z-index: 1; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
-      #coin-value { color: #ffd700; font-size: 22px; z-index: 1; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000; }
-      #coin-add-btn { position: absolute; right: 0; width: 50px; height: 50px; background-color: #74b9ff; border: 2px solid white; border-radius: 15px; display: flex; justify-content: center; align-items: center; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s ease; padding-bottom: 4px; }
-      #coin-add-btn:active { transform: scale(0.95); }
-
-      /* STEROWANIE MOBILNE */
-      #mobile-game-controls { display: none; pointer-events: auto; }
-      #jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background-color: transparent; background-image: url('icons/icon-jump.png'); background-size: contain; background-position: center; background-repeat: no-repeat; border: none; cursor: pointer; z-index: 1001; border-radius: 0; box-shadow: none; display: block; }
-      #jump-button:active { transform: scale(0.95); }
-      #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
-      
-      /* PANEL BUDOWANIA (UI) */
-      #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; display: none; }
-      
-      .build-ui-button { 
-          position: absolute; 
-          pointer-events: auto; 
-          cursor: pointer; 
-          background-color: #2c75ff; 
-          border: 3px solid white; 
-          border-radius: 10px; 
-          display: flex; 
-          justify-content: center; 
-          align-items: center; 
-          font-size: 24px; 
-          box-shadow: 0 4px 8px #0004; 
-          transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; 
-          color: white;
-          text-shadow: 1.5px 1.5px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
-          font-family: 'Titan One', cursive;
-      }
-      .build-ui-button:hover { background-color: #4c8cff; } 
-      .build-ui-button:active { transform: scale(0.95); }
-      
-      #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
-      #build-exit-button:hover { background-color: transparent; filter: brightness(1.2); }
-      #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
-      #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 24px; }
-      #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
-      
-      /* NOWE NARZĘDZIA (Prawa Strona) */
-      #build-tools-right { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
-      .tool-btn { 
-          width: 60px; height: 60px; 
-          background-color: rgba(0, 0, 0, 0.6); 
-          border: 3px solid white; 
-          border-radius: 10px; 
-          cursor: pointer; 
-          display: flex; justify-content: center; align-items: center; 
-          font-size: 30px; color: white; 
-          transition: transform 0.1s, background-color 0.1s; 
-          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      }
-      .tool-btn.active { background-color: #2ed573; transform: scale(1.1); border-color: #ffd700; }
-      .tool-btn:active { transform: scale(0.9); }
-
-      /* PANELE WYBORU */
-      #block-selection-panel, #prefab-selection-panel, #part-selection-panel { position: absolute; bottom: 20px; left: 90px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-direction: column; gap: 10px; width: 250px; pointer-events: auto; max-height: 200px; overflow-y: auto; }
-      .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; color: white; } 
-      .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
-      .prefab-item, .part-item { width: 100%; height: auto; padding: 10px; text-align: center; }
-
-      /* MODALE */
-      .panel-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 20px; }
-      .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
-      .panel-content h2 { margin-bottom: 20px; } 
-      .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-      .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; color: white; }
-      .panel-item:hover { background: #4c8cff; } 
-      .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; color: white; }
-      
-      .skin-list-item { display: flex; align-items: center; transition: transform 0.1s ease, background-color 0.2s ease; color: white; }
-      .skin-list-item:active { transform: scale(0.98); }
-
-      /* PRZYJACIELE */
-      #friends-panel .panel-content { width: 80vw; max-width: 800px; height: 70vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-      .friends-tabs { display: flex; width: 100%; background: rgba(0,0,0,0.5); border-bottom: 2px solid white; }
-      .friends-tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-size: 18px; transition: background 0.2s; color: white; }
-      .friends-tab.active { background: #3498db; color: white; }
-      .friends-tab:hover { background: rgba(255,255,255,0.1); }
-      
-      .friends-view { flex: 1; width: 100%; padding: 20px; overflow-y: auto; display: none; flex-direction: column; gap: 10px; }
-      .friends-view.active { display: flex; }
-      
-      .friend-item { display: flex; align-items: center; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; gap: 15px; color: white; }
-      .friend-avatar { width: 50px; height: 50px; background: #000; border-radius: 50%; background-size: cover; background-position: center; border: 2px solid white; flex-shrink: 0; }
-      .friend-info { flex: 1; }
-      .friend-actions { display: flex; gap: 10px; }
-      .action-btn { padding: 8px 15px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Titan One', cursive; font-size: 14px; color: white; }
-      .btn-accept { background: #2ed573; }
-      .btn-invite { background: #3498db; }
-      
-      #friends-search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-      #friends-search-input { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid white; font-family: 'Titan One', cursive; }
-      #friends-search-btn { padding: 10px 20px; border-radius: 8px; background: #f1c40f; border: none; cursor: pointer; font-family: 'Titan One', cursive; }
-
-      /* POCZTA */
-      #mail-panel .panel-content { flex-direction: row; width: 80vw; max-width: 1000px; height: 70vh; padding: 15px; align-items: flex-start; }
-      .mail-sidebar { width: 30%; height: 100%; border-right: 2px solid rgba(255, 255, 255, 0.3); display: flex; flex-direction: column; }
-      .mail-sidebar-header { padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
-      .mail-sidebar-header h3 { font-size: 20px; }
-      #new-mail-btn { background: #2ed573; border-radius: 8px; width: 35px; height: 35px; font-size: 28px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; }
-      .mail-conversations { flex-grow: 1; overflow-y: auto; padding: 5px; }
-      .conversation-item { padding: 15px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; background-color: rgba(255, 255, 255, 0.1); transition: background-color 0.2s ease; color: white; }
-      .conversation-item:hover, .conversation-item.active { background-color: rgba(255, 255, 255, 0.3); }
-      .mail-chat-view { width: 70%; height: 100%; display: flex; flex-direction: column; padding-left: 15px; }
-      #mail-chat-header { padding-bottom: 10px; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
-      .mail-chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px 0; display: flex; flex-direction: column; }
-      .mail-message { max-width: 70%; padding: 10px 15px; border-radius: 15px; margin-bottom: 10px; word-wrap: break-word; }
-      .mail-message.sent { background-color: #3498db; align-self: flex-end; border-bottom-right-radius: 3px; }
-      .mail-message.received { background-color: #95a5a6; color: #333; align-self: flex-start; border-bottom-left-radius: 3px; }
-      #mail-reply-form { display: flex; gap: 10px; padding-top: 10px; }
-      #mail-reply-input { flex-grow: 1; font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; font-size: 16px; }
-      #mail-reply-btn { font-family: 'Titan One', cursive; padding: 0 20px; border: none; border-radius: 8px; background: #2ed573; color: white; cursor: pointer; }
-      
-      #new-mail-composer { display: none; padding: 20px; width: 70%; position: absolute; right: 15px; top: 15px; bottom: 15px; }
-      #new-mail-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-      #new-mail-form input { padding: 15px; border-radius: 10px; border: 2px solid white; font-family: 'Titan One', cursive; font-size: 16px; }
-      #new-mail-form button { padding: 15px; border-radius: 10px; border: none; font-family: 'Titan One', cursive; font-size: 18px; background-color: #2ed573; color: white; cursor: pointer; }
-
-      #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; pointer-events: auto; cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; z-index: 2500; font-size: initial; color: initial; text-shadow: none; border: none; border-radius: initial; display: flex; justify-content: center; align-items: center; box-shadow: none; }
-      #explore-exit-button:hover { filter: brightness(1.2); } #explore-exit-button:active { transform: scale(0.95); }
-
-      .shop-item { display: flex; align-items: center; justify-content: space-between; background: #333; padding: 10px; border-radius: 8px; width: 100%; color: white; }
-      .shop-item-info { display: flex; align-items: center; gap: 15px; }
-      .shop-item-icon { width: 40px; height: 40px; background-size: cover; border: 2px solid #555; border-radius: 5px; }
-      .shop-item-name { font-size: 16px; }
-      .shop-item-action .buy-btn { background: #ffd700; color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-family: 'Titan One', cursive; }
-      .shop-item-action .buy-btn:hover { background: #ffeb3b; }
-      .shop-item-action .owned-label { color: #2ed573; font-weight: bold; }
-
-      #player-preview-renderer-container { width: 100%; flex-grow: 1; border: 2px solid white; border-radius: 10px; cursor: ew-resize; min-height: 300px; }
-
-      .build-choice-grid { display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; }
-      .build-choice-item { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: transform 0.2s ease; color: white; }
-      .build-choice-item:hover { transform: scale(1.05); }
-      .build-choice-icon { width: 120px; height: 120px; background-color: #75d040; border-radius: 15px; background-size: 90%; background-position: center; background-repeat: no-repeat; border: 3px solid white; box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
-      .build-choice-label { font-size: 16px; color: white; }
-      
-      #name-input-field { font-family: 'Titan One', cursive; padding: 10px; border-radius: 8px; border: 2px solid white; text-align: center; width: 100%; margin-bottom: 20px; font-size: 18px; }
-      #name-submit-btn { font-family: 'Titan One', cursive; background: #2ed573; color: white; padding: 10px 30px; border: none; border-radius: 8px; font-size: 20px; cursor: pointer; }
-
-      @media (max-width: 768px) {
-        .top-bar { height: 50px; padding: 5px 10px; gap: 10px; }
-        .player-avatar { width: 40px; height: 40px; }
-        .player-name { font-size: 9px; }
-        #active-friends-container { margin-left: 10px; max-width: 30vw; }
-        .active-friend-avatar { width: 32px; height: 32px; }
-        
-        .chat-container { top: 60px; }
-        .chat-area { width: 200px; height: 80px; }
-        #chat-toggle-button { width: 30px; height: 30px; font-size: 16px; }
-
-        .right-ui { top: 60px; right: 10px; }
-        .game-buttons { gap: 5px; }
-        .game-btn { width: 48px; height: 48px; }
-        
-        #coin-counter { height: 40px; width: 150px; }
-        #coin-value { font-size: 18px; }
-        .coin-icon, #coin-add-btn { width: 40px; height: 40px; }
-        #coin-add-btn { font-size: 30px; border-radius: 10px; }
-        
-        #jump-button { width: 70px; height: 70px; right: 15px; bottom: 15px; }
-        #joystick-zone { left: 15px; bottom: 15px; }
-        
-        .panel-content, #block-selection-panel, #prefab-selection-panel, #part-selection-panel { width: 90%; }
-        #block-selection-panel, #prefab-selection-panel, #part-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: row; justify-content: center; }
-
-        .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .build-choice-icon { width: 100px; height: 100px; }
-        .build-choice-label { font-size: 14px; }
-        
-        /* Dostosowanie panelu przyjaciół na mobile */
-        #friends-panel .panel-content { width: 95vw; height: 80vh; }
-        .friends-tab { font-size: 14px; padding: 10px; }
-        
-        /* Narzędzia po prawej - mobile */
-        #build-tools-right { right: 10px; }
-        .tool-btn { width: 50px; height: 50px; font-size: 24px; }
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Loading, Auth (skrócone) -->
-    <div id="loading-screen"><div class="clouds-container"><div class="cloud cloud1"></div><div class="cloud cloud2"></div><div class="cloud cloud3"></div><div class="cloud cloud4"></div></div><div class="loading-content"><img id="loading-logo" src="icons/favicon.png" alt="Logo"><div id="progress-bar"><div id="progress-bar-fill"></div><div id="loading-text" class="text-outline">Wczytywanie...</div></div></div></div>
-    <div id="auth-screen">
-        <div class="auth-container">
-            <div id="welcome-view"><button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button><button id="show-register-btn" class="btn-primary text-outline">Nowy Gracz</button></div>
-            <form id="login-form" class="auth-form"><h2 class="text-outline">Logowanie</h2><input type="text" id="login-username" placeholder="Nazwa..." required autocomplete="username"><input type="password" id="login-password" placeholder="Hasło..." required autocomplete="current-password"><button type="submit" class="btn-primary text-outline">Zaloguj</button><button type="button" class="btn-back text-outline">Wróć</button></form>
-            <form id="register-form" class="auth-form"><h2 class="text-outline">Rejestracja</h2><input type="text" id="register-username" placeholder="Nazwa..." required minlength="3" maxlength="15"><input type="password" id="register-password" placeholder="Hasło..." required minlength="6"><input type="password" id="register-password-confirm" placeholder="Powtórz..." required><button type="submit" class="btn-primary text-outline">Zarejestruj</button><button type="button" class="btn-back text-outline">Wróć</button></form>
-            <div id="auth-message" class="text-outline"></div>
+    .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .build-choice-icon { width: 100px; height: 100px; }
+    .build-choice-label { font-size: 13px; }
+    
+    /* Dostosowanie panelu przyjaciół na mobile */
+    #friends-panel .panel-content { width: 95vw; height: 80vh; }
+    .friends-tab { font-size: 14px; padding: 10px; }
+    
+    /* Narzędzia po prawej - mobile */
+    #build-tools-right { right: 10px; }
+    .tool-btn { width: 50px; height: 50px; font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<!-- Loading Screen -->
+<div id="loading-screen">
+<div class="clouds-container">
+<div class="cloud cloud1"></div>
+<div class="cloud cloud2"></div>
+<div class="cloud cloud3"></div>
+<div class="cloud cloud4"></div>
+</div>
+<div class="loading-content">
+<img id="loading-logo" src="icons/favicon.png" alt="Logo">
+<div id="progress-bar">
+<div id="progress-bar-fill"></div>
+<div id="loading-text" class="text-outline">Wczytywanie...</div>
+</div>
+</div>
+</div>
+<!-- Auth Screen -->
+<div id="auth-screen">
+    <div class="auth-container">
+        <div id="welcome-view">
+            <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
+            <button id="show-register-btn" class="btn-primary text-outline">Nowy Gracz</button>
         </div>
+        
+        <form id="login-form" class="auth-form">
+            <h2 class="text-outline">Logowanie</h2>
+            <input type="text" id="login-username" placeholder="Nazwa..." required autocomplete="username">
+            <input type="password" id="login-password" placeholder="Hasło..." required autocomplete="current-password">
+            <button type="submit" class="btn-primary text-outline">Zaloguj</button>
+            <button type="button" class="btn-back text-outline">Wróć</button>
+        </form>
+        
+        <form id="register-form" class="auth-form">
+            <h2 class="text-outline">Rejestracja</h2>
+            <input type="text" id="register-username" placeholder="Nazwa..." required minlength="3" maxlength="15">
+            <input type="password" id="register-password" placeholder="Hasło..." required minlength="6">
+            <input type="password" id="register-password-confirm" placeholder="Powtórz..." required>
+            <button type="submit" class="btn-primary text-outline">Zarejestruj</button>
+            <button type="button" class="btn-back text-outline">Wróć</button>
+        </form>
+        
+        <div id="auth-message" class="text-outline"></div>
     </div>
+</div>
 
-    <div id="gameContainer">
-        <div class="ui-overlay">
-            <div class="top-bar ui-element">
-                <div id="player-avatar-button" class="top-bar-item"><div class="player-avatar">👤</div><div class="player-name text-outline" id="player-name-display">player</div></div>
-                <div class="top-bar-item"><div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div><div class="player-name text-outline">Poczta</div></div>
-                <div id="btn-friends-open" class="top-bar-item"><div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: #e67e22;"></div><div class="player-name text-outline">Przyjaciele</div></div>
-                <div id="active-friends-container"></div>
+<!-- Game Container -->
+<div id="gameContainer">
+    <div class="ui-overlay">
+        <div class="top-bar ui-element">
+            <div id="player-avatar-button" class="top-bar-item"><div class="player-avatar">👤</div><div class="player-name text-outline" id="player-name-display">player</div></div>
+            <div class="top-bar-item"><div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div><div class="player-name text-outline">Poczta</div></div>
+            <div id="btn-friends-open" class="top-bar-item"><div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: #e67e22;"></div><div class="player-name text-outline">Przyjaciele</div></div>
+            <div id="active-friends-container"></div>
+        </div>
+        <div class="chat-container ui-element"><div class="chat-area"></div><div id="chat-toggle-button">💬</div></div>
+        <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
+        
+        <div class="right-ui ui-element">
+            <div class="game-buttons">
+                <button class="game-btn btn-zagraj"></button>
+                <button class="game-btn btn-buduj"></button>
+                <button class="game-btn btn-kup"></button>
+                <button class="game-btn btn-odkryj"></button>
+                <button class="game-btn btn-wiecej"></button>
             </div>
-            <div class="chat-container ui-element"><div class="chat-area"></div><div id="chat-toggle-button">💬</div></div>
-            <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
-            
-            <div class="right-ui ui-element">
-                <div class="game-buttons">
-                    <button class="game-btn btn-zagraj"></button>
-                    <button class="game-btn btn-buduj"></button>
-                    <button class="game-btn btn-kup"></button>
-                    <button class="game-btn btn-odkryj"></button>
-                    <button class="game-btn btn-wiecej"></button>
-                </div>
-                <div id="coin-counter"><div class="coin-icon"></div><div class="coin-bar-background"><div id="coin-value" class="text-outline">0</div></div><div id="coin-add-btn" class="ui-element">+</div></div>
+            <div id="coin-counter"><div class="coin-icon"></div><div class="coin-bar-background"><div id="coin-value" class="text-outline">0</div></div><div id="coin-add-btn" class="ui-element">+</div></div>
+        </div>
+    </div>
+    <div id="mobile-game-controls"><div id="joystick-zone"></div><button id="jump-button"></button></div>
+</div>
+
+<!-- UI BUDOWANIA -->
+<div id="build-ui-container">
+    <div id="build-exit-button" class="build-ui-button"></div>
+    <div id="build-save-button" class="build-ui-button">Zapisz</div>
+    <div id="build-mode-button" class="build-ui-button">Łatwy</div>
+    <div id="build-add-button" class="build-ui-button">+</div>
+    
+    <div id="build-tools-right">
+        <div id="tool-single" class="tool-btn active">⬜</div>
+        <div id="tool-line" class="tool-btn">📏</div>
+    </div>
+
+    <div id="block-selection-panel"></div>
+    <div id="prefab-selection-panel"></div>
+    <div id="part-selection-panel"></div>
+</div>
+
+<!-- MODALE -->
+<div id="explore-exit-button" style="display:none;"></div>
+
+<div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
+
+<div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
+
+<div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
+
+<!-- PANEL WYBORU BUDOWANIA (Z nowymi nazwami) -->
+<div id="build-choice-panel" class="panel-modal">
+    <div class="panel-content">
+        <h2>Co budujemy?</h2>
+        <div class="build-choice-grid">
+            <div id="build-choice-new-skin" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div>
+                <span class="build-choice-label text-outline">Nowa HyperCube</span>
+            </div>
+            <div id="build-choice-new-world" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div>
+                <span class="build-choice-label text-outline">Nowy Świat</span>
+            </div>
+            <div id="build-choice-new-prefab" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div>
+                <span class="build-choice-label text-outline">Nowy Prefabrykat</span>
+            </div>
+            <div id="build-choice-new-part" class="build-choice-item">
+                <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div>
+                <span class="build-choice-label text-outline">Nowa Część HyperCube</span>
             </div>
         </div>
-        <div id="mobile-game-controls"><div id="joystick-zone"></div><button id="jump-button"></button></div>
+        <button class="panel-close-button">Anuluj</button>
     </div>
+</div>
 
-    <!-- UI BUDOWANIA -->
-    <div id="build-ui-container">
-        <div id="build-exit-button" class="build-ui-button"></div>
-        <div id="build-save-button" class="build-ui-button">Zapisz</div>
-        <div id="build-mode-button" class="build-ui-button">Łatwy</div>
-        <div id="build-add-button" class="build-ui-button">+</div>
-        
-        <!-- NOWE NARZĘDZIA (Prawa Strona) -->
-        <div id="build-tools-right">
-            <div id="tool-single" class="tool-btn active">⬜</div> <!-- Pojedynczy -->
-            <div id="tool-line" class="tool-btn">📏</div>   <!-- Linia -->
-        </div>
+<div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
+<div id="shop-panel" class="panel-modal"><div class="panel-content"><h2>Sklep</h2><div id="shop-list" class="panel-list"></div><button class="panel-close-button">Zamknij</button></div></div>
+<div id="add-choice-panel" class="panel-modal"><div class="panel-content"><h2>Dodaj</h2><div class="panel-list"><div id="add-choice-blocks" class="panel-item">Bloki</div><div id="add-choice-prefabs" class="panel-item">Prefabrykaty</div><div id="add-choice-parts" class="panel-item">Części</div></div><button id="add-choice-close" class="panel-close-button">Anuluj</button></div></div>
+<div id="player-preview-panel" class="panel-modal"><div class="panel-content"><h2>Podgląd</h2><div id="player-preview-renderer-container"></div><button class="panel-close-button">Zamknij</button></div></div>
 
-        <div id="block-selection-panel"></div>
-        <div id="prefab-selection-panel"></div>
-        <div id="part-selection-panel"></div>
-    </div>
+<div id="more-options-panel" class="panel-modal"><div class="panel-content"><h2>Opcje</h2><div class="panel-list"><div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div><div id="logout-btn" class="panel-item btn-danger">Wyloguj</div></div><button class="panel-close-button">Zamknij</button></div></div>
 
-    <!-- MODALE -->
-    <div id="explore-exit-button" style="display:none;"></div>
-    
-    <!-- PRZYJACIELE -->
-    <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
-    
-    <!-- POCZTA -->
-    <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
-    
-    <!-- ODKRYJ -->
-    <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
-    
-    <!-- INNE PANELE -->
-    <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span>Skin</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span>Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span>Prefab</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span>Część</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
-    <div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
-    <div id="shop-panel" class="panel-modal"><div class="panel-content"><h2>Sklep</h2><div id="shop-list" class="panel-list"></div><button class="panel-close-button">Zamknij</button></div></div>
-    <div id="add-choice-panel" class="panel-modal"><div class="panel-content"><h2>Dodaj</h2><div class="panel-list"><div id="add-choice-blocks" class="panel-item">Bloki</div><div id="add-choice-prefabs" class="panel-item">Prefabrykaty</div><div id="add-choice-parts" class="panel-item">Części</div></div><button id="add-choice-close" class="panel-close-button">Anuluj</button></div></div>
-    <div id="player-preview-panel" class="panel-modal"><div class="panel-content"><h2>Podgląd</h2><div id="player-preview-renderer-container"></div><button class="panel-close-button">Zamknij</button></div></div>
-    
-    <!-- OPCJE -->
-    <div id="more-options-panel" class="panel-modal"><div class="panel-content"><h2>Opcje</h2><div class="panel-list"><div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div><div id="logout-btn" class="panel-item btn-danger">Wyloguj</div></div><button class="panel-close-button">Zamknij</button></div></div>
-    
-    <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
+<div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
 
-    <script type="module" src="main.js"></script>
-    <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'))}</script>
-  </body>
+<script type="module" src="main.js"></script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'))}</script>
+</body>
 </html>
