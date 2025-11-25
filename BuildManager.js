@@ -40,7 +40,7 @@ export class BuildManager {
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     
-    // OPTYMALIZACJA: Jedna współdzielona geometria dla wszystkich bloków w trybie budowania
+    // Współdzielona geometria
     this.sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
     
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -65,8 +65,14 @@ export class BuildManager {
     allBlocks.forEach(blockType => {
       if (!this.materials[blockType.texturePath]) {
         const texture = this.textureLoader.load(blockType.texturePath);
+        
+        // --- POPRAWKA GRAFICZNA ---
+        // Używamy mipmap, żeby tekstury nie migotały w oddali
         texture.magFilter = THREE.NearestFilter;
-        texture.minFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestMipmapLinearFilter;
+        // Włączamy anizotropię dla ostrości pod kątem
+        texture.anisotropy = 16;
+
         this.materials[blockType.texturePath] = new THREE.MeshLambertMaterial({ map: texture });
       }
     });
@@ -93,17 +99,27 @@ export class BuildManager {
     this.setupToolButtons();
     
     this.scene.background = new THREE.Color(0x87CEEB);
-    this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+    this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200); // Lekka mgła
     
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     this.scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(50, 50, 50);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6); // Nieco słabsze słońce
+    directionalLight.position.set(50, 80, 50);
     directionalLight.castShadow = true; 
     
-    // Optymalizacja cieni w trybie budowania
-    directionalLight.shadow.mapSize.width = 1024;
+    // --- OPTYMALIZACJA CIENI W TRYBIE BUDOWANIA ---
+    directionalLight.shadow.mapSize.width = 1024; // Mniejsza mapa cieni (szybciej na mobile)
     directionalLight.shadow.mapSize.height = 1024;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 150;
+    directionalLight.shadow.bias = -0.0005; // Zapobiega "paskom" na blokach
+    
+    const d = 60;
+    directionalLight.shadow.camera.left = -d;
+    directionalLight.shadow.camera.right = d;
+    directionalLight.shadow.camera.top = d;
+    directionalLight.shadow.camera.bottom = -d;
     
     this.scene.add(directionalLight);
     
@@ -159,7 +175,6 @@ export class BuildManager {
       }
   }
 
-  // --- POPRAWIONA FUNKCJA OBLICZANIA LINII ---
   getPointsOnLine(start, end) {
       const points = [];
       const dist = start.distanceTo(end);
@@ -167,15 +182,9 @@ export class BuildManager {
       
       for (let i = 0; i <= steps; i++) {
           const t = steps === 0 ? 0 : i / steps;
-          // LERP oblicza punkt pośredni
           const point = new THREE.Vector3().lerpVectors(start, end, t);
-          
-          // NAPRAWA: Zamiast .round(), używamy .floor() + 0.5
-          // To gwarantuje, że punkt zawsze trafi w środek kratki (np. 1.5, 2.5)
-          // tak samo jak robi to updateRaycast dla pojedynczego bloku.
-          point.floor().addScalar(0.5);
+          point.floor().addScalar(0.5); // Naprawa pozycji (środek kratki)
 
-          // Sprawdzamy duplikaty, żeby nie stawiać bloków w tym samym miejscu
           const exists = points.some(p => p.equals(point));
           if (!exists) points.push(point);
       }
@@ -190,8 +199,9 @@ export class BuildManager {
       if (!this.isDraggingLine || !this.dragStartPos || !this.selectedBlockType) return;
 
       const points = this.getPointsOnLine(this.dragStartPos, targetPos);
-      // Używamy współdzielonej geometrii dla podglądu też
       const geo = this.sharedBoxGeometry;
+      
+      // Klonujemy materiał tylko do podglądu (przezroczystość)
       const mat = this.materials[this.selectedBlockType.texturePath].clone();
       mat.transparent = true;
       mat.opacity = 0.4;
@@ -205,7 +215,6 @@ export class BuildManager {
 
   placeLine() {
       this.previewLineGroup.children.forEach(ghost => {
-          // Używamy współdzielonej geometrii
           const geo = this.sharedBoxGeometry;
           const mat = this.materials[this.selectedBlockType.texturePath];
           const b = new THREE.Mesh(geo, mat);
@@ -231,16 +240,20 @@ export class BuildManager {
           if (response.ok) {
               const blocksData = await response.json();
               if (Array.isArray(blocksData)) {
-                  // Optymalizacja: ładowanie fragmentami (batch), aby nie zawiesić UI
                   const batchSize = 100;
                   for (let i = 0; i < blocksData.length; i += batchSize) {
                       const batch = blocksData.slice(i, i + batchSize);
                       batch.forEach(blockData => {
-                          const geometry = this.sharedBoxGeometry; // Użycie współdzielonej geometrii
+                          const geometry = this.sharedBoxGeometry;
                           let material = this.materials[blockData.texturePath];
                           if (!material) {
                               const texture = this.textureLoader.load(blockData.texturePath);
+                              
+                              // FIX: Filtrowanie tekstur przy ładowaniu z bazy
                               texture.magFilter = THREE.NearestFilter;
+                              texture.minFilter = THREE.NearestMipmapLinearFilter;
+                              texture.anisotropy = 16;
+
                               material = new THREE.MeshLambertMaterial({ map: texture });
                               this.materials[blockData.texturePath] = material;
                           }
@@ -255,7 +268,6 @@ export class BuildManager {
                           this.placedBlocks.push(mesh);
                           this.collidableBuildObjects.push(mesh);
                       });
-                      // Krótka pauza dla UI
                       if (i % 500 === 0) await new Promise(r => setTimeout(r, 0));
                   }
                   this.updateSaveButton();
@@ -390,7 +402,6 @@ export class BuildManager {
       }
       
       this.selectedPrefabData.forEach(blockData => {
-          // Użycie współdzielonej geometrii dla podglądu prefaba
           const geo = this.sharedBoxGeometry;
           const mat = this.materials[blockData.texturePath].clone();
           mat.transparent = true;
@@ -572,7 +583,6 @@ export class BuildManager {
 
   placeBlock() {
     if (!this.selectedBlockType) return;
-    // Współdzielona geometria
     const g = this.sharedBoxGeometry;
     const m = this.materials[this.selectedBlockType.texturePath];
     const b = new THREE.Mesh(g, m);
@@ -592,7 +602,6 @@ export class BuildManager {
     this.selectedPrefabData.forEach(d => {
         const p = new THREE.Vector3(d.x, d.y, d.z).add(this.previewPrefab.position);
         if (Math.abs(p.x) < l && Math.abs(p.z) < l && p.y >= 0) {
-            // Współdzielona geometria
             const g = this.sharedBoxGeometry;
             const m = this.materials[d.texturePath];
             const b = new THREE.Mesh(g, m);
