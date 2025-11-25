@@ -13,10 +13,13 @@ export class WorldStorage {
         return false;
     }
 
-    // OPTYMALIZACJA: Usuwamy miniaturkę z wewnątrz obiektu world_data, 
-    // bo i tak wysyłamy ją w osobnej kolumnie. To zmniejsza rozmiar zapytania o połowę.
-    const dataToSend = { ...worldData };
-    delete dataToSend.thumbnail; 
+    // worldData to obiekt zawierający: { size, blocks, thumbnail }
+    // Oddzielamy miniaturkę, aby wysłać ją do odpowiedniej kolumny w bazie
+    const thumbnail = worldData.thumbnail;
+    
+    // Tworzymy kopię danych bez miniaturki (żeby nie dublować danych w bazie i nie zapychać JSONa)
+    const dataToSave = { ...worldData };
+    delete dataToSave.thumbnail; 
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/worlds`, {
@@ -27,8 +30,8 @@ export class WorldStorage {
             },
             body: JSON.stringify({ 
                 name: worldName, 
-                world_data: dataToSend, 
-                thumbnail: worldData.thumbnail 
+                world_data: dataToSave, 
+                thumbnail: thumbnail 
             })
         });
 
@@ -36,44 +39,40 @@ export class WorldStorage {
             console.log(`World "${worldName}" saved to server!`);
             return true;
         } else {
-            // Tutaj łapiemy błąd z serwera
-            const errData = await response.json();
-            console.error("Błąd zapisu świata:", errData);
-            alert(`Nie udało się zapisać świata: ${errData.message || response.statusText}`);
+            const err = await response.json();
+            console.error("Błąd zapisu świata:", err);
+            alert(`Nie udało się zapisać: ${err.message}`);
             return false;
         }
     } catch (error) {
-        console.error('Network Error saving world:', error);
-        alert("Błąd sieci. Sprawdź połączenie z internetem.");
+        console.error('Network Error:', error);
+        alert("Błąd sieci.");
         return false;
     }
   }
 
-  // Pobierz dane konkretnego świata
+  // Pobierz PEŁNE dane konkretnego świata (klocki) - używane przy wchodzeniu do świata
   static async loadWorldData(worldId) {
     const token = localStorage.getItem(JWT_TOKEN_KEY);
-    if (!token) {
-        alert("Musisz być zalogowany, aby wczytać świat.");
-        return null;
-    }
+    if (!token) return null;
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/worlds/${worldId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.ok) {
-            return await response.json(); // Zwraca obiekt world_data
+            // Serwer zwraca sam obiekt JSON z kolumny world_data
+            return await response.json(); 
         } else {
-            console.error("Błąd wczytywania świata:", response.status);
-            return null;
+            console.error("Błąd pobierania świata:", response.status);
         }
     } catch (error) {
         console.error('Error loading world:', error);
-        return null;
     }
+    return null;
   }
 
-  // Pobierz listę wszystkich światów (do menu Zagraj)
+  // Pobierz LISTĘ wszystkich światów (tylko nazwy i miniaturki) - używane w menu "Zagraj"
   static async getAllWorlds() {
     const token = localStorage.getItem(JWT_TOKEN_KEY);
     if (!token) return [];
@@ -81,23 +80,25 @@ export class WorldStorage {
         const response = await fetch(`${API_BASE_URL}/api/worlds/all`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        return response.ok ? await response.json() : [];
+        if (response.ok) {
+            return await response.json();
+        }
     } catch(e) { 
-        console.error("Błąd pobierania listy światów:", e);
-        return []; 
+        console.error("Błąd pobierania listy:", e);
     }
+    return [];
   }
   
-  // Metody pomocnicze
+  // Metoda pomocnicza do wyciągania miniaturki z obiektu listy
   static getThumbnail(worldObj) {
-      // worldObj to teraz obiekt z bazy { id, name, thumbnail... }
+      // worldObj to teraz obiekt z bazy: { id, name, thumbnail, creator... }
       if (worldObj && worldObj.thumbnail) {
           return worldObj.thumbnail;
       }
       return null;
   }
-  
-  // Metody kompatybilności (dla starego kodu, jeśli gdzieś został)
+
+  // Metody kompatybilności (żeby stary kod się nie wywalił, zanim go podmienimy)
   static loadWorld(name) { return null; }
   static getSavedWorldsList() { return []; }
 }
