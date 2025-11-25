@@ -4,7 +4,6 @@ import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
-const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class BuildManager {
   constructor(game, loadingManager, blockManager) {
@@ -14,9 +13,19 @@ export class BuildManager {
     this.isActive = false;
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
+    
     this.previewBlock = null;
     this.previewPrefab = null;
+    this.previewLineGroup = new THREE.Group(); // Grupa do podglądu linii
+    this.scene.add(this.previewLineGroup);
+
     this.currentBuildMode = 'block';
+    this.currentTool = 'single'; // 'single' lub 'line'
+    
+    // Zmienne do narzędzia linii
+    this.isDraggingLine = false;
+    this.dragStartPos = null;
+
     this.selectedPrefabData = null;
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
@@ -32,8 +41,11 @@ export class BuildManager {
     
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
+    
+    // Bindowanie metod
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
 
     this.longPressTimer = null;
@@ -68,16 +80,17 @@ export class BuildManager {
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
     this.currentBuildMode = 'block';
+    this.currentTool = 'single'; // Reset narzędzia na starcie
 
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
-    // Zmień tekst przycisku zapisu
     const saveBtn = document.getElementById('build-save-button');
     if(saveBtn) saveBtn.textContent = isNexusMode ? "Zapisz Nexus" : "Zapisz";
 
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
+    this.setupToolButtons(); // Inicjalizacja przycisków narzędzi
     
     this.scene.background = new THREE.Color(0x87CEEB);
     this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
@@ -105,10 +118,10 @@ export class BuildManager {
         const addBtn = document.getElementById('build-add-button');
 
         if (mobileControls) mobileControls.style.display = 'block';
-        if (jumpBtn) jumpBtn.style.display = 'none'; // Ukryj skok
-        if (joystickZone) joystickZone.style.display = 'block'; // Pokaż joystick
+        if (jumpBtn) jumpBtn.style.display = 'none'; 
+        if (joystickZone) joystickZone.style.display = 'block';
         
-        // Przesuń przycisk "+" wyżej, żeby nie zasłaniał joysticka
+        // Przesuń przycisk "+" wyżej
         if (addBtn) addBtn.style.bottom = '150px';
     } else {
         const addBtn = document.getElementById('build-add-button');
@@ -117,10 +130,88 @@ export class BuildManager {
 
     this.setupBuildEventListeners();
 
-    // Jeśli to tryb Nexusa, pobierz obecną mapę z serwera
     if (this.isNexusMode) {
         await this.loadExistingNexus();
     }
+  }
+
+  // --- NARZĘDZIA BUDOWANIA (Single / Line) ---
+  setupToolButtons() {
+      const btnSingle = document.getElementById('tool-single');
+      const btnLine = document.getElementById('tool-line');
+
+      if(btnSingle && btnLine) {
+          // Reset wyglądu
+          btnSingle.classList.add('active');
+          btnLine.classList.remove('active');
+
+          btnSingle.onclick = () => {
+              this.currentTool = 'single';
+              btnSingle.classList.add('active');
+              btnLine.classList.remove('active');
+          };
+
+          btnLine.onclick = () => {
+              this.currentTool = 'line';
+              btnLine.classList.add('active');
+              btnSingle.classList.remove('active');
+          };
+      }
+  }
+
+  getPointsOnLine(start, end) {
+      const points = [];
+      const dist = start.distanceTo(end);
+      const steps = Math.ceil(dist); 
+      
+      for (let i = 0; i <= steps; i++) {
+          const t = steps === 0 ? 0 : i / steps;
+          const point = new THREE.Vector3().lerpVectors(start, end, t).round();
+          const exists = points.some(p => p.equals(point));
+          if (!exists) points.push(point);
+      }
+      return points;
+  }
+
+  updateLinePreview(targetPos) {
+      while(this.previewLineGroup.children.length > 0){ 
+          this.previewLineGroup.remove(this.previewLineGroup.children[0]); 
+      }
+
+      if (!this.isDraggingLine || !this.dragStartPos || !this.selectedBlockType) return;
+
+      const points = this.getPointsOnLine(this.dragStartPos, targetPos);
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      const mat = this.materials[this.selectedBlockType.texturePath].clone();
+      mat.transparent = true;
+      mat.opacity = 0.4;
+
+      points.forEach(p => {
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(p);
+          this.previewLineGroup.add(mesh);
+      });
+  }
+
+  placeLine() {
+      this.previewLineGroup.children.forEach(ghost => {
+          const geo = new THREE.BoxGeometry(1, 1, 1);
+          const mat = this.materials[this.selectedBlockType.texturePath];
+          const b = new THREE.Mesh(geo, mat);
+          b.userData.texturePath = this.selectedBlockType.texturePath;
+          b.position.copy(ghost.position);
+          b.castShadow = true; 
+          b.receiveShadow = true; 
+          
+          this.scene.add(b);
+          this.placedBlocks.push(b);
+          this.collidableBuildObjects.push(b);
+      });
+      
+      while(this.previewLineGroup.children.length > 0){ 
+          this.previewLineGroup.remove(this.previewLineGroup.children[0]); 
+      }
+      this.updateSaveButton();
   }
 
   async loadExistingNexus() {
@@ -129,7 +220,6 @@ export class BuildManager {
           if (response.ok) {
               const blocksData = await response.json();
               if (Array.isArray(blocksData)) {
-                  console.log("Wczytywanie Nexusa do edytora...");
                   blocksData.forEach(blockData => {
                       const geometry = new THREE.BoxGeometry(1, 1, 1);
                       let material = this.materials[blockData.texturePath];
@@ -187,6 +277,7 @@ export class BuildManager {
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('contextmenu', this.onContextMenu);
 
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
@@ -308,6 +399,7 @@ export class BuildManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
     window.removeEventListener('contextmenu', this.onContextMenu);
 
     window.removeEventListener('touchstart', this.onTouchStart);
@@ -325,102 +417,207 @@ export class BuildManager {
     if (this.cameraController) this.cameraController.destroy();
   }
   
-  onMouseMove(event) {
-    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  onMouseMove(e) {
+    this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    
+    if(this.isDraggingLine) {
+        this.updateRaycast();
+        if(this.previewBlock.visible) this.updateLinePreview(this.previewBlock.position);
+    }
   }
   
-  onMouseDown(event) {
-    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
+  onMouseDown(e) {
+    if (!this.isActive || this.game.isMobile || e.target.closest('.build-ui-button') || e.target.closest('.panel-list') || e.target.closest('#build-tools-right')) return;
     
-    if (event.button === 0) {
+    if (e.button === 0) {
         if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
-            this.placeBlock();
+            if (this.currentTool === 'line') {
+                this.isDraggingLine = true;
+                this.dragStartPos = this.previewBlock.position.clone();
+                this.previewBlock.visible = false; 
+            } else {
+                this.placeBlock();
+            }
         } else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) {
             this.placePrefab();
         }
-    } else if (event.button === 2) {
+    } else if (e.button === 2) {
         this.removeBlock();
+    }
+  }
+
+  onMouseUp(e) {
+      if (this.isDraggingLine) {
+          this.isDraggingLine = false;
+          this.placeLine();
+          this.previewBlock.visible = true;
+      }
+  }
+
+  onTouchStart(event) {
+    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('.panel-list') || event.target.closest('#build-tools-right') || event.target.closest('#joystick-zone')) return;
+    
+    const touch = event.touches[0];
+    // Ignoruj multitouch
+    if (event.touches.length > 1) return;
+
+    event.preventDefault();
+    this.isLongPress = false;
+    
+    this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+    this.touchStartPosition.x = touch.clientX;
+    this.touchStartPosition.y = touch.clientY;
+
+    this.updateRaycast();
+
+    if (this.currentTool === 'line' && this.previewBlock.visible) {
+        this.isDraggingLine = true;
+        this.dragStartPos = this.previewBlock.position.clone();
+        this.previewBlock.visible = false;
+        this.isLongPress = false;
+    } else {
+        this.isLongPress = false;
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = setTimeout(() => { this.isLongPress = true; this.removeBlock(); }, 500);
+    }
+  }
+
+  onTouchMove(event) {
+    if (!this.isActive || !this.game.isMobile) return;
+    const touch = event.touches[0];
+    
+    if (this.isDraggingLine) {
+        this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+        this.updateRaycast();
+        if(this.previewBlock.visible) {
+            this.updateLinePreview(this.previewBlock.position);
+        }
+    } else {
+        const deltaX = touch.clientX - this.touchStartPosition.x;
+        const deltaY = touch.clientY - this.touchStartPosition.y;
+        if (Math.sqrt(deltaX*deltaX + deltaY*deltaY) > 10) clearTimeout(this.longPressTimer);
+    }
+  }
+
+  onTouchEnd(event) {
+    if (!this.isActive || !this.game.isMobile) return;
+    if (event.target.closest('.build-ui-button') || event.target.closest('#build-tools-right')) return;
+
+    clearTimeout(this.longPressTimer);
+    
+    if (this.isDraggingLine) {
+        this.isDraggingLine = false;
+        this.placeLine();
+        this.previewBlock.visible = true;
+    } else if (!this.isLongPress) {
+        if (this.currentBuildMode === 'block' && this.previewBlock.visible && this.currentTool === 'single') this.placeBlock();
+        else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) this.placePrefab();
+    }
+  }
+
+  updateRaycast() {
+      this.raycaster.setFromCamera(this.mouse, this.game.camera);
+      const intersects = this.raycaster.intersectObjects(this.collidableBuildObjects);
+      if (intersects.length > 0) {
+          const intersect = intersects[0];
+          const normal = intersect.face.normal.clone();
+          const snappedPosition = new THREE.Vector3().copy(intersect.point).add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
+          
+          const limit = this.platformSize / 2;
+          if (Math.abs(snappedPosition.x) < limit && Math.abs(snappedPosition.z) < limit && snappedPosition.y >= 0) {
+              this.previewBlock.position.copy(snappedPosition);
+              this.previewBlock.visible = true;
+          } else {
+              this.previewBlock.visible = false;
+          }
+      } else {
+          this.previewBlock.visible = false;
+      }
+  }
+
+  update(deltaTime) {
+    if (!this.isActive) return;
+    this.cameraController.update(deltaTime);
+    
+    if (!this.isDraggingLine) {
+        this.updateRaycast();
+        if (this.currentBuildMode === 'prefab' && this.previewBlock.visible) {
+             this.previewPrefab.position.copy(this.previewBlock.position);
+             this.previewPrefab.visible = true;
+             this.previewBlock.visible = false;
+        }
     }
   }
 
   placeBlock() {
     if (!this.selectedBlockType) return;
-    const blockGeo = new THREE.BoxGeometry(1, 1, 1);
-    const blockMat = this.materials[this.selectedBlockType.texturePath];
-    const newBlock = new THREE.Mesh(blockGeo, blockMat);
-    newBlock.userData.texturePath = this.selectedBlockType.texturePath;
-    newBlock.position.copy(this.previewBlock.position);
-    
-    newBlock.castShadow = true;
-    newBlock.receiveShadow = true;
-
-    this.scene.add(newBlock);
-    this.placedBlocks.push(newBlock);
-    this.collidableBuildObjects.push(newBlock);
+    const g = new THREE.BoxGeometry(1, 1, 1);
+    const m = this.materials[this.selectedBlockType.texturePath];
+    const b = new THREE.Mesh(g, m);
+    b.userData.texturePath = this.selectedBlockType.texturePath;
+    b.position.copy(this.previewBlock.position);
+    b.castShadow = true;
+    b.receiveShadow = true;
+    this.scene.add(b);
+    this.placedBlocks.push(b);
+    this.collidableBuildObjects.push(b);
     this.updateSaveButton();
   }
   
   placePrefab() {
     if (!this.selectedPrefabData) return;
-    const buildAreaLimit = this.platformSize / 2;
-    
-    this.selectedPrefabData.forEach(blockData => {
-        const finalPosition = new THREE.Vector3(blockData.x, blockData.y, blockData.z).add(this.previewPrefab.position);
-
-        if (
-            Math.abs(finalPosition.x) < buildAreaLimit && 
-            Math.abs(finalPosition.z) < buildAreaLimit &&
-            finalPosition.y >= 0
-        ) {
-            const blockGeo = new THREE.BoxGeometry(1, 1, 1);
-            const blockMat = this.materials[blockData.texturePath];
-            const newBlock = new THREE.Mesh(blockGeo, blockMat);
-            newBlock.userData.texturePath = blockData.texturePath;
-            newBlock.position.copy(finalPosition);
-            newBlock.castShadow = true;
-            newBlock.receiveShadow = true;
-
-            this.scene.add(newBlock);
-            this.placedBlocks.push(newBlock);
-            this.collidableBuildObjects.push(newBlock);
+    const l = this.platformSize / 2;
+    this.selectedPrefabData.forEach(d => {
+        const p = new THREE.Vector3(d.x, d.y, d.z).add(this.previewPrefab.position);
+        if (Math.abs(p.x) < l && Math.abs(p.z) < l && p.y >= 0) {
+            const g = new THREE.BoxGeometry(1, 1, 1);
+            const m = this.materials[d.texturePath];
+            const b = new THREE.Mesh(g, m);
+            b.userData.texturePath = d.texturePath;
+            b.position.copy(p);
+            b.castShadow = true;
+            b.receiveShadow = true;
+            this.scene.add(b);
+            this.placedBlocks.push(b);
+            this.collidableBuildObjects.push(b);
         }
     });
-
     this.updateSaveButton();
   }
   
   removeBlock() {
     this.raycaster.setFromCamera(this.mouse, this.game.camera);
-    const intersects = this.raycaster.intersectObjects(this.placedBlocks);
-    if (intersects.length > 0) {
-      const blockToRemove = intersects[0].object;
-      this.scene.remove(blockToRemove);
-      this.placedBlocks = this.placedBlocks.filter(b => b !== blockToRemove);
-      this.collidableBuildObjects = this.collidableBuildObjects.filter(b => b !== blockToRemove);
+    const i = this.raycaster.intersectObjects(this.placedBlocks);
+    if (i.length > 0) {
+      const o = i[0].object;
+      this.scene.remove(o);
+      this.placedBlocks = this.placedBlocks.filter(b => b !== o);
+      this.collidableBuildObjects = this.collidableBuildObjects.filter(b => b !== o);
       this.updateSaveButton();
     }
   }
   
   updateSaveButton() {
-    const button = document.getElementById('build-save-button');
+    const b = document.getElementById('build-save-button');
     if (this.placedBlocks.length > 0) {
-      button.style.opacity = '1';
-      button.style.cursor = 'pointer';
+      b.style.opacity = '1';
+      b.style.cursor = 'pointer';
     } else {
-      // W trybie Nexus pozwalamy zapisać pustą mapę (reset)
       if (this.isNexusMode && this.placedBlocks.length === 0) {
-           button.style.opacity = '1';
-           button.style.cursor = 'pointer';
+          b.style.opacity = '1';
+          b.style.cursor = 'pointer';
       } else {
-           button.style.opacity = '0.5';
-           button.style.cursor = 'not-allowed';
+          b.style.opacity = '0.5';
+          b.style.cursor = 'not-allowed';
       }
     }
   }
 
   generateThumbnail() {
-    const width = 200; 
+    const width = 200;
     const height = 150;
     const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
     thumbnailRenderer.setSize(width, height);
@@ -459,7 +656,6 @@ export class BuildManager {
     return dataURL;
   }
 
-  // ZAPIS NEXUSA NA SERWER
   async saveNexus() {
       const token = localStorage.getItem(JWT_TOKEN_KEY);
       if (!token) { alert("Błąd autoryzacji!"); return; }
@@ -489,7 +685,7 @@ export class BuildManager {
           
           if (response.ok) {
               alert("Nexus zaktualizowany!");
-              this.game.switchToMainMenu(); // Przeładuj scenę główną
+              this.game.switchToMainMenu();
           } else {
               alert(`Błąd: ${result.message}`);
           }
@@ -502,17 +698,10 @@ export class BuildManager {
       }
   }
 
-  // ZAPIS ŚWIATA (z miniaturką)
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
-      
-      // Zmień przycisk na "Zapisywanie..."
-      const saveBtn = document.getElementById('build-save-button');
-      const originalText = saveBtn.textContent;
-      saveBtn.textContent = "Zapisywanie...";
-      saveBtn.style.cursor = 'wait';
       
       const thumbnail = this.generateThumbnail();
 
@@ -528,9 +717,6 @@ export class BuildManager {
       };
       
       const success = await WorldStorage.saveWorld(worldName, worldData);
-      
-      saveBtn.textContent = originalText;
-      saveBtn.style.cursor = 'pointer';
       
       if (success) {
         alert(`Świat "${worldName}" został pomyślnie zapisany na serwerze!`);
@@ -552,7 +738,6 @@ export class BuildManager {
     const saveBtn = document.getElementById('build-save-button');
     if(saveBtn) saveBtn.textContent = "Zapisz";
 
-    // Przywróć przycisk "+" na dół
     const addBtn = document.getElementById('build-add-button');
     if (addBtn) addBtn.style.bottom = '20px';
 
@@ -560,93 +745,5 @@ export class BuildManager {
         document.getElementById('jump-button').style.display = 'block';
         document.getElementById('joystick-zone').style.display = 'none';
     }
-  }
-  
-  update(deltaTime) {
-    if (!this.isActive) return;
-    this.cameraController.update(deltaTime);
-    this.raycaster.setFromCamera(this.mouse, this.game.camera);
-    const intersects = this.raycaster.intersectObjects(this.collidableBuildObjects);
-    
-    if (intersects.length > 0) {
-      const intersect = intersects[0];
-      const normal = intersect.face.normal.clone();
-      const snappedPosition = new THREE.Vector3().copy(intersect.point)
-        .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
-
-      const buildAreaLimit = this.platformSize / 2;
-      let isVisible = false;
-      if (
-          Math.abs(snappedPosition.x) < buildAreaLimit && 
-          Math.abs(snappedPosition.z) < buildAreaLimit && 
-          snappedPosition.y >= 0
-      ) {
-          isVisible = true;
-          if (this.currentBuildMode === 'block') {
-              if (this.previewBlock) this.previewBlock.position.copy(snappedPosition);
-          } else {
-              if (this.previewPrefab) this.previewPrefab.position.copy(snappedPosition);
-          }
-      }
-      
-      if (this.previewBlock) this.previewBlock.visible = isVisible && this.currentBuildMode === 'block';
-      if (this.previewPrefab) this.previewPrefab.visible = isVisible && this.currentBuildMode === 'prefab';
-
-    } else {
-      if (this.previewBlock) this.previewBlock.visible = false;
-      if (this.previewPrefab) this.previewPrefab.visible = false;
-    }
-  }
-
-  onTouchStart(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
-    
-    event.preventDefault();
-    this.isLongPress = false;
-    
-    const touch = event.touches[0];
-    this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-    
-    this.touchStartPosition.x = touch.clientX;
-    this.touchStartPosition.y = touch.clientY;
-
-    clearTimeout(this.longPressTimer);
-    this.longPressTimer = setTimeout(() => {
-        this.isLongPress = true;
-        this.removeBlock();
-    }, 500);
-  }
-
-  onTouchEnd(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
-
-    clearTimeout(this.longPressTimer);
-    
-    if (!this.isLongPress) {
-        if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
-            this.placeBlock();
-        } else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) {
-            this.placePrefab();
-        }
-    }
-  }
-
-  onTouchMove(event) {
-    if (!this.isActive || !this.game.isMobile) return;
-    
-    const touch = event.touches[0];
-    
-    const deltaX = touch.clientX - this.touchStartPosition.x;
-    const deltaY = touch.clientY - this.touchStartPosition.y;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const MOVE_THRESHOLD = 10; 
-
-    if (distance > MOVE_THRESHOLD) {
-        clearTimeout(this.longPressTimer);
-    }
-    
-    this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
 }
