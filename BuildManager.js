@@ -4,9 +4,9 @@ import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class BuildManager {
-  // ... (konstruktor, onContextMenu, preloadTextures bez zmian)
   constructor(game, loadingManager, blockManager) {
     this.game = game;
     this.scene = new THREE.Scene();
@@ -23,16 +23,19 @@ export class BuildManager {
     this.platform = null;
     this.platformSize = 64;
     this.cameraController = null;
+    
+    // Flaga trybu edycji Nexusa
     this.isNexusMode = false;
-    this.baseCharacterVisuals = null;
+    
     this.blockTypes = []; 
     this.selectedBlockType = null;
+    
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
-    
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
+
     this.longPressTimer = null;
     this.isLongPress = false;
     this.touchStartPosition = { x: 0, y: 0 };
@@ -40,8 +43,10 @@ export class BuildManager {
     this.onTouchEnd = this.onTouchEnd.bind(this);
     this.onTouchMove = this.onTouchMove.bind(this);
   }
-  
-  onContextMenu(event) { event.preventDefault(); }
+
+  onContextMenu(event) {
+    event.preventDefault();
+  }
 
   preloadTextures() {
     const allBlocks = this.blockManager.getAllBlockDefinitions();
@@ -67,6 +72,7 @@ export class BuildManager {
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
+    // Zmień tekst przycisku zapisu
     const saveBtn = document.getElementById('build-save-button');
     if(saveBtn) saveBtn.textContent = isNexusMode ? "Zapisz Nexus" : "Zapisz";
 
@@ -91,48 +97,330 @@ export class BuildManager {
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
 
-    // --- KONFIGURACJA UI MOBILNEGO DLA BUDOWANIA ---
+    // --- KONFIGURACJA UI MOBILNEGO ---
     if (this.game.isMobile) {
         const mobileControls = document.getElementById('mobile-game-controls');
         const jumpBtn = document.getElementById('jump-button');
         const joystickZone = document.getElementById('joystick-zone');
+        const addBtn = document.getElementById('build-add-button');
 
-        if (mobileControls) mobileControls.style.display = 'block'; // Pokaż kontener
-        if (jumpBtn) jumpBtn.style.display = 'none'; // Ukryj skok (niepotrzebny w budowaniu)
-        if (joystickZone) joystickZone.style.display = 'block'; // Pokaż strefę joysticka
+        if (mobileControls) mobileControls.style.display = 'block';
+        if (jumpBtn) jumpBtn.style.display = 'none'; // Ukryj skok
+        if (joystickZone) joystickZone.style.display = 'block'; // Pokaż joystick
         
-        // Ważne: CameraController sam utworzy nipplejs wewnątrz joystickZone
+        // Przesuń przycisk "+" wyżej, żeby nie zasłaniał joysticka
+        if (addBtn) addBtn.style.bottom = '150px';
+    } else {
+        const addBtn = document.getElementById('build-add-button');
+        if (addBtn) addBtn.style.bottom = '20px';
     }
 
     this.setupBuildEventListeners();
 
+    // Jeśli to tryb Nexusa, pobierz obecną mapę z serwera
     if (this.isNexusMode) {
         await this.loadExistingNexus();
     }
   }
-  
-  // ... (loadExistingNexus, createBuildPlatform, createPreviewBlock, setupBuildEventListeners, populateBlockSelectionPanel, showPrefabSelectionPanel, selectBlockType, selectPrefab, toggleCameraMode, removeBuildEventListeners - BEZ ZMIAN - użyj z poprzedniej wersji)
-  
-  async loadExistingNexus() { try { const r = await fetch(`${API_BASE_URL}/api/nexus`); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) { d.forEach(b => { const g = new THREE.BoxGeometry(1, 1, 1); let m = this.materials[b.texturePath]; if (!m) { const t = this.textureLoader.load(b.texturePath); t.magFilter = THREE.NearestFilter; m = new THREE.MeshLambertMaterial({ map: t }); this.materials[b.texturePath] = m; } const mesh = new THREE.Mesh(g, m); mesh.position.set(b.x, b.y, b.z); mesh.userData.texturePath = b.texturePath; mesh.castShadow = true; mesh.receiveShadow = true; this.scene.add(mesh); this.placedBlocks.push(mesh); this.collidableBuildObjects.push(mesh); }); this.updateSaveButton(); } } } catch (e) {} }
-  createBuildPlatform() { const g = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize); const m = new THREE.MeshLambertMaterial({ color: 0x559022 }); this.platform = new THREE.Mesh(g, m); this.platform.position.y = -0.5; this.platform.receiveShadow = true; this.scene.add(this.platform); this.collidableBuildObjects.push(this.platform); const e = new THREE.EdgesGeometry(g); const l = new THREE.LineSegments(e, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 })); l.position.y = -0.5; this.scene.add(l); }
-  createPreviewBlock() { if (!this.selectedBlockType) return; const g = new THREE.BoxGeometry(1.01, 1.01, 1.01); const m = this.materials[this.selectedBlockType.texturePath].clone(); m.transparent = true; m.opacity = 0.5; this.previewBlock = new THREE.Mesh(g, m); this.previewBlock.visible = false; this.scene.add(this.previewBlock); }
-  setupBuildEventListeners() { window.addEventListener('mousemove', this.onMouseMove); window.addEventListener('mousedown', this.onMouseDown); window.addEventListener('contextmenu', this.onContextMenu); window.addEventListener('touchstart', this.onTouchStart, { passive: false }); window.addEventListener('touchend', this.onTouchEnd); window.addEventListener('touchmove', this.onTouchMove); document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu(); document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode(); document.getElementById('build-add-button').onclick = () => { document.getElementById('add-choice-panel').style.display = 'flex'; document.getElementById('add-choice-parts').style.display = 'none'; document.getElementById('add-choice-prefabs').style.display = 'block'; }; document.getElementById('build-save-button').onclick = () => { if (this.isNexusMode) this.saveNexus(); else this.saveWorld(); }; document.getElementById('add-choice-blocks').onclick = () => { document.getElementById('add-choice-panel').style.display = 'none'; document.getElementById('block-selection-panel').style.display = 'flex'; }; document.getElementById('add-choice-prefabs').onclick = () => { document.getElementById('add-choice-panel').style.display = 'none'; this.showPrefabSelectionPanel(); }; document.getElementById('add-choice-close').onclick = () => { document.getElementById('add-choice-panel').style.display = 'none'; }; }
-  populateBlockSelectionPanel() { const p = document.getElementById('block-selection-panel'); p.innerHTML = ''; this.blockTypes.forEach(b => { const i = document.createElement('div'); i.className = 'block-item'; i.style.backgroundImage = `url(${b.texturePath})`; i.style.backgroundSize = 'cover'; i.onclick = () => { this.selectBlockType(b); p.style.display = 'none'; }; p.appendChild(i); }); }
-  showPrefabSelectionPanel() { const p = document.getElementById('prefab-selection-panel'); p.innerHTML = ''; const n = PrefabStorage.getSavedPrefabsList(); if (n.length === 0) p.innerHTML = '<div class="panel-item text-outline">Brak prefabrykatów</div>'; else n.forEach(x => { const i = document.createElement('div'); i.className = 'panel-item text-outline prefab-item'; i.textContent = x; i.onclick = () => { this.selectPrefab(x); p.style.display = 'none'; }; p.appendChild(i); }); p.style.display = 'flex'; }
-  selectBlockType(t) { this.currentBuildMode = 'block'; this.selectedBlockType = t; if (this.previewBlock) { this.previewBlock.material = this.materials[t.texturePath].clone(); this.previewBlock.material.transparent = true; this.previewBlock.material.opacity = 0.5; } this.previewPrefab.visible = false; this.previewBlock.visible = true; }
-  selectPrefab(n) { this.currentBuildMode = 'prefab'; this.selectedPrefabData = PrefabStorage.loadPrefab(n); if (!this.selectedPrefabData) return; while(this.previewPrefab.children.length) this.previewPrefab.remove(this.previewPrefab.children[0]); this.selectedPrefabData.forEach(b => { const g = new THREE.BoxGeometry(1, 1, 1); const m = this.materials[b.texturePath].clone(); m.transparent = true; m.opacity = 0.5; const mesh = new THREE.Mesh(g, m); mesh.position.set(b.x, b.y, b.z); this.previewPrefab.add(mesh); }); this.previewBlock.visible = false; this.previewPrefab.visible = true; }
-  toggleCameraMode() { const b = document.getElementById('build-mode-button'); if (this.cameraController.mode === 'orbital') { this.cameraController.setMode('free'); b.textContent = 'Zaawansowany'; } else { this.cameraController.setMode('orbital'); b.textContent = 'Łatwy'; } }
-  removeBuildEventListeners() { window.removeEventListener('mousemove', this.onMouseMove); window.removeEventListener('mousedown', this.onMouseDown); window.removeEventListener('contextmenu', this.onContextMenu); window.removeEventListener('touchstart', this.onTouchStart); window.removeEventListener('touchend', this.onTouchEnd); window.removeEventListener('touchmove', this.onTouchMove); document.getElementById('build-exit-button').onclick = null; document.getElementById('build-mode-button').onclick = null; document.getElementById('build-add-button').onclick = null; document.getElementById('build-save-button').onclick = null; if (this.cameraController) this.cameraController.destroy(); }
-  onMouseMove(e) { this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1; this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1; }
-  onMouseDown(e) { if (!this.isActive || this.game.isMobile || e.target.closest('.build-ui-button') || e.target.closest('#block-selection-panel') || e.target.closest('#prefab-selection-panel') || e.target.closest('#add-choice-panel') || e.target.closest('#joystick-zone')) return; if (e.button === 0) { if (this.currentBuildMode === 'block' && this.previewBlock.visible) this.placeBlock(); else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) this.placePrefab(); } else if (e.button === 2) this.removeBlock(); }
-  placeBlock() { if (!this.selectedBlockType) return; const g = new THREE.BoxGeometry(1, 1, 1); const m = this.materials[this.selectedBlockType.texturePath]; const b = new THREE.Mesh(g, m); b.userData.texturePath = this.selectedBlockType.texturePath; b.position.copy(this.previewBlock.position); b.castShadow = true; b.receiveShadow = true; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); this.updateSaveButton(); }
-  placePrefab() { if (!this.selectedPrefabData) return; const l = this.platformSize / 2; this.selectedPrefabData.forEach(d => { const p = new THREE.Vector3(d.x, d.y, d.z).add(this.previewPrefab.position); if (Math.abs(p.x) < l && Math.abs(p.z) < l && p.y >= 0) { const g = new THREE.BoxGeometry(1, 1, 1); const m = this.materials[d.texturePath]; const b = new THREE.Mesh(g, m); b.userData.texturePath = d.texturePath; b.position.copy(p); b.castShadow = true; b.receiveShadow = true; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); } }); this.updateSaveButton(); }
-  removeBlock() { this.raycaster.setFromCamera(this.mouse, this.game.camera); const i = this.raycaster.intersectObjects(this.placedBlocks); if (i.length > 0) { const o = i[0].object; this.scene.remove(o); this.placedBlocks = this.placedBlocks.filter(b => b !== o); this.collidableBuildObjects = this.collidableBuildObjects.filter(b => b !== o); this.updateSaveButton(); } }
-  updateSaveButton() { const b = document.getElementById('build-save-button'); if (this.placedBlocks.length > 0) { b.style.opacity = '1'; b.style.cursor = 'pointer'; } else { if (this.isNexusMode && this.placedBlocks.length === 0) { b.style.opacity = '1'; b.style.cursor = 'pointer'; } else { b.style.opacity = '0.5'; b.style.cursor = 'not-allowed'; } } }
 
-  // --- GENEROWANIE MINIATURKI (DLA ŚWIATA) ---
+  async loadExistingNexus() {
+      try {
+          const response = await fetch(`${API_BASE_URL}/api/nexus`);
+          if (response.ok) {
+              const blocksData = await response.json();
+              if (Array.isArray(blocksData)) {
+                  console.log("Wczytywanie Nexusa do edytora...");
+                  blocksData.forEach(blockData => {
+                      const geometry = new THREE.BoxGeometry(1, 1, 1);
+                      let material = this.materials[blockData.texturePath];
+                      if (!material) {
+                          const texture = this.textureLoader.load(blockData.texturePath);
+                          texture.magFilter = THREE.NearestFilter;
+                          material = new THREE.MeshLambertMaterial({ map: texture });
+                          this.materials[blockData.texturePath] = material;
+                      }
+
+                      const mesh = new THREE.Mesh(geometry, material);
+                      mesh.position.set(blockData.x, blockData.y, blockData.z);
+                      mesh.userData.texturePath = blockData.texturePath;
+                      mesh.castShadow = true;
+                      mesh.receiveShadow = true;
+
+                      this.scene.add(mesh);
+                      this.placedBlocks.push(mesh);
+                      this.collidableBuildObjects.push(mesh);
+                  });
+                  this.updateSaveButton();
+              }
+          }
+      } catch (e) {
+          console.warn("Błąd pobierania Nexusa (może być pusty):", e);
+      }
+  }
+
+  createBuildPlatform() {
+    const geometry = new THREE.BoxGeometry(this.platformSize, 1, this.platformSize);
+    const material = new THREE.MeshLambertMaterial({ color: 0x559022 });
+    this.platform = new THREE.Mesh(geometry, material);
+    this.platform.position.y = -0.5;
+    this.platform.receiveShadow = true;
+    this.scene.add(this.platform);
+    this.collidableBuildObjects.push(this.platform);
+    
+    const edges = new THREE.EdgesGeometry(geometry);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 }));
+    line.position.y = -0.5;
+    this.scene.add(line);
+  }
+
+  createPreviewBlock() {
+    if (!this.selectedBlockType) return;
+    const previewGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+    const previewMat = this.materials[this.selectedBlockType.texturePath].clone();
+    previewMat.transparent = true;
+    previewMat.opacity = 0.5;
+    this.previewBlock = new THREE.Mesh(previewGeo, previewMat);
+    this.previewBlock.visible = false;
+    this.scene.add(this.previewBlock);
+  }
+  
+  setupBuildEventListeners() {
+    window.addEventListener('mousemove', this.onMouseMove);
+    window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('contextmenu', this.onContextMenu);
+
+    window.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    window.addEventListener('touchend', this.onTouchEnd);
+    window.addEventListener('touchmove', this.onTouchMove);
+
+    document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
+    document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
+    document.getElementById('build-add-button').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'flex';
+        document.getElementById('add-choice-parts').style.display = 'none';
+        document.getElementById('add-choice-prefabs').style.display = 'block';
+    };
+    
+    document.getElementById('build-save-button').onclick = () => {
+        if (this.isNexusMode) {
+            this.saveNexus();
+        } else {
+            this.saveWorld();
+        }
+    };
+
+    document.getElementById('add-choice-blocks').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'flex';
+    };
+    document.getElementById('add-choice-prefabs').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        this.showPrefabSelectionPanel();
+    };
+    document.getElementById('add-choice-close').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+    };
+  }
+  
+  populateBlockSelectionPanel() {
+      const panel = document.getElementById('block-selection-panel');
+      panel.innerHTML = '';
+      this.blockTypes.forEach(blockType => {
+          const blockItem = document.createElement('div');
+          blockItem.className = 'block-item';
+          blockItem.style.backgroundImage = `url(${blockType.texturePath})`;
+          blockItem.style.backgroundSize = 'cover';
+          blockItem.onclick = () => {
+              this.selectBlockType(blockType);
+              panel.style.display = 'none';
+          };
+          panel.appendChild(blockItem);
+      });
+  }
+
+  showPrefabSelectionPanel() {
+      const panel = document.getElementById('prefab-selection-panel');
+      panel.innerHTML = '';
+      const prefabNames = PrefabStorage.getSavedPrefabsList();
+      if (prefabNames.length === 0) {
+          panel.innerHTML = '<div class="panel-item text-outline">Brak prefabrykatów</div>';
+      } else {
+          prefabNames.forEach(name => {
+              const item = document.createElement('div');
+              item.className = 'panel-item text-outline prefab-item';
+              item.textContent = name;
+              item.onclick = () => {
+                  this.selectPrefab(name);
+                  panel.style.display = 'none';
+              };
+              panel.appendChild(item);
+          });
+      }
+      panel.style.display = 'flex';
+  }
+  
+  selectBlockType(blockType) {
+      this.currentBuildMode = 'block';
+      this.selectedBlockType = blockType;
+      if (this.previewBlock) {
+        this.previewBlock.material = this.materials[blockType.texturePath].clone();
+        this.previewBlock.material.transparent = true;
+        this.previewBlock.material.opacity = 0.5;
+      }
+      this.previewPrefab.visible = false;
+      this.previewBlock.visible = true;
+  }
+
+  selectPrefab(prefabName) {
+      this.currentBuildMode = 'prefab';
+      this.selectedPrefabData = PrefabStorage.loadPrefab(prefabName);
+      if (!this.selectedPrefabData) return;
+
+      while(this.previewPrefab.children.length) {
+          this.previewPrefab.remove(this.previewPrefab.children[0]);
+      }
+      
+      this.selectedPrefabData.forEach(blockData => {
+          const geo = new THREE.BoxGeometry(1, 1, 1);
+          const mat = this.materials[blockData.texturePath].clone();
+          mat.transparent = true;
+          mat.opacity = 0.5;
+          const block = new THREE.Mesh(geo, mat);
+          block.position.set(blockData.x, blockData.y, blockData.z);
+          this.previewPrefab.add(block);
+      });
+
+      this.previewBlock.visible = false;
+      this.previewPrefab.visible = true;
+  }
+
+  toggleCameraMode() {
+      const button = document.getElementById('build-mode-button');
+      if (this.cameraController.mode === 'orbital') {
+          this.cameraController.setMode('free');
+          button.textContent = 'Zaawansowany';
+      } else {
+          this.cameraController.setMode('orbital');
+          button.textContent = 'Łatwy';
+      }
+  }
+
+  removeBuildEventListeners() {
+    window.removeEventListener('mousemove', this.onMouseMove);
+    window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('contextmenu', this.onContextMenu);
+
+    window.removeEventListener('touchstart', this.onTouchStart);
+    window.removeEventListener('touchend', this.onTouchEnd);
+    window.removeEventListener('touchmove', this.onTouchMove);
+
+    document.getElementById('build-exit-button').onclick = null;
+    document.getElementById('build-mode-button').onclick = null;
+    document.getElementById('build-add-button').onclick = null;
+    document.getElementById('build-save-button').onclick = null;
+    document.getElementById('add-choice-blocks').onclick = null;
+    document.getElementById('add-choice-prefabs').onclick = null;
+    document.getElementById('add-choice-close').onclick = null;
+
+    if (this.cameraController) this.cameraController.destroy();
+  }
+  
+  onMouseMove(event) {
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  }
+  
+  onMouseDown(event) {
+    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
+    
+    if (event.button === 0) {
+        if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
+            this.placeBlock();
+        } else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) {
+            this.placePrefab();
+        }
+    } else if (event.button === 2) {
+        this.removeBlock();
+    }
+  }
+
+  placeBlock() {
+    if (!this.selectedBlockType) return;
+    const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+    const blockMat = this.materials[this.selectedBlockType.texturePath];
+    const newBlock = new THREE.Mesh(blockGeo, blockMat);
+    newBlock.userData.texturePath = this.selectedBlockType.texturePath;
+    newBlock.position.copy(this.previewBlock.position);
+    
+    newBlock.castShadow = true;
+    newBlock.receiveShadow = true;
+
+    this.scene.add(newBlock);
+    this.placedBlocks.push(newBlock);
+    this.collidableBuildObjects.push(newBlock);
+    this.updateSaveButton();
+  }
+  
+  placePrefab() {
+    if (!this.selectedPrefabData) return;
+    const buildAreaLimit = this.platformSize / 2;
+    
+    this.selectedPrefabData.forEach(blockData => {
+        const finalPosition = new THREE.Vector3(blockData.x, blockData.y, blockData.z).add(this.previewPrefab.position);
+
+        if (
+            Math.abs(finalPosition.x) < buildAreaLimit && 
+            Math.abs(finalPosition.z) < buildAreaLimit &&
+            finalPosition.y >= 0
+        ) {
+            const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+            const blockMat = this.materials[blockData.texturePath];
+            const newBlock = new THREE.Mesh(blockGeo, blockMat);
+            newBlock.userData.texturePath = blockData.texturePath;
+            newBlock.position.copy(finalPosition);
+            newBlock.castShadow = true;
+            newBlock.receiveShadow = true;
+
+            this.scene.add(newBlock);
+            this.placedBlocks.push(newBlock);
+            this.collidableBuildObjects.push(newBlock);
+        }
+    });
+
+    this.updateSaveButton();
+  }
+  
+  removeBlock() {
+    this.raycaster.setFromCamera(this.mouse, this.game.camera);
+    const intersects = this.raycaster.intersectObjects(this.placedBlocks);
+    if (intersects.length > 0) {
+      const blockToRemove = intersects[0].object;
+      this.scene.remove(blockToRemove);
+      this.placedBlocks = this.placedBlocks.filter(b => b !== blockToRemove);
+      this.collidableBuildObjects = this.collidableBuildObjects.filter(b => b !== blockToRemove);
+      this.updateSaveButton();
+    }
+  }
+  
+  updateSaveButton() {
+    const button = document.getElementById('build-save-button');
+    if (this.placedBlocks.length > 0) {
+      button.style.opacity = '1';
+      button.style.cursor = 'pointer';
+    } else {
+      // W trybie Nexus pozwalamy zapisać pustą mapę (reset)
+      if (this.isNexusMode && this.placedBlocks.length === 0) {
+           button.style.opacity = '1';
+           button.style.cursor = 'pointer';
+      } else {
+           button.style.opacity = '0.5';
+           button.style.cursor = 'not-allowed';
+      }
+    }
+  }
+
   generateThumbnail() {
-    const width = 200;
+    const width = 200; 
     const height = 150;
     const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
     thumbnailRenderer.setSize(width, height);
@@ -171,8 +459,9 @@ export class BuildManager {
     return dataURL;
   }
 
+  // ZAPIS NEXUSA NA SERWER
   async saveNexus() {
-      const token = localStorage.getItem('bsp_clone_jwt_token');
+      const token = localStorage.getItem(JWT_TOKEN_KEY);
       if (!token) { alert("Błąd autoryzacji!"); return; }
 
       const blocksData = this.placedBlocks.map(block => ({
@@ -200,7 +489,7 @@ export class BuildManager {
           
           if (response.ok) {
               alert("Nexus zaktualizowany!");
-              this.game.switchToMainMenu();
+              this.game.switchToMainMenu(); // Przeładuj scenę główną
           } else {
               alert(`Błąd: ${result.message}`);
           }
@@ -213,10 +502,17 @@ export class BuildManager {
       }
   }
 
+  // ZAPIS ŚWIATA (z miniaturką)
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
+      
+      // Zmień przycisk na "Zapisywanie..."
+      const saveBtn = document.getElementById('build-save-button');
+      const originalText = saveBtn.textContent;
+      saveBtn.textContent = "Zapisywanie...";
+      saveBtn.style.cursor = 'wait';
       
       const thumbnail = this.generateThumbnail();
 
@@ -232,6 +528,9 @@ export class BuildManager {
       };
       
       const success = await WorldStorage.saveWorld(worldName, worldData);
+      
+      saveBtn.textContent = originalText;
+      saveBtn.style.cursor = 'pointer';
       
       if (success) {
         alert(`Świat "${worldName}" został pomyślnie zapisany na serwerze!`);
@@ -253,12 +552,13 @@ export class BuildManager {
     const saveBtn = document.getElementById('build-save-button');
     if(saveBtn) saveBtn.textContent = "Zapisz";
 
-    // PRZYWRACANIE UI GŁÓWNEGO
+    // Przywróć przycisk "+" na dół
+    const addBtn = document.getElementById('build-add-button');
+    if (addBtn) addBtn.style.bottom = '20px';
+
     if (this.game.isMobile) {
-        // Przywróć przycisk skoku, ale ukryj strefę joysticka (bo w main menu jest inna logika lub ukryte)
-        // W main.js toggleMobileControls(true) powinno przywrócić właściwy stan.
-        // Tutaj ważne, żeby ukryć ten z budowania.
-        document.getElementById('joystick-zone').style.display = 'none'; // Ukryj joystick budowania
+        document.getElementById('jump-button').style.display = 'block';
+        document.getElementById('joystick-zone').style.display = 'none';
     }
   }
   
@@ -300,33 +600,52 @@ export class BuildManager {
 
   onTouchStart(event) {
     if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
+    
     event.preventDefault();
     this.isLongPress = false;
+    
     const touch = event.touches[0];
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+    
     this.touchStartPosition.x = touch.clientX;
     this.touchStartPosition.y = touch.clientY;
+
     clearTimeout(this.longPressTimer);
-    this.longPressTimer = setTimeout(() => { this.isLongPress = true; this.removeBlock(); }, 500);
+    this.longPressTimer = setTimeout(() => {
+        this.isLongPress = true;
+        this.removeBlock();
+    }, 500);
   }
 
   onTouchEnd(event) {
     if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#prefab-selection-panel') || event.target.closest('#add-choice-panel') || event.target.closest('#joystick-zone')) return;
+
     clearTimeout(this.longPressTimer);
+    
     if (!this.isLongPress) {
-        if (this.currentBuildMode === 'block' && this.previewBlock.visible) this.placeBlock();
-        else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) this.placePrefab();
+        if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
+            this.placeBlock();
+        } else if (this.currentBuildMode === 'prefab' && this.previewPrefab.visible) {
+            this.placePrefab();
+        }
     }
   }
 
   onTouchMove(event) {
     if (!this.isActive || !this.game.isMobile) return;
+    
     const touch = event.touches[0];
+    
     const deltaX = touch.clientX - this.touchStartPosition.x;
     const deltaY = touch.clientY - this.touchStartPosition.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    if (distance > 10) clearTimeout(this.longPressTimer);
+    const MOVE_THRESHOLD = 10; 
+
+    if (distance > MOVE_THRESHOLD) {
+        clearTimeout(this.longPressTimer);
+    }
+    
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
