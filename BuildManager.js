@@ -159,6 +159,7 @@ export class BuildManager {
       }
   }
 
+  // --- POPRAWIONA FUNKCJA OBLICZANIA LINII ---
   getPointsOnLine(start, end) {
       const points = [];
       const dist = start.distanceTo(end);
@@ -166,7 +167,15 @@ export class BuildManager {
       
       for (let i = 0; i <= steps; i++) {
           const t = steps === 0 ? 0 : i / steps;
-          const point = new THREE.Vector3().lerpVectors(start, end, t).round();
+          // LERP oblicza punkt pośredni
+          const point = new THREE.Vector3().lerpVectors(start, end, t);
+          
+          // NAPRAWA: Zamiast .round(), używamy .floor() + 0.5
+          // To gwarantuje, że punkt zawsze trafi w środek kratki (np. 1.5, 2.5)
+          // tak samo jak robi to updateRaycast dla pojedynczego bloku.
+          point.floor().addScalar(0.5);
+
+          // Sprawdzamy duplikaty, żeby nie stawiać bloków w tym samym miejscu
           const exists = points.some(p => p.equals(point));
           if (!exists) points.push(point);
       }
