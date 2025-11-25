@@ -3,6 +3,9 @@ import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
+
 export class BuildManager {
   constructor(game, loadingManager, blockManager) {
     this.game = game;
@@ -20,6 +23,9 @@ export class BuildManager {
     this.platform = null;
     this.platformSize = 64;
     this.cameraController = null;
+    
+    // Flaga trybu edycji Nexusa
+    this.isNexusMode = false;
     
     this.blockTypes = []; 
     this.selectedBlockType = null;
@@ -54,9 +60,11 @@ export class BuildManager {
     });
   }
 
-  enterBuildMode(size = 64) {
+  // ZMIANA: Dodano parametr isNexusMode
+  async enterBuildMode(size = 64, isNexusMode = false) {
     this.isActive = true;
     this.platformSize = size;
+    this.isNexusMode = isNexusMode; // Zapisujemy tryb
     
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
@@ -64,6 +72,11 @@ export class BuildManager {
 
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
+    
+    // Zmieniamy tekst przycisku jeśli to Nexus
+    const saveBtn = document.getElementById('build-save-button');
+    if(saveBtn) saveBtn.textContent = isNexusMode ? "Zapisz Nexus" : "Zapisz";
+
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
     
@@ -90,6 +103,50 @@ export class BuildManager {
     }
 
     this.setupBuildEventListeners();
+
+    // Jeśli edytujemy Nexus, pobierz jego aktualny stan z serwera
+    if (this.isNexusMode) {
+        await this.loadExistingNexus();
+    }
+  }
+
+  // NOWA METODA: Pobieranie i odbudowa Nexusa w edytorze
+  async loadExistingNexus() {
+      try {
+          const response = await fetch(`${API_BASE_URL}/api/nexus`);
+          if (response.ok) {
+              const blocksData = await response.json();
+              if (Array.isArray(blocksData)) {
+                  console.log("Wczytywanie istniejącego Nexusa do edytora...");
+                  blocksData.forEach(blockData => {
+                      // Odtwórz klocek
+                      const geometry = new THREE.BoxGeometry(1, 1, 1);
+                      // Upewnij się, że materiał jest załadowany
+                      let material = this.materials[blockData.texturePath];
+                      if (!material) {
+                          // Fallback jeśli tekstura nie jest w cache
+                          const texture = this.textureLoader.load(blockData.texturePath);
+                          texture.magFilter = THREE.NearestFilter;
+                          material = new THREE.MeshLambertMaterial({ map: texture });
+                          this.materials[blockData.texturePath] = material;
+                      }
+
+                      const mesh = new THREE.Mesh(geometry, material);
+                      mesh.position.set(blockData.x, blockData.y, blockData.z);
+                      mesh.userData.texturePath = blockData.texturePath; // Ważne dla zapisu
+                      mesh.castShadow = true;
+                      mesh.receiveShadow = true;
+
+                      this.scene.add(mesh);
+                      this.placedBlocks.push(mesh);
+                      this.collidableBuildObjects.push(mesh);
+                  });
+                  this.updateSaveButton();
+              }
+          }
+      } catch (e) {
+          console.warn("Nie udało się pobrać Nexusa (może jest pusty):", e);
+      }
   }
 
   createBuildPlatform() {
@@ -134,7 +191,15 @@ export class BuildManager {
         document.getElementById('add-choice-parts').style.display = 'none';
         document.getElementById('add-choice-prefabs').style.display = 'block';
     };
-    document.getElementById('build-save-button').onclick = () => this.saveWorld();
+    
+    // Obsługa przycisku zapisu - teraz zależy od trybu
+    document.getElementById('build-save-button').onclick = () => {
+        if (this.isNexusMode) {
+            this.saveNexus();
+        } else {
+            this.saveWorld();
+        }
+    };
 
     document.getElementById('add-choice-blocks').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
@@ -335,8 +400,14 @@ export class BuildManager {
       button.style.opacity = '1';
       button.style.cursor = 'pointer';
     } else {
-      button.style.opacity = '0.5';
-      button.style.cursor = 'not-allowed';
+      // Pozwalamy usunąć wszystkie klocki w trybie Nexusa, żeby wyczyścić mapę
+      if (this.isNexusMode && this.placedBlocks.length === 0) {
+          button.style.opacity = '1';
+          button.style.cursor = 'pointer';
+      } else {
+          button.style.opacity = '0.5';
+          button.style.cursor = 'not-allowed';
+      }
     }
   }
 
@@ -345,7 +416,7 @@ export class BuildManager {
     const height = 150;
     const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
     thumbnailRenderer.setSize(width, height);
-    thumbnailRenderer.setClearColor(0x87CEEB); 
+    thumbnailRenderer.setClearColor(0x87CEEB);
     
     const thumbnailScene = new THREE.Scene();
     const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -380,18 +451,54 @@ export class BuildManager {
     return dataURL;
   }
 
-  // ASYNCHRONICZNY ZAPIS
+  // --- NOWA METODA: ZAPIS NEXUSA NA SERWERZE ---
+  async saveNexus() {
+      const token = localStorage.getItem(JWT_TOKEN_KEY);
+      if (!token) { alert("Błąd autoryzacji!"); return; }
+
+      const blocksData = this.placedBlocks.map(block => ({
+        x: block.position.x,
+        y: block.position.y,
+        z: block.position.z,
+        texturePath: block.userData.texturePath
+      }));
+
+      const saveBtn = document.getElementById('build-save-button');
+      saveBtn.textContent = "Zapisywanie...";
+      saveBtn.style.cursor = 'wait';
+
+      try {
+          const response = await fetch(`${API_BASE_URL}/api/nexus`, {
+              method: 'POST',
+              headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ blocks: blocksData })
+          });
+
+          const result = await response.json();
+          
+          if (response.ok) {
+              alert("Nexus zaktualizowany!");
+              this.game.switchToMainMenu(); // To przeładuje scenę z nowym Nexusem
+          } else {
+              alert(`Błąd: ${result.message}`);
+          }
+      } catch (e) {
+          alert("Błąd sieci.");
+          console.error(e);
+      } finally {
+          saveBtn.textContent = "Zapisz Nexus";
+          saveBtn.style.cursor = 'pointer';
+      }
+  }
+
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
       
-      // Zmień przycisk na "Zapisywanie..."
-      const saveBtn = document.getElementById('build-save-button');
-      const originalText = saveBtn.textContent;
-      saveBtn.textContent = "Zapisywanie...";
-      saveBtn.style.cursor = 'wait';
-
       const thumbnail = this.generateThumbnail();
 
       const worldData = {
@@ -407,9 +514,6 @@ export class BuildManager {
       
       const success = await WorldStorage.saveWorld(worldName, worldData);
       
-      saveBtn.textContent = originalText;
-      saveBtn.style.cursor = 'pointer';
-
       if (success) {
         alert(`Świat "${worldName}" został pomyślnie zapisany na serwerze!`);
         this.game.switchToMainMenu();
@@ -419,12 +523,18 @@ export class BuildManager {
 
   exitBuildMode() {
     this.isActive = false;
+    this.isNexusMode = false; // Reset flagi
+    
     this.removeBuildEventListeners();
     this.collidableBuildObjects = [];
     this.placedBlocks = [];
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
     
+    // Przywróć domyślny tekst przycisku
+    const saveBtn = document.getElementById('build-save-button');
+    if(saveBtn) saveBtn.textContent = "Zapisz";
+
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
     }
