@@ -1,17 +1,16 @@
 import * as THREE from 'three';
 import nipplejs from 'nipplejs';
 
-class PlayerController {
+export class PlayerController {
   constructor(player, collidableObjects, options = {}) {
     this.player = player;
     this.collidableObjects = collidableObjects;
     this.moveSpeed = options.moveSpeed || 8;
     this.jumpForce = options.jumpForce || 18;
     this.gravity = options.gravity || 50;
-    this.groundRestingY = options.groundRestingY || 0.1; // Obniżono domyślną podłogę
+    this.groundRestingY = options.groundRestingY || 0.1;
 
-    // POPRAWKA: Zmniejszono wysokość fizyczną do 1.0, aby pasowała do modelu
-    // Wcześniej było 1.6, co powodowało, że środek był za wysoko.
+    // Wymiary gracza (hitbox)
     this.playerDimensions = new THREE.Vector3(0.6, 1.0, 0.6);
 
     this.velocity = new THREE.Vector3();
@@ -25,6 +24,10 @@ class PlayerController {
     this.canJump = true;
     this.joystickDirection = new THREE.Vector2();
     this.joystick = null;
+
+    // Cache dla obiektów fizycznych (unikamy tworzenia ich w pętli renderowania)
+    this.playerBox = new THREE.Box3();
+    this.objectBox = new THREE.Box3();
   }
 
   setIsMobile(isMobile) {
@@ -87,10 +90,12 @@ class PlayerController {
   }
   
   update(deltaTime, cameraRotation) {
+    // Grawitacja
     if (!this.isOnGround) {
       this.velocity.y -= this.gravity * deltaTime;
     }
 
+    // Obliczanie wektora ruchu
     const moveDirection = new THREE.Vector3();
     if (!this.isMobile) {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
@@ -104,6 +109,7 @@ class PlayerController {
         moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
     }
 
+    // Obracanie modelu w stronę ruchu
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       const angle = Math.atan2(moveDirection.x, moveDirection.z);
@@ -115,88 +121,128 @@ class PlayerController {
     this.applyMovementAndCollisions(deltaTime);
   }
 
+  // --- POPRAWIONA DETEKCJA KOLIZJI (Z FILTROWANIEM) ---
   applyMovementAndCollisions(deltaTime) {
-    const playerBox = new THREE.Box3();
-    const objectBox = new THREE.Box3();
     const halfHeight = this.playerDimensions.y / 2;
     const halfWidth = this.playerDimensions.x / 2;
     const halfDepth = this.playerDimensions.z / 2;
     const epsilon = 0.001;
+
+    // KROK 1: Filtrowanie obiektów (Spatial Partitioning)
+    // Zamiast sprawdzać 5000 bloków, sprawdzamy tylko te w pobliżu gracza + duże obiekty (podłoga/ściany)
+    
+    const playerPos = this.player.position;
+    const candidates = [];
+    const checkRange = 3.0; // Sprawdzamy bloki w promieniu 3 metrów
+    const verticalRange = 4.0; // Trochę więcej w pionie dla spadania
+
+    for (let i = 0; i < this.collidableObjects.length; i++) {
+        const obj = this.collidableObjects[i];
+
+        // Sprawdź, czy obiekt jest "duży" (np. podłoga, ściany graniczne)
+        let isLarge = false;
+        if (obj.geometry) {
+            // PlaneGeometry to zazwyczaj podłoga
+            if (obj.geometry.type === 'PlaneGeometry') {
+                isLarge = true;
+            } 
+            // Jeśli obiekt ma parametry (np. BoxGeometry) i jest większy niż standardowy blok 1x1
+            else if (obj.geometry.parameters) {
+                if (obj.geometry.parameters.width > 1.1 || 
+                    obj.geometry.parameters.height > 1.1 || 
+                    obj.geometry.parameters.depth > 1.1) {
+                    isLarge = true;
+                }
+            }
+        }
+
+        if (isLarge) {
+            // Duże obiekty sprawdzamy zawsze
+            candidates.push(obj);
+        } else {
+            // Małe bloki (1x1x1) filtrujemy po dystansie
+            const dx = Math.abs(obj.position.x - playerPos.x);
+            const dz = Math.abs(obj.position.z - playerPos.z);
+            const dy = Math.abs(obj.position.y - playerPos.y);
+
+            if (dx < checkRange && dz < checkRange && dy < verticalRange) {
+                candidates.push(obj);
+            }
+        }
+    }
 
     let landedOnBlock = false;
 
     // --- Kolizja pionowa (Y) ---
     const verticalMovement = this.velocity.y * deltaTime;
     this.player.position.y += verticalMovement;
-    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
-    for (const object of this.collidableObjects) {
-        objectBox.setFromObject(object);
-        if (playerBox.intersectsBox(objectBox)) {
+    for (const object of candidates) {
+        this.objectBox.setFromObject(object);
+        if (this.playerBox.intersectsBox(this.objectBox)) {
             if (verticalMovement < 0) { // Spadanie
-                this.player.position.y = objectBox.max.y + halfHeight;
+                this.player.position.y = this.objectBox.max.y + halfHeight;
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
                 this.canJump = true;
                 landedOnBlock = true;
-            } else if (verticalMovement > 0) { // Wznoszenie (skok)
-                this.player.position.y = objectBox.min.y - halfHeight - epsilon;
+            } else if (verticalMovement > 0) { // Skok w sufit
+                this.player.position.y = this.objectBox.min.y - halfHeight - epsilon;
                 this.velocity.y = 0;
             }
         }
     }
     
-    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+    // Aktualizacja Boxa po ruchu Y
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     // --- Kolizja pozioma (X) ---
     const horizontalMovementX = this.velocity.x * deltaTime;
     this.player.position.x += horizontalMovementX;
-    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
-    for (const object of this.collidableObjects) {
-        objectBox.setFromObject(object);
+    for (const object of candidates) {
+        this.objectBox.setFromObject(object);
 
-        // Ignoruj podłogę dla kolizji bocznych
-        if (objectBox.max.y < playerBox.min.y + epsilon) {
-            continue;
-        }
+        // Ignoruj podłogę przy kolizji bocznej, jeśli jesteśmy nad nią
+        if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
-        if (playerBox.intersectsBox(objectBox)) {
+        if (this.playerBox.intersectsBox(this.objectBox)) {
             if (horizontalMovementX > 0) {
-                this.player.position.x = objectBox.min.x - halfWidth - epsilon;
+                this.player.position.x = this.objectBox.min.x - halfWidth - epsilon;
             } else if (horizontalMovementX < 0) {
-                this.player.position.x = objectBox.max.x + halfWidth + epsilon;
+                this.player.position.x = this.objectBox.max.x + halfWidth + epsilon;
             }
             this.velocity.x = 0;
-            break;
+            break; 
         }
     }
 
     // --- Kolizja pozioma (Z) ---
     const horizontalMovementZ = this.velocity.z * deltaTime;
     this.player.position.z += horizontalMovementZ;
-    playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+    this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
-    for (const object of this.collidableObjects) {
-        objectBox.setFromObject(object);
+    for (const object of candidates) {
+        this.objectBox.setFromObject(object);
 
-        if (objectBox.max.y < playerBox.min.y + epsilon) {
-            continue;
-        }
+        if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
-        if (playerBox.intersectsBox(objectBox)) {
+        if (this.playerBox.intersectsBox(this.objectBox)) {
             if (horizontalMovementZ > 0) {
-                this.player.position.z = objectBox.min.z - halfDepth - epsilon;
+                this.player.position.z = this.objectBox.min.z - halfDepth - epsilon;
             } else if (horizontalMovementZ < 0) {
-                this.player.position.z = objectBox.max.z + halfDepth + epsilon;
+                this.player.position.z = this.objectBox.max.z + halfDepth + epsilon;
             }
             this.velocity.z = 0;
             break;
         }
     }
 
-    // Sprawdzenie czy jesteśmy na poziomie podłogi
+    // --- Logika podłogi / spadania ---
+    // Sprawdzenie czy jesteśmy poniżej "podłogi świata" (bezpiecznik)
     if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY + halfHeight;
@@ -259,7 +305,7 @@ class PlayerController {
   }
 }
 
-class ThirdPersonCameraController {
+export class ThirdPersonCameraController {
     constructor(camera, target, domElement, options = {}) {
         this.camera = camera;
         this.target = target;
@@ -409,6 +455,4 @@ class ThirdPersonCameraController {
     }
 }
 
-class FirstPersonCameraController {}
-
-export { PlayerController, ThirdPersonCameraController, FirstPersonCameraController };
+export class FirstPersonCameraController {}
