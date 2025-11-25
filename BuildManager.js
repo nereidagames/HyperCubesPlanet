@@ -40,7 +40,7 @@ export class BuildManager {
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     
-    // Współdzielona geometria
+    // OPTYMALIZACJA PAMIĘCI: Współdzielona geometria
     this.sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
     
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -66,12 +66,15 @@ export class BuildManager {
       if (!this.materials[blockType.texturePath]) {
         const texture = this.textureLoader.load(blockType.texturePath);
         
-        // --- POPRAWKA GRAFICZNA ---
-        // Używamy mipmap, żeby tekstury nie migotały w oddali
+        // --- OPTYMALIZACJA MOBILNA ---
+        // NearestFilter jest najszybszy. 
+        // NearestMipmapNearestFilter zapobiega "szumowi" w oddali, ale jest lekki.
         texture.magFilter = THREE.NearestFilter;
-        texture.minFilter = THREE.NearestMipmapLinearFilter;
-        // Włączamy anizotropię dla ostrości pod kątem
-        texture.anisotropy = 16;
+        texture.minFilter = THREE.NearestMipmapNearestFilter;
+        
+        // Anizotropia 16 zabija wydajność na mobile przy tysiącach obiektów.
+        // Dajemy 2, żeby podłoga nie była totalnie rozmyta, ale nie dławiła GPU.
+        texture.anisotropy = 2;
 
         this.materials[blockType.texturePath] = new THREE.MeshLambertMaterial({ map: texture });
       }
@@ -99,27 +102,18 @@ export class BuildManager {
     this.setupToolButtons();
     
     this.scene.background = new THREE.Color(0x87CEEB);
-    this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200); // Lekka mgła
+    // Mgła pozwala ukryć brak renderowania w oddali i poprawia klimat
+    this.scene.fog = new THREE.Fog(0x87CEEB, 40, 160);
     
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6); // Nieco słabsze słońce
+    // --- KRYTYCZNA OPTYMALIZACJA ---
+    // Wyłączamy cienie w trybie budowania na mobile. 
+    // To jest edytor, płynność jest ważniejsza niż cienie.
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight.position.set(50, 80, 50);
-    directionalLight.castShadow = true; 
-    
-    // --- OPTYMALIZACJA CIENI W TRYBIE BUDOWANIA ---
-    directionalLight.shadow.mapSize.width = 1024; // Mniejsza mapa cieni (szybciej na mobile)
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 150;
-    directionalLight.shadow.bias = -0.0005; // Zapobiega "paskom" na blokach
-    
-    const d = 60;
-    directionalLight.shadow.camera.left = -d;
-    directionalLight.shadow.camera.right = d;
-    directionalLight.shadow.camera.top = d;
-    directionalLight.shadow.camera.bottom = -d;
+    directionalLight.castShadow = false; // WYŁĄCZONE CIENIE DLA FPS
     
     this.scene.add(directionalLight);
     
@@ -183,7 +177,7 @@ export class BuildManager {
       for (let i = 0; i <= steps; i++) {
           const t = steps === 0 ? 0 : i / steps;
           const point = new THREE.Vector3().lerpVectors(start, end, t);
-          point.floor().addScalar(0.5); // Naprawa pozycji (środek kratki)
+          point.floor().addScalar(0.5); 
 
           const exists = points.some(p => p.equals(point));
           if (!exists) points.push(point);
@@ -200,8 +194,6 @@ export class BuildManager {
 
       const points = this.getPointsOnLine(this.dragStartPos, targetPos);
       const geo = this.sharedBoxGeometry;
-      
-      // Klonujemy materiał tylko do podglądu (przezroczystość)
       const mat = this.materials[this.selectedBlockType.texturePath].clone();
       mat.transparent = true;
       mat.opacity = 0.4;
@@ -220,8 +212,9 @@ export class BuildManager {
           const b = new THREE.Mesh(geo, mat);
           b.userData.texturePath = this.selectedBlockType.texturePath;
           b.position.copy(ghost.position);
-          b.castShadow = true; 
-          b.receiveShadow = true; 
+          // Wyłączone cienie dla wydajności
+          b.castShadow = false; 
+          b.receiveShadow = false; 
           
           this.scene.add(b);
           this.placedBlocks.push(b);
@@ -240,7 +233,7 @@ export class BuildManager {
           if (response.ok) {
               const blocksData = await response.json();
               if (Array.isArray(blocksData)) {
-                  const batchSize = 100;
+                  const batchSize = 200; // Większy batch bo bloki są lżejsze (bez cieni)
                   for (let i = 0; i < blocksData.length; i += batchSize) {
                       const batch = blocksData.slice(i, i + batchSize);
                       batch.forEach(blockData => {
@@ -249,10 +242,9 @@ export class BuildManager {
                           if (!material) {
                               const texture = this.textureLoader.load(blockData.texturePath);
                               
-                              // FIX: Filtrowanie tekstur przy ładowaniu z bazy
                               texture.magFilter = THREE.NearestFilter;
-                              texture.minFilter = THREE.NearestMipmapLinearFilter;
-                              texture.anisotropy = 16;
+                              texture.minFilter = THREE.NearestMipmapNearestFilter;
+                              texture.anisotropy = 2;
 
                               material = new THREE.MeshLambertMaterial({ map: texture });
                               this.materials[blockData.texturePath] = material;
@@ -261,8 +253,10 @@ export class BuildManager {
                           const mesh = new THREE.Mesh(geometry, material);
                           mesh.position.set(blockData.x, blockData.y, blockData.z);
                           mesh.userData.texturePath = blockData.texturePath;
-                          mesh.castShadow = true;
-                          mesh.receiveShadow = true;
+                          
+                          // WYŁĄCZONE CIENIE DLA KAŻDEGO BLOKU
+                          mesh.castShadow = false;
+                          mesh.receiveShadow = false;
 
                           this.scene.add(mesh);
                           this.placedBlocks.push(mesh);
@@ -283,7 +277,7 @@ export class BuildManager {
     const material = new THREE.MeshLambertMaterial({ color: 0x559022 });
     this.platform = new THREE.Mesh(geometry, material);
     this.platform.position.y = -0.5;
-    this.platform.receiveShadow = true;
+    this.platform.receiveShadow = false; // Wyłączone cienie
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
@@ -588,8 +582,8 @@ export class BuildManager {
     const b = new THREE.Mesh(g, m);
     b.userData.texturePath = this.selectedBlockType.texturePath;
     b.position.copy(this.previewBlock.position);
-    b.castShadow = true;
-    b.receiveShadow = true;
+    b.castShadow = false;
+    b.receiveShadow = false;
     this.scene.add(b);
     this.placedBlocks.push(b);
     this.collidableBuildObjects.push(b);
@@ -607,8 +601,8 @@ export class BuildManager {
             const b = new THREE.Mesh(g, m);
             b.userData.texturePath = d.texturePath;
             b.position.copy(p);
-            b.castShadow = true;
-            b.receiveShadow = true;
+            b.castShadow = false;
+            b.receiveShadow = false;
             this.scene.add(b);
             this.placedBlocks.push(b);
             this.collidableBuildObjects.push(b);
