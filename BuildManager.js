@@ -753,4 +753,8 @@ export class BuildManager {
     if (addBtn) addBtn.style.bottom = '20px';
 
     if (this.game.isMobile) {
-        document.getElementById('jump-button').style.display =
+        document.getElementById('jump-button').style.display = 'block';
+        document.getElementById('joystick-zone').style.display = 'none';
+    }
+  }
+}
