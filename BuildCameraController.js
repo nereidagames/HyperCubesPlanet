@@ -6,31 +6,29 @@ export class BuildCameraController {
     this.camera = camera;
     this.domElement = domElement;
     
-    this.mode = 'orbital'; // 'orbital' lub 'free' (God Mode)
+    this.mode = 'orbital'; // 'orbital' lub 'free'
     this.target = new THREE.Vector3(0, 0, 0);
 
     // Ustawienia orbitalne
     this.distance = 40;
     this.rotation = new THREE.Euler(0, 0, 0, 'YXZ');
-    this.rotation.x = -Math.PI / 6;
+    this.rotation.x = -Math.PI / 4; // Kąt 45 stopni
     this.rotation.y = Math.PI / 4;
     
-    // Ustawienia swobodnego lotu
-    this.moveSpeed = 15;
-    this.lookSpeed = 2;
+    // Ustawienia sterowania
+    this.moveSpeed = 25; // Prędkość przesuwania
     this.keys = {};
 
-    // Stan myszy/dotyku
+    // Stan myszy/dotyku (do obracania)
     this.isDragging = false;
     this.previousMousePosition = { x: 0, y: 0 };
     
-    // Ustawienia mobilne
+    // Ustawienia mobilne (Joystick)
     this.isMobile = false;
     this.cameraTouchId = null;
-    this.joystick = null;
-    this.joystickDirection = new THREE.Vector2();
+    this.joystickManager = null;
+    this.joystickData = { x: 0, y: 0 };
 
-    // POPRAWKA: Bindowanie funkcji do właściwości klasy, aby zapewnić tę samą referencję
     this.boundOnKeyDown = this.onKeyDown.bind(this);
     this.boundOnKeyUp = this.onKeyUp.bind(this);
 
@@ -40,16 +38,49 @@ export class BuildCameraController {
 
   setIsMobile(isMobile) {
       this.isMobile = isMobile;
-      // Inicjalizujemy tryb, aby poprawnie ustawić UI (joystick)
-      this.setMode(this.mode); 
+      if (this.isMobile) {
+          this.setupJoystick();
+      }
+  }
+
+  setupJoystick() {
+      const zone = document.getElementById('joystick-zone');
+      if (!zone) return;
+
+      // Upewnij się, że strefa jest czysta przed utworzeniem nowego
+      if (this.joystickManager) {
+          this.joystickManager.destroy();
+      }
+
+      this.joystickManager = nipplejs.create({
+          zone: zone,
+          mode: 'static',
+          position: { left: '50%', top: '50%' },
+          color: 'white',
+          size: 100
+      });
+
+      this.joystickManager.on('move', (evt, data) => {
+          if (data.vector) {
+              // NippleJS zwraca vector {x, y} znormalizowany
+              this.joystickData.x = data.vector.x;
+              this.joystickData.y = data.vector.y;
+          }
+      });
+
+      this.joystickManager.on('end', () => {
+          this.joystickData.x = 0;
+          this.joystickData.y = 0;
+      });
   }
 
   bindEvents() {
+    // Obsługa MYSZY (PC)
     this.handleMouseDown = (e) => {
-        if (!e.target.closest('.ui-element')) {
-            this.isDragging = true;
-            this.previousMousePosition = { x: e.clientX, y: e.clientY };
-        }
+        // Ignoruj kliknięcia w UI
+        if (e.target.closest('.ui-element') || e.target.closest('.build-ui-button') || e.target.closest('.panel-modal')) return;
+        this.isDragging = true;
+        this.previousMousePosition = { x: e.clientX, y: e.clientY };
     };
     this.handleMouseMove = (e) => {
         if (!this.isDragging) return;
@@ -58,13 +89,18 @@ export class BuildCameraController {
         this.applyRotation(deltaX, deltaY, 1);
         this.previousMousePosition = { x: e.clientX, y: e.clientY };
     };
-    this.handleMouseUp = () => {
-        this.isDragging = false;
-    };
+    this.handleMouseUp = () => { this.isDragging = false; };
 
+    // Obsługa DOTYKU (Mobile - tylko obracanie prawą ręką)
+    // Lewa ręka obsługuje Joystick (nipplejs)
     this.handleTouchStart = (e) => {
         for (const touch of e.changedTouches) {
-            if (this.cameraTouchId === null && !touch.target.closest('.ui-element') && !touch.target.closest('#joystick-zone')) {
+            // Ignoruj strefę joysticka i UI
+            if (this.cameraTouchId === null && 
+                !touch.target.closest('.ui-element') && 
+                !touch.target.closest('#joystick-zone') && 
+                !touch.target.closest('.build-ui-button')) {
+                
                 this.cameraTouchId = touch.identifier;
                 this.isDragging = true;
                 this.previousMousePosition = { x: touch.clientX, y: touch.clientY };
@@ -97,22 +133,20 @@ export class BuildCameraController {
     this.domElement.addEventListener('mousedown', this.handleMouseDown);
     window.addEventListener('mousemove', this.handleMouseMove);
     window.addEventListener('mouseup', this.handleMouseUp);
-    this.domElement.addEventListener('touchstart', this.handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', this.handleTouchMove, { passive: true });
-    window.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+    this.domElement.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+    window.addEventListener('touchend', this.handleTouchEnd, { passive: false });
 
-    // POPRAWKA: Użycie wcześniej zbindowanych funkcji
     window.addEventListener('keydown', this.boundOnKeyDown);
     window.addEventListener('keyup', this.boundOnKeyUp);
   }
 
   applyRotation(deltaX, deltaY, sensitivityMultiplier) {
-      if (this.mode === 'free' && this.isMobile) return; // W trybie free na mobile obracamy kamerą w update()
-      
-      const lookSpeed = this.mode === 'free' ? this.lookSpeed : 1;
-      this.rotation.y -= deltaX * 0.0025 * sensitivityMultiplier * lookSpeed;
-      this.rotation.x -= deltaY * 0.0025 * sensitivityMultiplier * lookSpeed;
-      this.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.rotation.x));
+      const sens = 0.003 * sensitivityMultiplier;
+      this.rotation.y -= deltaX * sens;
+      this.rotation.x -= deltaY * sens;
+      // Limit góra/dół
+      this.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.rotation.x));
   }
   
   destroy() {
@@ -123,14 +157,12 @@ export class BuildCameraController {
     window.removeEventListener('touchmove', this.handleTouchMove);
     window.removeEventListener('touchend', this.handleTouchEnd);
 
-    // POPRAWKA: Usunięcie listenerów przy użyciu tych samych referencji
     window.removeEventListener('keydown', this.boundOnKeyDown);
     window.removeEventListener('keyup', this.boundOnKeyUp);
     
-    if (this.joystick) {
-        this.joystick.destroy();
-        this.joystick = null;
-        if(this.isMobile) document.getElementById('joystick-zone').style.display = 'none';
+    if (this.joystickManager) {
+        this.joystickManager.destroy();
+        this.joystickManager = null;
     }
   }
   
@@ -139,26 +171,8 @@ export class BuildCameraController {
 
   setMode(newMode) {
     this.mode = newMode;
-    
-    if (this.isMobile) {
-        const joystickZone = document.getElementById('joystick-zone');
-        joystickZone.style.display = 'block'; // Zawsze pokazuj joystick na mobile
-        if (!this.joystick) {
-            this.joystick = nipplejs.create({
-                zone: joystickZone,
-                mode: 'static',
-                position: { left: '50%', top: '50%' },
-                color: 'white',
-                size: 100,
-            });
-            this.joystick.on('move', (evt, data) => {
-                if (data.vector) this.joystickDirection.set(data.vector.x, data.vector.y);
-            });
-            this.joystick.on('end', () => {
-                this.joystickDirection.set(0, 0);
-            });
-        }
-    }
+    // W trybie free resetujemy rotację X, żeby nie patrzeć w ziemię od razu
+    if(newMode === 'free') this.rotation.x = 0; 
   }
 
   updateCameraPosition() {
@@ -173,45 +187,47 @@ export class BuildCameraController {
   }
 
   update(deltaTime) {
-    const moveDirection = new THREE.Vector3();
-    let hasMovementInput = false;
+    // Oblicz wektor ruchu (Move Direction)
+    const moveDir = new THREE.Vector3(0, 0, 0);
+    let hasInput = false;
 
-    if (this.isMobile) {
-        if (this.joystickDirection.length() > 0.1) {
-             // W trybie zaawansowanym joystick służy do obracania kamery
-            if (this.mode === 'free') {
-                this.rotation.y -= this.joystickDirection.x * 0.03;
-                this.rotation.x += this.joystickDirection.y * 0.03;
-                this.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.rotation.x));
-            } else { // W trybie łatwym do poruszania się
-                moveDirection.set(this.joystickDirection.x, 0, -this.joystickDirection.y);
-                hasMovementInput = true;
-            }
-        }
-    } else { // Sterowanie na PC
-        if (this.keys['KeyW']) moveDirection.z = -1;
-        if (this.keys['KeyS']) moveDirection.z = 1;
-        if (this.keys['KeyA']) moveDirection.x = -1;
-        if (this.keys['KeyD']) moveDirection.x = 1;
-        if(moveDirection.lengthSq() > 0) hasMovementInput = true;
+    // 1. Obsługa Joysticka (Mobile)
+    if (this.isMobile && (Math.abs(this.joystickData.x) > 0.1 || Math.abs(this.joystickData.y) > 0.1)) {
+        // Joystick Y = Przód/Tył (Z), Joystick X = Lewo/Prawo (X)
+        moveDir.z = -this.joystickData.y; // Przód to ujemne Z
+        moveDir.x = this.joystickData.x;
+        hasInput = true;
     }
 
-    if (hasMovementInput) {
-        // Używamy rotacji Y kamery, aby ruch był zawsze zgodny z kierunkiem patrzenia
-        moveDirection.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), this.rotation.y);
-        const moveAmount = moveDirection.multiplyScalar(this.moveSpeed * deltaTime);
+    // 2. Obsługa Klawiatury (PC)
+    if (!this.isMobile) {
+        if (this.keys['KeyW']) { moveDir.z = -1; hasInput = true; }
+        if (this.keys['KeyS']) { moveDir.z = 1; hasInput = true; }
+        if (this.keys['KeyA']) { moveDir.x = -1; hasInput = true; }
+        if (this.keys['KeyD']) { moveDir.x = 1; hasInput = true; }
+        if (this.mode === 'free') {
+            if (this.keys['Space']) this.camera.position.y += this.moveSpeed * deltaTime;
+            if (this.keys['ShiftLeft']) this.camera.position.y -= this.moveSpeed * deltaTime;
+        }
+    }
+
+    // Aplikowanie ruchu
+    if (hasInput) {
+        // Normalizuj wektor wejściowy
+        moveDir.normalize();
+
+        // Obróć wektor ruchu o kąt Y kamery (żeby "przód" był tam gdzie patrzymy)
+        const yRotation = this.rotation.y;
+        moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), yRotation);
+
+        // Przesuń
+        const moveAmount = moveDir.multiplyScalar(this.moveSpeed * deltaTime);
 
         if (this.mode === 'free') {
             this.camera.position.add(moveAmount);
-        } else { // orbital
+        } else {
             this.target.add(moveAmount);
         }
-    }
-    
-    // Ruch góra/dół tylko na PC w trybie free
-    if (this.mode === 'free' && !this.isMobile) {
-      if (this.keys['Space']) this.camera.position.y += this.moveSpeed * deltaTime;
-      if (this.keys['ShiftLeft']) this.camera.position.y -= this.moveSpeed * deltaTime;
     }
     
     this.updateCameraPosition();
