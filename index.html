@@ -7,6 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
 <title>HyperCubesPlanet</title>
 
@@ -59,52 +60,50 @@
   .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
   @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
 
-  /* EKRAN LOGOWANIA - POPRAWIONY */
+  /* EKRAN LOGOWANIA */
   #auth-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #87CEEB, #B0E0E6); z-index: 99998; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
   
   .auth-container { 
       background: rgba(0, 0, 0, 0.6); 
-      padding: 40px 30px; 
-      border-radius: 25px; 
-      border: 4px solid white; 
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+      padding: 30px; 
+      border-radius: 20px; 
+      border: 3px solid white; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4); 
       text-align: center; 
       width: 90%; 
-      max-width: 450px; 
+      max-width: 400px; 
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 15px;
   }
 
-  /* Styl dla widoku wyboru logowanie/rejestracja */
   #welcome-view {
       display: flex;
-      flex-direction: column; /* Ustawienie w pionie */
-      gap: 20px; /* Odstęp między przyciskami */
+      flex-direction: column; 
+      gap: 15px; 
       width: 100%;
   }
 
-  /* Style przycisków autoryzacji */
   #welcome-view button, .auth-form button {
-      appearance: none; /* Usuwa domyślne style systemowe */
+      appearance: none;
       -webkit-appearance: none;
       font-family: 'Titan One', cursive;
-      padding: 15px 0;
+      padding: 12px 20px;
       border: 3px solid white;
-      border-radius: 12px;
+      border-radius: 8px;
       font-size: 20px;
       cursor: pointer;
       color: white;
-      width: 100%; /* Pełna szerokość */
+      width: 100%;
       display: block;
       box-shadow: 0 4px 0 rgba(0,0,0,0.3);
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      transition: transform 0.1s ease;
       text-shadow: 1px 1px 0 #000;
   }
 
-  #welcome-view button:active, .auth-form button:active {
-      transform: translateY(4px);
-      box-shadow: 0 0 0 rgba(0,0,0,0.3);
+  #welcome-view button:active, .auth-form button:active { 
+      transform: scale(0.95) translateY(2px); 
+      box-shadow: 0 2px 0 rgba(0,0,0,0.3);
   }
 
   .btn-primary { background-color: #2ed573; }
@@ -115,18 +114,17 @@
   .auth-form { display: none; flex-direction: column; gap: 15px; width: 100%; }
   .auth-form input { 
       font-family: 'Titan One', cursive; 
-      padding: 15px; 
-      border-radius: 12px; 
-      border: 3px solid white; 
+      padding: 12px; 
+      border-radius: 8px; 
+      border: 2px solid white; 
       text-align: center; 
       font-size: 18px; 
-      background-color: rgba(255, 255, 255, 0.95); 
+      background-color: rgba(255, 255, 255, 0.9); 
       width: 100%;
       color: #333;
   }
-  .auth-form input::placeholder { color: #999; }
   
-  #auth-message { margin-top: 10px; color: #ffdd59; font-size: 15px; min-height: 20px; text-shadow: 1px 1px 2px black; }
+  #auth-message { margin-top: 15px; color: #ffdd59; font-size: 14px; min-height: 20px; text-shadow: 1px 1px 2px black; }
   
   /* GŁÓWNY KONTENER GRY */
   #gameContainer { position: relative; width: 100vw; height: 100vh; }
@@ -214,6 +212,37 @@
   #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 24px; }
   #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
   
+  /* STREFA OBROTU KAMERY (GLOBUS) - NOWOŚĆ */
+  #build-rotate-zone {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      width: 120px;
+      height: 120px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 4px solid white;
+      border-radius: 50%;
+      pointer-events: auto;
+      cursor: grab;
+      z-index: 2001;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+  
+  #build-rotate-zone:active {
+      cursor: grabbing;
+      background: rgba(0, 0, 0, 0.6);
+      transform: scale(0.95);
+  }
+
+  .rotate-icon {
+      font-size: 50px;
+      color: white;
+      filter: drop-shadow(2px 2px 0 #000);
+  }
+
   #build-tools-right { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
   .tool-btn { 
       width: 60px; height: 60px; 
@@ -337,6 +366,10 @@
     #jump-button { width: 70px; height: 70px; right: 15px; bottom: 15px; }
     #joystick-zone { left: 15px; bottom: 15px; }
     
+    /* Dostosowanie panelu budowania na mobile */
+    #build-rotate-zone { width: 100px; height: 100px; bottom: 20px; right: 20px; }
+    .rotate-icon { font-size: 40px; }
+    
     .panel-content, #block-selection-panel, #prefab-selection-panel, #part-selection-panel { width: 90%; }
     #block-selection-panel, #prefab-selection-panel, #part-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: row; justify-content: center; }
 
@@ -438,6 +471,11 @@
         <div id="tool-line" class="tool-btn">📏</div>
     </div>
 
+    <!-- NOWA STREFA OBROTU KAMERY -->
+    <div id="build-rotate-zone">
+        <div class="rotate-icon">🔄</div>
+    </div>
+
     <div id="block-selection-panel"></div>
     <div id="prefab-selection-panel"></div>
     <div id="part-selection-panel"></div>
@@ -452,7 +490,7 @@
 
 <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
 
-<!-- PANEL WYBORU BUDOWANIA (Z nowymi nazwami) -->
+<!-- PANEL WYBORU BUDOWANIA -->
 <div id="build-choice-panel" class="panel-modal">
     <div class="panel-content">
         <h2>Co budujemy?</h2>
