@@ -20,13 +20,22 @@ export class SceneManager {
     this.textureLoader = new THREE.TextureLoader(this.loadingManager);
     this.materials = {};
     
-    // OPTYMALIZACJA PAMIĘCI:
-    // Tworzymy jedną geometrię sześcianu i używamy jej wszędzie dla kolizji.
+    // Współdzielona geometria (Optymalizacja RAM)
     this.sharedCollisionGeometry = new THREE.BoxGeometry(1, 1, 1);
+    
+    // Maksymalna anizotropia (ostrość tekstur pod kątem)
+    // Pobierzemy ją dynamicznie po inicjalizacji renderera, 
+    // ale domyślnie ustawiamy na bezpieczną wartość.
+    this.maxAnisotropy = 4; 
   }
   
   async initialize() {
     if (this.isInitialized) return;
+
+    // Próba pobrania maxAnisotropy z renderera (jeśli dostępny globalnie lub przez hack)
+    // W Three.js renderer trzyma capabilities. Tutaj użyjemy bezpiecznej wartości 16,
+    // Three.js automatycznie przytnie ją do limitu urządzenia.
+    this.maxAnisotropy = 16;
 
     this.setupLighting();
     this.setupFog();
@@ -43,53 +52,60 @@ export class SceneManager {
     this.createBarrierBlocks();
 
     this.isInitialized = true;
-    console.log("SceneManager zainicjalizowany (Tryb: Instanced Rendering).");
+    console.log("SceneManager zainicjalizowany (Tryb: Instanced Rendering + Anisotropy).");
   }
   
   setupLighting() {
-    // Światło otoczenia (rozjaśnia cienie)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); 
+    // Światło otoczenia - nieco jaśniejsze, żeby cienie nie były smoliście czarne
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); 
     this.scene.add(ambientLight);
     
     // Światło słoneczne (rzuca cienie)
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(20, 50, 20); 
+    directionalLight.position.set(30, 60, 40); // Wyżej i pod kątem
     directionalLight.castShadow = true;
     
-    // Optymalizacja jakości i zasięgu cieni
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
+    // --- OPTYMALIZACJA WYDAJNOŚCI (Lag Fix) ---
+    // Zmniejszamy rozdzielczość cieni z 2048 na 1024. 
+    // Na telefonach to ogromna różnica w FPS, a wizualnie mało widoczna.
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    
+    // Optymalizacja zasięgu kamery cieni (nie renderuj cieni kilometr od gracza)
     directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 150;
+    directionalLight.shadow.camera.far = 100;
     
     // Dopasowanie obszaru cienia do wielkości mapy
-    const shadowSize = 60;
+    const shadowSize = 40;
     directionalLight.shadow.camera.left = -shadowSize;
     directionalLight.shadow.camera.right = shadowSize;
     directionalLight.shadow.camera.top = shadowSize;
     directionalLight.shadow.camera.bottom = -shadowSize;
     
+    // Bias pomaga usunąć "shadow acne" (dziwne paski na teksturach)
+    directionalLight.shadow.bias = -0.0005;
+    
     this.scene.add(directionalLight);
   }
   
   setupFog() {
-    // Mgła ukrywająca koniec mapy (kolor nieba)
-    this.scene.fog = new THREE.Fog(0x87CEEB, 20, 120);
+    // Mgła ukrywająca koniec mapy i ucięcia renderowania
+    // Kolor 0x87CEEB to błękit nieba
+    this.scene.fog = new THREE.Fog(0x87CEEB, 15, 90);
   }
 
-  // --- GŁÓWNA OPTYMALIZACJA: INSTANCED MESH ---
+  // --- GŁÓWNA OPTYMALIZACJA: INSTANCED MESH + LEPSZE TEKSTURY ---
   async loadNexusFromDB() {
       try {
           const response = await fetch(`${API_BASE_URL}/api/nexus`);
-          if (!response.ok) return false; // Błąd 404 lub inny
+          if (!response.ok) return false; 
 
           const blocksData = await response.json();
           if (!Array.isArray(blocksData) || blocksData.length === 0) return false;
 
           console.log(`Wczytywanie Nexusa: ${blocksData.length} bloków.`);
 
-          // KROK 1: Grupowanie bloków według tekstury
-          // (InstancedMesh wymaga, aby wszystkie instancje miały ten sam materiał)
+          // Grupowanie bloków według tekstury
           const blocksByTexture = {};
 
           blocksData.forEach(block => {
@@ -99,52 +115,58 @@ export class SceneManager {
               blocksByTexture[block.texturePath].push(block);
           });
 
-          // Obiekt pomocniczy do ustawiania macierzy (pozycji) instancji
           const dummy = new THREE.Object3D();
 
-          // KROK 2: Tworzenie InstancedMesh dla każdej grupy tekstur
           for (const [texturePath, blocks] of Object.entries(blocksByTexture)) {
               
-              // Pobierz lub stwórz materiał
               let material = this.materials[texturePath];
               if (!material) {
                   const texture = this.textureLoader.load(texturePath);
-                  // Pixel art style (bez rozmycia)
+                  
+                  // --- POPRAWKA GRAFICZNA: FILTROWANIE TEKSTUR ---
+                  // NearestFilter jest dobry do pixel-artu z bliska, ale z daleka robi "szum".
+                  // Używamy NearestMipmapLinearFilter - z bliska ostro, z daleka gładko.
                   texture.magFilter = THREE.NearestFilter;
-                  texture.minFilter = THREE.NearestFilter;
+                  texture.minFilter = THREE.NearestMipmapLinearFilter;
+                  
+                  // --- POPRAWKA GRAFICZNA: ANIZOTROPIA ---
+                  // To naprawia rozmyte/zniekształcone tekstury podłogi widziane pod kątem
+                  texture.anisotropy = this.maxAnisotropy;
+                  
+                  // Włączamy powtarzanie (jeśli tekstura ma być kafelkowana, choć tu mapujemy per blok)
+                  texture.wrapS = THREE.RepeatWrapping;
+                  texture.wrapT = THREE.RepeatWrapping;
+
                   material = new THREE.MeshLambertMaterial({ map: texture });
                   this.materials[texturePath] = material;
               }
 
-              // Tworzymy JEDEN obiekt Mesh, który rysuje wiele instancji
+              // InstancedMesh - wydajne renderowanie tysięcy bloków
               const instancedMesh = new THREE.InstancedMesh(this.sharedCollisionGeometry, material, blocks.length);
               instancedMesh.castShadow = true;
               instancedMesh.receiveShadow = true;
 
               blocks.forEach((block, index) => {
-                  // A. Wizualizacja (InstancedMesh)
+                  // Wizualizacja
                   dummy.position.set(block.x, block.y, block.z);
                   dummy.updateMatrix();
                   instancedMesh.setMatrixAt(index, dummy.matrix);
 
-                  // B. Fizyka (Niewidzialny Mesh)
-                  // Tworzymy standardowy Mesh dla systemu kolizji, ale ukrywamy go (visible=false).
-                  // Dzięki temu Raycaster i PlayerController go "widzą", ale GPU go nie rysuje.
+                  // Fizyka (Niewidzialny Mesh) - potrzebne dla PlayerController
                   const collisionMesh = new THREE.Mesh(this.sharedCollisionGeometry, new THREE.MeshBasicMaterial());
                   collisionMesh.position.set(block.x, block.y, block.z);
-                  collisionMesh.visible = false; // Nie obciąża renderowania
+                  collisionMesh.visible = false;
                   
                   this.scene.add(collisionMesh);
                   this.collidableObjects.push(collisionMesh);
               });
 
-              // Informujemy Three.js, że pozycje instancji są gotowe
               instancedMesh.instanceMatrix.needsUpdate = true;
               this.scene.add(instancedMesh);
           }
 
-          // Dodajemy niewidzialną podłogę na poziomie -0.5 jako zabezpieczenie przed spadnięciem
-          const floorGeo = new THREE.PlaneGeometry(200, 200);
+          // Zabezpieczenie przed spadnięciem (niewidzialna podłoga)
+          const floorGeo = new THREE.PlaneGeometry(300, 300);
           floorGeo.rotateX(-Math.PI / 2);
           const floorMat = new THREE.MeshBasicMaterial({ visible: false });
           const invisibleFloor = new THREE.Mesh(floorGeo, floorMat);
@@ -159,25 +181,25 @@ export class SceneManager {
       }
   }
   
-  // Funkcja zapasowa (gdy brak bazy danych)
   createCheckerboardFloor() {
     const floorSize = this.MAP_SIZE;
     const floorGeometry = new THREE.PlaneGeometry(floorSize, floorSize);
     floorGeometry.rotateX(-Math.PI / 2);
 
-    // Generowanie tekstury szachownicy w locie
     const canvas = document.createElement('canvas');
     canvas.width = 2;
     canvas.height = 2;
     const context = canvas.getContext('2d');
-    context.fillStyle = '#c0c0c0'; // Jasny szary
+    context.fillStyle = '#c0c0c0';
     context.fillRect(0, 0, 2, 2);
-    context.fillStyle = '#a0a0a0'; // Ciemny szary
+    context.fillStyle = '#a0a0a0';
     context.fillRect(0, 0, 1, 1);
     context.fillRect(1, 1, 1, 1);
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestMipmapLinearFilter; // Lepsze filtrowanie
+    texture.anisotropy = this.maxAnisotropy; // Lepsza jakość pod kątem
     texture.repeat.set(floorSize / 2, floorSize / 2);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -190,7 +212,6 @@ export class SceneManager {
     this.scene.add(floorMesh);
     this.collidableObjects.push(floorMesh);
 
-    // Fioletowa ramka dookoła mapy
     const borderGeometry = new THREE.BoxGeometry(this.MAP_SIZE, 1, this.MAP_SIZE);
     const edges = new THREE.EdgesGeometry(borderGeometry);
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 });
@@ -205,27 +226,21 @@ export class SceneManager {
     const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
     const thickness = this.BARRIER_THICKNESS;
 
-    // Tworzenie niewidzialnych ścian (Bariery świata)
-    
-    // Ściana Z+
     const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(this.MAP_SIZE, this.BARRIER_HEIGHT, thickness), barrierMaterial);
     wallZ1.position.set(0, barrierY, halfMapSize);
     this.scene.add(wallZ1);
     this.collidableObjects.push(wallZ1);
 
-    // Ściana Z-
     const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(this.MAP_SIZE, this.BARRIER_HEIGHT, thickness), barrierMaterial);
     wallZ2.position.set(0, barrierY, -halfMapSize);
     this.scene.add(wallZ2);
     this.collidableObjects.push(wallZ2);
     
-    // Ściana X+
     const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(thickness, this.BARRIER_HEIGHT, this.MAP_SIZE), barrierMaterial);
     wallX1.position.set(halfMapSize, barrierY, 0);
     this.scene.add(wallX1);
     this.collidableObjects.push(wallX1);
     
-    // Ściana X-
     const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(thickness, this.BARRIER_HEIGHT, this.MAP_SIZE), barrierMaterial);
     wallX2.position.set(-halfMapSize, barrierY, 0);
     this.scene.add(wallX2);
