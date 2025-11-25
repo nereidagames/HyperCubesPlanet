@@ -4,6 +4,7 @@ import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class BuildManager {
   constructor(game, loadingManager, blockManager) {
@@ -16,13 +17,12 @@ export class BuildManager {
     
     this.previewBlock = null;
     this.previewPrefab = null;
-    this.previewLineGroup = new THREE.Group(); // Grupa do podglądu linii
+    this.previewLineGroup = new THREE.Group();
     this.scene.add(this.previewLineGroup);
 
     this.currentBuildMode = 'block';
-    this.currentTool = 'single'; // 'single' lub 'line'
+    this.currentTool = 'single';
     
-    // Zmienne do narzędzia linii
     this.isDraggingLine = false;
     this.dragStartPos = null;
 
@@ -33,16 +33,16 @@ export class BuildManager {
     this.platformSize = 64;
     this.cameraController = null;
     
-    // Flaga trybu edycji Nexusa
     this.isNexusMode = false;
-    
     this.blockTypes = []; 
     this.selectedBlockType = null;
     
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     
-    // Bindowanie metod
+    // OPTYMALIZACJA: Jedna współdzielona geometria dla wszystkich bloków w trybie budowania
+    this.sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
@@ -80,7 +80,7 @@ export class BuildManager {
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
     this.currentBuildMode = 'block';
-    this.currentTool = 'single'; // Reset narzędzia na starcie
+    this.currentTool = 'single';
 
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
@@ -90,7 +90,7 @@ export class BuildManager {
 
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
-    this.setupToolButtons(); // Inicjalizacja przycisków narzędzi
+    this.setupToolButtons();
     
     this.scene.background = new THREE.Color(0x87CEEB);
     this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
@@ -100,6 +100,11 @@ export class BuildManager {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     directionalLight.position.set(50, 50, 50);
     directionalLight.castShadow = true; 
+    
+    // Optymalizacja cieni w trybie budowania
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    
     this.scene.add(directionalLight);
     
     this.createBuildPlatform();
@@ -110,7 +115,6 @@ export class BuildManager {
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     this.cameraController.setIsMobile(this.game.isMobile);
 
-    // --- KONFIGURACJA UI MOBILNEGO ---
     if (this.game.isMobile) {
         const mobileControls = document.getElementById('mobile-game-controls');
         const jumpBtn = document.getElementById('jump-button');
@@ -120,8 +124,6 @@ export class BuildManager {
         if (mobileControls) mobileControls.style.display = 'block';
         if (jumpBtn) jumpBtn.style.display = 'none'; 
         if (joystickZone) joystickZone.style.display = 'block';
-        
-        // Przesuń przycisk "+" wyżej
         if (addBtn) addBtn.style.bottom = '150px';
     } else {
         const addBtn = document.getElementById('build-add-button');
@@ -135,13 +137,11 @@ export class BuildManager {
     }
   }
 
-  // --- NARZĘDZIA BUDOWANIA (Single / Line) ---
   setupToolButtons() {
       const btnSingle = document.getElementById('tool-single');
       const btnLine = document.getElementById('tool-line');
 
       if(btnSingle && btnLine) {
-          // Reset wyglądu
           btnSingle.classList.add('active');
           btnLine.classList.remove('active');
 
@@ -181,7 +181,8 @@ export class BuildManager {
       if (!this.isDraggingLine || !this.dragStartPos || !this.selectedBlockType) return;
 
       const points = this.getPointsOnLine(this.dragStartPos, targetPos);
-      const geo = new THREE.BoxGeometry(1, 1, 1);
+      // Używamy współdzielonej geometrii dla podglądu też
+      const geo = this.sharedBoxGeometry;
       const mat = this.materials[this.selectedBlockType.texturePath].clone();
       mat.transparent = true;
       mat.opacity = 0.4;
@@ -195,7 +196,8 @@ export class BuildManager {
 
   placeLine() {
       this.previewLineGroup.children.forEach(ghost => {
-          const geo = new THREE.BoxGeometry(1, 1, 1);
+          // Używamy współdzielonej geometrii
+          const geo = this.sharedBoxGeometry;
           const mat = this.materials[this.selectedBlockType.texturePath];
           const b = new THREE.Mesh(geo, mat);
           b.userData.texturePath = this.selectedBlockType.texturePath;
@@ -220,26 +222,33 @@ export class BuildManager {
           if (response.ok) {
               const blocksData = await response.json();
               if (Array.isArray(blocksData)) {
-                  blocksData.forEach(blockData => {
-                      const geometry = new THREE.BoxGeometry(1, 1, 1);
-                      let material = this.materials[blockData.texturePath];
-                      if (!material) {
-                          const texture = this.textureLoader.load(blockData.texturePath);
-                          texture.magFilter = THREE.NearestFilter;
-                          material = new THREE.MeshLambertMaterial({ map: texture });
-                          this.materials[blockData.texturePath] = material;
-                      }
+                  // Optymalizacja: ładowanie fragmentami (batch), aby nie zawiesić UI
+                  const batchSize = 100;
+                  for (let i = 0; i < blocksData.length; i += batchSize) {
+                      const batch = blocksData.slice(i, i + batchSize);
+                      batch.forEach(blockData => {
+                          const geometry = this.sharedBoxGeometry; // Użycie współdzielonej geometrii
+                          let material = this.materials[blockData.texturePath];
+                          if (!material) {
+                              const texture = this.textureLoader.load(blockData.texturePath);
+                              texture.magFilter = THREE.NearestFilter;
+                              material = new THREE.MeshLambertMaterial({ map: texture });
+                              this.materials[blockData.texturePath] = material;
+                          }
 
-                      const mesh = new THREE.Mesh(geometry, material);
-                      mesh.position.set(blockData.x, blockData.y, blockData.z);
-                      mesh.userData.texturePath = blockData.texturePath;
-                      mesh.castShadow = true;
-                      mesh.receiveShadow = true;
+                          const mesh = new THREE.Mesh(geometry, material);
+                          mesh.position.set(blockData.x, blockData.y, blockData.z);
+                          mesh.userData.texturePath = blockData.texturePath;
+                          mesh.castShadow = true;
+                          mesh.receiveShadow = true;
 
-                      this.scene.add(mesh);
-                      this.placedBlocks.push(mesh);
-                      this.collidableBuildObjects.push(mesh);
-                  });
+                          this.scene.add(mesh);
+                          this.placedBlocks.push(mesh);
+                          this.collidableBuildObjects.push(mesh);
+                      });
+                      // Krótka pauza dla UI
+                      if (i % 500 === 0) await new Promise(r => setTimeout(r, 0));
+                  }
                   this.updateSaveButton();
               }
           }
@@ -372,7 +381,8 @@ export class BuildManager {
       }
       
       this.selectedPrefabData.forEach(blockData => {
-          const geo = new THREE.BoxGeometry(1, 1, 1);
+          // Użycie współdzielonej geometrii dla podglądu prefaba
+          const geo = this.sharedBoxGeometry;
           const mat = this.materials[blockData.texturePath].clone();
           mat.transparent = true;
           mat.opacity = 0.5;
@@ -459,7 +469,6 @@ export class BuildManager {
     if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('.panel-list') || event.target.closest('#build-tools-right') || event.target.closest('#joystick-zone')) return;
     
     const touch = event.touches[0];
-    // Ignoruj multitouch
     if (event.touches.length > 1) return;
 
     event.preventDefault();
@@ -554,7 +563,8 @@ export class BuildManager {
 
   placeBlock() {
     if (!this.selectedBlockType) return;
-    const g = new THREE.BoxGeometry(1, 1, 1);
+    // Współdzielona geometria
+    const g = this.sharedBoxGeometry;
     const m = this.materials[this.selectedBlockType.texturePath];
     const b = new THREE.Mesh(g, m);
     b.userData.texturePath = this.selectedBlockType.texturePath;
@@ -573,7 +583,8 @@ export class BuildManager {
     this.selectedPrefabData.forEach(d => {
         const p = new THREE.Vector3(d.x, d.y, d.z).add(this.previewPrefab.position);
         if (Math.abs(p.x) < l && Math.abs(p.z) < l && p.y >= 0) {
-            const g = new THREE.BoxGeometry(1, 1, 1);
+            // Współdzielona geometria
+            const g = this.sharedBoxGeometry;
             const m = this.materials[d.texturePath];
             const b = new THREE.Mesh(g, m);
             b.userData.texturePath = d.texturePath;
@@ -742,8 +753,4 @@ export class BuildManager {
     if (addBtn) addBtn.style.bottom = '20px';
 
     if (this.game.isMobile) {
-        document.getElementById('jump-button').style.display = 'block';
-        document.getElementById('joystick-zone').style.display = 'none';
-    }
-  }
-}
+        document.getElementById('jump-button').style.display =
