@@ -30,7 +30,8 @@ export class BuildCameraController {
     this.boundOnKeyDown = this.onKeyDown.bind(this);
     this.boundOnKeyUp = this.onKeyUp.bind(this);
 
-    this.bindEvents();
+    // Opóźniamy bindowanie, żeby DOM zdążył się załadować (dla pewności)
+    setTimeout(() => this.bindEvents(), 100);
     this.updateCameraPosition();
   }
 
@@ -45,13 +46,11 @@ export class BuildCameraController {
       const zone = document.getElementById('joystick-zone');
       if (!zone) return;
 
-      // Usuń stary joystick
       if (this.joystickManager) {
           this.joystickManager.destroy();
           this.joystickManager = null;
       }
 
-      // Konfiguracja identyczna jak w PlayerController (bo tam działa)
       this.joystickManager = nipplejs.create({
           zone: zone,
           mode: 'static',
@@ -61,7 +60,6 @@ export class BuildCameraController {
           dynamicPage: true
       });
 
-      // Używamy data.vector zamiast data.angle
       this.joystickManager.on('move', (evt, data) => {
           if (data && data.vector) {
               this.joystickData.x = data.vector.x;
@@ -76,12 +74,27 @@ export class BuildCameraController {
   }
 
   bindEvents() {
+    const rotateZone = document.getElementById('build-rotate-zone');
+
     // --- PC MOUSE ---
     this.handleMouseDown = (e) => {
-        if (e.target.closest('.ui-element') || e.target.closest('.build-ui-button') || e.target.closest('.panel-modal')) return;
-        this.isDragging = true;
-        this.previousMousePosition = { x: e.clientX, y: e.clientY };
+        // Sprawdzamy czy kliknięto w strefę obrotu
+        // Jeśli rotateZone istnieje, musimy kliknąć w niego lub jego dzieci
+        if (rotateZone) {
+            if (rotateZone.contains(e.target)) {
+                this.isDragging = true;
+                this.previousMousePosition = { x: e.clientX, y: e.clientY };
+                e.preventDefault();
+            }
+        } else {
+            // Fallback (stare zachowanie) jeśli nie ma strefy w HTML
+            if (!e.target.closest('.ui-element') && !e.target.closest('.build-ui-button')) {
+                this.isDragging = true;
+                this.previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        }
     };
+
     this.handleMouseMove = (e) => {
         if (!this.isDragging) return;
         const deltaX = e.clientX - this.previousMousePosition.x;
@@ -89,29 +102,40 @@ export class BuildCameraController {
         this.applyRotation(deltaX, deltaY, 1);
         this.previousMousePosition = { x: e.clientX, y: e.clientY };
     };
+
     this.handleMouseUp = () => { this.isDragging = false; };
 
     // --- MOBILE TOUCH ---
     this.handleTouchStart = (e) => {
-        if (this.cameraTouchId !== null) return; // Już obracamy
+        if (this.cameraTouchId !== null) return; 
 
         for (const touch of e.changedTouches) {
             const target = touch.target;
-            
-            // BARDZO WAŻNE: Ignoruj elementy joysticka (klasy nipplejs)
-            // oraz strefę w lewym dolnym rogu
-            const isJoystickElement = target.closest('.nipple') || target.closest('.back') || target.closest('.front') || target.closest('#joystick-zone');
-            const isUI = target.closest('.ui-element') || target.closest('.build-ui-button');
-            
-            // Strefa bezpieczna (ignoruj lewy dolny róg ekranu)
-            const x = touch.clientX;
-            const y = touch.clientY;
-            const isBottomLeft = x < window.innerWidth * 0.4 && y > window.innerHeight * 0.6;
+            let shouldRotate = false;
 
-            if (!isJoystickElement && !isUI && !isBottomLeft) {
+            if (rotateZone) {
+                // Nowe zachowanie: tylko strefa obrotu
+                if (rotateZone.contains(target)) {
+                    shouldRotate = true;
+                }
+            } else {
+                // Stare zachowanie: unikanie UI
+                const isJoystickElement = target.closest('.nipple') || target.closest('.back') || target.closest('.front') || target.closest('#joystick-zone');
+                const isUI = target.closest('.ui-element') || target.closest('.build-ui-button');
+                const x = touch.clientX;
+                const y = touch.clientY;
+                const isBottomLeft = x < window.innerWidth * 0.4 && y > window.innerHeight * 0.6; // Strefa joysticka
+
+                if (!isJoystickElement && !isUI && !isBottomLeft) {
+                    shouldRotate = true;
+                }
+            }
+
+            if (shouldRotate) {
                 this.cameraTouchId = touch.identifier;
                 this.isDragging = true;
                 this.previousMousePosition = { x: touch.clientX, y: touch.clientY };
+                if(e.cancelable) e.preventDefault();
                 break;
             }
         }
@@ -140,13 +164,15 @@ export class BuildCameraController {
         }
     };
 
-    this.domElement.addEventListener('mousedown', this.handleMouseDown);
-    window.addEventListener('mousemove', this.handleMouseMove);
-    window.addEventListener('mouseup', this.handleMouseUp);
+    // Nasłuchujemy na całym dokumencie, ale logika wewnątrz decyduje czy zacząć drag
+    // Używamy { passive: false } dla touchstart/move aby móc zablokować scrollowanie w strefie
+    document.addEventListener('mousedown', this.handleMouseDown);
+    document.addEventListener('mousemove', this.handleMouseMove);
+    document.addEventListener('mouseup', this.handleMouseUp);
     
-    this.domElement.addEventListener('touchstart', this.handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', this.handleTouchMove, { passive: false });
-    window.addEventListener('touchend', this.handleTouchEnd, { passive: false });
+    document.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+    document.addEventListener('touchend', this.handleTouchEnd, { passive: false });
 
     window.addEventListener('keydown', this.boundOnKeyDown);
     window.addEventListener('keyup', this.boundOnKeyUp);
@@ -161,12 +187,12 @@ export class BuildCameraController {
   }
   
   destroy() {
-    this.domElement.removeEventListener('mousedown', this.handleMouseDown);
-    window.removeEventListener('mousemove', this.handleMouseMove);
-    window.removeEventListener('mouseup', this.handleMouseUp);
-    this.domElement.removeEventListener('touchstart', this.handleTouchStart);
-    window.removeEventListener('touchmove', this.handleTouchMove);
-    window.removeEventListener('touchend', this.handleTouchEnd);
+    document.removeEventListener('mousedown', this.handleMouseDown);
+    document.removeEventListener('mousemove', this.handleMouseMove);
+    document.removeEventListener('mouseup', this.handleMouseUp);
+    document.removeEventListener('touchstart', this.handleTouchStart);
+    document.removeEventListener('touchmove', this.handleTouchMove);
+    document.removeEventListener('touchend', this.handleTouchEnd);
     window.removeEventListener('keydown', this.boundOnKeyDown);
     window.removeEventListener('keyup', this.boundOnKeyUp);
     
@@ -199,17 +225,14 @@ export class BuildCameraController {
     const moveDir = new THREE.Vector3(0, 0, 0);
     let hasInput = false;
 
-    // JOYSTICK (FIX)
-    // Używamy data.vector.x i y bezpośrednio
+    // JOYSTICK (Mobilne)
     if (this.isMobile && (Math.abs(this.joystickData.x) > 0.01 || Math.abs(this.joystickData.y) > 0.01)) {
-        // Y+ na joysticku to Przód (czyli -Z w 3D)
         moveDir.z = -this.joystickData.y; 
-        // X+ na joysticku to Prawo (czyli +X w 3D)
         moveDir.x = this.joystickData.x;
         hasInput = true;
     }
 
-    // KLAWIATURA
+    // KLAWIATURA (PC)
     if (!this.isMobile) {
         if (this.keys['KeyW']) { moveDir.z = -1; hasInput = true; }
         if (this.keys['KeyS']) { moveDir.z = 1; hasInput = true; }
@@ -222,10 +245,8 @@ export class BuildCameraController {
     }
 
     if (hasInput) {
-        // Normalizuj tylko jeśli długość > 1 (aby zachować analogową kontrolę prędkości na joysticku)
         if (moveDir.lengthSq() > 1) moveDir.normalize();
 
-        // Obrót zgodnie z osią Y kamery
         const yRotation = this.rotation.y;
         moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), yRotation);
 
