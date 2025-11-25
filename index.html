@@ -131,6 +131,7 @@
       
       /* PANEL BUDOWANIA (UI) */
       #build-ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; display: none; }
+      
       .build-ui-button { 
           position: absolute; 
           pointer-events: auto; 
@@ -148,20 +149,38 @@
           text-shadow: 1.5px 1.5px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
           font-family: 'Titan One', cursive;
       }
-      .build-ui-button:hover { background-color: #4c8cff; } .build-ui-button:active { transform: scale(0.95); }
+      .build-ui-button:hover { background-color: #4c8cff; } 
+      .build-ui-button:active { transform: scale(0.95); }
       
       #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
       #build-exit-button:hover { background-color: transparent; filter: brightness(1.2); }
       #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
-      #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 28px; opacity: 0.5; cursor: not-allowed; }
+      #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 24px; }
       #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; }
       
+      /* NOWE NARZĘDZIA (Prawa Strona) */
+      #build-tools-right { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
+      .tool-btn { 
+          width: 60px; height: 60px; 
+          background-color: rgba(0, 0, 0, 0.6); 
+          border: 3px solid white; 
+          border-radius: 10px; 
+          cursor: pointer; 
+          display: flex; justify-content: center; align-items: center; 
+          font-size: 30px; color: white; 
+          transition: transform 0.1s, background-color 0.1s; 
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      }
+      .tool-btn.active { background-color: #2ed573; transform: scale(1.1); border-color: #ffd700; }
+      .tool-btn:active { transform: scale(0.9); }
+
+      /* PANELE WYBORU */
       #block-selection-panel, #prefab-selection-panel, #part-selection-panel { position: absolute; bottom: 20px; left: 90px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-direction: column; gap: 10px; width: 250px; pointer-events: auto; max-height: 200px; overflow-y: auto; }
       .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; color: white; } 
       .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
       .prefab-item, .part-item { width: 100%; height: auto; padding: 10px; text-align: center; }
 
-      /* WSPÓLNE STYLE PANELI MODALNYCH */
+      /* MODALE */
       .panel-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 20px; }
       .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
       .panel-content h2 { margin-bottom: 20px; } 
@@ -173,7 +192,7 @@
       .skin-list-item { display: flex; align-items: center; transition: transform 0.1s ease, background-color 0.2s ease; color: white; }
       .skin-list-item:active { transform: scale(0.98); }
 
-      /* STYLE PANELU PRZYJACIÓŁ */
+      /* PRZYJACIELE */
       #friends-panel .panel-content { width: 80vw; max-width: 800px; height: 70vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
       .friends-tabs { display: flex; width: 100%; background: rgba(0,0,0,0.5); border-bottom: 2px solid white; }
       .friends-tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-size: 18px; transition: background 0.2s; color: white; }
@@ -274,320 +293,93 @@
         /* Dostosowanie panelu przyjaciół na mobile */
         #friends-panel .panel-content { width: 95vw; height: 80vh; }
         .friends-tab { font-size: 14px; padding: 10px; }
+        
+        /* Narzędzia po prawej - mobile */
+        #build-tools-right { right: 10px; }
+        .tool-btn { width: 50px; height: 50px; font-size: 24px; }
       }
     </style>
   </head>
   <body>
-    <div id="loading-screen">
-      <div class="clouds-container">
-        <div class="cloud cloud1"></div> <div class="cloud cloud2"></div> <div class="cloud cloud3"></div> <div class="cloud cloud4"></div>
-      </div>
-      <div class="loading-content">
-        <img id="loading-logo" src="icons/favicon.png" alt="HyperCubesPlanet Logo">
-        <div id="progress-bar">
-          <div id="progress-bar-fill"></div>
-          <div id="loading-text" class="text-outline">Wczytywanie - Proszę czekać...</div>
-        </div>
-      </div>
-    </div>
-    
+    <!-- Loading, Auth (skrócone) -->
+    <div id="loading-screen"><div class="clouds-container"><div class="cloud cloud1"></div><div class="cloud cloud2"></div><div class="cloud cloud3"></div><div class="cloud cloud4"></div></div><div class="loading-content"><img id="loading-logo" src="icons/favicon.png" alt="Logo"><div id="progress-bar"><div id="progress-bar-fill"></div><div id="loading-text" class="text-outline">Wczytywanie...</div></div></div></div>
     <div id="auth-screen">
-      <div class="auth-container">
-        <div id="welcome-view">
-          <h2 class="text-outline">Witaj w HyperCubesPlanet!</h2>
-          <div class="auth-buttons">
-            <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
-            <button id="show-register-btn" class="btn-primary text-outline">Nowy Gracz</button>
-          </div>
+        <div class="auth-container">
+            <div id="welcome-view"><button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button><button id="show-register-btn" class="btn-primary text-outline">Nowy Gracz</button></div>
+            <form id="login-form" class="auth-form"><h2 class="text-outline">Logowanie</h2><input type="text" id="login-username" placeholder="Nazwa..." required autocomplete="username"><input type="password" id="login-password" placeholder="Hasło..." required autocomplete="current-password"><button type="submit" class="btn-primary text-outline">Zaloguj</button><button type="button" class="btn-back text-outline">Wróć</button></form>
+            <form id="register-form" class="auth-form"><h2 class="text-outline">Rejestracja</h2><input type="text" id="register-username" placeholder="Nazwa..." required minlength="3" maxlength="15"><input type="password" id="register-password" placeholder="Hasło..." required minlength="6"><input type="password" id="register-password-confirm" placeholder="Powtórz..." required><button type="submit" class="btn-primary text-outline">Zarejestruj</button><button type="button" class="btn-back text-outline">Wróć</button></form>
+            <div id="auth-message" class="text-outline"></div>
         </div>
-
-        <form id="login-form" class="auth-form">
-          <h2 class="text-outline">Logowanie</h2>
-          <input type="text" id="login-username" placeholder="Nazwa użytkownika..." required autocomplete="username">
-          <input type="password" id="login-password" placeholder="Hasło..." required autocomplete="current-password">
-          <button type="submit" class="btn-primary text-outline">Zaloguj</button>
-          <button type="button" class="btn-back text-outline">Wróć</button>
-        </form>
-
-        <form id="register-form" class="auth-form">
-          <h2 class="text-outline">Rejestracja</h2>
-          <input type="text" id="register-username" placeholder="Nazwa użytkownika..." required minlength="3" maxlength="15">
-          <input type="password" id="register-password" placeholder="Hasło..." required minlength="6">
-          <input type="password" id="register-password-confirm" placeholder="Powtórz hasło..." required>
-          <button type="submit" class="btn-primary text-outline">Zarejestruj</button>
-          <button type="button" class="btn-back text-outline">Wróć</button>
-        </form>
-
-        <div id="auth-message" class="text-outline"></div>
-      </div>
     </div>
 
     <div id="gameContainer">
         <div class="ui-overlay">
-          <div class="top-bar ui-element">
-            <div id="player-avatar-button" class="top-bar-item">
-              <div class="player-avatar">👤</div>
-              <div id="player-name-display" class="player-name text-outline">player</div>
+            <div class="top-bar ui-element">
+                <div id="player-avatar-button" class="top-bar-item"><div class="player-avatar">👤</div><div class="player-name text-outline" id="player-name-display">player</div></div>
+                <div class="top-bar-item"><div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div><div class="player-name text-outline">Poczta</div></div>
+                <div id="btn-friends-open" class="top-bar-item"><div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: #e67e22;"></div><div class="player-name text-outline">Przyjaciele</div></div>
+                <div id="active-friends-container"></div>
             </div>
-            <div class="top-bar-item">
-              <div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div>
-              <div class="player-name text-outline">Poczta</div>
-            </div>
+            <div class="chat-container ui-element"><div class="chat-area"></div><div id="chat-toggle-button">💬</div></div>
+            <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
             
-            <!-- PRZYCISK PRZYJACIÓŁ -->
-            <div id="btn-friends-open" class="top-bar-item">
-              <div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 85%; background-position: center; background-repeat: no-repeat; background-color: #e67e22;"></div>
-              <div class="player-name text-outline">Przyjaciele</div>
-            </div>
-            
-            <!-- PASEK AKTYWNYCH ZNAJOMYCH -->
-            <div id="active-friends-container"></div>
-          </div>
-            
-          <div class="chat-container ui-element">
-            <div class="chat-area"></div>
-            <div id="chat-toggle-button">💬</div>
-          </div>
-            
-          <form id="chat-form" class="ui-element">
-              <input type="text" id="chat-input-field" placeholder="Napisz coś..." autocomplete="off" maxlength="50">
-              <button type="submit" id="chat-send-btn">Wyślij</button>
-          </form>
-            
-          <div class="right-ui ui-element">
-              <div class="game-buttons">
-                  <button class="game-btn btn-zagraj"></button>
-                  <button class="game-btn btn-buduj"></button>
-                  <button class="game-btn btn-kup"></button>
-                  <button class="game-btn btn-odkryj"></button>
-                  <button class="game-btn btn-wiecej"></button>
-                  <button id="install-button" class="game-btn btn-download" style="display: none;"></button>
-              </div>
-              
-              <div id="coin-counter">
-                  <div class="coin-icon"></div>
-                  <div class="coin-bar-background">
-                      <div id="coin-value" class="text-outline">0</div>
-                  </div>
-                  <div id="coin-add-btn" class="ui-element">+</div>
-              </div>
-          </div>
-        </div>
-
-        <div id="mobile-game-controls">
-            <div id="joystick-zone"></div>
-            <button id="jump-button"></button>
-        </div>
-    </div>
-    
-    <!-- PANEL PRZYJACIÓŁ -->
-    <div id="friends-panel" class="panel-modal">
-        <div class="panel-content">
-            <div class="friends-tabs">
-                <div class="friends-tab active" data-tab="friends-list">Lista</div>
-                <div class="friends-tab" data-tab="friends-requests">Zaproszenia</div>
-                <div class="friends-tab" data-tab="friends-search">Szukaj</div>
-            </div>
-            
-            <div id="friends-list" class="friends-view active">
-                <p class="text-outline" style="text-align:center; margin-top: 20px;">Ładowanie...</p>
-            </div>
-            
-            <div id="friends-requests" class="friends-view">
-                <p class="text-outline" style="text-align:center; margin-top: 20px;">Brak nowych zaproszeń.</p>
-            </div>
-            
-            <div id="friends-search" class="friends-view">
-                <div id="friends-search-bar">
-                    <input type="text" id="friends-search-input" placeholder="Wpisz nazwę gracza...">
-                    <button id="friends-search-btn">Szukaj</button>
+            <div class="right-ui ui-element">
+                <div class="game-buttons">
+                    <button class="game-btn btn-zagraj"></button>
+                    <button class="game-btn btn-buduj"></button>
+                    <button class="game-btn btn-kup"></button>
+                    <button class="game-btn btn-odkryj"></button>
+                    <button class="game-btn btn-wiecej"></button>
                 </div>
-                <div id="friends-search-results"></div>
+                <div id="coin-counter"><div class="coin-icon"></div><div class="coin-bar-background"><div id="coin-value" class="text-outline">0</div></div><div id="coin-add-btn" class="ui-element">+</div></div>
             </div>
-            
-            <button class="panel-close-button text-outline" style="align-self: center; margin-bottom: 10px;">Zamknij</button>
         </div>
+        <div id="mobile-game-controls"><div id="joystick-zone"></div><button id="jump-button"></button></div>
     </div>
 
+    <!-- UI BUDOWANIA -->
     <div id="build-ui-container">
-      <div id="build-exit-button" class="build-ui-button"></div>
-      <div id="build-save-button" class="build-ui-button text-outline">Zapisz</div>
-      <div id="build-mode-button" class="build-ui-button text-outline">Łatwy</div>
-      <div id="build-add-button" class="build-ui-button">+</div>
-      <div id="block-selection-panel"></div>
-      <div id="prefab-selection-panel" class="panel-list"></div>
-      <div id="part-selection-panel" class="panel-list"></div>
-    </div>
-    
-    <div id="explore-exit-button" style="display: none;"></div>
-
-    <div id="mail-panel" class="panel-modal">
-      <div class="panel-content">
-        <div class="mail-sidebar">
-          <div class="mail-sidebar-header">
-            <h3 class="text-outline">Wiadomości</h3>
-            <div id="new-mail-btn" class="text-outline ui-element">+</div>
-          </div>
-          <div class="mail-conversations"></div>
-        </div>
-        <div class="mail-chat-view">
-          <div id="mail-chat-header">
-            <h2 id="mail-chat-username" class="text-outline">Wybierz konwersację</h2>
-          </div>
-          <div class="mail-chat-messages"></div>
-          <form id="mail-reply-form" style="display: none;">
-            <input type="text" id="mail-reply-input" placeholder="Napisz wiadomość..." autocomplete="off">
-            <button type="submit" id="mail-reply-btn" class="text-outline">Wyślij</button>
-          </form>
-        </div>
-        <div id="new-mail-composer" style="display: none;">
-             <h2 class="text-outline">Nowa wiadomość</h2>
-             <form id="new-mail-form">
-                <input type="text" id="new-mail-recipient" placeholder="Nazwa odbiorcy..." required>
-                <input type="text" id="new-mail-text" placeholder="Treść wiadomości..." required>
-                <button type="submit" class="text-outline">Wyślij</button>
-             </form>
-        </div>
-        <button class="panel-close-button ui-element" style="position: absolute; top: 10px; right: 10px;">X</button>
-      </div>
-    </div>
-
-    <!-- ZAKTUALIZOWANY PANEL ODKRYJ -->
-    <div id="discover-panel" class="panel-modal">
-      <div class="panel-content">
-        <!-- Zakładki (Moje / Wszystkie) -->
-        <div class="friends-tabs" id="discover-tabs" style="display:none; width: 100%; margin-bottom: 10px;">
-            <div class="friends-tab active" data-tab="all">Wszystkie</div>
-            <div class="friends-tab" data-tab="mine">Moje</div>
-        </div>
+        <div id="build-exit-button" class="build-ui-button"></div>
+        <div id="build-save-button" class="build-ui-button">Zapisz</div>
+        <div id="build-mode-button" class="build-ui-button">Łatwy</div>
+        <div id="build-add-button" class="build-ui-button">+</div>
         
-        <h2 id="discover-panel-title" class="text-outline">Wybierz</h2>
-        <div id="discover-list" class="panel-list"></div>
-        <div id="discover-close-button" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-    </div>
-
-    <div id="build-choice-panel" class="panel-modal">
-        <div class="panel-content">
-            <h2 class="text-outline">Co chcesz zbudować?</h2>
-            <div class="build-choice-grid">
-                <div id="build-choice-new-skin" class="build-choice-item">
-                    <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div>
-                    <span class="build-choice-label text-outline">Nowy HyperCube</span>
-                </div>
-                <div id="build-choice-new-part" class="build-choice-item">
-                    <div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div>
-                    <span class="build-choice-label text-outline">Nowa Część</span>
-                </div>
-                <div id="build-choice-new-world" class="build-choice-item">
-                    <div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div>
-                    <span class="build-choice-label text-outline">Nowy Świat</span>
-                </div>
-                <div id="build-choice-new-prefab" class="build-choice-item">
-                    <div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div>
-                    <span class="build-choice-label text-outline">Nowy Prefabrykat</span>
-                </div>
-            </div>
-            <div id="build-choice-close" class="panel-close-button text-outline">Anuluj</div>
+        <!-- NOWE NARZĘDZIA (Prawa Strona) -->
+        <div id="build-tools-right">
+            <div id="tool-single" class="tool-btn active">⬜</div> <!-- Pojedynczy -->
+            <div id="tool-line" class="tool-btn">📏</div>   <!-- Linia -->
         </div>
+
+        <div id="block-selection-panel"></div>
+        <div id="prefab-selection-panel"></div>
+        <div id="part-selection-panel"></div>
     </div>
 
-    <div id="world-size-panel" class="panel-modal">
-        <div class="panel-content">
-            <h2 class="text-outline">Wybierz wielkość świata</h2>
-            <div class="build-choice-grid">
-                <div id="size-choice-new-small" class="build-choice-item">
-                    <div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div>
-                    <span class="build-choice-label text-outline">Mały Świat</span>
-                </div>
-                <div id="size-choice-new-medium" class="build-choice-item">
-                    <div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div>
-                    <span class="build-choice-label text-outline">Średni Świat</span>
-                </div>
-                <div id="size-choice-new-large" class="build-choice-item">
-                    <div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div>
-                    <span class="build-choice-label text-outline">Duży Świat</span>
-                </div>
-            </div>
-            <div id="world-size-close" class="panel-close-button text-outline">Anuluj</div>
-        </div>
-    </div>
-
-    <div id="shop-panel" class="panel-modal">
-      <div class="panel-content">
-        <h2 class="text-outline">Sklep z Blokami</h2>
-        <div id="shop-list" class="panel-list"></div>
-        <div id="shop-close-button" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-    </div>
-
-    <div id="add-choice-panel" class="panel-modal">
-      <div class="panel-content">
-        <h2 class="text-outline">Co chcesz dodać?</h2>
-        <div class="panel-list">
-            <div id="add-choice-blocks" class="panel-item text-outline">Bloki</div>
-            <div id="add-choice-prefabs" class="panel-item text-outline">Prefabrykaty</div>
-            <div id="add-choice-parts" class="panel-item text-outline">Części HyperCube</div>
-        </div>
-        <div id="add-choice-close" class="panel-close-button text-outline">Anuluj</div>
-      </div>
-    </div>
+    <!-- MODALE -->
+    <div id="explore-exit-button" style="display:none;"></div>
     
-    <div id="player-preview-panel" class="panel-modal">
-      <div class="panel-content">
-        <h2 class="text-outline">Podgląd Postaci</h2>
-        <div id="player-preview-renderer-container"></div>
-        <div id="player-preview-close" class="panel-close-button text-outline">Zamknij</div>
-      </div>
-    </div>
-
-    <div id="more-options-panel" class="panel-modal">
-        <div class="panel-content">
-            <h2 class="text-outline">Opcje</h2>
-            <div class="panel-list">
-                <div id="toggle-fps-btn" class="panel-item text-outline">
-                    Licznik FPS: <span id="fps-status">Wyłączony</span>
-                </div>
-                <div id="logout-btn" class="panel-item text-outline btn-danger">Wyloguj się</div>
-            </div>
-            <div id="more-options-close" class="panel-close-button text-outline">Zamknij</div>
-        </div>
-    </div>
-
-    <div id="name-input-panel" class="panel-modal">
-        <div id="name-input-panel-container">
-            <h2 class="text-outline">Jak się chcesz nazywać?</h2>
-            <input type="text" id="name-input-field" maxlength="15" placeholder="Wpisz swój nick...">
-            <button id="name-submit-btn" class="text-outline">Zatwierdź</button>
-        </div>
-    </div>
+    <!-- PRZYJACIELE -->
+    <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
+    
+    <!-- POCZTA -->
+    <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
+    
+    <!-- ODKRYJ -->
+    <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
+    
+    <!-- INNE PANELE -->
+    <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span>Skin</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span>Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span>Prefab</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span>Część</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
+    <div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
+    <div id="shop-panel" class="panel-modal"><div class="panel-content"><h2>Sklep</h2><div id="shop-list" class="panel-list"></div><button class="panel-close-button">Zamknij</button></div></div>
+    <div id="add-choice-panel" class="panel-modal"><div class="panel-content"><h2>Dodaj</h2><div class="panel-list"><div id="add-choice-blocks" class="panel-item">Bloki</div><div id="add-choice-prefabs" class="panel-item">Prefabrykaty</div><div id="add-choice-parts" class="panel-item">Części</div></div><button id="add-choice-close" class="panel-close-button">Anuluj</button></div></div>
+    <div id="player-preview-panel" class="panel-modal"><div class="panel-content"><h2>Podgląd</h2><div id="player-preview-renderer-container"></div><button class="panel-close-button">Zamknij</button></div></div>
+    
+    <!-- OPCJE -->
+    <div id="more-options-panel" class="panel-modal"><div class="panel-content"><h2>Opcje</h2><div class="panel-list"><div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div><div id="logout-btn" class="panel-item btn-danger">Wyloguj</div></div><button class="panel-close-button">Zamknij</button></div></div>
+    
+    <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
 
     <script type="module" src="main.js"></script>
-
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(registration => {
-              console.log('Service Worker zarejestrowany pomyślnie:', registration.scope);
-              registration.onupdatefound = () => {
-                const installingWorker = registration.installing;
-                installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed') {
-                    if (navigator.serviceWorker.controller) {
-                      console.log('Dostępna nowa wersja aplikacji. Odśwież, aby zaktualizować.');
-                    } else {
-                      console.log('Aplikacja gotowa do działania offline.');
-                    }
-                  }
-                };
-              };
-            })
-            .catch(error => {
-              console.log('Rejestracja Service Workera nie powiodła się:', error);
-            });
-        });
-      }
-    </script>
+    <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'))}</script>
   </body>
 </html>
