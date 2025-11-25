@@ -40,7 +40,6 @@ export class BuildManager {
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
     
-    // OPTYMALIZACJA PAMIĘCI: Współdzielona geometria
     this.sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
     
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -65,17 +64,9 @@ export class BuildManager {
     allBlocks.forEach(blockType => {
       if (!this.materials[blockType.texturePath]) {
         const texture = this.textureLoader.load(blockType.texturePath);
-        
-        // --- OPTYMALIZACJA MOBILNA ---
-        // NearestFilter jest najszybszy. 
-        // NearestMipmapNearestFilter zapobiega "szumowi" w oddali, ale jest lekki.
         texture.magFilter = THREE.NearestFilter;
         texture.minFilter = THREE.NearestMipmapNearestFilter;
-        
-        // Anizotropia 16 zabija wydajność na mobile przy tysiącach obiektów.
-        // Dajemy 2, żeby podłoga nie była totalnie rozmyta, ale nie dławiła GPU.
         texture.anisotropy = 2;
-
         this.materials[blockType.texturePath] = new THREE.MeshLambertMaterial({ map: texture });
       }
     });
@@ -102,18 +93,14 @@ export class BuildManager {
     this.setupToolButtons();
     
     this.scene.background = new THREE.Color(0x87CEEB);
-    // Mgła pozwala ukryć brak renderowania w oddali i poprawia klimat
     this.scene.fog = new THREE.Fog(0x87CEEB, 40, 160);
     
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambientLight);
     
-    // --- KRYTYCZNA OPTYMALIZACJA ---
-    // Wyłączamy cienie w trybie budowania na mobile. 
-    // To jest edytor, płynność jest ważniejsza niż cienie.
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight.position.set(50, 80, 50);
-    directionalLight.castShadow = false; // WYŁĄCZONE CIENIE DLA FPS
+    directionalLight.castShadow = false; // Wyłączone cienie dla wydajności
     
     this.scene.add(directionalLight);
     
@@ -212,9 +199,8 @@ export class BuildManager {
           const b = new THREE.Mesh(geo, mat);
           b.userData.texturePath = this.selectedBlockType.texturePath;
           b.position.copy(ghost.position);
-          // Wyłączone cienie dla wydajności
-          b.castShadow = false; 
-          b.receiveShadow = false; 
+          b.castShadow = false;
+          b.receiveShadow = false;
           
           this.scene.add(b);
           this.placedBlocks.push(b);
@@ -233,7 +219,7 @@ export class BuildManager {
           if (response.ok) {
               const blocksData = await response.json();
               if (Array.isArray(blocksData)) {
-                  const batchSize = 200; // Większy batch bo bloki są lżejsze (bez cieni)
+                  const batchSize = 200; 
                   for (let i = 0; i < blocksData.length; i += batchSize) {
                       const batch = blocksData.slice(i, i + batchSize);
                       batch.forEach(blockData => {
@@ -241,11 +227,9 @@ export class BuildManager {
                           let material = this.materials[blockData.texturePath];
                           if (!material) {
                               const texture = this.textureLoader.load(blockData.texturePath);
-                              
                               texture.magFilter = THREE.NearestFilter;
                               texture.minFilter = THREE.NearestMipmapNearestFilter;
                               texture.anisotropy = 2;
-
                               material = new THREE.MeshLambertMaterial({ map: texture });
                               this.materials[blockData.texturePath] = material;
                           }
@@ -253,8 +237,6 @@ export class BuildManager {
                           const mesh = new THREE.Mesh(geometry, material);
                           mesh.position.set(blockData.x, blockData.y, blockData.z);
                           mesh.userData.texturePath = blockData.texturePath;
-                          
-                          // WYŁĄCZONE CIENIE DLA KAŻDEGO BLOKU
                           mesh.castShadow = false;
                           mesh.receiveShadow = false;
 
@@ -268,7 +250,7 @@ export class BuildManager {
               }
           }
       } catch (e) {
-          console.warn("Błąd pobierania Nexusa (może być pusty):", e);
+          console.warn("Błąd pobierania Nexusa:", e);
       }
   }
 
@@ -277,7 +259,7 @@ export class BuildManager {
     const material = new THREE.MeshLambertMaterial({ color: 0x559022 });
     this.platform = new THREE.Mesh(geometry, material);
     this.platform.position.y = -0.5;
-    this.platform.receiveShadow = false; // Wyłączone cienie
+    this.platform.receiveShadow = false; 
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
     
@@ -381,6 +363,7 @@ export class BuildManager {
         this.previewBlock.material = this.materials[blockType.texturePath].clone();
         this.previewBlock.material.transparent = true;
         this.previewBlock.material.opacity = 0.5;
+        this.previewBlock.material.needsUpdate = true; // Wymuś aktualizację
       }
       this.previewPrefab.visible = false;
       this.previewBlock.visible = true;
@@ -451,8 +434,25 @@ export class BuildManager {
     }
   }
   
+  // --- FIX: Ignorowanie interfejsu (w tym paneli wyboru) ---
+  isEventOnUI(event) {
+      const target = event.target;
+      // Lista elementów, które NIE powinny powodować stawiania bloków
+      return (
+          target.closest('.build-ui-button') || 
+          target.closest('.panel-list') || 
+          target.closest('#build-tools-right') ||
+          target.closest('#block-selection-panel') || // Fix wyboru bloków
+          target.closest('#prefab-selection-panel') ||
+          target.closest('#part-selection-panel') ||
+          target.closest('#add-choice-panel') ||
+          target.closest('#build-rotate-zone') || 
+          target.closest('#joystick-zone')
+      );
+  }
+
   onMouseDown(e) {
-    if (!this.isActive || this.game.isMobile || e.target.closest('.build-ui-button') || e.target.closest('.panel-list') || e.target.closest('#build-tools-right')) return;
+    if (!this.isActive || this.game.isMobile || this.isEventOnUI(e)) return;
     
     if (e.button === 0) {
         if (this.currentBuildMode === 'block' && this.previewBlock.visible) {
@@ -480,12 +480,15 @@ export class BuildManager {
   }
 
   onTouchStart(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('.panel-list') || event.target.closest('#build-tools-right') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || !this.game.isMobile) return;
+    
+    // Jeśli dotyk jest na UI (np. wybór bloku), wychodzimy i NIE robimy preventDefault
+    if (this.isEventOnUI(event)) return;
     
     const touch = event.touches[0];
     if (event.touches.length > 1) return;
 
-    event.preventDefault();
+    event.preventDefault(); // To blokuje scroll/zoom tylko w strefie budowania
     this.isLongPress = false;
     
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
@@ -527,7 +530,7 @@ export class BuildManager {
 
   onTouchEnd(event) {
     if (!this.isActive || !this.game.isMobile) return;
-    if (event.target.closest('.build-ui-button') || event.target.closest('#build-tools-right')) return;
+    if (this.isEventOnUI(event)) return;
 
     clearTimeout(this.longPressTimer);
     
