@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'; // Import do łączenia geometrii
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -44,13 +45,27 @@ export class MultiplayerManager {
         console.log('WS: Połączono!');
         this.uiManager.addChatMessage('<Połączono!>');
 
-        const skinName = SkinStorage.getLastUsedSkin();
-        const skinData = skinName ? SkinStorage.loadSkin(skinName) : null;
+        const skinName = SkinStorage.getLastUsedSkinId(); // Poprawka: pobieramy ID, logika w SkinStorage
+        const skinData = skinName ? SkinStorage.loadSkinData(skinName) : null; // To wymagałoby zmiany w SkinStorage by działało synchronicznie, 
+        // ale w obecnej architekturze wysyłamy to co mamy w pamięci lub null, serwer i tak ogarnia.
+        // UWAGA: W oryginalnym kodzie SkinStorage.loadSkinData jest async. 
+        // Tutaj dla uproszczenia zakładamy, że skin zostanie dosłany później lub pobrany,
+        // lub wysyłamy pusty, a gracz zaktualizuje go sam.
+        // W idealnym świecie: await SkinStorage.loadSkinData(...) przed wysłaniem.
         
         this.ws.send(JSON.stringify({ 
             type: 'playerReady', 
-            skinData: skinData 
+            skinData: null // Skin wyślemy osobno lub po załadowaniu
         }));
+        
+        // Jeśli mamy zapisany skin, pobierz go i wyślij aktualizację
+        if (skinName) {
+            SkinStorage.loadSkinData(skinName).then(data => {
+                if (data && this.ws.readyState === WebSocket.OPEN) {
+                     this.ws.send(JSON.stringify({ type: 'playerReady', skinData: data }));
+                }
+            });
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -107,7 +122,6 @@ export class MultiplayerManager {
         break;
 
       case 'playerJoined':
-        // Dodajemy gracza (funkcja createRemotePlayer sama zadba o usunięcie duplikatów)
         this.createRemotePlayer(msg);
         const name = msg.nickname || msg.username || "Gracz";
         this.uiManager.addChatMessage(`<${name} dołączył>`);
@@ -128,7 +142,6 @@ export class MultiplayerManager {
         this.displayChatBubble(msg.id, msg.text);
         break;
         
-      // Powiadomienia
       case 'friendRequestReceived':
         this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
@@ -148,7 +161,6 @@ export class MultiplayerManager {
         if (this.onMessageSent) this.onMessageSent(msg);
         break;
 
-      // Monety
       case 'coinSpawned':
         if (this.coinManager) this.coinManager.spawnCoinAt(msg.position);
         break;
@@ -188,42 +200,73 @@ export class MultiplayerManager {
       this.sendMessage({ type: 'sendPrivateMessage', recipient, text });
   }
 
+  // --- OPTYMALIZACJA: ŁĄCZENIE GEOMETRII SKINA ---
   createRemotePlayer(data) {
-    // 1. Zabezpieczenie: Nigdy nie twórz modelu dla samego siebie
     if (data.id === this.myId) return; 
 
-    // 2. Zabezpieczenie: Jeśli gracz już istnieje, usuń go CAŁKOWICIE przed stworzeniem nowego.
-    // To eliminuje "duchy" (stare modele stojące w miejscu spawnu).
+    // Usuń starego gracza (ducha), jeśli istnieje
     if (this.remotePlayers[data.id]) {
         this.removeRemotePlayer(data.id);
     }
 
     const group = new THREE.Group();
+    
+    // Dodaj nogi (baza)
     createBaseCharacter(group);
 
-    if (data.skinData) {
+    // Renderowanie skina (klocków)
+    if (data.skinData && Array.isArray(data.skinData) && data.skinData.length > 0) {
         const skinContainer = new THREE.Group();
         skinContainer.scale.setScalar(0.125);
         skinContainer.position.y = 0.5;
-        
+
+        // 1. Grupowanie geometrii według tekstury
+        const geometriesByTexture = {};
+
         data.skinData.forEach(block => {
-            const geo = new THREE.BoxGeometry(1, 1, 1);
-            let mat = this.materialsCache[block.texturePath];
-            if (!mat) {
-                const tex = this.textureLoader.load(block.texturePath);
-                tex.magFilter = THREE.NearestFilter;
-                mat = new THREE.MeshLambertMaterial({ map: tex });
-                this.materialsCache[block.texturePath] = mat;
+            if (!block.texturePath) return;
+
+            if (!geometriesByTexture[block.texturePath]) {
+                geometriesByTexture[block.texturePath] = [];
             }
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(block.x, block.y, block.z);
+
+            // Tworzymy geometrię dla pojedynczego klocka
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            // Przesuwamy ją na odpowiednią pozycję
+            geometry.translate(block.x, block.y, block.z);
+            
+            geometriesByTexture[block.texturePath].push(geometry);
+        });
+
+        // 2. Scalanie geometrii i tworzenie Meshów
+        for (const [texturePath, geometries] of Object.entries(geometriesByTexture)) {
+            if (geometries.length === 0) continue;
+
+            // Scalamy wszystkie geometrie o tej samej teksturze w jedną
+            const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+            
+            // Pobieramy materiał z cache
+            let material = this.materialsCache[texturePath];
+            if (!material) {
+                const tex = this.textureLoader.load(texturePath);
+                tex.magFilter = THREE.NearestFilter;
+                tex.minFilter = THREE.NearestFilter;
+                material = new THREE.MeshLambertMaterial({ map: tex });
+                this.materialsCache[texturePath] = material;
+            }
+
+            const mesh = new THREE.Mesh(mergedGeometry, material);
             mesh.castShadow = true;
             skinContainer.add(mesh);
-        });
+            
+            // Czyszczenie geometrii składowych nie jest konieczne, bo BufferGeometryUtils tworzy nową,
+            // ale warto zadbać o pamięć jeśli to możliwe. Garbage Collector powinien to obsłużyć.
+        }
+
         group.add(skinContainer);
     }
 
-    // Rozpakowanie pozycji (obsługa obu formatów dla pewności)
+    // Ustawienie pozycji początkowej
     if (data.position) {
         group.position.set(data.position.x, data.position.y, data.position.z);
     } else if (data.x !== undefined) {
@@ -236,7 +279,7 @@ export class MultiplayerManager {
         group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
     }
 
-    // Nickname
+    // Nickname nad głową
     const div = document.createElement('div');
     div.className = 'text-outline';
     div.textContent = data.nickname || data.username || "Gracz";
@@ -272,14 +315,13 @@ export class MultiplayerManager {
   removeRemotePlayer(id) {
       const p = this.remotePlayers[id];
       if (p) {
-          // Usuń z aktualnej sceny
           this.scene.remove(p.mesh);
           
-          // Wyczyść geometrię i materiały (opcjonalne, dla pamięci)
+          // Czyszczenie pamięci
           p.mesh.traverse(child => {
               if (child.isMesh) {
                   if(child.geometry) child.geometry.dispose();
-                  // Materiałów nie usuwamy bo są w cache
+                  // Materiały zostawiamy w cache
               }
           });
           
@@ -288,7 +330,6 @@ export class MultiplayerManager {
   }
   
   removeAllRemotePlayers() {
-      // Iterujemy po wszystkich kluczach (ID graczy)
       Object.keys(this.remotePlayers).forEach(id => {
           this.removeRemotePlayer(id);
       });
@@ -322,7 +363,7 @@ export class MultiplayerManager {
   update(deltaTime) {
     for (const id in this.remotePlayers) {
       const p = this.remotePlayers[id];
-      // Płynna interpolacja
+      // Interpolacja ruchu (wygładzanie)
       p.mesh.position.lerp(p.targetPos, deltaTime * 15);
       p.mesh.quaternion.slerp(p.targetRot, deltaTime * 15);
     }
