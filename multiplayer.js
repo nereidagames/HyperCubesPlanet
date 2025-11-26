@@ -84,9 +84,9 @@ export class MultiplayerManager {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           console.log(`Dołączanie do pokoju: ${worldId || 'nexus'}`);
           
-          // CZYSZCZENIE CZATU PRZY ZMIANIE ŚWIATA
+          // CZYSZCZENIE CZATU przy wejściu do nowego pokoju
           this.uiManager.clearChat();
-          this.uiManager.addChatMessage(`<Dołączanie do: ${worldId || 'Nexus'}...>`);
+          this.uiManager.addChatMessage(`<Wchodzisz do świata: ${worldId || 'Nexus'}>`);
 
           this.ws.send(JSON.stringify({
               type: 'joinWorld',
