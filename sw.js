@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hypercubesplanet-dev-v4'; // ZMIANA WERSJI NA V4
+const CACHE_NAME = 'hypercubesplanet-dev-v5'; // ZMIANA WERSJI NA V5
 
 // Lista plików, które mają być dostępne offline.
 const urlsToCache = [
