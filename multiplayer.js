@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'; // Import do łączenia geometrii
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'; 
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -13,7 +13,7 @@ export class MultiplayerManager {
     this.coinManager = coinManager;
     
     this.textureLoader = new THREE.TextureLoader();
-    this.remotePlayers = {}; // { id: { mesh, targetPos, targetRot } }
+    this.remotePlayers = {}; 
     this.ws = null;
     this.myId = null;
     
@@ -45,20 +45,13 @@ export class MultiplayerManager {
         console.log('WS: Połączono!');
         this.uiManager.addChatMessage('<Połączono!>');
 
-        const skinName = SkinStorage.getLastUsedSkinId(); // Poprawka: pobieramy ID, logika w SkinStorage
-        const skinData = skinName ? SkinStorage.loadSkinData(skinName) : null; // To wymagałoby zmiany w SkinStorage by działało synchronicznie, 
-        // ale w obecnej architekturze wysyłamy to co mamy w pamięci lub null, serwer i tak ogarnia.
-        // UWAGA: W oryginalnym kodzie SkinStorage.loadSkinData jest async. 
-        // Tutaj dla uproszczenia zakładamy, że skin zostanie dosłany później lub pobrany,
-        // lub wysyłamy pusty, a gracz zaktualizuje go sam.
-        // W idealnym świecie: await SkinStorage.loadSkinData(...) przed wysłaniem.
+        const skinName = SkinStorage.getLastUsedSkinId(); 
         
         this.ws.send(JSON.stringify({ 
             type: 'playerReady', 
-            skinData: null // Skin wyślemy osobno lub po załadowaniu
+            skinData: null 
         }));
         
-        // Jeśli mamy zapisany skin, pobierz go i wyślij aktualizację
         if (skinName) {
             SkinStorage.loadSkinData(skinName).then(data => {
                 if (data && this.ws.readyState === WebSocket.OPEN) {
@@ -91,12 +84,15 @@ export class MultiplayerManager {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           console.log(`Dołączanie do pokoju: ${worldId || 'nexus'}`);
           
+          // CZYSZCZENIE CZATU PRZY ZMIANIE ŚWIATA
+          this.uiManager.clearChat();
+          this.uiManager.addChatMessage(`<Dołączanie do: ${worldId || 'Nexus'}...>`);
+
           this.ws.send(JSON.stringify({
               type: 'joinWorld',
               worldId: worldId 
           }));
 
-          // Czyścimy lokalnie od razu, żeby nie było duchów
           this.removeAllRemotePlayers();
           
           if (this.coinManager) {
@@ -200,27 +196,22 @@ export class MultiplayerManager {
       this.sendMessage({ type: 'sendPrivateMessage', recipient, text });
   }
 
-  // --- OPTYMALIZACJA: ŁĄCZENIE GEOMETRII SKINA ---
   createRemotePlayer(data) {
     if (data.id === this.myId) return; 
 
-    // Usuń starego gracza (ducha), jeśli istnieje
     if (this.remotePlayers[data.id]) {
         this.removeRemotePlayer(data.id);
     }
 
     const group = new THREE.Group();
     
-    // Dodaj nogi (baza)
     createBaseCharacter(group);
 
-    // Renderowanie skina (klocków)
     if (data.skinData && Array.isArray(data.skinData) && data.skinData.length > 0) {
         const skinContainer = new THREE.Group();
         skinContainer.scale.setScalar(0.125);
         skinContainer.position.y = 0.5;
 
-        // 1. Grupowanie geometrii według tekstury
         const geometriesByTexture = {};
 
         data.skinData.forEach(block => {
@@ -230,22 +221,17 @@ export class MultiplayerManager {
                 geometriesByTexture[block.texturePath] = [];
             }
 
-            // Tworzymy geometrię dla pojedynczego klocka
             const geometry = new THREE.BoxGeometry(1, 1, 1);
-            // Przesuwamy ją na odpowiednią pozycję
             geometry.translate(block.x, block.y, block.z);
             
             geometriesByTexture[block.texturePath].push(geometry);
         });
 
-        // 2. Scalanie geometrii i tworzenie Meshów
         for (const [texturePath, geometries] of Object.entries(geometriesByTexture)) {
             if (geometries.length === 0) continue;
 
-            // Scalamy wszystkie geometrie o tej samej teksturze w jedną
             const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
             
-            // Pobieramy materiał z cache
             let material = this.materialsCache[texturePath];
             if (!material) {
                 const tex = this.textureLoader.load(texturePath);
@@ -258,15 +244,11 @@ export class MultiplayerManager {
             const mesh = new THREE.Mesh(mergedGeometry, material);
             mesh.castShadow = true;
             skinContainer.add(mesh);
-            
-            // Czyszczenie geometrii składowych nie jest konieczne, bo BufferGeometryUtils tworzy nową,
-            // ale warto zadbać o pamięć jeśli to możliwe. Garbage Collector powinien to obsłużyć.
         }
 
         group.add(skinContainer);
     }
 
-    // Ustawienie pozycji początkowej
     if (data.position) {
         group.position.set(data.position.x, data.position.y, data.position.z);
     } else if (data.x !== undefined) {
@@ -279,7 +261,6 @@ export class MultiplayerManager {
         group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
     }
 
-    // Nickname nad głową
     const div = document.createElement('div');
     div.className = 'text-outline';
     div.textContent = data.nickname || data.username || "Gracz";
@@ -317,11 +298,9 @@ export class MultiplayerManager {
       if (p) {
           this.scene.remove(p.mesh);
           
-          // Czyszczenie pamięci
           p.mesh.traverse(child => {
               if (child.isMesh) {
                   if(child.geometry) child.geometry.dispose();
-                  // Materiały zostawiamy w cache
               }
           });
           
@@ -363,7 +342,6 @@ export class MultiplayerManager {
   update(deltaTime) {
     for (const id in this.remotePlayers) {
       const p = this.remotePlayers[id];
-      // Interpolacja ruchu (wygładzanie)
       p.mesh.position.lerp(p.targetPos, deltaTime * 15);
       p.mesh.quaternion.slerp(p.targetRot, deltaTime * 15);
     }
