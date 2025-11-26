@@ -158,7 +158,6 @@ export class UIManager {
       } 
   }
   
-  // NOWA FUNKCJA: CZYSZCZENIE CZATU
   clearChat() {
       const c = document.querySelector('.chat-area');
       if(c) c.innerHTML = '';
@@ -168,7 +167,6 @@ export class UIManager {
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
 
-  // ... (reszta metod: setupDiscoverTabs, showDiscoverPanel, refreshSkinList, populateDiscoverPanel, setupFriendsSystem, itd.) ...
   setupDiscoverTabs() { const tabs=document.querySelectorAll('#discover-tabs .friends-tab'); tabs.forEach(tab=>{ tab.onclick=()=>{ document.querySelectorAll('#discover-tabs .friends-tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active'); const mode=tab.getAttribute('data-tab'); this.refreshSkinList(mode); }; }); const closeBtn=document.getElementById('discover-close-button'); if(closeBtn) closeBtn.onclick=()=>this.closeAllPanels(); }
   async showDiscoverPanel(type) { const title=document.getElementById('discover-panel-title'); const tabs=document.getElementById('discover-tabs'); const list=document.getElementById('discover-list'); if(!list)return; list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; this.openPanel('discover-panel'); if(type==='worlds'){ if(title) title.textContent='Wybierz Świat'; if(tabs) tabs.style.display='none'; const savedWorlds=await WorldStorage.getAllWorlds(); this.populateDiscoverPanel('worlds', savedWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); } else if(type==='skins'){ if(title) title.textContent='Wybierz Skina'; if(tabs) { tabs.style.display='flex'; const defaultTab=document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); if(defaultTab) defaultTab.click(); else this.refreshSkinList('all'); } } }
   async refreshSkinList(mode) { const list=document.getElementById('discover-list'); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; let skins=[]; if(mode==='mine') skins=await SkinStorage.getMySkins(); else skins=await SkinStorage.getAllSkins(); this.populateDiscoverPanel('skins', skins, (skinId, skinName, thumbnail, ownerId)=>{ if(this.onSkinSelect) this.onSkinSelect(skinId, skinName, thumbnail, ownerId); }); }
