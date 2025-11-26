@@ -78,7 +78,7 @@ class BlockStarPlanetGame {
 
   async init() {
     try {
-      this.blockManager.load(); // Wstępna inicjalizacja (darmowe bloki)
+      this.blockManager.load(); 
       this.setupLoadingManager();
       this.preloadInitialAssets();
     } catch (error) {
@@ -106,7 +106,13 @@ class BlockStarPlanetGame {
         clearInterval(this.loadingTextInterval);
         loadingText.textContent = "Gotowe!";
         
-        await this.setupManagers();
+        try {
+            // Bezpieczne ładowanie managerów
+            await this.setupManagers();
+        } catch (e) {
+            console.error("Błąd w setupManagers:", e);
+            // Jeśli wystąpi błąd, i tak zdejmij ekran ładowania, żeby pokazać błąd/menu
+        }
         
         setTimeout(() => {
             if (loadingScreen) {
@@ -117,7 +123,6 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // Pobieramy aktualne dane użytkownika (monety, bloki, miniaturka)
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -157,7 +162,6 @@ class BlockStarPlanetGame {
       this.uiManager.updatePlayerName(user.username);
       this.uiManager.checkAdminPermissions(user.username);
 
-      // Aktualizacja stanu bloków z serwera
       if (user.ownedBlocks) {
           this.blockManager.setOwnedBlocks(user.ownedBlocks);
       }
