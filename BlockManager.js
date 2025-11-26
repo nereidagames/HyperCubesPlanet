@@ -1,6 +1,5 @@
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
-// Centralna definicja wszystkich bloków w grze
 export const BLOCK_DEFINITIONS = [
     { name: 'Ziemia', texturePath: 'textures/ziemia.png', cost: 0 },
     { name: 'Trawa', texturePath: 'textures/trawa.png', cost: 250 },
@@ -11,15 +10,10 @@ export const BLOCK_DEFINITIONS = [
 
 export class BlockManager {
     constructor() {
-        // Przechowujemy stan w pamięci (RAM), a nie w localStorage
         this.ownedBlocks = new Set();
     }
 
-    // Metoda wywoływana po zalogowaniu (otrzymuje listę z serwera)
     load() {
-        // W tej wersji nie ładujemy z localStorage.
-        // Czekamy aż Main.js wywoła setOwnedBlocks z danymi z serwera.
-        // Domyślnie (fallback) mamy tylko darmowe bloki.
         BLOCK_DEFINITIONS.forEach(block => {
             if (block.cost === 0) {
                 this.ownedBlocks.add(block.name);
@@ -27,20 +21,29 @@ export class BlockManager {
         });
     }
 
-    // Ustawia listę posiadanych bloków (z API)
     setOwnedBlocks(blocksArray) {
+        // FIX: Jeśli przyjdzie string (z JSONB), parsuj go
+        if (typeof blocksArray === 'string') {
+            try {
+                blocksArray = JSON.parse(blocksArray);
+            } catch (e) {
+                console.error("Błąd parsowania bloków:", e);
+                blocksArray = [];
+            }
+        }
+
         if (Array.isArray(blocksArray)) {
             this.ownedBlocks = new Set(blocksArray);
             console.log("Zaktualizowano posiadane bloki:", this.ownedBlocks);
+        } else {
+            console.warn("Otrzymano niepoprawne dane o blokach:", blocksArray);
         }
     }
 
-    // Sprawdza, czy gracz posiada dany blok
     isOwned(blockName) {
         return this.ownedBlocks.has(blockName);
     }
 
-    // Kupowanie bloku przez serwer
     async buyBlock(blockName, cost) {
         if (this.isOwned(blockName)) return { success: false, message: "Już posiadasz ten blok." };
 
@@ -60,7 +63,6 @@ export class BlockManager {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Aktualizuj stan lokalny po udanym zakupie
                 this.setOwnedBlocks(data.ownedBlocks);
                 return { success: true, newBalance: data.newBalance };
             } else {
@@ -72,12 +74,10 @@ export class BlockManager {
         }
     }
 
-    // Zwraca pełne definicje tylko posiadanych bloków
     getOwnedBlockTypes() {
         return BLOCK_DEFINITIONS.filter(block => this.isOwned(block.name));
     }
 
-    // Zwraca definicje wszystkich bloków (dla sklepu)
     getAllBlockDefinitions() {
         return BLOCK_DEFINITIONS;
     }
