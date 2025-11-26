@@ -1,4 +1,4 @@
-const BLOCKS_OWNED_STORAGE_KEY = 'bsp_clone_owned_blocks';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 // Centralna definicja wszystkich bloków w grze
 export const BLOCK_DEFINITIONS = [
@@ -11,28 +11,28 @@ export const BLOCK_DEFINITIONS = [
 
 export class BlockManager {
     constructor() {
+        // Przechowujemy stan w pamięci (RAM), a nie w localStorage
         this.ownedBlocks = new Set();
     }
 
-    // Wczytuje posiadane bloki z pamięci lub inicjalizuje darmowe
+    // Metoda wywoływana po zalogowaniu (otrzymuje listę z serwera)
     load() {
-        const savedData = localStorage.getItem(BLOCKS_OWNED_STORAGE_KEY);
-        if (savedData) {
-            this.ownedBlocks = new Set(JSON.parse(savedData));
-        } else {
-            // Jeśli nie ma zapisu, odblokuj wszystkie darmowe bloki
-            BLOCK_DEFINITIONS.forEach(block => {
-                if (block.cost === 0) {
-                    this.ownedBlocks.add(block.name);
-                }
-            });
-            this.save();
-        }
+        // W tej wersji nie ładujemy z localStorage.
+        // Czekamy aż Main.js wywoła setOwnedBlocks z danymi z serwera.
+        // Domyślnie (fallback) mamy tylko darmowe bloki.
+        BLOCK_DEFINITIONS.forEach(block => {
+            if (block.cost === 0) {
+                this.ownedBlocks.add(block.name);
+            }
+        });
     }
 
-    // Zapisuje listę posiadanych bloków w pamięci
-    save() {
-        localStorage.setItem(BLOCKS_OWNED_STORAGE_KEY, JSON.stringify([...this.ownedBlocks]));
+    // Ustawia listę posiadanych bloków (z API)
+    setOwnedBlocks(blocksArray) {
+        if (Array.isArray(blocksArray)) {
+            this.ownedBlocks = new Set(blocksArray);
+            console.log("Zaktualizowano posiadane bloki:", this.ownedBlocks);
+        }
     }
 
     // Sprawdza, czy gracz posiada dany blok
@@ -40,15 +40,36 @@ export class BlockManager {
         return this.ownedBlocks.has(blockName);
     }
 
-    // Odblokowuje nowy blok
-    unlockBlock(blockName) {
-        if (!this.isOwned(blockName)) {
-            this.ownedBlocks.add(blockName);
-            this.save();
-            console.log(`Block unlocked: ${blockName}`);
-            return true;
+    // Kupowanie bloku przez serwer
+    async buyBlock(blockName, cost) {
+        if (this.isOwned(blockName)) return { success: false, message: "Już posiadasz ten blok." };
+
+        const token = localStorage.getItem('bsp_clone_jwt_token');
+        if (!token) return { success: false, message: "Błąd autoryzacji." };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/shop/buy`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ blockName, cost })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Aktualizuj stan lokalny po udanym zakupie
+                this.setOwnedBlocks(data.ownedBlocks);
+                return { success: true, newBalance: data.newBalance };
+            } else {
+                return { success: false, message: data.message || "Błąd zakupu." };
+            }
+        } catch (error) {
+            console.error("Błąd sieci:", error);
+            return { success: false, message: "Błąd sieci." };
         }
-        return false;
     }
 
     // Zwraca pełne definicje tylko posiadanych bloków
