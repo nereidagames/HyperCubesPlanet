@@ -107,11 +107,9 @@ class BlockStarPlanetGame {
         loadingText.textContent = "Gotowe!";
         
         try {
-            // Bezpieczne ładowanie managerów
             await this.setupManagers();
         } catch (e) {
-            console.error("Błąd w setupManagers:", e);
-            // Jeśli wystąpi błąd, i tak zdejmij ekran ładowania, żeby pokazać błąd/menu
+            console.error("Setup managers failed:", e);
         }
         
         setTimeout(() => {
@@ -155,12 +153,16 @@ class BlockStarPlanetGame {
   }
   
   startGame(user, token) {
+      console.log("Starting game for user:", user.username);
       localStorage.setItem(PLAYER_NAME_KEY, user.username);
       localStorage.setItem(JWT_TOKEN_KEY, token);
       localStorage.setItem('bsp_clone_user_id', user.id);
 
-      this.uiManager.updatePlayerName(user.username);
-      this.uiManager.checkAdminPermissions(user.username);
+      if(this.uiManager) {
+          this.uiManager.updatePlayerName(user.username);
+          this.uiManager.checkAdminPermissions(user.username);
+          this.uiManager.loadFriendsData();
+      }
 
       if (user.ownedBlocks) {
           this.blockManager.setOwnedBlocks(user.ownedBlocks);
@@ -180,11 +182,13 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      this.uiManager.onSendPrivateMessage = (recipient, text) => {
-          if (this.multiplayerManager) {
-              this.multiplayerManager.sendPrivateMessage(recipient, text);
-          }
-      };
+      if(this.uiManager) {
+          this.uiManager.onSendPrivateMessage = (recipient, text) => {
+              if (this.multiplayerManager) {
+                  this.multiplayerManager.sendPrivateMessage(recipient, text);
+              }
+          };
+      }
 
       const originalHandle = this.multiplayerManager.handleMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleMessage = (msg) => {
@@ -212,10 +216,8 @@ class BlockStarPlanetGame {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
 
-      this.uiManager.loadFriendsData();
-
-      this.animate();
       this.gameState = 'MainMenu';
+      this.animate();
       
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
@@ -446,10 +448,7 @@ class BlockStarPlanetGame {
 
     this.uiManager.onPlayerAvatarClick = () => this.showPlayerPreview();
     this.uiManager.onShopOpen = () => this.populateShopUI();
-    
-    // ZMIENIONA OBSŁUGA KUPNA
     this.uiManager.onBuyBlock = async (block) => this.handleBuyBlock(block);
-    
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
     
     const logoutBtn = document.getElementById('logout-btn');
@@ -487,7 +486,7 @@ class BlockStarPlanetGame {
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
     this.sceneManager = new SceneManager(this.scene, this.loadingManager);
-    await this.sceneManager.initialize();
+    this.sceneManager.initialize().catch(e => console.warn(e));
     
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
@@ -553,6 +552,7 @@ class BlockStarPlanetGame {
     if (this.gameState === 'MainMenu') return;
     
     if (this.gameState === 'ExploreMode') {
+        // POWRÓT DO NEXUSA
         if (this.multiplayerManager) {
             this.multiplayerManager.joinWorld('nexus');
             this.multiplayerManager.setScene(this.scene);
@@ -561,19 +561,28 @@ class BlockStarPlanetGame {
         this.scene.add(this.characterManager.character);
         this.characterManager.character.position.set(0, 5, 0); 
         document.getElementById('explore-exit-button').style.display = 'none';
+        
+        // PRZYWRACANIE MENU
+        this.gameState = 'MainMenu';
+        this.toggleMainUI(true);
+        document.querySelector('.game-buttons').style.display = 'flex'; // Upewniamy się że menu wróciło
+        this.toggleMobileControls(true);
+        
+        this.recreatePlayerController(this.sceneManager.collidableObjects);
+        this.cameraController.target = this.characterManager.character;
+
     } else {
         if (this.gameState === 'BuildMode') this.buildManager.exitBuildMode();
         else if (this.gameState === 'SkinBuilderMode') this.skinBuilderManager.exitBuildMode();
         else if (this.gameState === 'PrefabBuilderMode') this.prefabBuilderManager.exitBuildMode();
         else if (this.gameState === 'PartBuilderMode') this.partBuilderManager.exitBuildMode();
-    }
 
-    this.gameState = 'MainMenu';
-    this.toggleMainUI(true);
-    this.toggleMobileControls(true); 
-    
-    this.recreatePlayerController(this.sceneManager.collidableObjects);
-    this.cameraController.target = this.characterManager.character;
+        this.gameState = 'MainMenu';
+        this.toggleMainUI(true);
+        this.toggleMobileControls(true);
+        this.recreatePlayerController(this.sceneManager.collidableObjects);
+        this.cameraController.target = this.characterManager.character;
+    }
   }
   
   toggleMainUI(visible) {
@@ -619,7 +628,13 @@ class BlockStarPlanetGame {
     }
     
     this.gameState = 'ExploreMode';
-    this.toggleMainUI(false);
+    
+    // --- ZMIANA ---
+    // Nie ukrywamy całego UI (bo czat zniknie), tylko chowamy menu i zostawiamy overlay
+    document.querySelector('.ui-overlay').style.display = 'block';
+    const buttons = document.querySelector('.game-buttons');
+    if (buttons) buttons.style.display = 'none'; // Ukryj przyciski "Graj, Buduj"
+
     this.toggleMobileControls(true);
     document.getElementById('explore-exit-button').style.display = 'flex';
     
@@ -706,14 +721,12 @@ class BlockStarPlanetGame {
     this.cameraController.enabled = true;
   }
 
-  // --- NOWA OBSŁUGA KUPNA ---
   async handleBuyBlock(block) {
     const result = await this.blockManager.buyBlock(block.name, block.cost);
-    
     if (result.success) {
         this.uiManager.showMessage(`Kupiono: ${block.name}!`, 'success');
-        this.coinManager.updateBalance(result.newBalance); // Aktualizuj monety na kliencie
-        this.populateShopUI(); // Odśwież sklep
+        this.coinManager.updateBalance(result.newBalance); 
+        this.populateShopUI(); 
     } else {
         this.uiManager.showMessage(result.message || "Błąd zakupu", 'error');
     }
