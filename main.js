@@ -15,6 +15,10 @@ import { SkinStorage } from './SkinStorage.js';
 import Stats from 'three/addons/libs/stats.module.js';
 import { BlockManager } from './BlockManager.js';
 
+const PLAYER_NAME_KEY = 'bsp_clone_player_name';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+
 const LOADING_TEXTS = [
     "Dziurkowanie Kawałków Sera...",
     "Wprowadzanie Przycisku Skoku...",
@@ -24,10 +28,6 @@ const LOADING_TEXTS = [
     "Karmienie Chomików w Serwerowni...",
     "Wczytywanie - Proszę czekać..."
 ];
-
-const PLAYER_NAME_KEY = 'bsp_clone_player_name';
-const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
-const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 class BlockStarPlanetGame {
   constructor() {
@@ -78,7 +78,7 @@ class BlockStarPlanetGame {
 
   async init() {
     try {
-      this.blockManager.load();
+      this.blockManager.load(); // Wstępna inicjalizacja (darmowe bloki)
       this.setupLoadingManager();
       this.preloadInitialAssets();
     } catch (error) {
@@ -117,7 +117,7 @@ class BlockStarPlanetGame {
                     const username = localStorage.getItem(PLAYER_NAME_KEY);
 
                     if (token && username) {
-                        // Pobieramy aktualne dane użytkownika (monety, miniaturka, ID) z serwera
+                        // Pobieramy aktualne dane użytkownika (monety, bloki, miniaturka)
                         fetch(`${API_BASE_URL}/api/user/me`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         })
@@ -126,15 +126,13 @@ class BlockStarPlanetGame {
                             throw new Error('Token invalid');
                         })
                         .then(data => {
-                            // Ustawiamy miniaturkę w UI
                             if (data.thumbnail && this.uiManager) {
                                 this.uiManager.updatePlayerAvatar(data.thumbnail);
                             }
-                            // Startujemy grę z aktualnymi danymi
                             this.startGame(data.user, token);
                         })
                         .catch((err) => {
-                            console.warn("Błąd weryfikacji tokenu lub sieci:", err);
+                            console.warn("Błąd weryfikacji tokenu:", err);
                             this.setupAuthScreen();
                         });
                     } else {
@@ -154,16 +152,18 @@ class BlockStarPlanetGame {
   startGame(user, token) {
       localStorage.setItem(PLAYER_NAME_KEY, user.username);
       localStorage.setItem(JWT_TOKEN_KEY, token);
-      localStorage.setItem('bsp_clone_user_id', user.id); // Ważne dla weryfikacji własności
+      localStorage.setItem('bsp_clone_user_id', user.id);
 
       this.uiManager.updatePlayerName(user.username);
-      
-      // --- POPRAWKA: SPRAWDZAMY UPRAWNIENIA ADMINA ---
       this.uiManager.checkAdminPermissions(user.username);
+
+      // Aktualizacja stanu bloków z serwera
+      if (user.ownedBlocks) {
+          this.blockManager.setOwnedBlocks(user.ownedBlocks);
+      }
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      // Inicjalizacja menedżera monet z ilością pobraną z serwera
       this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character, user.coins);
 
       this.multiplayerManager = new MultiplayerManager(
@@ -176,21 +176,15 @@ class BlockStarPlanetGame {
       
       this.multiplayerManager.initialize(token);
 
-      // --- PODPIĘCIE CALLBACKÓW Z UI.JS ---
-
-      // 1. Wysyłanie wiadomości prywatnych (Naprawia przycisk Wyślij)
       this.uiManager.onSendPrivateMessage = (recipient, text) => {
           if (this.multiplayerManager) {
               this.multiplayerManager.sendPrivateMessage(recipient, text);
           }
       };
 
-      // 2. Obsługa wiadomości z serwera (dla UI)
       const originalHandle = this.multiplayerManager.handleMessage.bind(this.multiplayerManager);
       this.multiplayerManager.handleMessage = (msg) => {
-          originalHandle(msg); // Standardowa obsługa (ruch, chat)
-          
-          // Specyficzne dla UI
+          originalHandle(msg); 
           if (msg.type === 'friendRequestReceived') {
               this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
               this.uiManager.loadFriendsData();
@@ -202,7 +196,6 @@ class BlockStarPlanetGame {
           if (msg.type === 'friendStatusChange') {
               this.uiManager.loadFriendsData();
           }
-          // Potwierdzenia wiadomości prywatnych
           if (msg.type === 'privateMessageSent') {
               if (this.uiManager.onMessageSent) this.uiManager.onMessageSent(msg);
           }
@@ -211,28 +204,24 @@ class BlockStarPlanetGame {
           }
       };
       
-      // Zbieranie monet
       this.coinManager.onCollect = () => {
           this.multiplayerManager.sendMessage({ type: 'collectCoin' });
       };
 
-      // Załaduj listę przyjaciół na starcie
       this.uiManager.loadFriendsData();
 
       this.animate();
       this.gameState = 'MainMenu';
       
-      // --- PĘTLA WYSYŁANIA POZYCJI ---
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
-        // Wysyłamy pozycję tylko jeśli jesteśmy w trybie chodzenia (Menu lub Eksploracja)
         if ((this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') && this.characterManager.character) {
           this.multiplayerManager.sendMyPosition(
             this.characterManager.character.position,
             this.characterManager.character.quaternion
           );
         }
-      }, 50); // Co 50ms (20 razy/sek)
+      }, 50); 
 
       console.log('Game initialized successfully!');
   }
@@ -410,7 +399,6 @@ class BlockStarPlanetGame {
     this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
     this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
     
-    // WYBÓR SKINA
     this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
         const myId = parseInt(localStorage.getItem('bsp_clone_user_id') || "0");
 
@@ -434,30 +422,30 @@ class BlockStarPlanetGame {
         }
     };
 
-    // WYBÓR ŚWIATA
     this.uiManager.onWorldSelect = async (worldItem) => {
         if (!worldItem.id) return;
         const worldData = await WorldStorage.loadWorldData(worldItem.id);
         if (worldData) {
-            worldData.id = worldItem.id; // Wstrzykujemy ID
+            worldData.id = worldItem.id; 
             this.loadAndExploreWorld(worldData);
         } else {
             this.uiManager.showMessage("Błąd świata.", "error");
         }
     };
 
-    // --- EDYCJA NEXUSA (DLA ADMINA) ---
     this.uiManager.onEditNexusClick = () => {
          this.gameState = 'BuildMode';
          this.toggleMainUI(false);
          this.toggleMobileControls(false);
-         // Włączamy edytor w trybie Nexusa (true)
          this.buildManager.enterBuildMode(64, true);
     };
 
     this.uiManager.onPlayerAvatarClick = () => this.showPlayerPreview();
     this.uiManager.onShopOpen = () => this.populateShopUI();
-    this.uiManager.onBuyBlock = (block) => this.handleBuyBlock(block);
+    
+    // ZMIENIONA OBSŁUGA KUPNA
+    this.uiManager.onBuyBlock = async (block) => this.handleBuyBlock(block);
+    
     this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
     
     const logoutBtn = document.getElementById('logout-btn');
@@ -561,7 +549,6 @@ class BlockStarPlanetGame {
     if (this.gameState === 'MainMenu') return;
     
     if (this.gameState === 'ExploreMode') {
-        // POWRÓT DO NEXUSA
         if (this.multiplayerManager) {
             this.multiplayerManager.joinWorld('nexus');
             this.multiplayerManager.setScene(this.scene);
@@ -707,7 +694,6 @@ class BlockStarPlanetGame {
     this.exploreScene.add(this.characterManager.character);
     this.characterManager.character.position.set(0, 5, 0);
     
-    // --- WAŻNE: Przełącz renderowanie graczy na nową scenę ---
     if(this.multiplayerManager) {
         this.multiplayerManager.setScene(this.exploreScene);
     }
@@ -716,13 +702,16 @@ class BlockStarPlanetGame {
     this.cameraController.enabled = true;
   }
 
-  handleBuyBlock(block) {
-    if (this.coinManager.spendCoins(block.cost)) {
-        this.blockManager.unlockBlock(block.name);
-        this.uiManager.showMessage(`Odblokowano: ${block.name}!`, 'success');
-        this.populateShopUI();
+  // --- NOWA OBSŁUGA KUPNA ---
+  async handleBuyBlock(block) {
+    const result = await this.blockManager.buyBlock(block.name, block.cost);
+    
+    if (result.success) {
+        this.uiManager.showMessage(`Kupiono: ${block.name}!`, 'success');
+        this.coinManager.updateBalance(result.newBalance); // Aktualizuj monety na kliencie
+        this.populateShopUI(); // Odśwież sklep
     } else {
-        this.uiManager.showMessage('Masz za mało monet!', 'error');
+        this.uiManager.showMessage(result.message || "Błąd zakupu", 'error');
     }
   }
 
