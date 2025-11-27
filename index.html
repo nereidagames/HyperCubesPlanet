@@ -2,6 +2,7 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
+    <!-- Zapobieganie cache'owaniu -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -188,7 +189,16 @@
         .panel-content, #block-selection-panel, #prefab-selection-panel, #part-selection-panel { width: 90%; }
         #block-selection-panel, #prefab-selection-panel, #part-selection-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; flex-direction: column; justify-content: flex-start; }
         .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .build-choice-icon { width: 100px; height: 100px; }
+        .build-choice-icon { 
+            width: 100px; 
+            height: 100px; 
+            background-color: #75d040; 
+            border-radius: 15px; 
+            border: 3px solid white; 
+            background-size: 90%; 
+            background-position: center; 
+            background-repeat: no-repeat; 
+        }
         .build-choice-label { font-size: 13px; }
         #friends-panel .panel-content { width: 95vw; height: 80vh; }
         .friends-tab { font-size: 14px; padding: 10px; }
@@ -222,6 +232,7 @@
                 <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
                 <button id="show-register-btn" class="btn-primary text-outline">Nowy Gracz</button>
             </div>
+            
             <form id="login-form" class="auth-form">
                 <h2 class="text-outline">Logowanie</h2>
                 <input type="text" id="login-username" placeholder="Nazwa..." required autocomplete="username">
@@ -229,6 +240,7 @@
                 <button type="submit" class="btn-primary text-outline">Zaloguj</button>
                 <button type="button" class="btn-back text-outline">Wróć</button>
             </form>
+            
             <form id="register-form" class="auth-form">
                 <h2 class="text-outline">Rejestracja</h2>
                 <input type="text" id="register-username" placeholder="Nazwa..." required minlength="3" maxlength="15">
@@ -237,6 +249,7 @@
                 <button type="submit" class="btn-primary text-outline">Zarejestruj</button>
                 <button type="button" class="btn-back text-outline">Wróć</button>
             </form>
+            
             <div id="auth-message" class="text-outline"></div>
         </div>
     </div>
@@ -308,6 +321,7 @@
     <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
     
+    <!-- PANEL WYBORU BUDOWANIA -->
     <div id="build-choice-panel" class="panel-modal">
         <div class="panel-content">
             <h2>Co budujemy?</h2>
