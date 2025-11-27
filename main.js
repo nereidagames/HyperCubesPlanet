@@ -59,11 +59,18 @@ class BlockStarPlanetGame {
     this.loader = new AssetLoader(this.blockManager, this.onAssetsLoaded.bind(this));
 
     // 3. Statystyki FPS
+    this.stats = new Stats();
+    this.stats.dom.style.display = 'none'; // Domyślnie ukryte
+    document.body.appendChild(this.stats.dom);
+    this.isFPSEnabled = false;
     this.setupStats();
 
     // 4. START APLIKACJI
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
+    // Zegar do animacji (jeśli nie jest w GameCore, dodajemy tutaj dla pewności)
+    this.clock = new THREE.Clock();
+
     // Ładujemy definicje bloków
     this.blockManager.load();
     
@@ -116,6 +123,10 @@ class BlockStarPlanetGame {
 
       // --- SCENA ---
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
+      
+      // FIX: Informacja o budzeniu serwera (Render Free Tier)
+      this.ui.showMessage("Budzenie serwera... (może to chwilę potrwać)", "info");
+
       // Czekamy na mapę, ale nie blokujemy błędem
       try {
         await this.sceneManager.initialize();
@@ -389,4 +400,11 @@ class BlockStarPlanetGame {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
+// --- FIX: POPRAWIONA INICJALIZACJA ---
+// Uruchamiaj grę dopiero gdy dokument jest gotowy, ale nie nasłuchuj na zdarzenie z przeszłości.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => new BlockStarPlanetGame());
+} else {
+    // Jeśli DOM jest już gotowy (co jest pewne przy module), uruchom od razu
+    new BlockStarPlanetGame();
+}
