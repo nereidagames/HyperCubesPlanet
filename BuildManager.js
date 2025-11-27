@@ -73,9 +73,11 @@ export class BuildManager {
   }
 
   async enterBuildMode(size = 64, isNexusMode = false) {
+    this.isActive = true;
     this.platformSize = size;
     this.isNexusMode = isNexusMode;
     
+    // Pobieramy wszystkie posiadane bloki (i zwykłe, i dodatki parkour)
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
     this.currentBuildMode = 'block';
@@ -131,9 +133,6 @@ export class BuildManager {
     if (this.isNexusMode) {
         await this.loadExistingNexus();
     }
-    
-    // AKTYWACJA DOPIERO NA KOŃCU
-    this.isActive = true;
   }
 
   setupToolButtons() {
@@ -568,7 +567,7 @@ export class BuildManager {
 
   update(deltaTime) {
     if (!this.isActive) return;
-    if (this.cameraController && this.cameraController.update) this.cameraController.update(deltaTime);
+    this.cameraController.update(deltaTime);
     
     if (!this.isDraggingLine) {
         this.updateRaycast();
@@ -586,6 +585,7 @@ export class BuildManager {
     const m = this.materials[this.selectedBlockType.texturePath];
     const b = new THREE.Mesh(g, m);
     
+    // ZAPIS NAZWY I TYPU BLOKU W USERDATA (Potrzebne do walidacji parkouru)
     b.userData.name = this.selectedBlockType.name;
     b.userData.texturePath = this.selectedBlockType.texturePath;
     
@@ -732,7 +732,7 @@ export class BuildManager {
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
 
-    // WALIDACJA PARKOURU
+    // --- WALIDACJA PARKOURU ---
     const starts = this.placedBlocks.filter(b => b.userData.name === 'Parkour Start');
     const metas = this.placedBlocks.filter(b => b.userData.name === 'Parkour Meta');
 
@@ -741,6 +741,7 @@ export class BuildManager {
         return;
     }
     
+    // Jeśli mamy start i metę, to jest to Parkour.
     let worldType = 'creative';
     let spawnPoint = null;
 
@@ -760,13 +761,13 @@ export class BuildManager {
         size: this.platformSize,
         thumbnail: thumbnail,
         type: worldType,
-        spawnPoint: spawnPoint, 
+        spawnPoint: spawnPoint, // null dla Creative
         blocks: this.placedBlocks.map(block => ({
             x: block.position.x,
             y: block.position.y,
             z: block.position.z,
             texturePath: block.userData.texturePath,
-            name: block.userData.name
+            name: block.userData.name // Zapisujemy nazwę bloku!
         }))
       };
       
