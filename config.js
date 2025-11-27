@@ -8,11 +8,11 @@ export const STORAGE_KEYS = {
 };
 
 export const LOADING_TEXTS = [
-    "Dziurkowanie Kawałków Sera...",
-    "Wprowadzanie Przycisku Skoku...",
-    "Naprawianie Błędów...",
-    "Ustawianie Grawitacji...",
-    "Generowanie Sześciennych Światów...",
-    "Karmienie Chomików w Serwerowni...",
+    "Dziurkowanie Kawałków Sera",
+    "Wprowadzanie Przycisku Skoku",
+    "Pompowanie Panoram Nieba",
+    "Ustawianie Grawitacji",
+    "Generowanie Sześciennych Światów",
+    "Karmienie Chomików w Serwerowni",
     "Wczytywanie - Proszę czekać..."
 ];
