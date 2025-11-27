@@ -31,6 +31,9 @@ class BlockStarPlanetGame {
   constructor() {
     console.log("Uruchamianie silnika gry...");
 
+    // FLAGA ZABEZPIECZAJĄCA PRZED PĘTLĄ STARTOWĄ
+    this.isGameRunning = false; 
+
     // 1. Inicjalizacja Rdzenia (GameCore)
     this.core = new GameCore('gameContainer');
 
@@ -74,9 +77,9 @@ class BlockStarPlanetGame {
     this.loader.preload();
 
     // Awaryjny start tylko w przypadku błędu loadera
-    setTimeout(() => {
+    this.emergencyTimeout = setTimeout(() => {
         const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen && loadingScreen.style.display !== 'none' && loadingScreen.style.opacity !== '0') {
+        if (!this.isGameRunning && loadingScreen && loadingScreen.style.display !== 'none' && loadingScreen.style.opacity !== '0') {
             console.warn("Timeout ładowania - wymuszanie startu...");
             this.onAssetsLoaded();
         }
@@ -85,6 +88,16 @@ class BlockStarPlanetGame {
 
   // KROK 1: Zasoby załadowane -> Inicjalizacja UI
   onAssetsLoaded() {
+      // --- NAPRAWA PĘTLI ---
+      // SceneManager używa tego samego LoadingManagera do ładowania mapy.
+      // Gdy mapa się załaduje, LoadingManager ZNOWU wywoła tę funkcję.
+      // Musimy to zablokować, jeśli gra już ruszyła.
+      if (this.isGameRunning) return;
+      this.isGameRunning = true;
+      
+      // Czyścimy awaryjny timeout, bo załadowało się poprawnie
+      if (this.emergencyTimeout) clearTimeout(this.emergencyTimeout);
+
       console.log("Zasoby załadowane. Inicjalizacja UI...");
       try {
         this.ui.initialize(this.isMobile);
@@ -117,6 +130,7 @@ class BlockStarPlanetGame {
       document.querySelector('.ui-overlay').style.display = 'block';
 
       // --- SCENA ---
+      // SceneManager używa this.loader.getLoadingManager() - to powodowało pętlę bez flagi isGameRunning
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
       try {
         await this.sceneManager.initialize();
@@ -139,6 +153,7 @@ class BlockStarPlanetGame {
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
 
       // --- MULTIPLAYER ---
+      // Tworzymy multiplayer TYLKO RAZ dzięki fladze isGameRunning
       this.multiplayer = new MultiplayerManager(
           this.scene, 
           this.ui, 
@@ -379,17 +394,9 @@ class BlockStarPlanetGame {
       this.previewRenderer.render(this.previewScene, this.previewCamera);
     }
   }
-  
-  showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
-    setTimeout(() => errorDiv.remove(), 5000);
-  }
 }
 
-// INICJALIZACJA: Bezpieczne uruchomienie bez problemu z DOMContentLoaded
+// INICJALIZACJA
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => new BlockStarPlanetGame());
 } else {
