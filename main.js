@@ -41,10 +41,13 @@ class BlockStarPlanetGame {
     this.coinManager = null;
     this.blockManager = new BlockManager();
     this.gameState = 'Loading';
+    
+    // Inicjalizujemy jako null, stworzymy w setupManagers
     this.buildManager = null;
     this.skinBuilderManager = null;
     this.prefabBuilderManager = null;
     this.partBuilderManager = null;
+    
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
     this.clock = new THREE.Clock(); 
@@ -212,9 +215,11 @@ class BlockStarPlanetGame {
           }
       };
       
-      this.coinManager.onCollect = () => {
-          this.multiplayerManager.sendMessage({ type: 'collectCoin' });
-      };
+      if(this.coinManager) {
+          this.coinManager.onCollect = () => {
+              if(this.multiplayerManager) this.multiplayerManager.sendMessage({ type: 'collectCoin' });
+          };
+      }
 
       this.gameState = 'MainMenu';
       this.animate();
@@ -222,10 +227,12 @@ class BlockStarPlanetGame {
       if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
       this.positionUpdateInterval = setInterval(() => {
         if ((this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') && this.characterManager.character) {
-          this.multiplayerManager.sendMyPosition(
-            this.characterManager.character.position,
-            this.characterManager.character.quaternion
-          );
+          if(this.multiplayerManager) {
+              this.multiplayerManager.sendMyPosition(
+                this.characterManager.character.position,
+                this.characterManager.character.quaternion
+              );
+          }
         }
       }, 50); 
 
@@ -480,13 +487,14 @@ class BlockStarPlanetGame {
     
     this.toggleMobileControls(true);
 
+    // INICJALIZACJA MANAGERÓW Z TRY-CATCH W SETUPMANAGER
     this.buildManager = new BuildManager(this, this.loadingManager, this.blockManager);
     this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager, this.blockManager);
     this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
     this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
 
     this.sceneManager = new SceneManager(this.scene, this.loadingManager);
-    this.sceneManager.initialize().catch(e => console.warn(e));
+    this.sceneManager.initialize().catch(e => console.warn("Scene init failed:", e));
     
     this.characterManager = new CharacterManager(this.scene);
     this.characterManager.loadCharacter();
@@ -511,60 +519,41 @@ class BlockStarPlanetGame {
   
   toggleFPSCounter() {
     this.isFPSEnabled = !this.isFPSEnabled;
-    this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none';
+    if(this.stats) this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none';
     this.uiManager.updateFPSToggleText(this.isFPSEnabled);
     localStorage.setItem('bsp_clone_fps_enabled', this.isFPSEnabled.toString());
   }
 
-  // --- FUNKCJA ODPOWIEDZIALNA ZA WEJŚCIE W TRYB BUDOWANIA ---
   switchToBuildMode(size) {
     if (this.gameState !== 'MainMenu') return;
-    
-    // ZMIANA: Wyczyść postacie innych graczy, żeby nie przeszkadzały
-    if(this.multiplayerManager) {
-        this.multiplayerManager.removeAllRemotePlayers();
-    }
-    
-    // Usuń naszą postać ze sceny
-    this.scene.remove(this.characterManager.character);
-
     this.gameState = 'BuildMode';
     this.toggleMainUI(false);
     this.toggleMobileControls(false);
-    this.buildManager.enterBuildMode(size);
+    if(this.buildManager) this.buildManager.enterBuildMode(size);
   }
 
   switchToSkinBuilderMode() {
     if (this.gameState !== 'MainMenu') return;
-    if(this.multiplayerManager) this.multiplayerManager.removeAllRemotePlayers();
-    this.scene.remove(this.characterManager.character);
-    
     this.gameState = 'SkinBuilderMode';
     this.toggleMainUI(false);
     this.toggleMobileControls(false);
-    this.skinBuilderManager.enterBuildMode();
+    if(this.skinBuilderManager) this.skinBuilderManager.enterBuildMode();
   }
 
   switchToPrefabBuilderMode() {
     if (this.gameState !== 'MainMenu') return;
-    if(this.multiplayerManager) this.multiplayerManager.removeAllRemotePlayers();
-    this.scene.remove(this.characterManager.character);
-
     this.gameState = 'PrefabBuilderMode';
     this.toggleMainUI(false);
     this.toggleMobileControls(false);
-    this.prefabBuilderManager.enterBuildMode();
+    if(this.prefabBuilderManager) this.prefabBuilderManager.enterBuildMode();
   }
 
   switchToPartBuilderMode() {
     if (this.gameState !== 'MainMenu') return;
-    if(this.multiplayerManager) this.multiplayerManager.removeAllRemotePlayers();
-    this.scene.remove(this.characterManager.character);
-
     this.gameState = 'PartBuilderMode';
     this.toggleMainUI(false);
     this.toggleMobileControls(false);
-    this.partBuilderManager.enterBuildMode();
+    if(this.partBuilderManager) this.partBuilderManager.enterBuildMode();
   }
   
   switchToMainMenu() {
@@ -582,36 +571,23 @@ class BlockStarPlanetGame {
         
         this.gameState = 'MainMenu';
         this.toggleMainUI(true);
-        document.querySelector('.game-buttons').style.display = 'flex';
+        document.querySelector('.game-buttons').style.display = 'flex'; 
         this.toggleMobileControls(true);
         
         this.recreatePlayerController(this.sceneManager.collidableObjects);
         this.cameraController.target = this.characterManager.character;
 
     } else {
-        if (this.gameState === 'BuildMode') this.buildManager.exitBuildMode();
-        else if (this.gameState === 'SkinBuilderMode') this.skinBuilderManager.exitBuildMode();
-        else if (this.gameState === 'PrefabBuilderMode') this.prefabBuilderManager.exitBuildMode();
-        else if (this.gameState === 'PartBuilderMode') this.partBuilderManager.exitBuildMode();
-
-        // Przywróć postać po wyjściu z edytora
-        this.scene.add(this.characterManager.character);
-        this.characterManager.character.position.set(0, 5, 0);
+        if (this.gameState === 'BuildMode' && this.buildManager) this.buildManager.exitBuildMode();
+        else if (this.gameState === 'SkinBuilderMode' && this.skinBuilderManager) this.skinBuilderManager.exitBuildMode();
+        else if (this.gameState === 'PrefabBuilderMode' && this.prefabBuilderManager) this.prefabBuilderManager.exitBuildMode();
+        else if (this.gameState === 'PartBuilderMode' && this.partBuilderManager) this.partBuilderManager.exitBuildMode();
 
         this.gameState = 'MainMenu';
         this.toggleMainUI(true);
         this.toggleMobileControls(true);
-        
-        // Ważne: Przywrócenie kamery do postaci
-        this.cameraController.enabled = true;
-        this.cameraController.target = this.characterManager.character;
-        
         this.recreatePlayerController(this.sceneManager.collidableObjects);
-        
-        // Pobranie listy graczy ponownie
-        if(this.multiplayerManager) {
-            this.multiplayerManager.joinWorld('nexus');
-        }
+        this.cameraController.target = this.characterManager.character;
     }
   }
   
@@ -661,7 +637,7 @@ class BlockStarPlanetGame {
     
     document.querySelector('.ui-overlay').style.display = 'block';
     const buttons = document.querySelector('.game-buttons');
-    if (buttons) buttons.style.display = 'none';
+    if (buttons) buttons.style.display = 'none'; 
 
     this.toggleMobileControls(true);
     document.getElementById('explore-exit-button').style.display = 'flex';
@@ -835,37 +811,40 @@ class BlockStarPlanetGame {
   animate() {
     requestAnimationFrame(() => this.animate());
     
-    if (this.isFPSEnabled) this.stats.update();
+    if (this.isFPSEnabled && this.stats) this.stats.update();
 
     const deltaTime = this.clock.getDelta();
     
     if (this.gameState === 'Loading') return;
 
+    // --- BEZPIECZNA PĘTLA UPDATE ---
     if (this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') {
-        if(this.playerController && this.cameraController) {
+        if(this.playerController && this.cameraController && this.cameraController.update) {
             const rot = this.cameraController.update(deltaTime);
-            this.playerController.update(deltaTime, rot);
+            if(this.playerController.update) this.playerController.update(deltaTime, rot);
         }
-        if (this.characterManager) this.characterManager.update(deltaTime);
-        if (this.multiplayerManager) this.multiplayerManager.update(deltaTime);
-        if (this.coinManager) this.coinManager.update(deltaTime);
+        if (this.characterManager && this.characterManager.update) this.characterManager.update(deltaTime);
+        if (this.multiplayerManager && this.multiplayerManager.update) this.multiplayerManager.update(deltaTime);
+        if (this.coinManager && this.coinManager.update) this.coinManager.update(deltaTime);
         
-        const targetScene = (this.gameState === 'ExploreMode') ? this.exploreScene : this.scene;
-        this.renderer.render(targetScene, this.camera);
-        this.css2dRenderer.render(targetScene, this.camera);
+        const targetScene = (this.gameState === 'ExploreMode' && this.exploreScene) ? this.exploreScene : this.scene;
+        if(this.renderer && this.camera) {
+            this.renderer.render(targetScene, this.camera);
+            this.css2dRenderer.render(targetScene, this.camera);
+        }
 
-    } else if (this.gameState === 'BuildMode') {
-        this.buildManager.update(deltaTime);
-        this.renderer.render(this.buildManager.scene, this.camera);
-    } else if (this.gameState === 'SkinBuilderMode') {
-        this.skinBuilderManager.update(deltaTime);
-        this.renderer.render(this.skinBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'PrefabBuilderMode') {
-        this.prefabBuilderManager.update(deltaTime);
-        this.renderer.render(this.prefabBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'PartBuilderMode') {
-        this.partBuilderManager.update(deltaTime);
-        this.renderer.render(this.partBuilderManager.scene, this.camera);
+    } else if (this.gameState === 'BuildMode' && this.buildManager) {
+        if(this.buildManager.update) this.buildManager.update(deltaTime);
+        if(this.buildManager.scene) this.renderer.render(this.buildManager.scene, this.camera);
+    } else if (this.gameState === 'SkinBuilderMode' && this.skinBuilderManager) {
+        if(this.skinBuilderManager.update) this.skinBuilderManager.update(deltaTime);
+        if(this.skinBuilderManager.scene) this.renderer.render(this.skinBuilderManager.scene, this.camera);
+    } else if (this.gameState === 'PrefabBuilderMode' && this.prefabBuilderManager) {
+        if(this.prefabBuilderManager.update) this.prefabBuilderManager.update(deltaTime);
+        if(this.prefabBuilderManager.scene) this.renderer.render(this.prefabBuilderManager.scene, this.camera);
+    } else if (this.gameState === 'PartBuilderMode' && this.partBuilderManager) {
+        if(this.partBuilderManager.update) this.partBuilderManager.update(deltaTime);
+        if(this.partBuilderManager.scene) this.renderer.render(this.partBuilderManager.scene, this.camera);
     }
 
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
