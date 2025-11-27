@@ -30,7 +30,7 @@ export class UIManager {
     this.mailState = { conversations: [], activeConversation: null };
 
     // Sklep state
-    this.shopCurrentCategory = 'block'; // 'block' lub 'addon'
+    this.shopCurrentCategory = 'block';
     this.allShopItems = [];
     this.shopIsOwnedCallback = null;
   }
@@ -50,14 +50,74 @@ export class UIManager {
     }
   }
 
-  // ... (Metody bez zmian: checkAdminPermissions, updatePlayerAvatar, updatePlayerName, openPanel, closePanel, closeAllPanels, updateFPSToggleText, updateCoinCounter, toggleMobileControls) ...
+  // --- NOWE METODY DLA PARKOURU ---
 
-  checkAdminPermissions(username) { const admins=['nixox2','admin']; if(admins.includes(username)){ const l=document.querySelector('#more-options-panel .panel-list'); if(l&&!document.getElementById('admin-edit-nexus-btn')){ const b=document.createElement('div'); b.id='admin-edit-nexus-btn'; b.className='panel-item text-outline'; b.style.backgroundColor='#e67e22'; b.style.marginTop='10px'; b.textContent='🛠️ Edytuj Nexus'; b.onclick=()=>{ this.closeAllPanels(); if(this.onEditNexusClick) this.onEditNexusClick(); }; l.insertBefore(b,l.firstChild); } } }
-  updatePlayerAvatar(thumbnail) { const a=document.querySelector('#player-avatar-button .player-avatar'); if(!a)return; if(thumbnail){ a.textContent=''; a.style.backgroundImage=`url(${thumbnail})`; a.style.backgroundSize='cover'; a.style.backgroundPosition='center'; a.style.backgroundColor='#4a90e2'; } else { a.style.backgroundImage='none'; a.textContent='👤'; } }
-  updatePlayerName(name) { const n=document.getElementById('player-name-display'); if(n) n.textContent=name; }
-  openPanel(id) { const p=document.getElementById(id); if(p) p.style.display='flex'; }
-  closePanel(id) { const p=document.getElementById(id); if(p) p.style.display='none'; }
-  closeAllPanels() { document.querySelectorAll('.panel-modal').forEach(p=>p.style.display='none'); }
+  setParkourTimerVisible(visible) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) timer.style.display = visible ? 'block' : 'none';
+  }
+
+  updateParkourTimer(timeString) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) timer.textContent = timeString;
+  }
+
+  showVictory(timeString) {
+      const panel = document.getElementById('victory-panel');
+      const timeDisplay = document.getElementById('victory-time-display');
+      if (panel && timeDisplay) {
+          timeDisplay.textContent = timeString;
+          panel.style.display = 'flex';
+      }
+  }
+
+  // --------------------------------
+
+  checkAdminPermissions(username) {
+      const admins = ['nixox2', 'admin'];
+      if (admins.includes(username)) {
+          const optionsList = document.querySelector('#more-options-panel .panel-list');
+          if (optionsList && !document.getElementById('admin-edit-nexus-btn')) {
+              const editNexusBtn = document.createElement('div');
+              editNexusBtn.id = 'admin-edit-nexus-btn';
+              editNexusBtn.className = 'panel-item text-outline';
+              editNexusBtn.style.backgroundColor = '#e67e22'; 
+              editNexusBtn.style.marginTop = '10px';
+              editNexusBtn.textContent = '🛠️ Edytuj Nexus';
+              
+              editNexusBtn.onclick = () => {
+                  this.closeAllPanels();
+                  if (this.onEditNexusClick) this.onEditNexusClick();
+              };
+              
+              optionsList.insertBefore(editNexusBtn, optionsList.firstChild);
+          }
+      }
+  }
+
+  updatePlayerAvatar(thumbnail) {
+      const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
+      if (!avatarEl) return;
+      if (thumbnail) {
+          avatarEl.textContent = '';
+          avatarEl.style.backgroundImage = `url(${thumbnail})`;
+          avatarEl.style.backgroundSize = 'cover';
+          avatarEl.style.backgroundPosition = 'center';
+          avatarEl.style.backgroundColor = '#4a90e2';
+      } else {
+          avatarEl.style.backgroundImage = 'none';
+          avatarEl.textContent = '👤';
+      }
+  }
+
+  updatePlayerName(name) {
+    const nameDisplay = document.getElementById('player-name-display');
+    if (nameDisplay) nameDisplay.textContent = name;
+  }
+
+  openPanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'flex'; }
+  closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
+  closeAllPanels() { document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none'); }
   updateFPSToggleText(e) { const f=document.getElementById('fps-status'); if(f) f.textContent=e?'Włączony':'Wyłączony'; }
   updateCoinCounter(val) { const e=document.getElementById('coin-value'); if(e) e.textContent=val; }
   toggleMobileControls(s) { const m=document.getElementById('mobile-game-controls'); if(m) m.style.display=s?'block':'none'; }
@@ -88,7 +148,6 @@ export class UIManager {
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
 
-    // Obsługa zakładek w sklepie
     const tabBlocks = document.getElementById('shop-tab-blocks');
     const tabAddons = document.getElementById('shop-tab-addons');
     if (tabBlocks && tabAddons) {
@@ -137,7 +196,6 @@ export class UIManager {
     if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
-  // NOWA LOGIKA SKLEPU Z KATEGORIAMI
   populateShop(allBlocks, isOwnedCallback) {
       this.allShopItems = allBlocks;
       this.shopIsOwnedCallback = isOwnedCallback;
@@ -149,7 +207,6 @@ export class UIManager {
       if (!list) return;
       list.innerHTML = '';
 
-      // Filtrowanie po kategorii (domyślnie 'block')
       const filteredItems = this.allShopItems.filter(item => {
           const cat = item.category || 'block';
           return cat === this.shopCurrentCategory;
@@ -164,7 +221,6 @@ export class UIManager {
           const i = document.createElement('div'); 
           i.className = 'shop-item';
           const owned = this.shopIsOwnedCallback(b.name);
-          
           i.innerHTML = `
               <div class="shop-item-info">
                   <div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div>
@@ -187,7 +243,6 @@ export class UIManager {
       });
   }
 
-  // ... (Reszta metod bez zmian: chat, friends, discover, mail) ...
   setupChatSystem() { this.setupChatInput(); }
   addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
