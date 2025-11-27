@@ -1,871 +1,350 @@
 import * as THREE from 'three';
-import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-import { PlayerController, ThirdPersonCameraController } from './controls.js';
-import { CharacterManager } from './character.js';
-import { SceneManager } from './scene.js';
+import Stats from 'three/addons/libs/stats.module.js';
+
+// --- NOWE MODUŁY ---
+import { STORAGE_KEYS } from './Config.js';
+import { GameCore } from './GameCore.js';
+import { AuthManager } from './AuthManager.js';
+import { AssetLoader } from './AssetLoader.js';
+import { GameStateManager } from './GameStateManager.js';
+
+// --- ISTNIEJĄCE MANAGERY ---
+import { BlockManager } from './BlockManager.js';
 import { UIManager } from './ui.js';
-import { MultiplayerManager } from './multiplayer.js';
-import { BuildManager } from './BuildManager.js';
-import { WorldStorage } from './WorldStorage.js';
+import { SceneManager } from './scene.js';
+import { CharacterManager } from './character.js';
 import { CoinManager } from './CoinManager.js';
+import { MultiplayerManager } from './multiplayer.js';
+import { PlayerController, ThirdPersonCameraController } from './controls.js';
+
+// --- BUILDERY ---
+import { BuildManager } from './BuildManager.js';
 import { SkinBuilderManager } from './SkinBuilderManager.js';
 import { PrefabBuilderManager } from './PrefabBuilderManager.js';
 import { HyperCubePartBuilderManager } from './HyperCubePartBuilderManager.js';
+
+// --- STORAGE ---
 import { SkinStorage } from './SkinStorage.js';
-import Stats from 'three/addons/libs/stats.module.js';
-import { BlockManager } from './BlockManager.js';
-
-const PLAYER_NAME_KEY = 'bsp_clone_player_name';
-const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
-const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
-
-const LOADING_TEXTS = [
-    "Dziurkowanie Kawałków Sera...",
-    "Wprowadzanie Przycisku Skoku...",
-    "Naprawianie Błędów...",
-    "Ustawianie Grawitacji...",
-    "Generowanie Sześciennych Światów...",
-    "Karmienie Chomików w Serwerowni...",
-    "Wczytywanie - Proszę czekać..."
-];
+import { WorldStorage } from './WorldStorage.js';
 
 class BlockStarPlanetGame {
   constructor() {
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.css2dRenderer = new CSS2DRenderer();
-    this.playerController = null;
-    this.characterManager = null;
-    this.cameraController = null;
-    this.coinManager = null;
+    // 1. Inicjalizacja Rdzenia (Scena, Kamera, Renderer)
+    this.core = new GameCore('gameContainer');
+    
+    // 2. Inicjalizacja kluczowych systemów
     this.blockManager = new BlockManager();
-    this.gameState = 'Loading';
-    
-    // Inicjalizujemy jako null, stworzymy w setupManagers
-    this.buildManager = null;
-    this.skinBuilderManager = null;
-    this.prefabBuilderManager = null;
-    this.partBuilderManager = null;
-    
-    this.exploreScene = null;
-    this.isMobile = this.detectMobileDevice();
-    this.clock = new THREE.Clock(); 
-
-    this.stats = null;
-    this.isFPSEnabled = false;
-
-    this.loadingManager = null;
-    this.loadingTextInterval = null;
-    
-    this.initialLoadComplete = false;
-
-    this.previewScene = null;
-    this.previewCamera = null;
-    this.previewRenderer = null;
-    this.previewCharacter = null;
-    this.previewContainer = null;
-    this.isPreviewDragging = false;
-    this.previewPreviousMouseX = 0;
-
-    this.positionUpdateInterval = null;
-    
-    this.mailState = {
-        conversations: [],
-        activeConversation: null
-    };
-
-    this.setupRenderer();
-    this.init();
-  }
-
-  async init() {
-    try {
-      this.blockManager.load(); 
-      this.setupLoadingManager();
-      this.preloadInitialAssets();
-    } catch (error) {
-      console.error('CRITICAL: Error initializing game:', error);
-      this.showError('Krytyczny błąd podczas ładowania gry.');
-    }
-  }
-
-  setupLoadingManager() {
-    const loadingScreen = document.getElementById('loading-screen');
-    const progressBarFill = document.getElementById('progress-bar-fill');
-    const loadingText = document.getElementById('loading-text');
-
-    this.loadingManager = new THREE.LoadingManager();
-
-    this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-        const progress = (itemsLoaded / itemsTotal) * 100;
-        progressBarFill.style.width = `${progress}%`;
-    };
-
-    this.loadingManager.onLoad = async () => {
-        if (this.initialLoadComplete) return;
-        this.initialLoadComplete = true; 
-
-        clearInterval(this.loadingTextInterval);
-        loadingText.textContent = "Gotowe!";
-        
-        try {
-            await this.setupManagers();
-        } catch (e) {
-            console.error("Setup managers failed:", e);
-        }
-        
-        setTimeout(() => {
-            if (loadingScreen) {
-                loadingScreen.style.opacity = '0';
-                setTimeout(() => { 
-                    loadingScreen.style.display = 'none'; 
-                    const token = localStorage.getItem(JWT_TOKEN_KEY);
-                    const username = localStorage.getItem(PLAYER_NAME_KEY);
-
-                    if (token && username) {
-                        fetch(`${API_BASE_URL}/api/user/me`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        })
-                        .then(res => {
-                            if (res.ok) return res.json();
-                            throw new Error('Token invalid');
-                        })
-                        .then(data => {
-                            if (data.thumbnail && this.uiManager) {
-                                this.uiManager.updatePlayerAvatar(data.thumbnail);
-                            }
-                            this.startGame(data.user, token);
-                        })
-                        .catch((err) => {
-                            console.warn("Błąd weryfikacji tokenu:", err);
-                            this.setupAuthScreen();
-                        });
-                    } else {
-                        this.setupAuthScreen();
-                    }
-                }, 500);
-            }
-        }, 500);
-    };
-
-    this.loadingTextInterval = setInterval(() => {
-        const randomIndex = Math.floor(Math.random() * LOADING_TEXTS.length);
-        loadingText.textContent = LOADING_TEXTS[randomIndex];
-    }, 2000);
-  }
-  
-  startGame(user, token) {
-      console.log("Starting game for user:", user.username);
-      localStorage.setItem(PLAYER_NAME_KEY, user.username);
-      localStorage.setItem(JWT_TOKEN_KEY, token);
-      localStorage.setItem('bsp_clone_user_id', user.id);
-
-      if(this.uiManager) {
-          this.uiManager.updatePlayerName(user.username);
-          this.uiManager.checkAdminPermissions(user.username);
-          this.uiManager.loadFriendsData();
-      }
-
-      if (user.ownedBlocks) {
-          this.blockManager.setOwnedBlocks(user.ownedBlocks);
-      }
-
-      document.querySelector('.ui-overlay').style.display = 'block';
-
-      this.coinManager = new CoinManager(this.scene, this.uiManager, this.characterManager.character, user.coins);
-
-      this.multiplayerManager = new MultiplayerManager(
-          this.scene, 
-          this.uiManager, 
-          this.sceneManager, 
-          this.characterManager.materialsCache, 
-          this.coinManager
-      );
-      
-      this.multiplayerManager.initialize(token);
-
-      if(this.uiManager) {
-          this.uiManager.onSendPrivateMessage = (recipient, text) => {
-              if (this.multiplayerManager) {
-                  this.multiplayerManager.sendPrivateMessage(recipient, text);
-              }
-          };
-      }
-
-      const originalHandle = this.multiplayerManager.handleMessage.bind(this.multiplayerManager);
-      this.multiplayerManager.handleMessage = (msg) => {
-          originalHandle(msg); 
-          if (msg.type === 'friendRequestReceived') {
-              this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
-              this.uiManager.loadFriendsData();
-          }
-          if (msg.type === 'friendRequestAccepted') {
-              this.uiManager.showMessage(`${msg.by} przyjął zaproszenie!`, 'success');
-              this.uiManager.loadFriendsData();
-          }
-          if (msg.type === 'friendStatusChange') {
-              this.uiManager.loadFriendsData();
-          }
-          if (msg.type === 'privateMessageSent') {
-              if (this.uiManager.onMessageSent) this.uiManager.onMessageSent(msg);
-          }
-          if (msg.type === 'privateMessageReceived') {
-              if (this.uiManager.onMessageReceived) this.uiManager.onMessageReceived(msg);
-          }
-      };
-      
-      if(this.coinManager) {
-          this.coinManager.onCollect = () => {
-              if(this.multiplayerManager) this.multiplayerManager.sendMessage({ type: 'collectCoin' });
-          };
-      }
-
-      this.gameState = 'MainMenu';
-      this.animate();
-      
-      if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval);
-      this.positionUpdateInterval = setInterval(() => {
-        if ((this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') && this.characterManager.character) {
-          if(this.multiplayerManager) {
-              this.multiplayerManager.sendMyPosition(
-                this.characterManager.character.position,
-                this.characterManager.character.quaternion
-              );
-          }
-        }
-      }, 50); 
-
-      console.log('Game initialized successfully!');
-  }
-
-  setupAuthScreen() {
-      const authScreen = document.getElementById('auth-screen');
-      const welcomeView = document.getElementById('welcome-view');
-      const loginForm = document.getElementById('login-form');
-      const registerForm = document.getElementById('register-form');
-      const showLoginBtn = document.getElementById('show-login-btn');
-      const showRegisterBtn = document.getElementById('show-register-btn');
-      const backButtons = document.querySelectorAll('.btn-back');
-      const authMessage = document.getElementById('auth-message');
-
-      const showView = (view) => {
-          welcomeView.style.display = 'none';
-          loginForm.style.display = 'none';
-          registerForm.style.display = 'none';
-          view.style.display = 'flex';
-          authMessage.textContent = '';
-      };
-
-      showLoginBtn.onclick = () => showView(loginForm);
-      showRegisterBtn.onclick = () => showView(registerForm);
-      backButtons.forEach(btn => btn.onclick = () => showView(welcomeView));
-
-      registerForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          authMessage.textContent = 'Rejestrowanie...';
-          const username = document.getElementById('register-username').value;
-          const password = document.getElementById('register-password').value;
-          const passwordConfirm = document.getElementById('register-password-confirm').value;
-
-          if (password !== passwordConfirm) {
-              authMessage.textContent = 'Hasła nie są takie same!';
-              return;
-          }
-
-          try {
-              const response = await fetch(`${API_BASE_URL}/api/register`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ username, password })
-              });
-              const data = await response.json();
-              if (response.ok) {
-                  authMessage.textContent = 'Rejestracja pomyślna! Teraz możesz się zalogować.';
-                  showView(loginForm);
-              } else {
-                  authMessage.textContent = data.message || 'Błąd rejestracji.';
-              }
-          } catch (error) {
-              authMessage.textContent = 'Błąd połączenia z serwerem.';
-          }
-      });
-
-      loginForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          authMessage.textContent = 'Logowanie...';
-          const username = document.getElementById('login-username').value;
-          const password = document.getElementById('login-password').value;
-
-          try {
-              const response = await fetch(`${API_BASE_URL}/api/login`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ username, password })
-              });
-              const data = await response.json();
-              if (response.ok) {
-                  authMessage.textContent = 'Zalogowano pomyślnie!';
-                  authScreen.style.display = 'none';
-                  
-                  if (data.thumbnail) {
-                      this.uiManager.updatePlayerAvatar(data.thumbnail);
-                  }
-                  
-                  this.startGame(data.user, data.token);
-              } else {
-                  authMessage.textContent = data.message || 'Błąd logowania.';
-              }
-          } catch (error) {
-              authMessage.textContent = 'Błąd połączenia z serwerem.';
-          }
-      });
-
-      authScreen.style.display = 'flex';
-  }
-
-  logout() {
-    localStorage.removeItem(JWT_TOKEN_KEY);
-    localStorage.removeItem(PLAYER_NAME_KEY);
-    localStorage.removeItem('bsp_clone_user_id');
-    window.location.reload();
-  }
-  
-  async setupMailSystem() {
-    if (this.uiManager) {
-        this.uiManager.openPanel('mail-panel');
-        this.uiManager.setupMailSystem(); 
-    }
-  }
-
-  preloadInitialAssets() {
-    const textureLoader = new THREE.TextureLoader(this.loadingManager);
-    const allBlocks = this.blockManager.getAllBlockDefinitions();
-    allBlocks.forEach(block => {
-        textureLoader.load(block.texturePath);
+    this.ui = new UIManager((msg) => {
+        if (this.multiplayer) this.multiplayer.sendMessage({ type: 'chatMessage', text: msg });
     });
-  }
-
-  detectMobileDevice() { 
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); 
-  }
-
-  setupRenderer() {
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x87CEEB, 1);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.getElementById('gameContainer').appendChild(this.renderer.domElement);
-    this.css2dRenderer.setSize(window.innerWidth, window.innerHeight);
-    this.css2dRenderer.domElement.style.position = 'absolute';
-    this.css2dRenderer.domElement.style.top = '0px';
-    this.css2dRenderer.domElement.style.pointerEvents = 'none';
-    document.getElementById('gameContainer').appendChild(this.css2dRenderer.domElement);
-  }
-
-  async setupManagers() {
-    let deferredPrompt;
-    const installButton = document.getElementById('install-button');
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      if (installButton) {
-        installButton.style.display = 'block';
-      }
-    });
-
-    if (installButton) {
-        installButton.addEventListener('click', async () => {
-          if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
-            deferredPrompt = null;
-            installButton.style.display = 'none';
-          }
-        });
-    }
-      
-    this.uiManager = new UIManager(
-      (message) => { 
-        if (this.multiplayerManager) {
-            this.multiplayerManager.sendMessage({ type: 'chatMessage', text: message });
-        }
-      }
-    );
-    this.uiManager.initialize(this.isMobile);
-
-    const mailButton = document.querySelector('.top-bar-item:nth-child(2)');
-    if(mailButton) {
-      mailButton.onclick = () => {
-        this.uiManager.openPanel('mail-panel');
-        this.uiManager.setupMailSystem(); 
-      };
-    }
     
-    this.uiManager.onWorldSizeSelected = (size) => this.switchToBuildMode(size);
-    this.uiManager.onSkinBuilderClick = () => this.switchToSkinBuilderMode();
-    this.uiManager.onPrefabBuilderClick = () => this.switchToPrefabBuilderMode();
-    this.uiManager.onPartBuilderClick = () => this.switchToPartBuilderMode();
-    
-    this.uiManager.onPlayClick = () => this.uiManager.showDiscoverPanel('worlds');
-    this.uiManager.onDiscoverClick = () => this.uiManager.showDiscoverPanel('skins');
-    
-    this.uiManager.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
-        const myId = parseInt(localStorage.getItem('bsp_clone_user_id') || "0");
+    this.stateManager = new GameStateManager(this.core, this.ui);
+    this.auth = new AuthManager(this.startGame.bind(this));
+    this.loader = new AssetLoader(this.blockManager, this.initGame.bind(this));
 
-        if (ownerId && ownerId !== myId) {
-            this.uiManager.showMessage("To nie Twój skin! (Tryb podglądu)", "info");
-            return;
-        }
-
-        const blocksData = await SkinStorage.loadSkinData(skinId);
-        if (blocksData) {
-            this.characterManager.applySkin(blocksData);
-            SkinStorage.setLastUsedSkinId(skinId);
-            this.uiManager.updatePlayerAvatar(thumbnail);
-            this.uiManager.uploadSkinThumbnail(thumbnail);
-            if (this.multiplayerManager && this.multiplayerManager.ws) {
-                this.multiplayerManager.ws.send(JSON.stringify({ type: 'mySkin', skinData: blocksData }));
-            }
-            this.uiManager.showMessage(`Założono skina: ${skinName}`, 'success');
-        } else {
-            this.uiManager.showMessage("Błąd pobierania skina.", "error");
-        }
-    };
-
-    this.uiManager.onWorldSelect = async (worldItem) => {
-        if (!worldItem.id) return;
-        const worldData = await WorldStorage.loadWorldData(worldItem.id);
-        if (worldData) {
-            worldData.id = worldItem.id; 
-            this.loadAndExploreWorld(worldData);
-        } else {
-            this.uiManager.showMessage("Błąd świata.", "error");
-        }
-    };
-
-    this.uiManager.onEditNexusClick = () => {
-         this.gameState = 'BuildMode';
-         this.toggleMainUI(false);
-         this.toggleMobileControls(false);
-         this.buildManager.enterBuildMode(64, true);
-    };
-
-    this.uiManager.onPlayerAvatarClick = () => this.showPlayerPreview();
-    this.uiManager.onShopOpen = () => this.populateShopUI();
-    this.uiManager.onBuyBlock = async (block) => this.handleBuyBlock(block);
-    this.uiManager.onToggleFPS = () => this.toggleFPSCounter();
-    
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.onclick = () => this.logout();
-    }
-    
-    const coinAddBtn = document.getElementById('coin-add-btn');
-    if (coinAddBtn) {
-        coinAddBtn.onclick = () => {
-            this.uiManager.showMessage("Funkcja doładowania monet jest w przygotowaniu!", "info");
-        };
-    }
-
-    document.getElementById('explore-exit-button').onclick = () => this.switchToMainMenu();
-
+    // 3. Statystyki FPS
     this.stats = new Stats();
     this.stats.dom.style.left = '10px';
     this.stats.dom.style.top = '100px';
     this.stats.dom.style.display = 'none';
-    document.getElementById('gameContainer').appendChild(this.stats.dom);
+    document.body.appendChild(this.stats.dom);
 
-    const savedFPSPref = localStorage.getItem('bsp_clone_fps_enabled');
-    if (savedFPSPref === 'true') {
-        this.isFPSEnabled = true;
-        this.stats.dom.style.display = 'block';
-    }
-    this.uiManager.updateFPSToggleText(this.isFPSEnabled);
-    
-    this.toggleMobileControls(true);
-
-    // INICJALIZACJA MANAGERÓW Z TRY-CATCH W SETUPMANAGER
-    this.buildManager = new BuildManager(this, this.loadingManager, this.blockManager);
-    this.skinBuilderManager = new SkinBuilderManager(this, this.loadingManager, this.blockManager);
-    this.prefabBuilderManager = new PrefabBuilderManager(this, this.loadingManager, this.blockManager);
-    this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loadingManager, this.blockManager);
-
-    this.sceneManager = new SceneManager(this.scene, this.loadingManager);
-    this.sceneManager.initialize().catch(e => console.warn("Scene init failed:", e));
-    
-    this.characterManager = new CharacterManager(this.scene);
-    this.characterManager.loadCharacter();
-    
-    const lastSkinId = SkinStorage.getLastUsedSkinId();
-    if (lastSkinId) {
-        const blocksData = await SkinStorage.loadSkinData(lastSkinId);
-        if (blocksData) {
-            this.characterManager.applySkin(blocksData);
-        }
-    }
-
-    this.recreatePlayerController(this.sceneManager.collidableObjects);
-    this.cameraController = new ThirdPersonCameraController(this.camera, this.characterManager.character, this.renderer.domElement, {
-      distance: 5,
-      height: 2, 
-      rotationSpeed: 0.005,
-      floorY: this.sceneManager.FLOOR_TOP_Y
-    });
-    this.cameraController.setIsMobile(this.isMobile);
-  }
-  
-  toggleFPSCounter() {
-    this.isFPSEnabled = !this.isFPSEnabled;
-    if(this.stats) this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none';
-    this.uiManager.updateFPSToggleText(this.isFPSEnabled);
-    localStorage.setItem('bsp_clone_fps_enabled', this.isFPSEnabled.toString());
+    // 4. Start ładowania
+    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    this.blockManager.load();
+    this.loader.preload(); // Uruchamia ekran ładowania
   }
 
-  switchToBuildMode(size) {
-    if (this.gameState !== 'MainMenu') return;
-    this.gameState = 'BuildMode';
-    this.toggleMainUI(false);
-    this.toggleMobileControls(false);
-    if(this.buildManager) this.buildManager.enterBuildMode(size);
+  // Wywoływane przez AssetLoader po załadowaniu tekstur
+  initGame() {
+      this.auth.checkSession(this.ui);
   }
 
-  switchToSkinBuilderMode() {
-    if (this.gameState !== 'MainMenu') return;
-    this.gameState = 'SkinBuilderMode';
-    this.toggleMainUI(false);
-    this.toggleMobileControls(false);
-    if(this.skinBuilderManager) this.skinBuilderManager.enterBuildMode();
-  }
+  // Wywoływane przez AuthManager po zalogowaniu
+  async startGame(user, token, thumbnail) {
+      console.log("Start gry dla:", user.username);
+      
+      // Zapisz sesję
+      localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, user.username);
+      localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.USER_ID, user.id);
 
-  switchToPrefabBuilderMode() {
-    if (this.gameState !== 'MainMenu') return;
-    this.gameState = 'PrefabBuilderMode';
-    this.toggleMainUI(false);
-    this.toggleMobileControls(false);
-    if(this.prefabBuilderManager) this.prefabBuilderManager.enterBuildMode();
-  }
+      // Skonfiguruj UI
+      this.ui.initialize(this.isMobile);
+      this.ui.updatePlayerName(user.username);
+      this.ui.checkAdminPermissions(user.username);
+      if (thumbnail) this.ui.updatePlayerAvatar(thumbnail);
+      if (user.ownedBlocks) this.blockManager.setOwnedBlocks(user.ownedBlocks);
 
-  switchToPartBuilderMode() {
-    if (this.gameState !== 'MainMenu') return;
-    this.gameState = 'PartBuilderMode';
-    this.toggleMainUI(false);
-    this.toggleMobileControls(false);
-    if(this.partBuilderManager) this.partBuilderManager.enterBuildMode();
-  }
-  
-  switchToMainMenu() {
-    if (this.gameState === 'MainMenu') return;
-    
-    if (this.gameState === 'ExploreMode') {
-        if (this.multiplayerManager) {
-            this.multiplayerManager.joinWorld('nexus');
-            this.multiplayerManager.setScene(this.scene);
-        }
-        
-        this.scene.add(this.characterManager.character);
-        this.characterManager.character.position.set(0, 5, 0); 
-        document.getElementById('explore-exit-button').style.display = 'none';
-        
-        this.gameState = 'MainMenu';
-        this.toggleMainUI(true);
-        document.querySelector('.game-buttons').style.display = 'flex'; 
-        this.toggleMobileControls(true);
-        
-        this.recreatePlayerController(this.sceneManager.collidableObjects);
-        this.cameraController.target = this.characterManager.character;
+      // Skonfiguruj FPS
+      const fpsPref = localStorage.getItem(STORAGE_KEYS.FPS_ENABLED) === 'true';
+      this.stats.dom.style.display = fpsPref ? 'block' : 'none';
+      this.ui.onToggleFPS = () => {
+          const visible = (this.stats.dom.style.display === 'none');
+          this.stats.dom.style.display = visible ? 'block' : 'none';
+          this.ui.updateFPSToggleText(visible);
+          localStorage.setItem(STORAGE_KEYS.FPS_ENABLED, visible.toString());
+      };
+      this.ui.updateFPSToggleText(fpsPref);
 
-    } else {
-        if (this.gameState === 'BuildMode' && this.buildManager) this.buildManager.exitBuildMode();
-        else if (this.gameState === 'SkinBuilderMode' && this.skinBuilderManager) this.skinBuilderManager.exitBuildMode();
-        else if (this.gameState === 'PrefabBuilderMode' && this.prefabBuilderManager) this.prefabBuilderManager.exitBuildMode();
-        else if (this.gameState === 'PartBuilderMode' && this.partBuilderManager) this.partBuilderManager.exitBuildMode();
+      // --- INICJALIZACJA ŚWIATA I POSTACI ---
+      this.sceneManager = new SceneManager(this.core.scene, this.loader.getLoadingManager());
+      await this.sceneManager.initialize();
 
-        this.gameState = 'MainMenu';
-        this.toggleMainUI(true);
-        this.toggleMobileControls(true);
-        this.recreatePlayerController(this.sceneManager.collidableObjects);
-        this.cameraController.target = this.characterManager.character;
-    }
-  }
-  
-  toggleMainUI(visible) {
-      document.querySelector('.ui-overlay').style.display = visible ? 'block' : 'none';
-      if(this.playerController) this.playerController.destroy();
-      this.playerController = null;
-      if(this.cameraController) this.cameraController.enabled = visible;
-  }
-
-  toggleMobileControls(visible) {
-      if (!this.isMobile) return;
-      const mobileControls = document.getElementById('mobile-game-controls');
-      if (mobileControls) {
-          mobileControls.style.display = visible ? 'block' : 'none';
+      this.characterManager = new CharacterManager(this.core.scene);
+      this.characterManager.loadCharacter();
+      
+      // Załaduj skin gracza
+      const lastSkinId = SkinStorage.getLastUsedSkinId();
+      if (lastSkinId) {
+          SkinStorage.loadSkinData(lastSkinId).then(data => {
+              if(data) this.characterManager.applySkin(data);
+          });
       }
+
+      this.coinManager = new CoinManager(this.core.scene, this.ui, this.characterManager.character, user.coins);
+
+      // --- MULTIPLAYER ---
+      this.multiplayer = new MultiplayerManager(
+          this.core.scene, 
+          this.ui, 
+          this.sceneManager, 
+          this.characterManager.materialsCache, 
+          this.coinManager
+      );
+      this.multiplayer.initialize(token);
+      
+      // Podpięcie callbacków Multiplayer <-> UI
+      this.setupMultiplayerCallbacks();
+
+      // --- KONTROLERY ---
+      this.recreatePlayerController(this.sceneManager.collidableObjects);
+      
+      this.cameraController = new ThirdPersonCameraController(
+          this.core.camera, 
+          this.characterManager.character, 
+          this.core.renderer.domElement, 
+          { distance: 5, height: 2, floorY: this.sceneManager.FLOOR_TOP_Y }
+      );
+      this.cameraController.setIsMobile(this.isMobile);
+
+      // --- MANAGERY BUDOWANIA ---
+      // Przekazujemy "this.core.camera" i renderer, bo BuildManager używa ich do raycastingu
+      // Ale uwaga: BuildManager tworzy WŁASNĄ scenę.
+      this.buildManager = new BuildManager(this, this.loader.getLoadingManager(), this.blockManager);
+      this.skinBuilderManager = new SkinBuilderManager(this, this.loader.getLoadingManager(), this.blockManager);
+      this.prefabBuilderManager = new PrefabBuilderManager(this, this.loader.getLoadingManager(), this.blockManager);
+      this.partBuilderManager = new HyperCubePartBuilderManager(this, this.loader.getLoadingManager(), this.blockManager);
+
+      // --- PRZEKAZANIE DO STATE MANAGERA ---
+      // To jest kluczowe: StateManager musi mieć dostęp do wszystkiego
+      this.stateManager.setManagers({
+          playerController: this.playerController,
+          cameraController: this.cameraController,
+          character: this.characterManager,
+          multiplayer: this.multiplayer,
+          coin: this.coinManager,
+          build: this.buildManager,
+          skinBuild: this.skinBuilderManager,
+          prefabBuild: this.prefabBuilderManager,
+          partBuild: this.partBuilderManager
+      });
+
+      // Callback dla StateManagera, żeby mógł resetować kontroler przy zmianie świata
+      this.stateManager.onRecreateController = (collidables) => {
+          const targetCollidables = collidables || this.sceneManager.collidableObjects;
+          this.recreatePlayerController(targetCollidables);
+          // Aktualizuj referencję w StateManagerze
+          this.stateManager.setManagers({ playerController: this.playerController });
+      };
+
+      // --- PODPIĘCIE PRZYCISKÓW UI ---
+      this.setupUIActions();
+
+      // Start pętli
+      this.stateManager.switchToMainMenu();
+      this.animate();
   }
-  
+
+  setupMultiplayerCallbacks() {
+      this.ui.onSendPrivateMessage = (recipient, text) => this.multiplayer.sendPrivateMessage(recipient, text);
+      this.coinManager.onCollect = () => this.multiplayer.sendMessage({ type: 'collectCoin' });
+      
+      // Nadpisanie handleMessage w Multiplayerze, aby obsłużyć UI
+      const originalHandle = this.multiplayer.handleMessage.bind(this.multiplayer);
+      this.multiplayer.handleMessage = (msg) => {
+          originalHandle(msg);
+          if (msg.type === 'friendRequestReceived') { this.ui.showMessage(`Zaproszenie od ${msg.from}!`, 'info'); this.ui.loadFriendsData(); }
+          if (msg.type === 'friendRequestAccepted') { this.ui.showMessage(`${msg.by} przyjął zaproszenie!`, 'success'); this.ui.loadFriendsData(); }
+          if (msg.type === 'friendStatusChange') this.ui.loadFriendsData();
+          if (msg.type === 'privateMessageSent' && this.ui.onMessageSent) this.ui.onMessageSent(msg);
+          if (msg.type === 'privateMessageReceived' && this.ui.onMessageReceived) this.ui.onMessageReceived(msg);
+      };
+      
+      // Pętla wysyłania pozycji (tylko w trybie gry)
+      setInterval(() => {
+          if ((this.stateManager.currentState === 'MainMenu' || this.stateManager.currentState === 'ExploreMode') && 
+              this.characterManager && this.characterManager.character) {
+              this.multiplayer.sendMyPosition(
+                  this.characterManager.character.position,
+                  this.characterManager.character.quaternion
+              );
+          }
+      }, 50);
+  }
+
+  setupUIActions() {
+      this.ui.onWorldSizeSelected = (size) => this.stateManager.switchToBuildMode(size);
+      this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
+      this.ui.onPrefabBuilderClick = () => this.stateManager.switchToPrefabBuilder();
+      this.ui.onPartBuilderClick = () => this.stateManager.switchToPartBuilder();
+      
+      this.ui.onPlayClick = () => this.ui.showDiscoverPanel('worlds');
+      this.ui.onDiscoverClick = () => this.ui.showDiscoverPanel('skins');
+      
+      // Logika wyboru świata (Explore Mode)
+      this.ui.onWorldSelect = async (worldItem) => {
+          if (!worldItem.id) return;
+          const worldData = await WorldStorage.loadWorldData(worldItem.id);
+          if (worldData) {
+              worldData.id = worldItem.id;
+              this.loadAndExploreWorld(worldData);
+          } else {
+              this.ui.showMessage("Błąd świata.", "error");
+          }
+      };
+
+      // Sklep i Skiny
+      this.ui.onBuyBlock = async (block) => {
+          const result = await this.blockManager.buyBlock(block.name, block.cost);
+          if(result.success) {
+              this.ui.showMessage(`Kupiono: ${block.name}!`, 'success');
+              this.coinManager.updateBalance(result.newBalance);
+              this.ui.populateShopUI();
+          } else {
+              this.ui.showMessage(result.message, 'error');
+          }
+      };
+
+      this.ui.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => {
+          const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0");
+          if (ownerId && ownerId !== myId) { this.ui.showMessage("Tryb podglądu.", "info"); return; }
+          
+          const data = await SkinStorage.loadSkinData(skinId);
+          if (data) {
+              this.characterManager.applySkin(data);
+              SkinStorage.setLastUsedSkinId(skinId);
+              this.ui.updatePlayerAvatar(thumbnail);
+              this.ui.uploadSkinThumbnail(thumbnail); // (Zakładając że metoda istnieje w UI, inaczej w API)
+              this.multiplayer.sendMessage({ type: 'mySkin', skinData: data });
+              this.ui.showMessage(`Założono: ${skinName}`, 'success');
+          }
+      };
+      
+      this.ui.onEditNexusClick = () => this.stateManager.switchToBuildMode(64); // Tryb Nexus (admin) obsługiwany w BuildManager
+      
+      this.ui.onShopOpen = () => this.ui.populateShop(
+          this.blockManager.getAllBlockDefinitions(),
+          (name) => this.blockManager.isOwned(name)
+      );
+  }
+
   recreatePlayerController(collidables) {
       if(this.playerController) this.playerController.destroy();
       this.playerController = new PlayerController(this.characterManager.character, collidables, {
-          moveSpeed: 8, jumpForce: 18, gravity: 50,
-          groundRestingY: this.sceneManager.FLOOR_TOP_Y
+          moveSpeed: 8, jumpForce: 18, gravity: 50, groundRestingY: this.sceneManager.FLOOR_TOP_Y
       });
       this.playerController.setIsMobile(this.isMobile);
   }
 
+  // Ta funkcja musi zostać w main.js, bo tworzy nową scenę i spina wiele systemów
   loadAndExploreWorld(worldData) {
-    if (!worldData) return;
+      this.stateManager.loadAndExploreWorld(worldData); // Ustawia flagi stanu
 
-    let worldBlocksData;
-    let worldSize;
-    
-    if (Array.isArray(worldData)) {
-        worldBlocksData = worldData;
-        worldSize = 64;
-    } else {
-        worldBlocksData = worldData.blocks || [];
-        worldSize = worldData.size || 64;
-    }
-    
-    if (this.multiplayerManager && worldData.id) {
-        this.multiplayerManager.joinWorld(worldData.id);
-    }
-    
-    this.gameState = 'ExploreMode';
-    
-    document.querySelector('.ui-overlay').style.display = 'block';
-    const buttons = document.querySelector('.game-buttons');
-    if (buttons) buttons.style.display = 'none'; 
+      // Logika tworzenia sceny świata (przeniesiona z starego main.js)
+      const worldBlocksData = Array.isArray(worldData) ? worldData : (worldData.blocks || []);
+      const worldSize = Array.isArray(worldData) ? 64 : (worldData.size || 64);
+      
+      const exploreScene = new THREE.Scene();
+      exploreScene.background = new THREE.Color(0x87CEEB);
+      const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+      exploreScene.add(ambient);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(20, 40, 20);
+      exploreScene.add(dirLight);
 
-    this.toggleMobileControls(true);
-    document.getElementById('explore-exit-button').style.display = 'flex';
-    
-    this.exploreScene = new THREE.Scene();
-    this.exploreScene.background = new THREE.Color(0x87CEEB);
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    this.exploreScene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(20, 30, 20);
-    directionalLight.castShadow = true;
-    this.exploreScene.add(directionalLight);
+      // Generowanie podłogi i bloków
+      const allCollidables = [];
+      const loader = this.loader.getTextureLoader();
+      const materials = {}; // Cache lokalny dla świata
 
-    const allCollidables = [];
-    const textureLoader = new THREE.TextureLoader(this.loadingManager);
-    const loadedMaterials = {};
+      const floorGeo = new THREE.BoxGeometry(worldSize, 1, worldSize);
+      const floorMat = new THREE.MeshLambertMaterial({ color: 0x559022 });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.position.y = -0.5;
+      exploreScene.add(floor);
+      allCollidables.push(floor);
+      
+      // Granice świata
+      const barrierHeight = 100;
+      const half = worldSize / 2;
+      const barrierMat = new THREE.MeshBasicMaterial({ visible: false }); // Niewidzialne ściany
+      const w1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMat); w1.position.set(0, 50, half); exploreScene.add(w1); allCollidables.push(w1);
+      const w2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMat); w2.position.set(0, 50, -half); exploreScene.add(w2); allCollidables.push(w2);
+      const w3 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w3.position.set(half, 50, 0); exploreScene.add(w3); allCollidables.push(w3);
+      const w4 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w4.position.set(-half, 50, 0); exploreScene.add(w4); allCollidables.push(w4);
 
-    const floorGeometry = new THREE.BoxGeometry(worldSize, 1, worldSize);
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x559022 });
-    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
-    floorMesh.position.y = -0.5;
-    floorMesh.receiveShadow = true;
-    this.exploreScene.add(floorMesh);
-    allCollidables.push(floorMesh);
+      // Bloki
+      const geometry = new THREE.BoxGeometry(1, 1, 1); // Współdzielona geometria
+      worldBlocksData.forEach(data => {
+          if(data.texturePath) {
+              let mat = materials[data.texturePath];
+              if(!mat) {
+                  const tex = loader.load(data.texturePath);
+                  tex.magFilter = THREE.NearestFilter;
+                  mat = new THREE.MeshLambertMaterial({ map: tex });
+                  materials[data.texturePath] = mat;
+              }
+              const mesh = new THREE.Mesh(geometry, mat);
+              mesh.position.set(data.x, data.y, data.z);
+              exploreScene.add(mesh);
+              allCollidables.push(mesh);
+          }
+      });
 
-    const edges = new THREE.EdgesGeometry(floorGeometry);
-    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 4 }));
-    line.position.y = -0.5;
-    this.exploreScene.add(line);
-
-    worldBlocksData.forEach(blockData => {
-      if (blockData.texturePath) {
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        let material;
-        if (loadedMaterials[blockData.texturePath]) {
-          material = loadedMaterials[blockData.texturePath];
-        } else {
-          const texture = textureLoader.load(blockData.texturePath);
-          texture.magFilter = THREE.NearestFilter;
-          texture.minFilter = THREE.NearestFilter;
-          material = new THREE.MeshLambertMaterial({ map: texture });
-          loadedMaterials[blockData.texturePath] = material;
-        }
-        const block = new THREE.Mesh(geometry, material);
-        block.position.set(blockData.x, blockData.y, blockData.z);
-        block.castShadow = true;
-        block.receiveShadow = true;
-        this.exploreScene.add(block);
-        allCollidables.push(block);
+      // Przeniesienie gracza
+      exploreScene.add(this.characterManager.character);
+      if (worldData.spawnPoint) {
+          this.characterManager.character.position.set(worldData.spawnPoint.x, worldData.spawnPoint.y, worldData.spawnPoint.z);
+      } else {
+          this.characterManager.character.position.set(0, 5, 0);
       }
-    });
 
-    const barrierHeight = 100;
-    const halfSize = worldSize / 2;
-    const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
-
-    const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
-    wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5);
-    this.exploreScene.add(wallZ1);
-    allCollidables.push(wallZ1);
-
-    const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
-    wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5);
-    this.exploreScene.add(wallZ2);
-    allCollidables.push(wallZ2);
-    
-    const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
-    wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0);
-    this.exploreScene.add(wallX1);
-    allCollidables.push(wallX1);
-    
-    const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
-    wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0);
-    this.exploreScene.add(wallX2);
-    allCollidables.push(wallX2);
-
-    this.exploreScene.add(this.characterManager.character);
-    this.characterManager.character.position.set(0, 5, 0);
-    
-    if(this.multiplayerManager) {
-        this.multiplayerManager.setScene(this.exploreScene);
-    }
-
-    this.recreatePlayerController(allCollidables);
-    this.cameraController.enabled = true;
-  }
-
-  async handleBuyBlock(block) {
-    const result = await this.blockManager.buyBlock(block.name, block.cost);
-    
-    if (result.success) {
-        this.uiManager.showMessage(`Kupiono: ${block.name}!`, 'success');
-        this.coinManager.updateBalance(result.newBalance); 
-        this.populateShopUI(); 
-    } else {
-        this.uiManager.showMessage(result.message || "Błąd zakupu", 'error');
-    }
-  }
-
-  populateShopUI() {
-    this.uiManager.populateShop(
-        this.blockManager.getAllBlockDefinitions(),
-        (blockName) => this.blockManager.isOwned(blockName)
-    );
-  }
-
-  setupPreviewScene() {
-    this.previewContainer = document.getElementById('player-preview-renderer-container');
-    const { clientWidth, clientHeight } = this.previewContainer;
-
-    this.previewScene = new THREE.Scene();
-    this.previewScene.background = new THREE.Color(0x3d3d3d);
-
-    this.previewCamera = new THREE.PerspectiveCamera(50, clientWidth / clientHeight, 0.1, 100);
-    this.previewCamera.position.set(0, 0.5, 4);
-
-    this.previewRenderer = new THREE.WebGLRenderer({ antialias: true });
-    this.previewRenderer.setSize(clientWidth, clientHeight);
-    this.previewRenderer.setPixelRatio(window.devicePixelRatio);
-    this.previewContainer.appendChild(this.previewRenderer.domElement);
-
-    const ambient = new THREE.AmbientLight(0xffffff, 1.5);
-    this.previewScene.add(ambient);
-    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
-    directional.position.set(2, 5, 5);
-    this.previewScene.add(directional);
-
-    const onPointerDown = (e) => {
-        this.isPreviewDragging = true;
-        this.previewPreviousMouseX = e.clientX || e.touches[0].clientX;
-    };
-    const onPointerUp = () => {
-        this.isPreviewDragging = false;
-    };
-    const onPointerMove = (e) => {
-        if (!this.isPreviewDragging) return;
-        const clientX = e.clientX || e.touches[0].clientX;
-        const deltaX = clientX - this.previewPreviousMouseX;
-        if (this.previewCharacter) {
-            this.previewCharacter.rotation.y += deltaX * 0.01;
-        }
-        this.previewPreviousMouseX = clientX;
-    };
-
-    this.previewContainer.addEventListener('mousedown', onPointerDown);
-    this.previewContainer.addEventListener('touchstart', onPointerDown, { passive: true });
-    window.addEventListener('mouseup', onPointerUp);
-    window.addEventListener('touchend', onPointerUp);
-    this.previewContainer.addEventListener('mousemove', onPointerMove);
-    this.previewContainer.addEventListener('touchmove', onPointerMove, { passive: true });
-    this.previewContainer.addEventListener('mouseleave', onPointerUp);
-  }
-
-  showPlayerPreview() {
-    if (!this.previewRenderer) {
-      this.setupPreviewScene();
-    }
-
-    if (this.previewCharacter) {
-      this.previewScene.remove(this.previewCharacter);
-    }
-    
-    this.previewCharacter = this.characterManager.character.clone(true);
-    this.previewCharacter.position.set(0, 0, 0); 
-    this.previewCharacter.rotation.set(0, 0, 0);
-    this.previewScene.add(this.previewCharacter);
-    
-    this.uiManager.openPanel('player-preview-panel');
+      // Aktualizacja referencji w StateManagerze
+      this.stateManager.exploreScene = exploreScene;
+      this.multiplayer.setScene(exploreScene);
+      
+      this.recreatePlayerController(allCollidables);
+      // Aktualizuj kontroler w StateManagerze
+      this.stateManager.setManagers({ playerController: this.playerController });
+      
+      this.cameraController.enabled = true;
   }
 
   animate() {
     requestAnimationFrame(() => this.animate());
+    if (this.isFPSEnabled) this.stats.update();
     
-    if (this.isFPSEnabled && this.stats) this.stats.update();
-
-    const deltaTime = this.clock.getDelta();
+    const delta = this.clock.getDelta();
+    this.stateManager.update(delta); // Delegacja do GameStateManagera
     
-    if (this.gameState === 'Loading') return;
-
-    // --- BEZPIECZNA PĘTLA UPDATE ---
-    if (this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') {
-        if(this.playerController && this.cameraController && this.cameraController.update) {
-            const rot = this.cameraController.update(deltaTime);
-            if(this.playerController.update) this.playerController.update(deltaTime, rot);
-        }
-        if (this.characterManager && this.characterManager.update) this.characterManager.update(deltaTime);
-        if (this.multiplayerManager && this.multiplayerManager.update) this.multiplayerManager.update(deltaTime);
-        if (this.coinManager && this.coinManager.update) this.coinManager.update(deltaTime);
-        
-        const targetScene = (this.gameState === 'ExploreMode' && this.exploreScene) ? this.exploreScene : this.scene;
-        if(this.renderer && this.camera) {
-            this.renderer.render(targetScene, this.camera);
-            this.css2dRenderer.render(targetScene, this.camera);
-        }
-
-    } else if (this.gameState === 'BuildMode' && this.buildManager) {
-        if(this.buildManager.update) this.buildManager.update(deltaTime);
-        if(this.buildManager.scene) this.renderer.render(this.buildManager.scene, this.camera);
-    } else if (this.gameState === 'SkinBuilderMode' && this.skinBuilderManager) {
-        if(this.skinBuilderManager.update) this.skinBuilderManager.update(deltaTime);
-        if(this.skinBuilderManager.scene) this.renderer.render(this.skinBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'PrefabBuilderMode' && this.prefabBuilderManager) {
-        if(this.prefabBuilderManager.update) this.prefabBuilderManager.update(deltaTime);
-        if(this.prefabBuilderManager.scene) this.renderer.render(this.prefabBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'PartBuilderMode' && this.partBuilderManager) {
-        if(this.partBuilderManager.update) this.partBuilderManager.update(deltaTime);
-        if(this.partBuilderManager.scene) this.renderer.render(this.partBuilderManager.scene, this.camera);
-    }
-
+    // Preview postaci (UI)
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
       if (this.previewCharacter && !this.isPreviewDragging) {
         this.previewCharacter.rotation.y += 0.005;
       }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
     }
-  }
-  
-  showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
-
-    setTimeout(() => {
-        if (errorDiv.parentNode) {
-            errorDiv.parentNode.removeChild(errorDiv);
-        }
-    }, 5000);
   }
 }
 
