@@ -13,6 +13,6 @@ export const LOADING_TEXTS = [
     "Pompowanie Panoram Nieba",
     "Jazda w Kierunku Zachodu Słońca",
     "Wypełnianie Pustych Klocków",
-    "Karmienie Chomików w Serwerowni",
+    "Robienie Cubo-Domowej Pracy",
     "Wczytywanie - Proszę czekać..."
 ];
