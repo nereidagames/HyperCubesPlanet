@@ -8,8 +8,7 @@ export const BLOCK_DEFINITIONS = [
     { name: 'Piasek', texturePath: 'textures/piasek.png', cost: 500, category: 'block' },
     { name: 'Beton', texturePath: 'textures/beton.png', cost: 1200, category: 'block' },
     
-    // DODATKI (Parkour)
-    // Używam placeholderów tekstur (np. trawa), ale w przyszłości podmień na strzałkę/szachownicę
+    // DODATKI (Parkour) - Pamiętaj o wgraniu tekstur lub użyją placeholderów
     { name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
     { name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
 ];
@@ -73,7 +72,13 @@ export class BlockManager {
         }
     }
 
-    // Pobiera tylko posiadane elementy danej kategorii
+    // --- NAPRAWA BŁĘDU ---
+    // Ta funkcja jest wymagana przez BuildManager.js
+    getOwnedBlockTypes() {
+        return BLOCK_DEFINITIONS.filter(block => this.isOwned(block.name));
+    }
+
+    // Nowa metoda dla sklepu (filtrowanie po kategorii)
     getOwnedByCategory(category) {
         return BLOCK_DEFINITIONS.filter(block => this.isOwned(block.name) && block.category === category);
     }
