@@ -220,7 +220,7 @@
             <img id="loading-logo" src="icons/favicon.png" alt="Logo">
             <div id="progress-bar">
                 <div id="progress-bar-fill"></div>
-                <div id="loading-text" class="text-outline">Wczytywanie...</div>
+                <div id="loading-text" class="text-outline">Wczytywanie - Proszę Czekać ... </div>
             </div>
         </div>
     </div>
@@ -230,22 +230,22 @@
         <div class="auth-container">
             <div id="welcome-view">
                 <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
-                <button id="show-register-btn" class="btn-primary text-outline">Nowy Gracz</button>
+                <button id="show-register-btn" class="btn-primary text-outline">Nowy Użytkownik</button>
             </div>
             
             <form id="login-form" class="auth-form">
                 <h2 class="text-outline">Logowanie</h2>
-                <input type="text" id="login-username" placeholder="Nazwa..." required autocomplete="username">
-                <input type="password" id="login-password" placeholder="Hasło..." required autocomplete="current-password">
+                <input type="text" id="login-username" placeholder="Nazwa użytkownika" required autocomplete="username">
+                <input type="password" id="login-password" placeholder="Podaj hasło" required autocomplete="current-password">
                 <button type="submit" class="btn-primary text-outline">Zaloguj</button>
                 <button type="button" class="btn-back text-outline">Wróć</button>
             </form>
             
             <form id="register-form" class="auth-form">
                 <h2 class="text-outline">Rejestracja</h2>
-                <input type="text" id="register-username" placeholder="Nazwa..." required minlength="3" maxlength="15">
-                <input type="password" id="register-password" placeholder="Hasło..." required minlength="6">
-                <input type="password" id="register-password-confirm" placeholder="Powtórz..." required>
+                <input type="text" id="register-username" placeholder="Nazwa użytkownika" required minlength="3" maxlength="15">
+                <input type="password" id="register-password" placeholder="Podaj hasło" required minlength="6">
+                <input type="password" id="register-password-confirm" placeholder="Powtórz hasło" required>
                 <button type="submit" class="btn-primary text-outline">Zarejestruj</button>
                 <button type="button" class="btn-back text-outline">Wróć</button>
             </form>
