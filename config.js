@@ -11,7 +11,7 @@ export const LOADING_TEXTS = [
     "Dziurkowanie Kawałków Sera",
     "Wprowadzanie Przycisku Skoku",
     "Pompowanie Panoram Nieba",
-    "Ustawianie Grawitacji",
+    "Jazda w Kierunku Zachodu Słońca",
     "Generowanie Sześciennych Światów",
     "Karmienie Chomików w Serwerowni",
     "Wczytywanie - Proszę czekać..."
