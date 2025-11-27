@@ -100,7 +100,7 @@ export class BuildManager {
     
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight.position.set(50, 80, 50);
-    directionalLight.castShadow = false; // Wyłączone cienie dla wydajności
+    directionalLight.castShadow = false; 
     
     this.scene.add(directionalLight);
     
@@ -165,7 +165,6 @@ export class BuildManager {
           const t = steps === 0 ? 0 : i / steps;
           const point = new THREE.Vector3().lerpVectors(start, end, t);
           point.floor().addScalar(0.5); 
-
           const exists = points.some(p => p.equals(point));
           if (!exists) points.push(point);
       }
@@ -197,6 +196,9 @@ export class BuildManager {
           const geo = this.sharedBoxGeometry;
           const mat = this.materials[this.selectedBlockType.texturePath];
           const b = new THREE.Mesh(geo, mat);
+          
+          // WAŻNE: Zapisujemy nazwę bloku w userData, aby wykryć Start/Metę przy zapisie
+          b.userData.name = this.selectedBlockType.name; 
           b.userData.texturePath = this.selectedBlockType.texturePath;
           b.position.copy(ghost.position);
           b.castShadow = false;
@@ -250,7 +252,7 @@ export class BuildManager {
               }
           }
       } catch (e) {
-          console.warn("Błąd pobierania Nexusa:", e);
+          console.warn("Błąd pobierania Nexusa (może być pusty):", e);
       }
   }
 
@@ -363,7 +365,7 @@ export class BuildManager {
         this.previewBlock.material = this.materials[blockType.texturePath].clone();
         this.previewBlock.material.transparent = true;
         this.previewBlock.material.opacity = 0.5;
-        this.previewBlock.material.needsUpdate = true; // Wymuś aktualizację
+        this.previewBlock.material.needsUpdate = true; 
       }
       this.previewPrefab.visible = false;
       this.previewBlock.visible = true;
@@ -434,15 +436,13 @@ export class BuildManager {
     }
   }
   
-  // --- FIX: Ignorowanie interfejsu (w tym paneli wyboru) ---
   isEventOnUI(event) {
       const target = event.target;
-      // Lista elementów, które NIE powinny powodować stawiania bloków
       return (
           target.closest('.build-ui-button') || 
           target.closest('.panel-list') || 
           target.closest('#build-tools-right') ||
-          target.closest('#block-selection-panel') || // Fix wyboru bloków
+          target.closest('#block-selection-panel') || 
           target.closest('#prefab-selection-panel') ||
           target.closest('#part-selection-panel') ||
           target.closest('#add-choice-panel') ||
@@ -482,13 +482,12 @@ export class BuildManager {
   onTouchStart(event) {
     if (!this.isActive || !this.game.isMobile) return;
     
-    // Jeśli dotyk jest na UI (np. wybór bloku), wychodzimy i NIE robimy preventDefault
     if (this.isEventOnUI(event)) return;
     
     const touch = event.touches[0];
     if (event.touches.length > 1) return;
 
-    event.preventDefault(); // To blokuje scroll/zoom tylko w strefie budowania
+    event.preventDefault();
     this.isLongPress = false;
     
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
@@ -583,7 +582,11 @@ export class BuildManager {
     const g = this.sharedBoxGeometry;
     const m = this.materials[this.selectedBlockType.texturePath];
     const b = new THREE.Mesh(g, m);
+    
+    // ZAPIS NAZWY I TYPU BLOKU W USERDATA (Potrzebne do walidacji parkouru)
+    b.userData.name = this.selectedBlockType.name;
     b.userData.texturePath = this.selectedBlockType.texturePath;
+    
     b.position.copy(this.previewBlock.position);
     b.castShadow = false;
     b.receiveShadow = false;
@@ -726,6 +729,31 @@ export class BuildManager {
 
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
+
+    // --- WALIDACJA PARKOURU ---
+    const starts = this.placedBlocks.filter(b => b.userData.name === 'Parkour Start');
+    const metas = this.placedBlocks.filter(b => b.userData.name === 'Parkour Meta');
+
+    if (starts.length > 1) {
+        alert("Błąd: Świat może mieć tylko JEDEN punkt startowy Parkouru!");
+        return;
+    }
+    
+    // Jeśli mamy start i metę, to jest to Parkour. Jeśli tylko jedno, to błąd (bo nieskończony parkour).
+    // Chyba że gracz chce Creative, wtedy nie powinien stawiać Startu ani Mety (lub olać logikę).
+    // Ustalmy: Jeśli jest Start i Meta -> Parkour. Jeśli brakuje któregoś -> Creative (i ignorujemy bloki funkcyjne).
+    
+    let worldType = 'creative';
+    let spawnPoint = null;
+
+    if (starts.length === 1 && metas.length >= 1) {
+        worldType = 'parkour';
+        spawnPoint = { x: starts[0].position.x, y: starts[0].position.y + 1.5, z: starts[0].position.z };
+    } else if (starts.length === 1 || metas.length >= 1) {
+         // Ostrzeżenie, ale pozwalamy zapisać jako Creative
+         if(!confirm("Masz Start lub Metę, ale nie kompletny tor. Świat zostanie zapisany jako zwykły (Creative). Kontynuować?")) return;
+    }
+
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
       
@@ -734,18 +762,21 @@ export class BuildManager {
       const worldData = {
         size: this.platformSize,
         thumbnail: thumbnail,
+        type: worldType,
+        spawnPoint: spawnPoint, // null dla Creative
         blocks: this.placedBlocks.map(block => ({
             x: block.position.x,
             y: block.position.y,
             z: block.position.z,
-            texturePath: block.userData.texturePath
+            texturePath: block.userData.texturePath,
+            name: block.userData.name // Zapisujemy nazwę bloku, aby odtworzyć logikę
         }))
       };
       
       const success = await WorldStorage.saveWorld(worldName, worldData);
       
       if (success) {
-        alert(`Świat "${worldName}" został pomyślnie zapisany na serwerze!`);
+        alert(`Świat "${worldName}" (${worldType}) został pomyślnie zapisany!`);
         this.game.switchToMainMenu();
       }
     }
