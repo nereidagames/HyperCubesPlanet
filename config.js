@@ -12,7 +12,7 @@ export const LOADING_TEXTS = [
     "Wprowadzanie Przycisku Skoku",
     "Pompowanie Panoram Nieba",
     "Jazda w Kierunku Zachodu Słońca",
-    "Generowanie Sześciennych Światów",
+    "Wypełnianie Pustych Klocków",
     "Karmienie Chomików w Serwerowni",
     "Wczytywanie - Proszę czekać..."
 ];
