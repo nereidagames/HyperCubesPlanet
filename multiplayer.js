@@ -36,14 +36,14 @@ export class MultiplayerManager {
     }
     const serverUrl = `wss://hypercubes-nexus-server.onrender.com?token=${token}`;
 
-    this.uiManager.addChatMessage('<Łączenie z serwerem...>');
+    this.uiManager.addChatMessage('<Łączenie z Nexusem...>');
 
     try {
       this.ws = new WebSocket(serverUrl);
       
       this.ws.onopen = () => {
         console.log('WS: Połączono!');
-        this.uiManager.addChatMessage('<Połączono!>');
+        this.uiManager.addChatMessage('<Udało się dołączyć do Nexusa!>');
 
         const skinName = SkinStorage.getLastUsedSkinId(); 
         
