@@ -31,10 +31,19 @@ class BlockStarPlanetGame {
   constructor() {
     console.log("Uruchamianie silnika gry...");
 
-    // 1. Inicjalizacja Rdzenia
+    // 1. Inicjalizacja Rdzenia (GameCore)
     this.core = new GameCore('gameContainer');
 
-    // 2. Inicjalizacja Managerów
+    // !!! WARSTWA KOMPATYBILNOŚCI !!!
+    // Przypisujemy elementy z core do 'this', aby BuildManager i inne stare skrypty
+    // mogły korzystać z 'this.game.scene' zamiast 'this.game.core.scene'
+    this.scene = this.core.scene;
+    this.camera = this.core.camera;
+    this.renderer = this.core.renderer;
+    this.css2dRenderer = this.core.css2dRenderer;
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    // 2. Inicjalizacja Podstawowych Managerów
     this.blockManager = new BlockManager();
     
     this.ui = new UIManager((msg) => {
@@ -43,7 +52,10 @@ class BlockStarPlanetGame {
 
     this.stateManager = new GameStateManager(this.core, this.ui);
     
+    // AuthManager
     this.auth = new AuthManager(this.startGame.bind(this));
+    
+    // AssetLoader
     this.loader = new AssetLoader(this.blockManager, this.onAssetsLoaded.bind(this));
 
     // 3. Statystyki FPS
@@ -55,32 +67,42 @@ class BlockStarPlanetGame {
     // Ładujemy definicje bloków
     this.blockManager.load();
     
-    // Rozpoczynamy ładowanie tekstur
-    // Fail-safe: Jeśli assety nie załadują się w 5 sekund, wymuś start
+    // Start ładowania (tekstury)
     this.loader.preload();
+
+    // Awaryjny start jeśli loader zawiedzie (np. błąd sieci)
     setTimeout(() => {
-        if (document.getElementById('loading-screen').style.display !== 'none') {
-            console.warn("Wymuszanie startu po timeout...");
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen && loadingScreen.style.display !== 'none' && loadingScreen.style.opacity !== '0') {
+            console.warn("Timeout ładowania - wymuszanie startu...");
             this.onAssetsLoaded();
         }
-    }, 5000);
+    }, 8000);
   }
 
-  // KROK 1: Zasoby załadowane -> UI i Sesja
+  // KROK 1: Zasoby załadowane -> Inicjalizacja UI
   onAssetsLoaded() {
-      console.log("Zasoby załadowane. Sprawdzanie sesji...");
-      this.ui.initialize(this.isMobile);
-      this.auth.checkSession(this.ui);
+      console.log("Zasoby załadowane. Inicjalizacja UI...");
+      try {
+        this.ui.initialize(this.isMobile);
+        this.auth.checkSession(this.ui);
+      } catch (e) {
+          console.error("Błąd inicjalizacji UI:", e);
+          // Nawet jak UI padnie, spróbujmy pokazać ekran logowania
+          this.auth.showAuthScreen();
+      }
   }
 
-  // KROK 2: Użytkownik zalogowany -> Start Gry
+  // KROK 2: Użytkownik zalogowany -> Start Właściwej Gry
   async startGame(user, token, thumbnail) {
       console.log("Start gry dla:", user.username);
       
+      // Zapis sesji
       localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, user.username);
       localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, token);
       localStorage.setItem(STORAGE_KEYS.USER_ID, user.id);
 
+      // Konfiguracja UI pod użytkownika
       this.ui.updatePlayerName(user.username);
       if (thumbnail) this.ui.updatePlayerAvatar(thumbnail);
       this.ui.checkAdminPermissions(user.username);
@@ -92,12 +114,17 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      // --- ŚWIAT ---
-      this.sceneManager = new SceneManager(this.core.scene, this.loader.getLoadingManager());
-      await this.sceneManager.initialize();
+      // --- SCENA ---
+      this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
+      // Czekamy na mapę, ale nie blokujemy błędem
+      try {
+        await this.sceneManager.initialize();
+      } catch(e) {
+        console.error("Błąd mapy:", e);
+      }
 
       // --- POSTAĆ ---
-      this.characterManager = new CharacterManager(this.core.scene);
+      this.characterManager = new CharacterManager(this.scene);
       this.characterManager.loadCharacter();
       
       const lastSkinId = SkinStorage.getLastUsedSkinId();
@@ -107,11 +134,12 @@ class BlockStarPlanetGame {
           });
       }
 
-      this.coinManager = new CoinManager(this.core.scene, this.ui, this.characterManager.character, user.coins);
+      // --- MONETY ---
+      this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
 
       // --- MULTIPLAYER ---
       this.multiplayer = new MultiplayerManager(
-          this.core.scene, 
+          this.scene, 
           this.ui, 
           this.sceneManager, 
           this.characterManager.materialsCache, 
@@ -124,7 +152,7 @@ class BlockStarPlanetGame {
       this.recreatePlayerController(this.sceneManager.collidableObjects);
       
       this.cameraController = new ThirdPersonCameraController(
-          this.core.camera, 
+          this.camera, 
           this.characterManager.character, 
           this.core.renderer.domElement, 
           { distance: 5, height: 2, floorY: this.sceneManager.FLOOR_TOP_Y }
@@ -133,12 +161,13 @@ class BlockStarPlanetGame {
 
       // --- BUILDERY ---
       const loadingManager = this.loader.getLoadingManager();
+      // Tu przekazujemy 'this' (game), który teraz ma this.camera i this.scene
       this.buildManager = new BuildManager(this, loadingManager, this.blockManager);
       this.skinBuilderManager = new SkinBuilderManager(this, loadingManager, this.blockManager);
       this.prefabBuilderManager = new PrefabBuilderManager(this, loadingManager, this.blockManager);
       this.partBuilderManager = new HyperCubePartBuilderManager(this, loadingManager, this.blockManager);
 
-      // --- STATE MANAGER CONFIG ---
+      // --- STATE MANAGER ---
       this.stateManager.setManagers({
           playerController: this.playerController,
           cameraController: this.cameraController,
@@ -151,12 +180,19 @@ class BlockStarPlanetGame {
           partBuild: this.partBuilderManager
       });
 
+      this.stateManager.onRecreateController = (collidables) => {
+          const targetCollidables = collidables || this.sceneManager.collidableObjects;
+          this.recreatePlayerController(targetCollidables);
+          this.stateManager.setManagers({ playerController: this.playerController });
+      };
+
       this.setupUIActions();
 
+      // Start
       this.stateManager.switchToMainMenu();
       this.animate();
-      
       this.setupPositionUpdateLoop();
+
       console.log('Gra uruchomiona pomyślnie!');
   }
 
@@ -265,17 +301,12 @@ class BlockStarPlanetGame {
       }, 50); 
   }
 
-  // --- ŁADOWANIE OBCYCH ŚWIATÓW (Tutaj main.js buduje, a StateManager wyświetla) ---
   loadAndExploreWorld(worldData) {
+      this.stateManager.loadAndExploreWorld(worldData); 
+
       const worldBlocksData = Array.isArray(worldData) ? worldData : (worldData.blocks || []);
       const worldSize = Array.isArray(worldData) ? 64 : (worldData.size || 64);
       
-      // Multiplayer: Dołącz do pokoju świata
-      if (this.multiplayer && worldData.id) {
-          this.multiplayer.joinWorld(worldData.id);
-      }
-
-      // Tworzenie sceny
       const exploreScene = new THREE.Scene();
       exploreScene.background = new THREE.Color(0x87CEEB);
       const ambient = new THREE.AmbientLight(0xffffff, 0.8);
@@ -288,7 +319,6 @@ class BlockStarPlanetGame {
       const loader = this.loader.getTextureLoader();
       const materials = {};
 
-      // Podłoga
       const floorGeo = new THREE.BoxGeometry(worldSize, 1, worldSize);
       const floorMat = new THREE.MeshLambertMaterial({ color: 0x559022 });
       const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -296,7 +326,6 @@ class BlockStarPlanetGame {
       exploreScene.add(floor);
       allCollidables.push(floor);
       
-      // Bariery
       const barrierHeight = 100;
       const half = worldSize / 2;
       const barrierMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -305,7 +334,6 @@ class BlockStarPlanetGame {
       const w3 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w3.position.set(half, 50, 0); exploreScene.add(w3); allCollidables.push(w3);
       const w4 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w4.position.set(-half, 50, 0); exploreScene.add(w4); allCollidables.push(w4);
 
-      // Bloki
       const geometry = new THREE.BoxGeometry(1, 1, 1); 
       worldBlocksData.forEach(data => {
           if(data.texturePath) {
@@ -323,7 +351,6 @@ class BlockStarPlanetGame {
           }
       });
 
-      // Gracz
       exploreScene.add(this.characterManager.character);
       if (worldData.spawnPoint) {
           this.characterManager.character.position.set(worldData.spawnPoint.x, worldData.spawnPoint.y, worldData.spawnPoint.z);
@@ -331,11 +358,8 @@ class BlockStarPlanetGame {
           this.characterManager.character.position.set(0, 5, 0);
       }
 
-      // Przełączenie w StateManagerze
-      this.stateManager.switchToExploreMode(exploreScene);
+      this.stateManager.exploreScene = exploreScene;
       this.multiplayer.setScene(exploreScene);
-
-      // Rekreacja kontrolera dla nowej sceny
       this.recreatePlayerController(allCollidables);
       this.stateManager.setManagers({ playerController: this.playerController });
       this.cameraController.enabled = true;
@@ -346,7 +370,7 @@ class BlockStarPlanetGame {
     if (this.isFPSEnabled) this.stats.update();
     
     const delta = this.clock.getDelta();
-    this.stateManager.update(delta); // Delegacja
+    this.stateManager.update(delta);
     
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
       if (this.previewCharacter && !this.isPreviewDragging) {
