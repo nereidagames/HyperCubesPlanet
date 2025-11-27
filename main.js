@@ -35,6 +35,8 @@ class BlockStarPlanetGame {
     this.core = new GameCore('gameContainer');
 
     // !!! WARSTWA KOMPATYBILNOŚCI !!!
+    // Przypisujemy elementy z core do 'this', aby BuildManager i inne stare skrypty
+    // mogły korzystać z 'this.game.scene' zamiast 'this.game.core.scene'
     this.scene = this.core.scene;
     this.camera = this.core.camera;
     this.renderer = this.core.renderer;
@@ -57,23 +59,18 @@ class BlockStarPlanetGame {
     this.loader = new AssetLoader(this.blockManager, this.onAssetsLoaded.bind(this));
 
     // 3. Statystyki FPS
-    this.stats = new Stats();
-    this.stats.dom.style.display = 'none'; 
-    document.body.appendChild(this.stats.dom);
-    this.isFPSEnabled = false;
     this.setupStats();
 
     // 4. START APLIKACJI
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    this.clock = new THREE.Clock();
-
+    
     // Ładujemy definicje bloków
     this.blockManager.load();
     
     // Start ładowania (tekstury)
     this.loader.preload();
 
-    // Awaryjny start tylko w przypadku błędu loadera
+    // Awaryjny start jeśli loader zawiedzie (np. błąd sieci)
     setTimeout(() => {
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen && loadingScreen.style.display !== 'none' && loadingScreen.style.opacity !== '0') {
@@ -91,6 +88,7 @@ class BlockStarPlanetGame {
         this.auth.checkSession(this.ui);
       } catch (e) {
           console.error("Błąd inicjalizacji UI:", e);
+          // Nawet jak UI padnie, spróbujmy pokazać ekran logowania
           this.auth.showAuthScreen();
       }
   }
@@ -118,6 +116,7 @@ class BlockStarPlanetGame {
 
       // --- SCENA ---
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
+      // Czekamy na mapę, ale nie blokujemy błędem
       try {
         await this.sceneManager.initialize();
       } catch(e) {
@@ -162,6 +161,7 @@ class BlockStarPlanetGame {
 
       // --- BUILDERY ---
       const loadingManager = this.loader.getLoadingManager();
+      // Tu przekazujemy 'this' (game), który teraz ma this.camera i this.scene
       this.buildManager = new BuildManager(this, loadingManager, this.blockManager);
       this.skinBuilderManager = new SkinBuilderManager(this, loadingManager, this.blockManager);
       this.prefabBuilderManager = new PrefabBuilderManager(this, loadingManager, this.blockManager);
@@ -389,9 +389,4 @@ class BlockStarPlanetGame {
   }
 }
 
-// INICJALIZACJA: Bezpieczne uruchomienie bez problemu z DOMContentLoaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => new BlockStarPlanetGame());
-} else {
-    new BlockStarPlanetGame();
-}
+document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
