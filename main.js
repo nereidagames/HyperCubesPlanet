@@ -14,6 +14,7 @@ import { HyperCubePartBuilderManager } from './HyperCubePartBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
 import Stats from 'three/addons/libs/stats.module.js';
 import { BlockManager } from './BlockManager.js';
+import { ParkourManager } from './ParkourManager.js'; // IMPORT
 
 const PLAYER_NAME_KEY = 'bsp_clone_player_name';
 const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
@@ -48,6 +49,8 @@ class BlockStarPlanetGame {
     this.exploreScene = null;
     this.isMobile = this.detectMobileDevice();
     this.clock = new THREE.Clock(); 
+    
+    this.parkourManager = null; // NOWOŚĆ
 
     this.stats = null;
     this.isFPSEnabled = false;
@@ -388,6 +391,9 @@ class BlockStarPlanetGame {
       }
     );
     this.uiManager.initialize(this.isMobile);
+    
+    // INICJALIZACJA PARKOUR MANAGERA
+    this.parkourManager = new ParkourManager(this, this.uiManager);
 
     const mailButton = document.querySelector('.top-bar-item:nth-child(2)');
     if(mailButton) {
@@ -552,7 +558,6 @@ class BlockStarPlanetGame {
     if (this.gameState === 'MainMenu') return;
     
     if (this.gameState === 'ExploreMode') {
-        // POWRÓT DO NEXUSA
         if (this.multiplayerManager) {
             this.multiplayerManager.joinWorld('nexus');
             this.multiplayerManager.setScene(this.scene);
@@ -562,12 +567,14 @@ class BlockStarPlanetGame {
         this.characterManager.character.position.set(0, 5, 0); 
         document.getElementById('explore-exit-button').style.display = 'none';
         
-        // PRZYWRACANIE MENU
         this.gameState = 'MainMenu';
         this.toggleMainUI(true);
-        document.querySelector('.game-buttons').style.display = 'flex'; // Upewniamy się że menu wróciło
+        document.querySelector('.game-buttons').style.display = 'flex'; 
         this.toggleMobileControls(true);
         
+        // WYŁĄCZENIE PARKOURU
+        if (this.parkourManager) this.parkourManager.cleanup();
+
         this.recreatePlayerController(this.sceneManager.collidableObjects);
         this.cameraController.target = this.characterManager.character;
 
@@ -629,11 +636,9 @@ class BlockStarPlanetGame {
     
     this.gameState = 'ExploreMode';
     
-    // --- ZMIANA ---
-    // Nie ukrywamy całego UI (bo czat zniknie), tylko chowamy menu i zostawiamy overlay
     document.querySelector('.ui-overlay').style.display = 'block';
     const buttons = document.querySelector('.game-buttons');
-    if (buttons) buttons.style.display = 'none'; // Ukryj przyciski "Graj, Buduj"
+    if (buttons) buttons.style.display = 'none'; 
 
     this.toggleMobileControls(true);
     document.getElementById('explore-exit-button').style.display = 'flex';
@@ -686,32 +691,29 @@ class BlockStarPlanetGame {
       }
     });
 
+    // --- URUCHAMIANIE PARKOURU ---
+    // Jeśli świat ma typ parkour, inicjalizujemy manager
+    if (worldData.type === 'parkour' && this.parkourManager) {
+        this.parkourManager.init(worldData);
+    }
+
     const barrierHeight = 100;
     const halfSize = worldSize / 2;
     const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
-
-    const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
-    wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5);
-    this.exploreScene.add(wallZ1);
-    allCollidables.push(wallZ1);
-
-    const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial);
-    wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5);
-    this.exploreScene.add(wallZ2);
-    allCollidables.push(wallZ2);
-    
-    const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
-    wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0);
-    this.exploreScene.add(wallX1);
-    allCollidables.push(wallX1);
-    
-    const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial);
-    wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0);
-    this.exploreScene.add(wallX2);
-    allCollidables.push(wallX2);
+    // ... (Tworzenie ścian bez zmian) ...
+    const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial); wallZ1.position.set(0, barrierHeight / 2, halfSize - 0.5); this.exploreScene.add(wallZ1); allCollidables.push(wallZ1);
+    const wallZ2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMaterial); wallZ2.position.set(0, barrierHeight / 2, -halfSize + 0.5); this.exploreScene.add(wallZ2); allCollidables.push(wallZ2);
+    const wallX1 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial); wallX1.position.set(halfSize - 0.5, barrierHeight / 2, 0); this.exploreScene.add(wallX1); allCollidables.push(wallX1);
+    const wallX2 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMaterial); wallX2.position.set(-halfSize + 0.5, barrierHeight / 2, 0); this.exploreScene.add(wallX2); allCollidables.push(wallX2);
 
     this.exploreScene.add(this.characterManager.character);
-    this.characterManager.character.position.set(0, 5, 0);
+    
+    // USTAWIANIE POZYCJI STARTOWEJ
+    if (worldData.spawnPoint) {
+        this.characterManager.character.position.set(worldData.spawnPoint.x, worldData.spawnPoint.y, worldData.spawnPoint.z);
+    } else {
+        this.characterManager.character.position.set(0, 5, 0);
+    }
     
     if(this.multiplayerManager) {
         this.multiplayerManager.setScene(this.exploreScene);
@@ -738,127 +740,34 @@ class BlockStarPlanetGame {
         (blockName) => this.blockManager.isOwned(blockName)
     );
   }
-
-  setupPreviewScene() {
-    this.previewContainer = document.getElementById('player-preview-renderer-container');
-    const { clientWidth, clientHeight } = this.previewContainer;
-
-    this.previewScene = new THREE.Scene();
-    this.previewScene.background = new THREE.Color(0x3d3d3d);
-
-    this.previewCamera = new THREE.PerspectiveCamera(50, clientWidth / clientHeight, 0.1, 100);
-    this.previewCamera.position.set(0, 0.5, 4);
-
-    this.previewRenderer = new THREE.WebGLRenderer({ antialias: true });
-    this.previewRenderer.setSize(clientWidth, clientHeight);
-    this.previewRenderer.setPixelRatio(window.devicePixelRatio);
-    this.previewContainer.appendChild(this.previewRenderer.domElement);
-
-    const ambient = new THREE.AmbientLight(0xffffff, 1.5);
-    this.previewScene.add(ambient);
-    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
-    directional.position.set(2, 5, 5);
-    this.previewScene.add(directional);
-
-    const onPointerDown = (e) => {
-        this.isPreviewDragging = true;
-        this.previewPreviousMouseX = e.clientX || e.touches[0].clientX;
-    };
-    const onPointerUp = () => {
-        this.isPreviewDragging = false;
-    };
-    const onPointerMove = (e) => {
-        if (!this.isPreviewDragging) return;
-        const clientX = e.clientX || e.touches[0].clientX;
-        const deltaX = clientX - this.previewPreviousMouseX;
-        if (this.previewCharacter) {
-            this.previewCharacter.rotation.y += deltaX * 0.01;
-        }
-        this.previewPreviousMouseX = clientX;
-    };
-
-    this.previewContainer.addEventListener('mousedown', onPointerDown);
-    this.previewContainer.addEventListener('touchstart', onPointerDown, { passive: true });
-    window.addEventListener('mouseup', onPointerUp);
-    window.addEventListener('touchend', onPointerUp);
-    this.previewContainer.addEventListener('mousemove', onPointerMove);
-    this.previewContainer.addEventListener('touchmove', onPointerMove, { passive: true });
-    this.previewContainer.addEventListener('mouseleave', onPointerUp);
-  }
-
-  showPlayerPreview() {
-    if (!this.previewRenderer) {
-      this.setupPreviewScene();
-    }
-
-    if (this.previewCharacter) {
-      this.previewScene.remove(this.previewCharacter);
-    }
-    
-    this.previewCharacter = this.characterManager.character.clone(true);
-    this.previewCharacter.position.set(0, 0, 0); 
-    this.previewCharacter.rotation.set(0, 0, 0);
-    this.previewScene.add(this.previewCharacter);
-    
-    this.uiManager.openPanel('player-preview-panel');
-  }
-
-  animate() {
-    requestAnimationFrame(() => this.animate());
-    
-    if (this.isFPSEnabled) this.stats.update();
-
-    const deltaTime = this.clock.getDelta();
-    
-    if (this.gameState === 'Loading') return;
-
-    if (this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') {
-        if(this.playerController && this.cameraController) {
-            const rot = this.cameraController.update(deltaTime);
-            this.playerController.update(deltaTime, rot);
-        }
-        if (this.characterManager) this.characterManager.update(deltaTime);
-        if (this.multiplayerManager) this.multiplayerManager.update(deltaTime);
-        if (this.coinManager) this.coinManager.update(deltaTime);
-        
-        const targetScene = (this.gameState === 'ExploreMode') ? this.exploreScene : this.scene;
-        this.renderer.render(targetScene, this.camera);
-        this.css2dRenderer.render(targetScene, this.camera);
-
-    } else if (this.gameState === 'BuildMode') {
-        this.buildManager.update(deltaTime);
-        this.renderer.render(this.buildManager.scene, this.camera);
-    } else if (this.gameState === 'SkinBuilderMode') {
-        this.skinBuilderManager.update(deltaTime);
-        this.renderer.render(this.skinBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'PrefabBuilderMode') {
-        this.prefabBuilderManager.update(deltaTime);
-        this.renderer.render(this.prefabBuilderManager.scene, this.camera);
-    } else if (this.gameState === 'PartBuilderMode') {
-        this.partBuilderManager.update(deltaTime);
-        this.renderer.render(this.partBuilderManager.scene, this.camera);
-    }
-
-    if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
-      if (this.previewCharacter && !this.isPreviewDragging) {
-        this.previewCharacter.rotation.y += 0.005;
-      }
-      this.previewRenderer.render(this.previewScene, this.previewCamera);
-    }
-  }
   
-  showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
+  // ... (Reszta: setupPreviewScene, showPlayerPreview, animate, showError) ...
+  setupPreviewScene() { this.previewContainer = document.getElementById('player-preview-renderer-container'); const { clientWidth, clientHeight } = this.previewContainer; this.previewScene = new THREE.Scene(); this.previewScene.background = new THREE.Color(0x3d3d3d); this.previewCamera = new THREE.PerspectiveCamera(50, clientWidth / clientHeight, 0.1, 100); this.previewCamera.position.set(0, 0.5, 4); this.previewRenderer = new THREE.WebGLRenderer({ antialias: true }); this.previewRenderer.setSize(clientWidth, clientHeight); this.previewRenderer.setPixelRatio(window.devicePixelRatio); this.previewContainer.appendChild(this.previewRenderer.domElement); const ambient = new THREE.AmbientLight(0xffffff, 1.5); this.previewScene.add(ambient); const directional = new THREE.DirectionalLight(0xffffff, 1.5); directional.position.set(2, 5, 5); this.previewScene.add(directional); const onPointerDown = (e) => { this.isPreviewDragging = true; this.previewPreviousMouseX = e.clientX || e.touches[0].clientX; }; const onPointerUp = () => { this.isPreviewDragging = false; }; const onPointerMove = (e) => { if (!this.isPreviewDragging) return; const clientX = e.clientX || e.touches[0].clientX; const deltaX = clientX - this.previewPreviousMouseX; if (this.previewCharacter) { this.previewCharacter.rotation.y += deltaX * 0.01; } this.previewPreviousMouseX = clientX; }; this.previewContainer.addEventListener('mousedown', onPointerDown); this.previewContainer.addEventListener('touchstart', onPointerDown, { passive: true }); window.addEventListener('mouseup', onPointerUp); window.addEventListener('touchend', onPointerUp); this.previewContainer.addEventListener('mousemove', onPointerMove); this.previewContainer.addEventListener('touchmove', onPointerMove, { passive: true }); this.previewContainer.addEventListener('mouseleave', onPointerUp); }
+  showPlayerPreview() { if (!this.previewRenderer) { this.setupPreviewScene(); } if (this.previewCharacter) { this.previewScene.remove(this.previewCharacter); } this.previewCharacter = this.characterManager.character.clone(true); this.previewCharacter.position.set(0, 0, 0); this.previewCharacter.rotation.set(0, 0, 0); this.previewScene.add(this.previewCharacter); this.uiManager.openPanel('player-preview-panel'); }
+  animate() { 
+      requestAnimationFrame(() => this.animate()); 
+      if (this.isFPSEnabled) this.stats.update(); 
+      const deltaTime = this.clock.getDelta(); 
+      if (this.gameState === 'Loading') return; 
+      
+      if (this.gameState === 'MainMenu' || this.gameState === 'ExploreMode') { 
+          if(this.playerController && this.cameraController) { const rot = this.cameraController.update(deltaTime); this.playerController.update(deltaTime, rot); } 
+          if (this.characterManager) this.characterManager.update(deltaTime); 
+          if (this.multiplayerManager) this.multiplayerManager.update(deltaTime); 
+          if (this.coinManager) this.coinManager.update(deltaTime); 
+          
+          // AKTUALIZACJA PARKOURU (NOWOŚĆ)
+          if (this.gameState === 'ExploreMode' && this.parkourManager) {
+              this.parkourManager.update(deltaTime);
+          }
 
-    setTimeout(() => {
-        if (errorDiv.parentNode) {
-            errorDiv.parentNode.removeChild(errorDiv);
-        }
-    }, 5000);
+          const targetScene = (this.gameState === 'ExploreMode') ? this.exploreScene : this.scene; 
+          this.renderer.render(targetScene, this.camera); 
+          this.css2dRenderer.render(targetScene, this.camera); 
+      } else if (this.gameState === 'BuildMode') { this.buildManager.update(deltaTime); this.renderer.render(this.buildManager.scene, this.camera); } else if (this.gameState === 'SkinBuilderMode') { this.skinBuilderManager.update(deltaTime); this.renderer.render(this.skinBuilderManager.scene, this.camera); } else if (this.gameState === 'PrefabBuilderMode') { this.prefabBuilderManager.update(deltaTime); this.renderer.render(this.prefabBuilderManager.scene, this.camera); } else if (this.gameState === 'PartBuilderMode') { this.partBuilderManager.update(deltaTime); this.renderer.render(this.partBuilderManager.scene, this.camera); } 
+      if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') { if (this.previewCharacter && !this.isPreviewDragging) { this.previewCharacter.rotation.y += 0.005; } this.previewRenderer.render(this.previewScene, this.previewCamera); } 
   }
+  showError(message) { const errorDiv = document.createElement('div'); errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`; errorDiv.textContent = message; document.body.appendChild(errorDiv); setTimeout(() => { if (errorDiv.parentNode) { errorDiv.parentNode.removeChild(errorDiv); } }, 5000); }
 }
 
 document.addEventListener('DOMContentLoaded', () => { new BlockStarPlanetGame(); });
