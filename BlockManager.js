@@ -1,11 +1,17 @@
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 export const BLOCK_DEFINITIONS = [
-    { name: 'Ziemia', texturePath: 'textures/ziemia.png', cost: 0 },
-    { name: 'Trawa', texturePath: 'textures/trawa.png', cost: 250 },
-    { name: 'Drewno', texturePath: 'textures/drewno.png', cost: 750 },
-    { name: 'Piasek', texturePath: 'textures/piasek.png', cost: 500 },
-    { name: 'Beton', texturePath: 'textures/beton.png', cost: 1200 }
+    // ZWYKŁE BLOKI
+    { name: 'Ziemia', texturePath: 'textures/ziemia.png', cost: 0, category: 'block' },
+    { name: 'Trawa', texturePath: 'textures/trawa.png', cost: 250, category: 'block' },
+    { name: 'Drewno', texturePath: 'textures/drewno.png', cost: 750, category: 'block' },
+    { name: 'Piasek', texturePath: 'textures/piasek.png', cost: 500, category: 'block' },
+    { name: 'Beton', texturePath: 'textures/beton.png', cost: 1200, category: 'block' },
+    
+    // DODATKI (Parkour)
+    // Używam placeholderów tekstur (np. trawa), ale w przyszłości podmień na strzałkę/szachownicę
+    { name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
+    { name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
 ];
 
 export class BlockManager {
@@ -22,21 +28,15 @@ export class BlockManager {
     }
 
     setOwnedBlocks(blocksArray) {
-        // FIX: Jeśli przyjdzie string (z JSONB), parsuj go
         if (typeof blocksArray === 'string') {
             try {
                 blocksArray = JSON.parse(blocksArray);
             } catch (e) {
-                console.error("Błąd parsowania bloków:", e);
                 blocksArray = [];
             }
         }
-
         if (Array.isArray(blocksArray)) {
             this.ownedBlocks = new Set(blocksArray);
-            console.log("Zaktualizowano posiadane bloki:", this.ownedBlocks);
-        } else {
-            console.warn("Otrzymano niepoprawne dane o blokach:", blocksArray);
         }
     }
 
@@ -45,7 +45,7 @@ export class BlockManager {
     }
 
     async buyBlock(blockName, cost) {
-        if (this.isOwned(blockName)) return { success: false, message: "Już posiadasz ten blok." };
+        if (this.isOwned(blockName)) return { success: false, message: "Już posiadasz ten element." };
 
         const token = localStorage.getItem('bsp_clone_jwt_token');
         if (!token) return { success: false, message: "Błąd autoryzacji." };
@@ -69,13 +69,13 @@ export class BlockManager {
                 return { success: false, message: data.message || "Błąd zakupu." };
             }
         } catch (error) {
-            console.error("Błąd sieci:", error);
             return { success: false, message: "Błąd sieci." };
         }
     }
 
-    getOwnedBlockTypes() {
-        return BLOCK_DEFINITIONS.filter(block => this.isOwned(block.name));
+    // Pobiera tylko posiadane elementy danej kategorii
+    getOwnedByCategory(category) {
+        return BLOCK_DEFINITIONS.filter(block => this.isOwned(block.name) && block.category === category);
     }
 
     getAllBlockDefinitions() {
