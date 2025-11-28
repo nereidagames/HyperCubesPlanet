@@ -40,7 +40,7 @@ export class UIManager {
     try {
         this.setupButtonHandlers();
         this.setupChatSystem();
-        this.setupFriendsSystem();
+        this.setupFriendsSystem(); // To teraz zadziała, bo dodałem metodę poniżej
         this.setupDiscoverTabs();
         this.setupMailSystem();
         console.log('UI Manager zainicjalizowany pomyślnie.');
@@ -116,7 +116,6 @@ export class UIManager {
         if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
     };
     
-    // --- FIX: OBSŁUGA PRZYCISKU PRZYJACIELE ---
     const friendsBtn = document.getElementById('btn-friends-open');
     if (friendsBtn) {
         friendsBtn.onclick = () => {
@@ -125,13 +124,12 @@ export class UIManager {
         };
     }
 
-    // --- FIX: OBSŁUGA PRZYCISKU POCZTA (Znajdowanie po tekście, bo brak ID) ---
     const topBarItems = document.querySelectorAll('.top-bar-item');
     topBarItems.forEach(item => {
         if (item.textContent.includes('Poczta')) {
             item.onclick = () => {
                 this.openPanel('mail-panel');
-                this.loadMailData(); // Pobieramy wiadomości
+                this.loadMailData();
             };
         }
     });
@@ -252,6 +250,41 @@ export class UIManager {
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
+
+  // --- FIX: DODANO BRAKUJĄCĄ METODĘ ZAKŁADEK PRZYJACIÓŁ ---
+  setupFriendsSystem() {
+      // Pobieramy zakładki TYLKO z panelu przyjaciół
+      const tabs = document.querySelectorAll('#friends-panel .friends-tab');
+      
+      tabs.forEach(tab => {
+          tab.onclick = () => {
+              // 1. Zmień aktywną zakładkę wizualnie
+              tabs.forEach(t => t.classList.remove('active'));
+              tab.classList.add('active');
+
+              // 2. Przełącz widok
+              const targetId = tab.getAttribute('data-tab');
+              const views = document.querySelectorAll('#friends-panel .friends-view');
+              
+              views.forEach(view => {
+                  view.style.display = 'none'; // Ukryj wszystko
+                  view.classList.remove('active');
+              });
+
+              const targetView = document.getElementById(targetId);
+              if (targetView) {
+                  targetView.style.display = 'flex'; // Pokaż cel
+                  targetView.classList.add('active');
+              }
+          };
+      });
+
+      // Obsługa przycisku wyszukiwania wewnątrz panelu
+      const searchBtn = document.getElementById('friends-search-btn');
+      if (searchBtn) {
+          searchBtn.onclick = () => this.handleFriendSearch();
+      }
+  }
 
   setupDiscoverTabs() { 
       const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
@@ -411,7 +444,6 @@ export class UIManager {
   updateTopBarFriends(f){ const c=document.getElementById('active-friends-container'); if(!c)return; c.innerHTML=''; const on=f.filter(x=>x.isOnline); on.forEach(fr=>{ const it=document.createElement('div'); it.className='active-friend-item'; const av=document.createElement('div'); av.className='active-friend-avatar'; if(fr.current_skin_thumbnail) av.style.backgroundImage=`url(${fr.current_skin_thumbnail})`; else { av.style.display='flex'; av.style.justifyContent='center'; av.style.alignItems='center'; av.textContent='👤'; av.style.color='white'; } av.onclick=()=>this.showSkinPreviewFromUrl(fr.current_skin_thumbnail); const nm=document.createElement('div'); nm.className='active-friend-name text-outline'; nm.textContent=fr.username; it.appendChild(av); it.appendChild(nm); c.appendChild(it); }); }
   showSkinPreviewFromUrl(url){ if(!url)return; const p=document.getElementById('player-preview-panel'); const c=document.getElementById('player-preview-renderer-container'); c.innerHTML=''; c.style.backgroundColor='#333'; const i=document.createElement('img'); i.src=url; i.style.width='100%'; i.style.height='100%'; i.style.objectFit='contain'; c.appendChild(i); this.openPanel('player-preview-panel'); }
   
-  // --- NOWA FUNKCJA DO ŁADOWANIA POCZTY ---
   async loadMailData() {
       const t = localStorage.getItem('bsp_clone_jwt_token');
       if (!t) return;
@@ -451,9 +483,7 @@ export class UIManager {
               <div class="text-outline" style="font-weight:bold;">${msg.other_username}</div>
               <div style="font-size:12px; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${msg.message_text}</div>
           `;
-          // Tutaj można dodać logikę otwierania konkretnej konwersacji
           div.onclick = () => {
-              // TODO: Implementacja widoku szczegółowego rozmowy (wymagałaby rozbudowy serwera o pobieranie historii)
               alert(`Wiadomość od ${msg.other_username}: \n${msg.message_text}`);
           };
           container.appendChild(div);
