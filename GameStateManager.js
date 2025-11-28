@@ -124,14 +124,24 @@ export class GameStateManager {
 
         // Wyjście z trybu eksploracji
         if (this.currentState === 'ExploreMode') {
-            // FIX: Wyczyść czat przy wyjściu
             if (this.ui) this.ui.clearChat();
 
-            // FIX: Powrót do kanału 'nexus' w multiplayerze
+            // Powrót do kanału 'nexus'
             if (this.managers.multiplayer) {
                 this.managers.multiplayer.joinWorld('nexus');
-                // Przywróć scenę główną dla multiplayera (żeby widzieć innych graczy w lobby)
                 this.managers.multiplayer.setScene(this.core.scene);
+            }
+
+            // FIX: PRZYWRACANIE POSTACI DO SCENY NEXUSA
+            // Three.js usuwa obiekt z poprzedniej sceny przy dodawaniu do nowej.
+            // Musimy go dodać z powrotem do core.scene.
+            if (this.managers.character && this.managers.character.character) {
+                this.core.scene.add(this.managers.character.character);
+                
+                // Opcjonalnie: naprawa cienia (jeśli też zniknął)
+                if (this.managers.character.shadow) {
+                    this.core.scene.add(this.managers.character.shadow);
+                }
             }
 
             // Reset UI
@@ -142,10 +152,8 @@ export class GameStateManager {
             this.toggleGameControls(true);
             this.exploreScene = null; 
 
-            // FIX: Reset kontrolera gracza na kolizje z głównej sceny
-            // (Musimy to zrobić, bo inaczej gracz będzie przenikał przez podłogę Nexusa)
+            // Reset kontrolera gracza na kolizje z głównej sceny
             if (this.onRecreateController) {
-                // null oznacza domyślne collidables z SceneManager (Nexus)
                 this.onRecreateController(null);
             }
 
