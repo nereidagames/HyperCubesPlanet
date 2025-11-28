@@ -233,21 +233,32 @@ export class UIManager {
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
 
+  // --- FIX: NAPRAWA ZAKŁADEK W ODKRYJ ---
   setupDiscoverTabs() { 
-      const tabs=document.querySelectorAll('#discover-tabs .friends-tab'); 
-      tabs.forEach(tab=>{ 
-          tab.onclick=()=>{ 
-              document.querySelectorAll('#discover-tabs .friends-tab').forEach(t=>t.classList.remove('active')); 
-              tab.classList.add('active'); 
-              const mode=tab.getAttribute('data-tab'); 
-              this.refreshSkinList(mode); 
-          }; 
-      }); 
-      const closeBtn=document.getElementById('discover-close-button'); 
-      if(closeBtn) closeBtn.onclick=()=>this.closeAllPanels(); 
+      // Znajdujemy przyciski precyzyjnie po atrybutach data-tab
+      const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
+      const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
+      const closeBtn = document.getElementById('discover-close-button'); 
+
+      if(tabAll) {
+          tabAll.onclick = () => { 
+              if(tabMine) tabMine.classList.remove('active');
+              tabAll.classList.add('active'); 
+              this.refreshSkinList('all'); 
+          };
+      }
+
+      if(tabMine) {
+          tabMine.onclick = () => { 
+              if(tabAll) tabAll.classList.remove('active');
+              tabMine.classList.add('active'); 
+              this.refreshSkinList('mine'); 
+          };
+      }
+
+      if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); 
   }
 
-  // --- FIX: POPRAWIONA LOGIKA POKAZYWANIA PANELU ODKRYJ ---
   async showDiscoverPanel(type) { 
       const title=document.getElementById('discover-panel-title'); 
       const tabs=document.getElementById('discover-tabs'); 
@@ -270,18 +281,17 @@ export class UIManager {
           if(title) title.textContent='Wybierz Skina'; 
           if(tabs) {
               tabs.style.display='flex'; 
-              // Resetujemy zakładki wizualnie
-              document.querySelectorAll('#discover-tabs .friends-tab').forEach(t=>t.classList.remove('active'));
-              const defaultTab = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
-              if(defaultTab) defaultTab.classList.add('active');
+              // Reset do zakładki 'Wszystkie' przy otwarciu
+              const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
+              const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
+              if(tabMine) tabMine.classList.remove('active');
+              if(tabAll) tabAll.classList.add('active');
               
-              // Zamiast klikać (co jest zawodne), wywołujemy funkcję bezpośrednio
               this.refreshSkinList('all');
           } 
       } 
   }
 
-  // --- FIX: DODANO OBSŁUGĘ BŁĘDÓW DO POBIERANIA ---
   async refreshSkinList(mode) { 
       const list=document.getElementById('discover-list'); 
       if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; 
