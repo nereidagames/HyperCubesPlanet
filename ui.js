@@ -38,9 +38,10 @@ export class UIManager {
     this.isMobile = isMobile;
     console.log("Inicjalizacja UI...");
     try {
+        this.injectStyles(); // FIX: Wstrzykiwanie stylów
         this.setupButtonHandlers();
         this.setupChatSystem();
-        this.setupFriendsSystem(); // To teraz zadziała, bo dodałem metodę poniżej
+        this.setupFriendsSystem();
         this.setupDiscoverTabs();
         this.setupMailSystem();
         console.log('UI Manager zainicjalizowany pomyślnie.');
@@ -48,6 +49,144 @@ export class UIManager {
         console.error("Błąd podczas inicjalizacji UI:", error);
     }
   }
+
+  // --- FIX: Style CSS dla Poczty wstrzykiwane dynamicznie ---
+  injectStyles() {
+      const style = document.createElement('style');
+      style.textContent = `
+          /* MAIL PANEL STYLES */
+          #mail-panel .panel-content {
+              display: flex;
+              flex-direction: row;
+              width: 80vw;
+              max-width: 800px;
+              height: 70vh;
+              padding: 0;
+              overflow: hidden;
+              background-color: rgba(0, 0, 0, 0.9);
+          }
+          .mail-sidebar {
+              width: 35%;
+              border-right: 1px solid #555;
+              display: flex;
+              flex-direction: column;
+              background: rgba(255,255,255,0.05);
+          }
+          .mail-sidebar-header {
+              padding: 15px;
+              background: #2980b9;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+          }
+          #new-mail-btn {
+              width: 30px; height: 30px;
+              background: #27ae60;
+              border-radius: 50%;
+              display: flex; justify-content: center; align-items: center;
+              cursor: pointer; font-size: 20px;
+          }
+          .mail-conversations {
+              flex: 1;
+              overflow-y: auto;
+          }
+          .mail-item {
+              padding: 15px;
+              border-bottom: 1px solid #444;
+              cursor: pointer;
+              transition: background 0.2s;
+          }
+          .mail-item:hover { background: rgba(255,255,255,0.1); }
+          
+          .mail-chat-view {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              background: #222;
+          }
+          #mail-chat-header {
+              padding: 10px;
+              background: #2c3e50;
+              border-bottom: 1px solid #555;
+              text-align: center;
+          }
+          .mail-chat-messages {
+              flex: 1;
+              padding: 15px;
+              overflow-y: auto;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+          }
+          .mail-message {
+              padding: 8px 12px;
+              border-radius: 15px;
+              max-width: 70%;
+              font-size: 14px;
+              word-wrap: break-word;
+          }
+          .mail-message.sent {
+              align-self: flex-end;
+              background: #2980b9;
+              color: white;
+          }
+          .mail-message.received {
+              align-self: flex-start;
+              background: #7f8c8d;
+              color: white;
+          }
+          #mail-reply-form {
+              display: flex;
+              padding: 10px;
+              background: #333;
+          }
+          #mail-reply-input {
+              flex: 1;
+              padding: 10px;
+              border-radius: 20px;
+              border: none;
+              margin-right: 10px;
+          }
+          #mail-reply-btn {
+              padding: 5px 15px;
+              background: #27ae60;
+              color: white;
+              border: none;
+              border-radius: 15px;
+              cursor: pointer;
+          }
+          /* Composer overlay */
+          #new-mail-composer {
+              position: absolute;
+              top: 50%; left: 50%;
+              transform: translate(-50%, -50%);
+              background: #333;
+              padding: 20px;
+              border: 2px solid white;
+              border-radius: 10px;
+              width: 300px;
+              display: none;
+              flex-direction: column;
+              gap: 10px;
+              z-index: 100;
+          }
+          #new-mail-form { display: flex; flex-direction: column; gap: 10px; }
+          #new-mail-form input { padding: 10px; border-radius: 5px; border: none; }
+          #new-mail-form button { padding: 10px; background: #2980b9; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+          @media (max-width: 600px) {
+              #mail-panel .panel-content { flex-direction: column; width: 95vw; height: 80vh; }
+              .mail-sidebar { width: 100%; height: 100%; display: flex; }
+              .mail-chat-view { width: 100%; height: 100%; display: none; }
+              /* Klasy pomocnicze do przełączania widoków na mobile */
+              .view-chat .mail-sidebar { display: none; }
+              .view-chat .mail-chat-view { display: flex; }
+          }
+      `;
+      document.head.appendChild(style);
+  }
+
+  // --- RESZTA PLIKU BEZ ZMIAN (ALE PONIŻEJ PEŁNY KOD DLA PEWNOŚCI) ---
 
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
@@ -251,39 +390,21 @@ export class UIManager {
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
 
-  // --- FIX: DODANO BRAKUJĄCĄ METODĘ ZAKŁADEK PRZYJACIÓŁ ---
   setupFriendsSystem() {
-      // Pobieramy zakładki TYLKO z panelu przyjaciół
       const tabs = document.querySelectorAll('#friends-panel .friends-tab');
-      
       tabs.forEach(tab => {
           tab.onclick = () => {
-              // 1. Zmień aktywną zakładkę wizualnie
               tabs.forEach(t => t.classList.remove('active'));
               tab.classList.add('active');
-
-              // 2. Przełącz widok
               const targetId = tab.getAttribute('data-tab');
               const views = document.querySelectorAll('#friends-panel .friends-view');
-              
-              views.forEach(view => {
-                  view.style.display = 'none'; // Ukryj wszystko
-                  view.classList.remove('active');
-              });
-
+              views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); });
               const targetView = document.getElementById(targetId);
-              if (targetView) {
-                  targetView.style.display = 'flex'; // Pokaż cel
-                  targetView.classList.add('active');
-              }
+              if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); }
           };
       });
-
-      // Obsługa przycisku wyszukiwania wewnątrz panelu
       const searchBtn = document.getElementById('friends-search-btn');
-      if (searchBtn) {
-          searchBtn.onclick = () => this.handleFriendSearch();
-      }
+      if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); }
   }
 
   setupDiscoverTabs() { 
@@ -476,21 +597,75 @@ export class UIManager {
       messages.forEach(msg => {
           const div = document.createElement('div');
           div.className = 'mail-item';
-          div.style.padding = '10px';
-          div.style.borderBottom = '1px solid #ccc';
-          div.style.cursor = 'pointer';
           div.innerHTML = `
               <div class="text-outline" style="font-weight:bold;">${msg.other_username}</div>
               <div style="font-size:12px; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${msg.message_text}</div>
           `;
           div.onclick = () => {
-              alert(`Wiadomość od ${msg.other_username}: \n${msg.message_text}`);
+              this.openConversation(msg.other_username);
           };
           container.appendChild(div);
       });
   }
 
-  async setupMailSystem() { 
+  // --- FIX: OBSŁUGA OTWIERANIA KONKRETNEJ ROZMOWY ---
+  async openConversation(username) {
+      const t = localStorage.getItem('bsp_clone_jwt_token');
+      if (!t) return;
+
+      this.mailState.activeConversation = username;
+      const panel = document.getElementById('mail-panel');
+      
+      // Przełącz widok (Mobile: ukryj listę, pokaż czat)
+      if (panel) panel.classList.add('view-chat');
+      
+      const chatHeader = document.getElementById('mail-chat-username');
+      if (chatHeader) chatHeader.textContent = username;
+
+      const msgsContainer = document.querySelector('.mail-chat-messages');
+      if (msgsContainer) msgsContainer.innerHTML = '<p style="text-align:center">Pobieranie...</p>';
+
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/messages/${username}`, {
+              headers: { 'Authorization': `Bearer ${t}` }
+          });
+          const history = await r.json();
+          this.renderChatHistory(history, username);
+      } catch (e) {
+          console.error(e);
+      }
+  }
+
+  renderChatHistory(history, otherUser) {
+      const container = document.querySelector('.mail-chat-messages');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const myName = localStorage.getItem('bsp_clone_player_name');
+
+      history.forEach(msg => {
+          const div = document.createElement('div');
+          const isMine = msg.sender_username === myName;
+          div.className = `mail-message ${isMine ? 'sent' : 'received'}`;
+          div.textContent = msg.message_text;
+          container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+  }
+
+  setupMailSystem() { 
+      // Reset widoku przy zamknięciu
+      const closeBtn = document.querySelector('#mail-panel .panel-close-button');
+      if (closeBtn) {
+          closeBtn.onclick = () => {
+              const panel = document.getElementById('mail-panel');
+              if (panel) {
+                  panel.style.display = 'none';
+                  panel.classList.remove('view-chat'); // Wróć do listy
+              }
+          };
+      }
+
       if(!document.getElementById('new-mail-btn')) return; 
       const t=localStorage.getItem('bsp_clone_jwt_token'); 
       if(!t)return; 
@@ -498,19 +673,16 @@ export class UIManager {
       const btn=document.getElementById('new-mail-btn'); 
       btn.onclick=()=>{ 
           this.mailState.activeConversation=null; 
-          const chatView = document.querySelector('.mail-chat-view');
-          if(chatView) chatView.style.display='none'; 
-          const composer = document.getElementById('new-mail-composer');
-          if(composer) composer.style.display='block'; 
+          const panel = document.getElementById('mail-panel');
+          if(panel) panel.classList.remove('view-chat'); // Pokaż listę/sidebar
           
-          const form = document.getElementById('new-mail-form');
-          if(form) {
-              form.style.display='flex'; 
-              const recip = document.getElementById('new-mail-recipient');
-              if(recip) recip.value=''; 
-              const txt = document.getElementById('new-mail-text');
-              if(txt) txt.value=''; 
-          }
+          const composer = document.getElementById('new-mail-composer');
+          if(composer) composer.style.display='flex'; // Pokaż okno nowej wiadomości
+          
+          const recipientInput = document.getElementById('new-mail-recipient');
+          if(recipientInput) recipientInput.value = '';
+          const textInput = document.getElementById('new-mail-text');
+          if(textInput) textInput.value = '';
       }; 
       
       const mailForm = document.getElementById('new-mail-form');
@@ -519,7 +691,11 @@ export class UIManager {
               e.preventDefault(); 
               const r=document.getElementById('new-mail-recipient').value.trim(); 
               const x=document.getElementById('new-mail-text').value.trim(); 
-              if(r&&x&&this.onSendPrivateMessage) this.onSendPrivateMessage(r,x); 
+              if(r&&x&&this.onSendPrivateMessage) {
+                  this.onSendPrivateMessage(r,x); 
+                  document.getElementById('new-mail-composer').style.display = 'none';
+                  this.loadMailData(); // Odśwież listę
+              }
           }; 
       }
 
@@ -529,14 +705,19 @@ export class UIManager {
               e.preventDefault(); 
               const input = document.getElementById('mail-reply-input');
               const x=input.value.trim(); 
-              if(x&&this.mailState.activeConversation&&this.onSendPrivateMessage){ 
+              if(x && this.mailState.activeConversation && this.onSendPrivateMessage){ 
                   this.onSendPrivateMessage(this.mailState.activeConversation,x); 
                   input.value=''; 
+                  
+                  // Dodaj optymistycznie do widoku
                   const el=document.createElement('div'); 
                   el.className='mail-message sent'; 
                   el.textContent=x; 
                   const msgs = document.querySelector('.mail-chat-messages');
-                  if(msgs) msgs.appendChild(el); 
+                  if(msgs) {
+                      msgs.appendChild(el); 
+                      msgs.scrollTop = msgs.scrollHeight;
+                  }
               } 
           }; 
       }
