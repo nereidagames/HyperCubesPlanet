@@ -80,14 +80,15 @@ export class MultiplayerManager {
     }
   }
 
+  // --- FIX: CZYSZCZENIE CZATU PRZY ZMIANIE ŚWIATA ---
   joinWorld(worldId) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           console.log(`Dołączanie do pokoju: ${worldId || 'nexus'}`);
           
-          // Bezpieczne czyszczenie czatu
-          if(this.uiManager && typeof this.uiManager.clearChat === 'function') {
+          // Czyścimy czat w UI
+          if(this.uiManager) {
               this.uiManager.clearChat();
-              this.uiManager.addChatMessage(`<Dołączanie do: ${worldId || 'Nexus'}...>`);
+              this.uiManager.addChatMessage(`<Dołączanie do: ${worldId ? 'Świata' : 'Nexusa'}...>`);
           }
 
           this.ws.send(JSON.stringify({
