@@ -116,6 +116,26 @@ export class UIManager {
         if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
     };
     
+    // --- FIX: OBSŁUGA PRZYCISKU PRZYJACIELE ---
+    const friendsBtn = document.getElementById('btn-friends-open');
+    if (friendsBtn) {
+        friendsBtn.onclick = () => {
+            this.openPanel('friends-panel');
+            this.loadFriendsData();
+        };
+    }
+
+    // --- FIX: OBSŁUGA PRZYCISKU POCZTA (Znajdowanie po tekście, bo brak ID) ---
+    const topBarItems = document.querySelectorAll('.top-bar-item');
+    topBarItems.forEach(item => {
+        if (item.textContent.includes('Poczta')) {
+            item.onclick = () => {
+                this.openPanel('mail-panel');
+                this.loadMailData(); // Pobieramy wiadomości
+            };
+        }
+    });
+    
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
@@ -233,9 +253,7 @@ export class UIManager {
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
 
-  // --- FIX: NAPRAWA ZAKŁADEK W ODKRYJ ---
   setupDiscoverTabs() { 
-      // Znajdujemy przyciski precyzyjnie po atrybutach data-tab
       const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
       const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
       const closeBtn = document.getElementById('discover-close-button'); 
@@ -281,12 +299,10 @@ export class UIManager {
           if(title) title.textContent='Wybierz Skina'; 
           if(tabs) {
               tabs.style.display='flex'; 
-              // Reset do zakładki 'Wszystkie' przy otwarciu
               const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
               const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
               if(tabMine) tabMine.classList.remove('active');
               if(tabAll) tabAll.classList.add('active');
-              
               this.refreshSkinList('all');
           } 
       } 
@@ -395,6 +411,55 @@ export class UIManager {
   updateTopBarFriends(f){ const c=document.getElementById('active-friends-container'); if(!c)return; c.innerHTML=''; const on=f.filter(x=>x.isOnline); on.forEach(fr=>{ const it=document.createElement('div'); it.className='active-friend-item'; const av=document.createElement('div'); av.className='active-friend-avatar'; if(fr.current_skin_thumbnail) av.style.backgroundImage=`url(${fr.current_skin_thumbnail})`; else { av.style.display='flex'; av.style.justifyContent='center'; av.style.alignItems='center'; av.textContent='👤'; av.style.color='white'; } av.onclick=()=>this.showSkinPreviewFromUrl(fr.current_skin_thumbnail); const nm=document.createElement('div'); nm.className='active-friend-name text-outline'; nm.textContent=fr.username; it.appendChild(av); it.appendChild(nm); c.appendChild(it); }); }
   showSkinPreviewFromUrl(url){ if(!url)return; const p=document.getElementById('player-preview-panel'); const c=document.getElementById('player-preview-renderer-container'); c.innerHTML=''; c.style.backgroundColor='#333'; const i=document.createElement('img'); i.src=url; i.style.width='100%'; i.style.height='100%'; i.style.objectFit='contain'; c.appendChild(i); this.openPanel('player-preview-panel'); }
   
+  // --- NOWA FUNKCJA DO ŁADOWANIA POCZTY ---
+  async loadMailData() {
+      const t = localStorage.getItem('bsp_clone_jwt_token');
+      if (!t) return;
+      
+      const container = document.querySelector('.mail-conversations');
+      if (container) container.innerHTML = '<p class="text-outline" style="text-align:center;">Ładowanie...</p>';
+
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/messages`, {
+              headers: { 'Authorization': `Bearer ${t}` }
+          });
+          const messages = await r.json();
+          this.renderMailList(messages);
+      } catch (e) {
+          console.error(e);
+          if (container) container.innerHTML = '<p class="text-outline" style="text-align:center;">Błąd.</p>';
+      }
+  }
+
+  renderMailList(messages) {
+      const container = document.querySelector('.mail-conversations');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      if (!messages || messages.length === 0) {
+          container.innerHTML = '<p class="text-outline" style="text-align:center;">Brak wiadomości.</p>';
+          return;
+      }
+
+      messages.forEach(msg => {
+          const div = document.createElement('div');
+          div.className = 'mail-item';
+          div.style.padding = '10px';
+          div.style.borderBottom = '1px solid #ccc';
+          div.style.cursor = 'pointer';
+          div.innerHTML = `
+              <div class="text-outline" style="font-weight:bold;">${msg.other_username}</div>
+              <div style="font-size:12px; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${msg.message_text}</div>
+          `;
+          // Tutaj można dodać logikę otwierania konkretnej konwersacji
+          div.onclick = () => {
+              // TODO: Implementacja widoku szczegółowego rozmowy (wymagałaby rozbudowy serwera o pobieranie historii)
+              alert(`Wiadomość od ${msg.other_username}: \n${msg.message_text}`);
+          };
+          container.appendChild(div);
+      });
+  }
+
   async setupMailSystem() { 
       if(!document.getElementById('new-mail-btn')) return; 
       const t=localStorage.getItem('bsp_clone_jwt_token'); 
