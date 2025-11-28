@@ -22,9 +22,7 @@ export class BuildManager {
 
     this.currentBuildMode = 'block';
     this.currentTool = 'single';
-    
-    // Stan panelu wyboru
-    this.currentBlockCategory = 'block'; // 'block' lub 'addon'
+    this.currentBlockCategory = 'block';
     
     this.isDraggingLine = false;
     this.dragStartPos = null;
@@ -42,7 +40,6 @@ export class BuildManager {
     
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
-    
     this.sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
     
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -58,9 +55,7 @@ export class BuildManager {
     this.onTouchMove = this.onTouchMove.bind(this);
   }
 
-  onContextMenu(event) {
-    event.preventDefault();
-  }
+  onContextMenu(event) { event.preventDefault(); }
 
   preloadTextures() {
     const allBlocks = this.blockManager.getAllBlockDefinitions();
@@ -79,7 +74,6 @@ export class BuildManager {
     this.platformSize = size;
     this.isNexusMode = isNexusMode;
     
-    // Pobieramy WSZYSTKIE bloki, ale domyślnie pokażemy tylko 'block'
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
     this.currentBuildMode = 'block';
@@ -104,7 +98,6 @@ export class BuildManager {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight.position.set(50, 80, 50);
     directionalLight.castShadow = false; 
-    
     this.scene.add(directionalLight);
     
     this.createBuildPlatform();
@@ -113,17 +106,25 @@ export class BuildManager {
     this.scene.add(this.previewPrefab);
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
+    
+    // --- FIX: NAPRAWA JOYSTICKA ---
+    // Przed utworzeniem nowego joysticka, czyścimy kontener, aby usunąć stary (od chodzenia)
+    if (this.game.isMobile) {
+        const joystickZone = document.getElementById('joystick-zone');
+        if (joystickZone) {
+            joystickZone.innerHTML = ''; // Usuwamy stary joystick
+            joystickZone.style.display = 'block';
+        }
+    }
     this.cameraController.setIsMobile(this.game.isMobile);
 
     if (this.game.isMobile) {
         const mobileControls = document.getElementById('mobile-game-controls');
         const jumpBtn = document.getElementById('jump-button');
-        const joystickZone = document.getElementById('joystick-zone');
         const addBtn = document.getElementById('build-add-button');
 
         if (mobileControls) mobileControls.style.display = 'block';
         if (jumpBtn) jumpBtn.style.display = 'none'; 
-        if (joystickZone) joystickZone.style.display = 'block';
         if (addBtn) addBtn.style.bottom = '150px';
     } else {
         const addBtn = document.getElementById('build-add-button');
@@ -142,52 +143,28 @@ export class BuildManager {
   setupToolButtons() {
       const btnSingle = document.getElementById('tool-single');
       const btnLine = document.getElementById('tool-line');
-
       if(btnSingle && btnLine) {
           btnSingle.classList.add('active');
           btnLine.classList.remove('active');
-
-          btnSingle.onclick = () => {
-              this.currentTool = 'single';
-              btnSingle.classList.add('active');
-              btnLine.classList.remove('active');
-          };
-
-          btnLine.onclick = () => {
-              this.currentTool = 'line';
-              btnLine.classList.add('active');
-              btnSingle.classList.remove('active');
-          };
+          btnSingle.onclick = () => { this.currentTool = 'single'; btnSingle.classList.add('active'); btnLine.classList.remove('active'); };
+          btnLine.onclick = () => { this.currentTool = 'line'; btnLine.classList.add('active'); btnSingle.classList.remove('active'); };
       }
   }
 
-  // --- POPRAWIONA OBSŁUGA PANELU Z ZAKŁADKAMI ---
   populateBlockSelectionPanel() {
-      // Używamy nowego kontenera listy, a nie całego panelu
       const list = document.getElementById('build-block-list');
       if (!list) return;
       list.innerHTML = '';
-
-      // Pobieramy bloki tylko z aktualnej kategorii
       const filteredBlocks = this.blockManager.getOwnedByCategory(this.currentBlockCategory);
 
-      if (filteredBlocks.length === 0) {
-          list.innerHTML = '<div style="color:white; padding:10px;">Brak elementów.</div>';
-          return;
-      }
+      if (filteredBlocks.length === 0) { list.innerHTML = '<div style="color:white; padding:10px;">Brak elementów.</div>'; return; }
 
       filteredBlocks.forEach(blockType => {
           const blockItem = document.createElement('div');
           blockItem.className = 'block-item';
           blockItem.style.backgroundImage = `url(${blockType.texturePath})`;
           blockItem.style.backgroundSize = 'cover';
-          
-          // Jeśli to dodatek, dodaj podpis
-          if (this.currentBlockCategory === 'addon') {
-              blockItem.title = blockType.name;
-              // Opcjonalnie: Dodaj mały tekst wewnątrz diva
-          }
-
+          if (this.currentBlockCategory === 'addon') blockItem.title = blockType.name;
           blockItem.onclick = () => {
               this.selectBlockType(blockType);
               document.getElementById('block-selection-panel').style.display = 'none';
@@ -196,7 +173,6 @@ export class BuildManager {
       });
   }
 
-  // ... (Metody getPointsOnLine, updateLinePreview, placeLine, loadExistingNexus, createBuildPlatform, createPreviewBlock bez zmian) ...
   getPointsOnLine(start, end) { const points=[]; const dist=start.distanceTo(end); const steps=Math.ceil(dist); for(let i=0;i<=steps;i++){ const t=steps===0?0:i/steps; const point=new THREE.Vector3().lerpVectors(start,end,t); point.floor().addScalar(0.5); const exists=points.some(p=>p.equals(point)); if(!exists) points.push(point); } return points; }
   updateLinePreview(targetPos) { while(this.previewLineGroup.children.length>0){ this.previewLineGroup.remove(this.previewLineGroup.children[0]); } if(!this.isDraggingLine||!this.dragStartPos||!this.selectedBlockType) return; const points=this.getPointsOnLine(this.dragStartPos,targetPos); const geo=this.sharedBoxGeometry; const mat=this.materials[this.selectedBlockType.texturePath].clone(); mat.transparent=true; mat.opacity=0.4; points.forEach(p=>{ const mesh=new THREE.Mesh(geo,mat); mesh.position.copy(p); this.previewLineGroup.add(mesh); }); }
   placeLine() { this.previewLineGroup.children.forEach(ghost=>{ const geo=this.sharedBoxGeometry; const mat=this.materials[this.selectedBlockType.texturePath]; const b=new THREE.Mesh(geo,mat); b.userData.name=this.selectedBlockType.name; b.userData.texturePath=this.selectedBlockType.texturePath; b.position.copy(ghost.position); b.castShadow=false; b.receiveShadow=false; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); }); while(this.previewLineGroup.children.length>0){ this.previewLineGroup.remove(this.previewLineGroup.children[0]); } this.updateSaveButton(); }
@@ -209,12 +185,14 @@ export class BuildManager {
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('contextmenu', this.onContextMenu);
-
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
+    // --- FIX: NAPRAWA PRZYCISKU POWROTU ---
+    // Odwołujemy się do stateManager, a nie bezpośrednio do game
+    document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
+    
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'flex';
@@ -230,7 +208,6 @@ export class BuildManager {
     document.getElementById('add-choice-blocks').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
         document.getElementById('block-selection-panel').style.display = 'flex';
-        // Domyślnie otwórz zakładkę Bloki
         document.getElementById('build-tab-blocks').click();
     };
     document.getElementById('add-choice-prefabs').onclick = () => {
@@ -241,28 +218,14 @@ export class BuildManager {
         document.getElementById('add-choice-panel').style.display = 'none';
     };
 
-    // OBSŁUGA KLIKNIĘĆ W ZAKŁADKI
     const tabBlocks = document.getElementById('build-tab-blocks');
     const tabAddons = document.getElementById('build-tab-addons');
     if (tabBlocks && tabAddons) {
-        tabBlocks.onclick = () => {
-            tabBlocks.classList.add('active');
-            tabAddons.classList.remove('active');
-            this.currentBlockCategory = 'block';
-            this.populateBlockSelectionPanel();
-        };
-        tabAddons.onclick = () => {
-            tabAddons.classList.add('active');
-            tabBlocks.classList.remove('active');
-            this.currentBlockCategory = 'addon';
-            this.populateBlockSelectionPanel();
-        };
+        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.currentBlockCategory = 'block'; this.populateBlockSelectionPanel(); };
+        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.currentBlockCategory = 'addon'; this.populateBlockSelectionPanel(); };
     }
-
-    if (this.cameraController) this.cameraController.destroy();
   }
   
-  // ... (Reszta metod bez zmian: showPrefabSelectionPanel, selectBlockType, selectPrefab, toggleCameraMode, removeBuildEventListeners, onMouseMove, isEventOnUI, onMouseDown, onMouseUp, onTouchStart, onTouchMove, onTouchEnd, updateRaycast, update, placeBlock, placePrefab, removeBlock, updateSaveButton, generateThumbnail, saveNexus, saveWorld, exitBuildMode) ...
   showPrefabSelectionPanel() { const panel=document.getElementById('prefab-selection-panel'); panel.innerHTML=''; const prefabNames=PrefabStorage.getSavedPrefabsList(); if(prefabNames.length===0){ panel.innerHTML='<div class="panel-item text-outline">Brak prefabrykatów</div>'; } else { prefabNames.forEach(name=>{ const item=document.createElement('div'); item.className='panel-item text-outline prefab-item'; item.textContent=name; item.onclick=()=>{ this.selectPrefab(name); panel.style.display='none'; }; panel.appendChild(item); }); } panel.style.display='flex'; }
   selectBlockType(blockType) { this.currentBuildMode='block'; this.selectedBlockType=blockType; if(this.previewBlock){ this.previewBlock.material=this.materials[blockType.texturePath].clone(); this.previewBlock.material.transparent=true; this.previewBlock.material.opacity=0.5; this.previewBlock.material.needsUpdate=true; } this.previewPrefab.visible=false; this.previewBlock.visible=true; }
   selectPrefab(prefabName) { this.currentBuildMode='prefab'; this.selectedPrefabData=PrefabStorage.loadPrefab(prefabName); if(!this.selectedPrefabData) return; while(this.previewPrefab.children.length){ this.previewPrefab.remove(this.previewPrefab.children[0]); } this.selectedPrefabData.forEach(blockData=>{ const geo=this.sharedBoxGeometry; const mat=this.materials[blockData.texturePath].clone(); mat.transparent=true; mat.opacity=0.5; const block=new THREE.Mesh(geo,mat); block.position.set(blockData.x,blockData.y,blockData.z); this.previewPrefab.add(block); }); this.previewBlock.visible=false; this.previewPrefab.visible=true; }
@@ -282,73 +245,35 @@ export class BuildManager {
   removeBlock() { this.raycaster.setFromCamera(this.mouse,this.game.camera); const i=this.raycaster.intersectObjects(this.placedBlocks); if(i.length>0){ const o=i[0].object; this.scene.remove(o); this.placedBlocks=this.placedBlocks.filter(b=>b!==o); this.collidableBuildObjects=this.collidableBuildObjects.filter(b=>b!==o); this.updateSaveButton(); } }
   updateSaveButton() { const b=document.getElementById('build-save-button'); if(this.placedBlocks.length>0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { if(this.isNexusMode&&this.placedBlocks.length===0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { b.style.opacity='0.5'; b.style.cursor='not-allowed'; } } }
   generateThumbnail() { const width=200; const height=150; const thumbnailRenderer=new THREE.WebGLRenderer({alpha:false,antialias:true}); thumbnailRenderer.setSize(width,height); thumbnailRenderer.setClearColor(0x87CEEB); const thumbnailScene=new THREE.Scene(); const ambLight=new THREE.AmbientLight(0xffffff,0.8); thumbnailScene.add(ambLight); const dirLight=new THREE.DirectionalLight(0xffffff,0.5); dirLight.position.set(50,50,50); thumbnailScene.add(dirLight); const floorGeo=new THREE.BoxGeometry(this.platformSize,1,this.platformSize); const floorMat=new THREE.MeshLambertMaterial({color:0x559022}); const floor=new THREE.Mesh(floorGeo,floorMat); floor.position.y=-0.5; thumbnailScene.add(floor); if(this.placedBlocks.length>0){ this.placedBlocks.forEach(block=>{ const clone=block.clone(); thumbnailScene.add(clone); }); } const thumbnailCamera=new THREE.PerspectiveCamera(45,width/height,0.1,1000); const distance=this.platformSize*1.5; thumbnailCamera.position.set(distance,distance*0.8,distance); thumbnailCamera.lookAt(0,0,0); thumbnailRenderer.render(thumbnailScene,thumbnailCamera); const dataURL=thumbnailRenderer.domElement.toDataURL('image/jpeg',0.8); thumbnailRenderer.dispose(); return dataURL; }
-  async saveNexus() { const token=localStorage.getItem(JWT_TOKEN_KEY); if(!token){ alert("Błąd autoryzacji!"); return; } const blocksData=this.placedBlocks.map(block=>({ x:block.position.x, y:block.position.y, z:block.position.z, texturePath:block.userData.texturePath })); const saveBtn=document.getElementById('build-save-button'); saveBtn.textContent="Zapisywanie..."; saveBtn.style.cursor='wait'; try{ const response=await fetch(`${API_BASE_URL}/api/nexus`,{ method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, body:JSON.stringify({blocks:blocksData}) }); const result=await response.json(); if(response.ok){ alert("Nexus zaktualizowany!"); this.game.switchToMainMenu(); } else { alert(`Błąd: ${result.message}`); } } catch(e){ alert("Błąd sieci."); console.error(e); } finally{ saveBtn.textContent="Zapisz Nexus"; saveBtn.style.cursor='pointer'; } }
+  async saveNexus() { const token=localStorage.getItem(JWT_TOKEN_KEY); if(!token){ alert("Błąd autoryzacji!"); return; } const blocksData=this.placedBlocks.map(block=>({ x:block.position.x, y:block.position.y, z:block.position.z, texturePath:block.userData.texturePath })); const saveBtn=document.getElementById('build-save-button'); saveBtn.textContent="Zapisywanie..."; saveBtn.style.cursor='wait'; try{ const response=await fetch(`${API_BASE_URL}/api/nexus`,{ method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, body:JSON.stringify({blocks:blocksData}) }); const result=await response.json(); if(response.ok){ alert("Nexus zaktualizowany!"); this.game.stateManager.switchToMainMenu(); } else { alert(`Błąd: ${result.message}`); } } catch(e){ alert("Błąd sieci."); console.error(e); } finally{ saveBtn.textContent="Zapisz Nexus"; saveBtn.style.cursor='pointer'; } }
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
-
-    // WALIDACJA PARKOURU
     const starts = this.placedBlocks.filter(b => b.userData.name === 'Parkour Start');
     const metas = this.placedBlocks.filter(b => b.userData.name === 'Parkour Meta');
-
-    if (starts.length > 1) {
-        alert("Błąd: Świat może mieć tylko JEDEN punkt startowy Parkouru!");
-        return;
-    }
-    
-    let worldType = 'creative';
-    let spawnPoint = null;
-
-    if (starts.length === 1 && metas.length >= 1) {
-        worldType = 'parkour';
-        spawnPoint = { x: starts[0].position.x, y: starts[0].position.y + 1.5, z: starts[0].position.z };
-    } else if (starts.length === 1 || metas.length >= 1) {
-         if(!confirm("Masz Start lub Metę, ale nie kompletny tor. Świat zostanie zapisany jako zwykły (Creative). Kontynuować?")) return;
-    }
-
+    if (starts.length > 1) { alert("Błąd: Świat może mieć tylko JEDEN punkt startowy Parkouru!"); return; }
+    let worldType = 'creative'; let spawnPoint = null;
+    if (starts.length === 1 && metas.length >= 1) { worldType = 'parkour'; spawnPoint = { x: starts[0].position.x, y: starts[0].position.y + 1.5, z: starts[0].position.z }; } else if (starts.length === 1 || metas.length >= 1) { if(!confirm("Masz Start lub Metę, ale nie kompletny tor. Świat zostanie zapisany jako zwykły (Creative). Kontynuować?")) return; }
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
-      
       const thumbnail = this.generateThumbnail();
-
-      const worldData = {
-        size: this.platformSize,
-        thumbnail: thumbnail,
-        type: worldType,
-        spawnPoint: spawnPoint, 
-        blocks: this.placedBlocks.map(block => ({
-            x: block.position.x,
-            y: block.position.y,
-            z: block.position.z,
-            texturePath: block.userData.texturePath,
-            name: block.userData.name
-        }))
-      };
-      
+      const worldData = { size: this.platformSize, thumbnail: thumbnail, type: worldType, spawnPoint: spawnPoint, blocks: this.placedBlocks.map(block => ({ x: block.position.x, y: block.position.y, z: block.position.z, texturePath: block.userData.texturePath, name: block.userData.name })) };
       const success = await WorldStorage.saveWorld(worldName, worldData);
-      
-      if (success) {
-        alert(`Świat "${worldName}" (${worldType}) został pomyślnie zapisany!`);
-        this.game.switchToMainMenu();
-      }
+      if (success) { alert(`Świat "${worldName}" (${worldType}) został pomyślnie zapisany!`); this.game.stateManager.switchToMainMenu(); }
     }
   }
 
   exitBuildMode() {
     this.isActive = false;
     this.isNexusMode = false;
-    
     this.removeBuildEventListeners();
     this.collidableBuildObjects = [];
     this.placedBlocks = [];
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
-    
     const saveBtn = document.getElementById('build-save-button');
     if(saveBtn) saveBtn.textContent = "Zapisz";
-
     const addBtn = document.getElementById('build-add-button');
     if (addBtn) addBtn.style.bottom = '20px';
-
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
         document.getElementById('joystick-zone').style.display = 'none';
