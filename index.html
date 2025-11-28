@@ -2,7 +2,6 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <!-- Zapobieganie cache'owaniu -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -138,13 +137,11 @@
       .tool-btn { width: 60px; height: 60px; background-color: rgba(0, 0, 0, 0.6); border: 3px solid white; border-radius: 10px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 30px; color: white; transition: transform 0.1s, background-color 0.1s; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
       .tool-btn.active { background-color: #2ed573; transform: scale(1.1); border-color: #ffd700; } .tool-btn:active { transform: scale(0.9); }
       
-      /* PANEL WYBORU BLOKÓW Z ZAKŁADKAMI */
       #block-selection-panel, #prefab-selection-panel, #part-selection-panel { position: absolute; bottom: 20px; left: 90px; background: #000b; border: 2px solid white; border-radius: 10px; padding: 10px; display: none; flex-direction: column; gap: 10px; width: 300px; pointer-events: auto; max-height: 300px; overflow-y: auto; }
       
       .block-item, .prefab-item, .part-item { width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; transition: transform 0.1s ease; color: white; } 
       .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
       
-      /* NOWY LIST CONTAINER W PANELU */
       #build-block-list { display: flex; flex-wrap: wrap; gap: 10px; max-height: 200px; overflow-y: auto; }
 
       /* MODALS */
@@ -164,6 +161,20 @@
       .friends-tab:hover { background: rgba(255,255,255,0.1); }
       .friends-view { flex: 1; width: 100%; padding: 20px; overflow-y: auto; display: none; flex-direction: column; gap: 10px; }
       .friends-view.active { display: flex; }
+
+      /* --- FIX: STYL DLA PRZYCISKU POWROTU Z EKSPLORACJI --- */
+      #explore-exit-button {
+          position: absolute;
+          top: 20px; left: 20px;
+          width: 60px; height: 60px;
+          background: url('icons/icon-back.png') center center / contain no-repeat;
+          z-index: 2000;
+          cursor: pointer;
+          pointer-events: auto;
+          display: none;
+      }
+      #explore-exit-button:hover { filter: brightness(1.2); }
+      #explore-exit-button:active { transform: scale(0.95); }
       
       /* MEDIA QUERIES */
       @media (max-width: 768px) {
@@ -294,7 +305,6 @@
         </div>
         <div id="build-rotate-zone"><div class="rotate-icon">🔄</div></div>
         
-        <!-- ZMODYFIKOWANY PANEL WYBORU BLOKÓW (Z ZAKŁADKAMI) -->
         <div id="block-selection-panel">
             <div class="friends-tabs">
                 <div class="friends-tab active" id="build-tab-blocks">Bloki</div>
@@ -308,7 +318,7 @@
     </div>
 
     <!-- MODALE -->
-    <div id="explore-exit-button" style="display:none;"></div>
+    <div id="explore-exit-button"></div>
     
     <!-- Victory Panel -->
     <div id="victory-panel">
