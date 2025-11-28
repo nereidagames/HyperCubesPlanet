@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
+import { createBaseCharacter } from './character.js'; // Potrzebne do podglądu
 
 import { STORAGE_KEYS } from './Config.js';
 import { GameCore } from './GameCore.js';
@@ -51,6 +52,14 @@ class BlockStarPlanetGame {
 
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     this.clock = new THREE.Clock();
+
+    // Zmienne do podglądu postaci
+    this.previewScene = null;
+    this.previewCamera = null;
+    this.previewRenderer = null;
+    this.previewCharacter = null;
+    this.isPreviewDragging = false;
+    this.previewMouseX = 0;
 
     this.blockManager.load();
     this.loader.preload();
@@ -146,10 +155,72 @@ class BlockStarPlanetGame {
           this.stateManager.setManagers({ playerController: this.playerController });
       };
 
+      // Inicjalizacja podglądu postaci
+      this.setupCharacterPreview();
+
       this.setupUIActions();
       this.stateManager.switchToMainMenu();
       this.animate();
       this.setupPositionUpdateLoop();
+  }
+
+  // --- NOWA METODA: KONFIGURACJA PODGLĄDU ---
+  setupCharacterPreview() {
+      const container = document.getElementById('player-preview-renderer-container');
+      if (!container) return;
+
+      // 1. Scene & Camera
+      this.previewScene = new THREE.Scene();
+      this.previewScene.background = new THREE.Color(0x333333);
+      this.previewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+      this.previewCamera.position.set(0, 1, 4);
+      this.previewCamera.lookAt(0, 0, 0);
+
+      // 2. Renderer
+      this.previewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      this.previewRenderer.setSize(300, 300); // Rozmiar wstepny
+      container.innerHTML = '';
+      container.appendChild(this.previewRenderer.domElement);
+
+      // Dopasowanie rozmiaru do kontenera
+      const rect = container.getBoundingClientRect();
+      if(rect.width > 0) {
+          this.previewRenderer.setSize(rect.width, rect.height);
+          this.previewCamera.aspect = rect.width / rect.height;
+          this.previewCamera.updateProjectionMatrix();
+      }
+
+      // 3. Lights
+      const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
+      this.previewScene.add(ambLight);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      dirLight.position.set(2, 5, 3);
+      this.previewScene.add(dirLight);
+
+      // 4. Character
+      this.previewCharacter = new THREE.Group();
+      createBaseCharacter(this.previewCharacter); // Używamy funkcji z character.js
+      this.previewCharacter.position.y = -1; // Obniżamy żeby było widać
+      this.previewScene.add(this.previewCharacter);
+
+      // 5. Obsługa obracania myszką/dotykiem
+      const onStart = (x) => { this.isPreviewDragging = true; this.previewMouseX = x; };
+      const onMove = (x) => {
+          if (this.isPreviewDragging && this.previewCharacter) {
+              const delta = x - this.previewMouseX;
+              this.previewCharacter.rotation.y += delta * 0.01;
+              this.previewMouseX = x;
+          }
+      };
+      const onEnd = () => { this.isPreviewDragging = false; };
+
+      container.addEventListener('mousedown', (e) => onStart(e.clientX));
+      window.addEventListener('mousemove', (e) => onMove(e.clientX));
+      window.addEventListener('mouseup', onEnd);
+      
+      container.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), {passive: false});
+      window.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), {passive: false});
+      window.addEventListener('touchend', onEnd);
   }
 
   setupStats() {
@@ -191,6 +262,30 @@ class BlockStarPlanetGame {
       this.ui.onPlayClick = () => this.ui.showDiscoverPanel('worlds');
       this.ui.onDiscoverClick = () => this.ui.showDiscoverPanel('skins');
       
+      // Obsługa kliknięcia w avatar - otwieranie podglądu
+      this.ui.onPlayerAvatarClick = () => {
+          if (this.previewCharacter) {
+              // 1. Wyczyść stare klocki
+              // Dzieci [0-3] to nogi (createBaseCharacter), reszta to skinContainer lub bezpośrednie bloki
+              // Najlepiej znaleźć kontener skina lub usunąć wszystko co nie jest nogą
+              // W createBaseCharacter dodajemy nogi BEZPOŚREDNIO do grupy.
+              // W character.js CharacterManager dodaje skinContainer.
+              // Tutaj zróbmy prosto: odbudujmy skina na podstawie obecnego characterManager
+              
+              // Usuń wszystko co nie jest geometrią bazową (nogami)
+              // createBaseCharacter dodaje 4 meshe.
+              while(this.previewCharacter.children.length > 4) {
+                  this.previewCharacter.remove(this.previewCharacter.children[this.previewCharacter.children.length-1]);
+              }
+              
+              // Skopiuj skin z głównej postaci
+              if (this.characterManager.skinContainer) {
+                  const skinClone = this.characterManager.skinContainer.clone();
+                  this.previewCharacter.add(skinClone);
+              }
+          }
+      };
+
       this.ui.onWorldSelect = async (worldItem) => {
           if (!worldItem.id) return;
           const worldData = await WorldStorage.loadWorldData(worldItem.id);
@@ -313,15 +408,13 @@ class BlockStarPlanetGame {
       this.stateManager.exploreScene = exploreScene;
       this.multiplayer.setScene(exploreScene);
       
-      // --- FIX: NAPRAWA EKSPLORACJI ---
-      // Wywołujemy poprawną metodę w StateManager
+      // FIX: USUNIĘTO BŁĘDNE WYWOŁANIE (loadAndExploreWorld)
+      // FIX: WYWOŁUJEMY POPRAWNĄ ZMIANĘ STANU
       this.stateManager.switchToExploreMode(exploreScene);
       
-      // --- FIX: NAPRAWA PRZYCISKU WYJŚCIA ---
-      // Podpinamy zdarzenie kliknięcia, bo wcześniej przycisk był "głuchy"
       const exitBtn = document.getElementById('explore-exit-button');
       if(exitBtn) {
-          exitBtn.style.display = 'flex'; // Upewniamy się że jest widoczny
+          exitBtn.style.display = 'flex'; 
           exitBtn.onclick = () => {
               this.stateManager.switchToMainMenu();
           };
@@ -337,6 +430,8 @@ class BlockStarPlanetGame {
     if (this.isFPSEnabled) this.stats.update();
     const delta = this.clock.getDelta();
     this.stateManager.update(delta);
+    
+    // RENDEROWANIE PODGLĄDU
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
       if (this.previewCharacter && !this.isPreviewDragging) { this.previewCharacter.rotation.y += 0.005; }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
