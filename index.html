@@ -96,11 +96,13 @@
       #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: 'Titan One', cursive; }
       
       /* UI RIGHTS */
-      .right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 15px; align-items: flex-end; }
-      .game-buttons { display: flex; gap: 15px; align-items: center; }
+      .right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+      
+      .game-buttons { display: flex; gap: 15px; align-items: center; margin-bottom: 5px; }
       .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
       .game-btn:active { transform: scale(0.95); }
       .btn-zagraj { background-image: url('icons/icon-play.png'); background-size: 110%; } .btn-buduj { background-image: url('icons/icon-build.png'); } .btn-kup { background-image: url('icons/icon-shop.png'); } .btn-odkryj { background-image: url('icons/icon-discover.png'); } .btn-wiecej { background-image: url('icons/icon-more.png'); } .btn-download { background-image: url('icons/icon-download.png'); }
+      
       #coin-counter { position: relative; display: flex; align-items: center; height: 50px; width: 170px; padding: 0; border: none; background: none; box-shadow: none; margin-top: 5px; }
       .coin-bar-background { position: absolute; left: 25px; right: 25px; top: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
       .coin-icon { position: absolute; left: 0; width: 50px; height: 50px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; z-index: 1; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
@@ -115,37 +117,29 @@
           align-items: center;
           height: 50px;
           width: 220px;
-          margin-bottom: 10px;
+          margin-top: 5px;
+          margin-bottom: 5px;
       }
       .level-star {
           position: absolute;
           left: 0;
           width: 55px;
           height: 55px;
-          background: #3498db; 
-          /* Clip-path tworzy kształt gwiazdy */
-          clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+          /* FIX: Użycie ikony zamiast kształtu CSS */
+          background: url('icons/icon-level.png') center / contain no-repeat;
           z-index: 2;
           display: flex;
           justify-content: center;
           align-items: center;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+          filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
       }
-      /* Obrys gwiazdy (hack z drugim elementem lub borderem) */
-      .level-star::before {
-          content: '';
-          position: absolute;
-          top: -2px; left: -2px; right: -2px; bottom: -2px;
-          background: white;
-          z-index: -1;
-          clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-      }
-
       #level-value {
           font-size: 24px;
           color: white;
           z-index: 3;
-          margin-top: 5px; /* Korekta optyczna */
+          /* Centrowanie numeru idealnie w ikonie gwiazdki */
+          margin-top: 2px; 
+          text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
       }
       .level-bar-background {
           position: absolute;
@@ -394,7 +388,16 @@
             <div class="chat-container ui-element"><div class="chat-area"></div><div id="chat-toggle-button">💬</div></div>
             <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
             <div class="right-ui ui-element">
-                <!-- LEVEL UI -->
+                
+                <div class="game-buttons">
+                    <button class="game-btn btn-zagraj"></button>
+                    <button class="game-btn btn-buduj"></button>
+                    <button class="game-btn btn-kup"></button>
+                    <button class="game-btn btn-odkryj"></button>
+                    <button class="game-btn btn-wiecej"></button>
+                </div>
+
+                <!-- LEVEL UI (NOWE MIEJSCE) -->
                 <div id="level-container">
                     <div class="level-star">
                         <div id="level-value" class="text-outline">1</div>
@@ -406,13 +409,6 @@
                     <div class="level-plus-btn">+</div>
                 </div>
 
-                <div class="game-buttons">
-                    <button class="game-btn btn-zagraj"></button>
-                    <button class="game-btn btn-buduj"></button>
-                    <button class="game-btn btn-kup"></button>
-                    <button class="game-btn btn-odkryj"></button>
-                    <button class="game-btn btn-wiecej"></button>
-                </div>
                 <div id="coin-counter"><div class="coin-icon"></div><div class="coin-bar-background"><div id="coin-value" class="text-outline">0</div></div><div id="coin-add-btn" class="ui-element">+</div></div>
             </div>
         </div>
