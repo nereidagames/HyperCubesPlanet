@@ -15,7 +15,7 @@ import { CharacterManager } from './character.js';
 import { CoinManager } from './CoinManager.js';
 import { MultiplayerManager } from './multiplayer.js';
 import { PlayerController, ThirdPersonCameraController } from './controls.js';
-import { ParkourManager } from './ParkourManager.js'; // FIX: IMPORT
+import { ParkourManager } from './ParkourManager.js';
 
 import { BuildManager } from './BuildManager.js';
 import { SkinBuilderManager } from './SkinBuilderManager.js';
@@ -100,6 +100,12 @@ class BlockStarPlanetGame {
       this.ui.checkAdminPermissions(user.username);
       this.ui.loadFriendsData();
 
+      // --- FIX: AKTUALIZACJA LEVELA PRZY STARCIE ---
+      // Pobieramy dane z obiektu user (który przyszedł z serwera) i aktualizujemy UI
+      if (user.level) {
+          this.ui.updateLevelInfo(user.level, user.xp, user.maxXp || 100);
+      }
+
       if (user.ownedBlocks) {
           this.blockManager.setOwnedBlocks(user.ownedBlocks);
       }
@@ -137,7 +143,6 @@ class BlockStarPlanetGame {
       this.prefabBuilderManager = new PrefabBuilderManager(this, loadingManager, this.blockManager);
       this.partBuilderManager = new HyperCubePartBuilderManager(this, loadingManager, this.blockManager);
       
-      // FIX: Inicjalizacja ParkourManager
       this.parkourManager = new ParkourManager(this, this.ui);
 
       this.stateManager.setManagers({
@@ -150,7 +155,7 @@ class BlockStarPlanetGame {
           skinBuild: this.skinBuilderManager,
           prefabBuild: this.prefabBuilderManager,
           partBuild: this.partBuilderManager,
-          parkour: this.parkourManager // Przekazujemy parkour
+          parkour: this.parkourManager
       });
 
       this.stateManager.onRecreateController = (collidables) => {
@@ -166,7 +171,6 @@ class BlockStarPlanetGame {
       this.setupPositionUpdateLoop();
   }
 
-  // ... (setupCharacterPreview, setupStats, setupMultiplayerCallbacks - bez zmian) ...
   setupCharacterPreview() { const container = document.getElementById('player-preview-renderer-container'); if (!container) return; this.previewScene = new THREE.Scene(); this.previewScene.background = new THREE.Color(0x333333); this.previewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); this.previewCamera.position.set(0, 1, 4); this.previewCamera.lookAt(0, 0, 0); this.previewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); this.previewRenderer.setSize(300, 300); container.innerHTML = ''; container.appendChild(this.previewRenderer.domElement); const rect = container.getBoundingClientRect(); if(rect.width > 0) { this.previewRenderer.setSize(rect.width, rect.height); this.previewCamera.aspect = rect.width / rect.height; this.previewCamera.updateProjectionMatrix(); } const ambLight = new THREE.AmbientLight(0xffffff, 0.8); this.previewScene.add(ambLight); const dirLight = new THREE.DirectionalLight(0xffffff, 0.5); dirLight.position.set(2, 5, 3); this.previewScene.add(dirLight); this.previewCharacter = new THREE.Group(); createBaseCharacter(this.previewCharacter); this.previewCharacter.position.y = -1; this.previewScene.add(this.previewCharacter); const onStart = (x) => { this.isPreviewDragging = true; this.previewMouseX = x; }; const onMove = (x) => { if (this.isPreviewDragging && this.previewCharacter) { const delta = x - this.previewMouseX; this.previewCharacter.rotation.y += delta * 0.01; this.previewMouseX = x; } }; const onEnd = () => { this.isPreviewDragging = false; }; container.addEventListener('mousedown', (e) => onStart(e.clientX)); window.addEventListener('mousemove', (e) => onMove(e.clientX)); window.addEventListener('mouseup', onEnd); container.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), {passive: false}); window.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), {passive: false}); window.addEventListener('touchend', onEnd); }
   setupStats() { const fpsPref = localStorage.getItem(STORAGE_KEYS.FPS_ENABLED) === 'true'; if (fpsPref) { this.isFPSEnabled = true; this.stats.dom.style.display = 'block'; } this.ui.onToggleFPS = () => { this.isFPSEnabled = !this.isFPSEnabled; this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none'; this.ui.updateFPSToggleText(this.isFPSEnabled); localStorage.setItem(STORAGE_KEYS.FPS_ENABLED, this.isFPSEnabled.toString()); }; this.ui.updateFPSToggleText(this.isFPSEnabled); }
   setupMultiplayerCallbacks() { this.ui.onSendPrivateMessage = (recipient, text) => this.multiplayer.sendPrivateMessage(recipient, text); this.coinManager.onCollect = () => this.multiplayer.sendMessage({ type: 'collectCoin' }); const originalHandle = this.multiplayer.handleMessage.bind(this.multiplayer); this.multiplayer.handleMessage = (msg) => { originalHandle(msg); if (msg.type === 'friendRequestReceived') { this.ui.showMessage(`Zaproszenie od ${msg.from}!`, 'info'); this.ui.loadFriendsData(); } if (msg.type === 'friendRequestAccepted') { this.ui.showMessage(`${msg.by} przyjął zaproszenie!`, 'success'); this.ui.loadFriendsData(); } if (msg.type === 'friendStatusChange') this.ui.loadFriendsData(); if (msg.type === 'privateMessageSent' && this.ui.onMessageSent) this.ui.onMessageSent(msg); if (msg.type === 'privateMessageReceived' && this.ui.onMessageReceived) this.ui.onMessageReceived(msg); }; }
@@ -254,7 +258,6 @@ class BlockStarPlanetGame {
           exitBtn.onclick = () => { this.stateManager.switchToMainMenu(); };
       }
 
-      // --- FIX: URUCHAMIANIE PARKOURA ---
       if (this.parkourManager) {
           this.parkourManager.init(worldData);
       }
