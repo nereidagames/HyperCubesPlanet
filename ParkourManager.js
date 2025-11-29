@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+
 export class ParkourManager {
     constructor(game, uiManager) {
         this.game = game;
@@ -11,7 +13,6 @@ export class ParkourManager {
         this.startPositions = [];
         this.metaPositions = [];
         
-        // Zabezpieczenie przed "spamowaniem" startu
         this.lastStartTrigger = 0;
     }
     
@@ -21,13 +22,9 @@ export class ParkourManager {
         this.isRunning = false;
         this.elapsedTime = 0;
         
-        // Przeszukujemy bloki świata, by znaleźć Start i Metę
         if (worldData && worldData.blocks) {
             worldData.blocks.forEach(block => {
                 if (block.name === 'Parkour Start') {
-                    // Dodajemy 1.0 do Y, bo punkt pivota bloku to środek, a gracz stoi NA nim
-                    // Player pivot jest w środku nóg (y=2.5 -> y=5.0), więc stopy są niżej.
-                    // Dostosujemy detekcję do pozycji gracza.
                     this.startPositions.push(new THREE.Vector3(block.x, block.y + 1.0, block.z));
                 }
                 if (block.name === 'Parkour Meta') {
@@ -37,7 +34,6 @@ export class ParkourManager {
         }
         
         if (this.startPositions.length > 0) {
-            // Pokaż licznik (wyzerowany)
             this.uiManager.setParkourTimerVisible(true);
             this.uiManager.updateParkourTimer("00:00.00");
         } else {
@@ -46,21 +42,16 @@ export class ParkourManager {
     }
     
     update(deltaTime) {
-        // Jeśli nie ma startów, to nie jest parkour
         if (this.startPositions.length === 0) return;
 
         const playerPos = this.game.characterManager.character.position;
         
-        // 1. Sprawdź czy gracz jest na starcie (RESET)
         let onStart = false;
         for (const startPos of this.startPositions) {
-            // Sprawdzamy dystans w poziomie (X, Z) i pionie (Y)
-            // Dystans < 1.0 oznacza że stoimy mniej więcej na środku bloku
             const dx = Math.abs(playerPos.x - startPos.x);
             const dz = Math.abs(playerPos.z - startPos.z);
-            const dy = Math.abs(playerPos.y - startPos.y); // startPos jest +1.0 od środka bloku
+            const dy = Math.abs(playerPos.y - startPos.y); 
 
-            // Tolerancja: 0.8 kratki w bok, 1.5 kratki w górę/dół
             if (dx < 0.8 && dz < 0.8 && dy < 2.0) {
                 onStart = true;
                 break;
@@ -72,21 +63,16 @@ export class ParkourManager {
             return;
         }
         
-        // 2. Jeśli nie jesteśmy na starcie, a licznik stoi -> START
         if (!this.isRunning && this.elapsedTime === 0) {
-            // Właśnie zeszliśmy ze startu
             this.isRunning = true;
         }
 
-        // 3. Logika biegu
         if (this.isRunning) {
             this.elapsedTime += deltaTime;
             this.uiManager.updateParkourTimer(this.formatTime(this.elapsedTime));
             
-            // 4. Sprawdź metę
             for (const metaPos of this.metaPositions) {
                 const distance = playerPos.distanceTo(metaPos);
-                // Meta ma większy zasięg (dotknięcie = 1.5 metra)
                 if (distance < 1.5) {
                     this.finishRun();
                     break;
@@ -103,10 +89,30 @@ export class ParkourManager {
         }
     }
     
-    finishRun() {
+    async finishRun() {
         this.isRunning = false;
         const finalTime = this.formatTime(this.elapsedTime);
         this.uiManager.showVictory(finalTime);
+
+        // --- NAGRODA ---
+        const token = localStorage.getItem('bsp_clone_jwt_token');
+        if (token) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/parkour/complete`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.uiManager.updateCoinCounter(data.newCoins);
+                    this.uiManager.updateLevelInfo(data.newLevel, data.newXp, data.maxXp);
+                    this.uiManager.showMessage(data.message, 'success');
+                }
+            } catch (e) {
+                console.error("Błąd nagrody parkour:", e);
+            }
+        }
     }
     
     cleanup() {
@@ -119,7 +125,6 @@ export class ParkourManager {
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
         const ms = Math.floor((seconds * 100) % 100);
-        
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
     }
 }
