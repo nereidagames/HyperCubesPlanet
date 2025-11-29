@@ -7,13 +7,10 @@ export class ParkourManager {
         this.game = game;
         this.uiManager = uiManager;
         this.isRunning = false;
-        this.startTime = 0;
         this.elapsedTime = 0;
         
         this.startPositions = [];
         this.metaPositions = [];
-        
-        this.lastStartTrigger = 0;
     }
     
     init(worldData) {
@@ -36,11 +33,32 @@ export class ParkourManager {
         if (this.startPositions.length > 0) {
             this.uiManager.setParkourTimerVisible(true);
             this.uiManager.updateParkourTimer("00:00.00");
+            
+            // --- FIX: REJESTRACJA CALLBACKÓW DLA UI ---
+            this.uiManager.onExitParkour = () => this.game.stateManager.switchToMainMenu();
+            this.uiManager.onReplayParkour = () => this.restartParkour();
         } else {
             this.uiManager.setParkourTimerVisible(false);
         }
     }
     
+    restartParkour() {
+        this.isRunning = false;
+        this.elapsedTime = 0;
+        this.uiManager.updateParkourTimer("00:00.00");
+        this.uiManager.hideVictory();
+        
+        if (this.startPositions.length > 0 && this.game.characterManager.character) {
+            const start = this.startPositions[0];
+            // Teleportuj gracza +0.5 wyżej żeby nie utknął
+            this.game.characterManager.character.position.set(start.x, start.y + 0.5, start.z);
+            // Reset prędkości w kontrolerze (jeśli dostępny)
+            if (this.game.playerController) {
+                this.game.playerController.velocity.set(0, 0, 0);
+            }
+        }
+    }
+
     update(deltaTime) {
         if (this.startPositions.length === 0) return;
 
@@ -59,7 +77,12 @@ export class ParkourManager {
         }
 
         if (onStart) {
-            this.resetRun();
+            // Jeśli wróciliśmy na start, resetujemy czas
+            if (this.isRunning || this.elapsedTime > 0) {
+                this.isRunning = false;
+                this.elapsedTime = 0;
+                this.uiManager.updateParkourTimer("00:00.00");
+            }
             return;
         }
         
@@ -81,21 +104,14 @@ export class ParkourManager {
         }
     }
     
-    resetRun() {
-        if (this.elapsedTime > 0 || this.isRunning) {
-            this.isRunning = false;
-            this.elapsedTime = 0;
-            this.uiManager.updateParkourTimer("00:00.00");
-        }
-    }
-    
     async finishRun() {
         this.isRunning = false;
         const finalTime = this.formatTime(this.elapsedTime);
-        this.uiManager.showVictory(finalTime);
-
-        // --- NAGRODA ---
+        
+        // Najpierw pobierz nagrodę, potem pokaż UI
         const token = localStorage.getItem('bsp_clone_jwt_token');
+        let rewardData = null;
+
         if (token) {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/parkour/complete`, {
@@ -107,12 +123,15 @@ export class ParkourManager {
                 if (data.success) {
                     this.uiManager.updateCoinCounter(data.newCoins);
                     this.uiManager.updateLevelInfo(data.newLevel, data.newXp, data.maxXp);
-                    this.uiManager.showMessage(data.message, 'success');
+                    rewardData = data;
                 }
             } catch (e) {
                 console.error("Błąd nagrody parkour:", e);
             }
         }
+
+        // Przekazujemy dane do UI (czas + dane nagrody)
+        this.uiManager.handleParkourCompletion(finalTime, rewardData);
     }
     
     cleanup() {
