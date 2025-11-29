@@ -101,12 +101,96 @@
       .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
       .game-btn:active { transform: scale(0.95); }
       .btn-zagraj { background-image: url('icons/icon-play.png'); background-size: 110%; } .btn-buduj { background-image: url('icons/icon-build.png'); } .btn-kup { background-image: url('icons/icon-shop.png'); } .btn-odkryj { background-image: url('icons/icon-discover.png'); } .btn-wiecej { background-image: url('icons/icon-more.png'); } .btn-download { background-image: url('icons/icon-download.png'); }
-      #coin-counter { position: relative; display: flex; align-items: center; height: 50px; width: 170px; padding: 0; border: none; background: none; box-shadow: none; }
+      #coin-counter { position: relative; display: flex; align-items: center; height: 50px; width: 170px; padding: 0; border: none; background: none; box-shadow: none; margin-top: 5px; }
       .coin-bar-background { position: absolute; left: 25px; right: 25px; top: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
       .coin-icon { position: absolute; left: 0; width: 50px; height: 50px; background-image: url('icons/icon-coin.png'); background-size: contain; background-position: center; background-repeat: no-repeat; z-index: 1; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
       #coin-value { color: #ffd700; font-size: 22px; z-index: 1; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000; }
       #coin-add-btn { position: absolute; right: 0; width: 50px; height: 50px; background-color: #74b9ff; border: 2px solid white; border-radius: 15px; display: flex; justify-content: center; align-items: center; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.1s ease; padding-bottom: 4px; }
       #coin-add-btn:active { transform: scale(0.95); }
+
+      /* LEVEL UI (BSP STYLE) */
+      #level-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+          height: 50px;
+          width: 220px;
+          margin-bottom: 10px;
+      }
+      .level-star {
+          position: absolute;
+          left: 0;
+          width: 55px;
+          height: 55px;
+          background: #3498db; 
+          /* Clip-path tworzy kształt gwiazdy */
+          clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+          z-index: 2;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      }
+      /* Obrys gwiazdy (hack z drugim elementem lub borderem) */
+      .level-star::before {
+          content: '';
+          position: absolute;
+          top: -2px; left: -2px; right: -2px; bottom: -2px;
+          background: white;
+          z-index: -1;
+          clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+      }
+
+      #level-value {
+          font-size: 24px;
+          color: white;
+          z-index: 3;
+          margin-top: 5px; /* Korekta optyczna */
+      }
+      .level-bar-background {
+          position: absolute;
+          left: 30px;
+          right: 40px; 
+          top: 10px;
+          bottom: 10px;
+          background-color: rgba(0, 0, 0, 0.6);
+          border: 2px solid white;
+          border-radius: 10px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+      }
+      #level-bar-fill {
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 0%;
+          background: linear-gradient(to bottom, #3498db, #2980b9);
+          transition: width 0.5s ease-out;
+      }
+      #level-text {
+          position: relative;
+          z-index: 1;
+          font-size: 14px;
+          color: white;
+      }
+      .level-plus-btn {
+          position: absolute;
+          right: 0;
+          width: 35px;
+          height: 35px;
+          background-color: #74b9ff;
+          border: 2px solid white;
+          border-radius: 8px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          color: white;
+          font-size: 24px;
+          font-weight: bold;
+          cursor: pointer;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      }
 
       /* PARKOUR UI */
       #parkour-timer { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); font-size: 32px; color: #ffd700; display: none; z-index: 2000; pointer-events: none; }
@@ -114,6 +198,20 @@
       .victory-title { font-size: 40px; color: #2ed573; margin-bottom: 20px; }
       .victory-time { font-size: 60px; color: #ffd700; margin-bottom: 40px; }
       .victory-btn { padding: 15px 40px; font-size: 24px; background: #3498db; border: 3px solid white; border-radius: 15px; color: white; font-family: 'Titan One', cursive; cursor: pointer; }
+
+      /* EXPLORE EXIT BUTTON */
+      #explore-exit-button {
+          position: absolute;
+          top: 20px; left: 20px;
+          width: 60px; height: 60px;
+          background: url('icons/icon-back.png') center center / contain no-repeat;
+          z-index: 2000;
+          cursor: pointer;
+          pointer-events: auto;
+          display: none;
+      }
+      #explore-exit-button:hover { filter: brightness(1.2); }
+      #explore-exit-button:active { transform: scale(0.95); }
 
       /* MOBILE CONTROLS */
       #mobile-game-controls { display: none; pointer-events: auto; }
@@ -162,19 +260,35 @@
       .friends-view { flex: 1; width: 100%; padding: 20px; overflow-y: auto; display: none; flex-direction: column; gap: 10px; }
       .friends-view.active { display: flex; }
 
-      /* --- FIX: STYL DLA PRZYCISKU POWROTU Z EKSPLORACJI --- */
-      #explore-exit-button {
-          position: absolute;
-          top: 20px; left: 20px;
-          width: 60px; height: 60px;
-          background: url('icons/icon-back.png') center center / contain no-repeat;
-          z-index: 2000;
-          cursor: pointer;
-          pointer-events: auto;
-          display: none;
+      /* MAIL UI STYLES */
+      #mail-panel .panel-content { display: flex; flex-direction: row; width: 80vw; max-width: 800px; height: 70vh; padding: 0; overflow: hidden; background-color: rgba(0, 0, 0, 0.9); }
+      .mail-sidebar { width: 35%; border-right: 1px solid #555; display: flex; flex-direction: column; background: rgba(255,255,255,0.05); }
+      .mail-sidebar-header { padding: 15px; background: #2980b9; display: flex; justify-content: space-between; align-items: center; }
+      #new-mail-btn { width: 30px; height: 30px; background: #27ae60; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; }
+      .mail-conversations { flex: 1; overflow-y: auto; }
+      .mail-item { padding: 15px; border-bottom: 1px solid #444; cursor: pointer; transition: background 0.2s; }
+      .mail-item:hover { background: rgba(255,255,255,0.1); }
+      .mail-chat-view { flex: 1; display: flex; flex-direction: column; background: #222; }
+      #mail-chat-header { padding: 10px; background: #2c3e50; border-bottom: 1px solid #555; text-align: center; }
+      .mail-chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+      .mail-message { padding: 8px 12px; border-radius: 15px; max-width: 70%; font-size: 14px; word-wrap: break-word; }
+      .mail-message.sent { align-self: flex-end; background: #2980b9; color: white; }
+      .mail-message.received { align-self: flex-start; background: #7f8c8d; color: white; }
+      #mail-reply-form { display: flex; padding: 10px; background: #333; }
+      #mail-reply-input { flex: 1; padding: 10px; border-radius: 20px; border: none; margin-right: 10px; }
+      #mail-reply-btn { padding: 5px 15px; background: #27ae60; color: white; border: none; border-radius: 15px; cursor: pointer; }
+      #new-mail-composer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #333; padding: 20px; border: 2px solid white; border-radius: 10px; width: 300px; display: none; flex-direction: column; gap: 10px; z-index: 100; }
+      #new-mail-form { display: flex; flex-direction: column; gap: 10px; }
+      #new-mail-form input { padding: 10px; border-radius: 5px; border: none; }
+      #new-mail-form button { padding: 10px; background: #2980b9; color: white; border: none; border-radius: 5px; cursor: pointer; }
+      
+      @media (max-width: 600px) {
+          #mail-panel .panel-content { flex-direction: column; width: 95vw; height: 80vh; }
+          .mail-sidebar { width: 100%; height: 100%; display: flex; }
+          .mail-chat-view { width: 100%; height: 100%; display: none; }
+          .view-chat .mail-sidebar { display: none; }
+          .view-chat .mail-chat-view { display: flex; }
       }
-      #explore-exit-button:hover { filter: brightness(1.2); }
-      #explore-exit-button:active { transform: scale(0.95); }
       
       /* MEDIA QUERIES */
       @media (max-width: 768px) {
@@ -280,6 +394,18 @@
             <div class="chat-container ui-element"><div class="chat-area"></div><div id="chat-toggle-button">💬</div></div>
             <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
             <div class="right-ui ui-element">
+                <!-- LEVEL UI -->
+                <div id="level-container">
+                    <div class="level-star">
+                        <div id="level-value" class="text-outline">1</div>
+                    </div>
+                    <div class="level-bar-background">
+                        <div id="level-bar-fill"></div>
+                        <div id="level-text" class="text-outline">0/50</div>
+                    </div>
+                    <div class="level-plus-btn">+</div>
+                </div>
+
                 <div class="game-buttons">
                     <button class="game-btn btn-zagraj"></button>
                     <button class="game-btn btn-buduj"></button>
