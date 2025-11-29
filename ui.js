@@ -8,6 +8,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
+    // Callbacki z main.js
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -26,12 +27,18 @@ export class UIManager {
     this.onMessageReceived = null;
     this.onEditNexusClick = null;
     
+    // Callbacki dla parkoura
+    this.onExitParkour = null;
+    this.onReplayParkour = null;
+
     this.friendsList = [];
     this.mailState = { conversations: [], activeConversation: null };
     
     this.shopCurrentCategory = 'block'; 
     this.allShopItems = [];
     this.shopIsOwnedCallback = null;
+    
+    this.pendingRewardData = null; // Przechowywanie nagrody do wyświetlenia
   }
   
   initialize(isMobile) {
@@ -64,7 +71,7 @@ export class UIManager {
       }
   }
 
-  // --- LOGIKA PARKOURA ---
+  // --- LOGIKA PARKOURA I NAGRÓD ---
   setParkourTimerVisible(visible) {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.style.display = visible ? 'block' : 'none';
@@ -73,6 +80,14 @@ export class UIManager {
   updateParkourTimer(timeString) {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.textContent = timeString;
+  }
+
+  handleParkourCompletion(timeString, data) {
+      // 1. Zapisz dane nagrody, aby wyświetlić je po kliknięciu "Super"
+      this.pendingRewardData = data;
+      
+      // 2. Pokaż panel czasu (Victory)
+      this.showVictory(timeString);
   }
 
   showVictory(timeString) {
@@ -84,79 +99,70 @@ export class UIManager {
       }
   }
 
+  showRewardPanel() {
+      const panel = document.getElementById('reward-panel');
+      const data = this.pendingRewardData;
+      
+      if (!panel) return;
+
+      // Domyślne wartości jeśli brak danych z serwera (np. offline)
+      const xp = data ? (data.newXp - (data.newXp - 500)) : 500; // Uproszczenie, serwer powinien zwracać 'gainedXp'
+      const coins = 100;
+      const level = data ? data.newLevel : 1;
+      const currentXp = data ? data.newXp : 0;
+      const maxXp = data ? data.maxXp : 100;
+
+      // Uzupełnij dane w panelu
+      // Zakładamy stałą nagrodę 500 XP i 100 Monet (zgodnie z logiką serwera)
+      // Można to rozbudować, żeby serwer zwracał "earnedXp"
+      document.getElementById('reward-xp-val').textContent = `+500`; 
+      document.getElementById('reward-coins-val').textContent = `+100`; 
+      
+      document.getElementById('reward-lvl-cur').textContent = level;
+      document.getElementById('reward-lvl-next').textContent = level + 1;
+      
+      const fill = document.getElementById('reward-bar-fill');
+      const text = document.getElementById('reward-bar-text');
+      
+      if (fill && text) {
+          const percent = Math.min(100, Math.max(0, (currentXp / maxXp) * 100));
+          fill.style.width = `${percent}%`;
+          text.textContent = `${currentXp}/${maxXp}`;
+      }
+
+      panel.style.display = 'flex';
+  }
+
   hideVictory() {
-      const panel = document.getElementById('victory-panel');
-      if (panel) panel.style.display = 'none';
+      document.getElementById('victory-panel').style.display = 'none';
+      document.getElementById('reward-panel').style.display = 'none';
+      this.pendingRewardData = null;
   }
 
-  // --- STANDARDOWE METODY ---
-  checkAdminPermissions(username) {
-      const admins = ['nixox2', 'admin'];
-      if (admins.includes(username)) {
-          const optionsList = document.querySelector('#more-options-panel .panel-list');
-          if (optionsList && !document.getElementById('admin-edit-nexus-btn')) {
-              const editNexusBtn = document.createElement('div');
-              editNexusBtn.id = 'admin-edit-nexus-btn';
-              editNexusBtn.className = 'panel-item text-outline';
-              editNexusBtn.style.backgroundColor = '#e67e22'; 
-              editNexusBtn.style.marginTop = '10px';
-              editNexusBtn.textContent = '🛠️ Edytuj Nexus';
-              
-              editNexusBtn.onclick = () => {
-                  this.closeAllPanels();
-                  if (this.onEditNexusClick) this.onEditNexusClick();
-              };
-              
-              optionsList.insertBefore(editNexusBtn, optionsList.firstChild);
-          }
-      }
-  }
-
-  updatePlayerAvatar(thumbnail) {
-      const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
-      if (!avatarEl) return;
-      if (thumbnail) {
-          avatarEl.textContent = '';
-          avatarEl.style.backgroundImage = `url(${thumbnail})`;
-          avatarEl.style.backgroundSize = 'cover';
-          avatarEl.style.backgroundPosition = 'center';
-          avatarEl.style.backgroundColor = '#4a90e2';
-      } else {
-          avatarEl.style.backgroundImage = 'none';
-          avatarEl.textContent = '👤';
-      }
-  }
-
-  updatePlayerName(name) {
-    const nameDisplay = document.getElementById('player-name-display');
-    if (nameDisplay) nameDisplay.textContent = name;
-  }
-
-  openPanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'flex'; }
-  closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
-  closeAllPanels() { document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none'); }
-  updateFPSToggleText(e) { const f=document.getElementById('fps-status'); if(f) f.textContent=e?'Włączony':'Wyłączony'; }
-  updateCoinCounter(val) { const e=document.getElementById('coin-value'); if(e) e.textContent=val; }
-  toggleMobileControls(s) { const m=document.getElementById('mobile-game-controls'); if(m) m.style.display=s?'block':'none'; }
-
+  // --- OBSŁUGA PRZYCISKÓW ---
   setupButtonHandlers() {
+    // Zamknij panele
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { const p = btn.closest('.panel-modal'); if(p) p.style.display = 'none'; };
     });
     
+    // Zatrzymanie propagacji kliknięć w panelach
     document.querySelectorAll('.panel-content').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
     
+    // Główne przyciski menu
     document.querySelectorAll('.game-btn').forEach(button => {
       const type = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(type, button));
     });
 
+    // Avatar
     const pBtn = document.getElementById('player-avatar-button');
     if (pBtn) pBtn.onclick = () => { 
         this.openPanel('player-preview-panel'); 
         if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
     };
     
+    // Przyjaciele (Top Bar)
     const friendsBtn = document.getElementById('btn-friends-open');
     if (friendsBtn) {
         friendsBtn.onclick = () => {
@@ -165,6 +171,7 @@ export class UIManager {
         };
     }
 
+    // Poczta (Top Bar)
     const topBarItems = document.querySelectorAll('.top-bar-item');
     topBarItems.forEach(item => {
         if (item.textContent.includes('Poczta')) {
@@ -175,9 +182,46 @@ export class UIManager {
         }
     });
     
+    // Czat
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
+    // --- BUTTONY PARKOURA ---
+    
+    // 1. "Super!" w panelu czasu
+    const superBtn = document.getElementById('victory-super-btn');
+    if (superBtn) {
+        superBtn.onclick = () => {
+            document.getElementById('victory-panel').style.display = 'none';
+            // Pokaż panel nagród tylko jeśli są dane, w przeciwnym razie wyjdź
+            if (this.pendingRewardData) {
+                this.showRewardPanel();
+            } else {
+                // Fallback jeśli brak danych (np. błąd sieci)
+                if (this.onExitParkour) this.onExitParkour();
+            }
+        };
+    }
+
+    // 2. "Domek" (Powrót) w panelu nagród
+    const homeBtn = document.getElementById('reward-btn-home');
+    if (homeBtn) {
+        homeBtn.onclick = () => {
+            this.hideVictory();
+            if (this.onExitParkour) this.onExitParkour();
+        };
+    }
+    
+    // 3. "Powtórz" w panelu nagród
+    const replayBtn = document.getElementById('reward-btn-replay');
+    if (replayBtn) {
+        replayBtn.onclick = () => {
+            this.hideVictory();
+            if (this.onReplayParkour) this.onReplayParkour();
+        };
+    }
+
+    // --- BUILDER & INNE ---
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
     
     setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); });
@@ -189,6 +233,7 @@ export class UIManager {
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
 
+    // Sklep Tabs
     const tabBlocks = document.getElementById('shop-tab-blocks');
     const tabAddons = document.getElementById('shop-tab-addons');
     if (tabBlocks && tabAddons) {
@@ -215,6 +260,25 @@ export class UIManager {
             else alert('Nazwa nie może być pusta!');
         };
     }
+  }
+
+  // --- STANDARDOWE METODY UI ---
+
+  checkAdminPermissions(username) {
+      const admins = ['nixox2', 'admin'];
+      if (admins.includes(username)) {
+          const optionsList = document.querySelector('#more-options-panel .panel-list');
+          if (optionsList && !document.getElementById('admin-edit-nexus-btn')) {
+              const editNexusBtn = document.createElement('div');
+              editNexusBtn.id = 'admin-edit-nexus-btn';
+              editNexusBtn.className = 'panel-item text-outline';
+              editNexusBtn.style.backgroundColor = '#e67e22'; 
+              editNexusBtn.style.marginTop = '10px';
+              editNexusBtn.textContent = '🛠️ Edytuj Nexus';
+              editNexusBtn.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); };
+              optionsList.insertBefore(editNexusBtn, optionsList.firstChild);
+          }
+      }
   }
 
   getButtonType(button) { 
@@ -262,18 +326,7 @@ export class UIManager {
           const i = document.createElement('div'); 
           i.className = 'shop-item';
           const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false;
-          
-          i.innerHTML = `
-              <div class="shop-item-info">
-                  <div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div>
-                  <span class="shop-item-name text-outline">${b.name}</span>
-              </div>
-              <div class="shop-item-action">
-                  ${owned 
-                      ? `<span class="owned-label text-outline">Posiadane</span>` 
-                      : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`
-                  }
-              </div>`;
+          i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`;
           list.appendChild(i);
       });
 
