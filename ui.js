@@ -287,7 +287,7 @@ export class UIManager {
   updateFPSToggleText(e) { const f=document.getElementById('fps-status'); if(f) f.textContent=e?'Włączony':'Wyłączony'; }
   updateCoinCounter(val) { const e=document.getElementById('coin-value'); if(e) e.textContent=val; }
   toggleMobileControls(s) { const m=document.getElementById('mobile-game-controls'); if(m) m.style.display=s?'block':'none'; }
-
+  
   getButtonType(button) { 
       if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
       if (button.classList.contains('btn-buduj')) return 'buduj'; 
