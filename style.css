@@ -3,16 +3,13 @@
     --font-main: 'Titan One', cursive;
     --color-primary: #2ed573;   /* Zielony */
     --color-secondary: #3498db; /* Niebieski */
-    --color-accent: #f1c40f;    /* Żółty/Złoty */
     --color-danger: #e74c3c;    /* Czerwony */
     --color-dark: #2c3e50;      /* Ciemny granat */
-    --color-bg-panel: rgba(0, 0, 0, 0.7);
     --text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
 body { font-family: var(--font-main); overflow: hidden; background: #000; letter-spacing: 0.5px; touch-action: none; user-select: none; -webkit-user-select: none; }
-
 .text-outline { text-shadow: var(--text-shadow); }
 
 /* --- EKRAN ŁADOWANIA --- */
@@ -180,6 +177,7 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 #new-mail-btn { width: 30px; height: 30px; background: #27ae60; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; }
 .mail-conversations { flex: 1; overflow-y: auto; }
 .mail-item { padding: 15px; border-bottom: 1px solid #444; cursor: pointer; transition: background 0.2s; }
+.mail-item:hover { background: rgba(255,255,255,0.1); }
 .mail-chat-view { flex: 1; display: flex; flex-direction: column; background: #222; }
 #mail-chat-header { padding: 10px; background: var(--color-dark); border-bottom: 1px solid #555; text-align: center; }
 .mail-chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
