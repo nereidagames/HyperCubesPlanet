@@ -1,5 +1,7 @@
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
+// WAŻNE: Importujemy szablony z nowego pliku
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML } from './UITemplates.js'; 
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
@@ -8,7 +10,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki z main.js
+    // Callbacki
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -45,7 +47,10 @@ export class UIManager {
     this.isMobile = isMobile;
     console.log("Inicjalizacja UI...");
     try {
-        // FIX: Usunięto błędne wywołanie this.createLevelUI(), bo jest teraz w HTML
+        // KROK 1: Wstrzyknięcie HTML
+        this.renderUI();
+
+        // KROK 2: Podpięcie logiki (teraz elementy już istnieją)
         this.setupButtonHandlers();
         this.setupChatSystem();
         this.setupFriendsSystem();
@@ -57,7 +62,25 @@ export class UIManager {
     }
   }
 
-  // --- AKTUALIZACJA LEVELA I XP ---
+  // --- METODA WSTRZYKUJĄCA SZABLONY ---
+  renderUI() {
+      const authLayer = document.getElementById('auth-layer');
+      const uiLayer = document.getElementById('ui-layer'); 
+      const buildContainer = document.getElementById('build-ui-container');
+      const modalsLayer = document.getElementById('modals-layer');
+
+      if (authLayer) authLayer.innerHTML = AUTH_HTML;
+      
+      // HUD musi być w wrapperze .ui-overlay, żeby kliki przechodziły tam gdzie trzeba
+      if (uiLayer) {
+          uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
+      }
+
+      if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
+      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML;
+  }
+
+  // --- AKTUALIZACJA LEVELA ---
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
@@ -67,14 +90,12 @@ export class UIManager {
       if (lvlText) lvlText.textContent = `${xp}/${maxXp}`;
       
       if (lvlFill) {
-          // Zabezpieczenie przed dzieleniem przez zero
-          const max = maxXp || 100;
-          const percent = Math.min(100, Math.max(0, (xp / max) * 100));
+          const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100));
           lvlFill.style.width = `${percent}%`;
       }
   }
 
-  // --- LOGIKA PARKOURA I NAGRÓD ---
+  // --- UI PARKOURA ---
   setParkourTimerVisible(visible) {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.style.display = visible ? 'block' : 'none';
@@ -106,16 +127,11 @@ export class UIManager {
       if (!panel) return;
 
       if (data) {
-          // Aktualizacja tekstów w panelu nagród
-          const xpVal = document.getElementById('reward-xp-val');
-          const coinsVal = document.getElementById('reward-coins-val');
-          if(xpVal) xpVal.textContent = `+500`; 
-          if(coinsVal) coinsVal.textContent = `+100`; 
+          document.getElementById('reward-xp-val').textContent = `+500`; 
+          document.getElementById('reward-coins-val').textContent = `+100`; 
           
-          const curLvl = document.getElementById('reward-lvl-cur');
-          const nextLvl = document.getElementById('reward-lvl-next');
-          if(curLvl) curLvl.textContent = data.newLevel;
-          if(nextLvl) nextLvl.textContent = data.newLevel + 1;
+          document.getElementById('reward-lvl-cur').textContent = data.newLevel;
+          document.getElementById('reward-lvl-next').textContent = data.newLevel + 1;
           
           const fill = document.getElementById('reward-bar-fill');
           const text = document.getElementById('reward-bar-text');
@@ -138,7 +154,7 @@ export class UIManager {
       this.pendingRewardData = null;
   }
 
-  // --- GŁÓWNA OBSŁUGA PRZYCISKÓW ---
+  // --- GŁÓWNE HANDLERY ---
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { const p = btn.closest('.panel-modal'); if(p) p.style.display = 'none'; };
@@ -151,12 +167,14 @@ export class UIManager {
       button.addEventListener('click', () => this.handleButtonClick(type, button));
     });
 
+    // Avatar
     const pBtn = document.getElementById('player-avatar-button');
     if (pBtn) pBtn.onclick = () => { 
         this.openPanel('player-preview-panel'); 
         if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
     };
     
+    // Przyjaciele
     const friendsBtn = document.getElementById('btn-friends-open');
     if (friendsBtn) {
         friendsBtn.onclick = () => {
@@ -165,6 +183,7 @@ export class UIManager {
         };
     }
 
+    // Poczta
     const topBarItems = document.querySelectorAll('.top-bar-item');
     topBarItems.forEach(item => {
         if (item.textContent.includes('Poczta')) {
@@ -175,16 +194,15 @@ export class UIManager {
         }
     });
     
+    // Czat
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
-    // --- BUTTONY PARKOURA ---
+    // Parkour Buttons
     const superBtn = document.getElementById('victory-super-btn');
     if (superBtn) {
         superBtn.onclick = () => {
-            const vPanel = document.getElementById('victory-panel');
-            if(vPanel) vPanel.style.display = 'none';
-            
+            document.getElementById('victory-panel').style.display = 'none';
             if (this.pendingRewardData) this.showRewardPanel();
             else if (this.onExitParkour) this.onExitParkour();
         };
@@ -205,18 +223,16 @@ export class UIManager {
             if (this.onReplayParkour) this.onReplayParkour();
         };
     }
-
-    // --- BUTTONY WYBORU GRY ---
+    
+    // Play Choice
     const btnPlayParkour = document.getElementById('play-choice-parkour');
     const btnPlayChat = document.getElementById('play-choice-chat');
-    
     if (btnPlayParkour) {
         btnPlayParkour.onclick = () => {
             this.closePanel('play-choice-panel');
             this.showDiscoverPanel('worlds', 'parkour');
         };
     }
-    
     if (btnPlayChat) {
         btnPlayChat.onclick = () => {
             this.closePanel('play-choice-panel');
@@ -224,7 +240,7 @@ export class UIManager {
         };
     }
 
-    // --- BUDOWANIE ---
+    // Builder Buttons
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
     setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); });
     setClick('build-choice-new-skin', () => { this.closePanel('build-choice-panel'); if(this.onSkinBuilderClick) this.onSkinBuilderClick(); });
@@ -235,7 +251,7 @@ export class UIManager {
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
 
-    // --- SKLEP ---
+    // Shop Tabs
     const tabBlocks = document.getElementById('shop-tab-blocks');
     const tabAddons = document.getElementById('shop-tab-addons');
     if (tabBlocks && tabAddons) {
@@ -253,6 +269,7 @@ export class UIManager {
         };
     }
 
+    // Name Submit
     const nameSubmitBtn = document.getElementById('name-submit-btn');
     if (nameSubmitBtn) {
         nameSubmitBtn.onclick = () => {
@@ -264,7 +281,7 @@ export class UIManager {
     }
   }
 
-  // --- HELPERS ---
+  // --- STANDARD HELPERS ---
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
@@ -276,12 +293,7 @@ export class UIManager {
               editNexusBtn.style.backgroundColor = '#e67e22'; 
               editNexusBtn.style.marginTop = '10px';
               editNexusBtn.textContent = '🛠️ Edytuj Nexus';
-              
-              editNexusBtn.onclick = () => {
-                  this.closeAllPanels();
-                  if (this.onEditNexusClick) this.onEditNexusClick();
-              };
-              
+              editNexusBtn.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); };
               optionsList.insertBefore(editNexusBtn, optionsList.firstChild);
           }
       }
@@ -310,57 +322,17 @@ export class UIManager {
 
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
   refreshShopList() { const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } filteredItems.forEach(b => { const i = document.createElement('div'); i.className = 'shop-item'; const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; list.appendChild(i); }); list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); }
-  
   setupChatSystem() { this.setupChatInput(); }
   addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
-
   setupFriendsSystem() { const tabs = document.querySelectorAll('#friends-panel .friends-tab'); tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); const targetId = tab.getAttribute('data-tab'); const views = document.querySelectorAll('#friends-panel .friends-view'); views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); }); const targetView = document.getElementById(targetId); if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); } }; }); const searchBtn = document.getElementById('friends-search-btn'); if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); } }
-  
-  setupDiscoverTabs() { 
-      const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
-      const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
-      const closeBtn = document.getElementById('discover-close-button'); 
-      if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; }
-      if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; }
-      if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); 
-  }
-
-  async showDiscoverPanel(type, category = null) { 
-      const title=document.getElementById('discover-panel-title'); 
-      const tabs=document.getElementById('discover-tabs'); 
-      const list=document.getElementById('discover-list'); 
-      if(!list) return; 
-      list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
-      this.openPanel('discover-panel'); 
-      
-      if(type==='worlds') { 
-          if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
-          if(tabs) tabs.style.display='none'; 
-          try {
-              const allWorlds = await WorldStorage.getAllWorlds(); 
-              let filteredWorlds = allWorlds;
-              if (category) {
-                  filteredWorlds = allWorlds.filter(w => {
-                      const wType = w.type || 'creative';
-                      return wType === category;
-                  });
-              }
-              this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); 
-          } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } 
-      } else if(type==='skins') { 
-          if(title) title.textContent='Wybierz Skina'; 
-          if(tabs) { tabs.style.display='flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) tabAll.classList.add('active'); this.refreshSkinList('all'); } 
-      } 
-  }
-
+  setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
+  async showDiscoverPanel(type, category = null) { const title=document.getElementById('discover-panel-title'); const tabs=document.getElementById('discover-tabs'); const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; this.openPanel('discover-panel'); if(type==='worlds') { if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; if(tabs) tabs.style.display='none'; try { const allWorlds = await WorldStorage.getAllWorlds(); let filteredWorlds = allWorlds; if (category) { filteredWorlds = allWorlds.filter(w => { const wType = w.type || 'creative'; return wType === category; }); } this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } } else if(type==='skins') { if(title) title.textContent='Wybierz Skina'; if(tabs) { tabs.style.display='flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) tabAll.classList.add('active'); this.refreshSkinList('all'); } } }
   async refreshSkinList(mode) { const list=document.getElementById('discover-list'); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; let skins=[]; try { if(mode==='mine') skins = await SkinStorage.getMySkins(); else skins = await SkinStorage.getAllSkins(); this.populateDiscoverPanel('skins', skins, (skinId, skinName, thumbnail, ownerId)=>{ if(this.onSkinSelect) this.onSkinSelect(skinId, skinName, thumbnail, ownerId); }); } catch(e) { console.error("Błąd pobierania skinów:", e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center; color: #ff5555;">Błąd połączenia.</p>'; } }
   populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item=>{ const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width=(type==='worlds')?'80px':'64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc=null; let label=''; let skinId=null; let ownerId=null; if(type==='worlds'){ if(typeof item==='object'){ label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; } else { label=item; } } else { label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; skinId=item.id; ownerId=item.owner_id; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent=(type==='worlds')?'🌍':'?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; thumbContainer.style.fontSize='24px'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); div.onclick=()=>{ this.closeAllPanels(); if(type==='worlds') onSelect(item); else onSelect(skinId, item.name, item.thumbnail, ownerId); }; list.appendChild(div); }); }
-
-  // --- FRIENDS & MAIL ---
   async loadFriendsData() { const t=localStorage.getItem('bsp_clone_jwt_token'); if(!t)return; const l=document.getElementById('friends-list'); if(l) l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Odświeżanie...</p>'; try{ const r=await fetch(`${API_BASE_URL}/api/friends`,{headers:{'Authorization':`Bearer ${t}`}}); if(r.ok){ const d=await r.json(); this.friendsList=d.friends; this.renderFriendsList(d.friends); this.renderRequestsList(d.requests); this.updateTopBarFriends(d.friends); } else if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd serwera.</p>'; } catch(e){ if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd sieci.</p>'; } }
   renderFriendsList(f){ const l=document.getElementById('friends-list'); if(!l)return; l.innerHTML=''; if(!f||f.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak przyjaciół.</p>'; return; } f.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; const a=document.createElement('div'); a.className='friend-avatar'; if(x.current_skin_thumbnail) a.style.backgroundImage=`url(${x.current_skin_thumbnail})`; else { a.style.display='flex'; a.style.justifyContent='center'; a.style.alignItems='center'; a.textContent='👤'; a.style.color='white'; a.style.fontSize='24px'; } if(x.isOnline) a.style.borderColor='#2ed573'; else a.style.borderColor='#7f8c8d'; const n=document.createElement('div'); n.className='friend-info'; n.innerHTML=`<div class="text-outline" style="font-size:16px;">${x.username}</div><div style="font-size:12px;color:${x.isOnline?'#2ed573':'#ccc'}">${x.isOnline?'Online':'Offline'}</div>`; i.appendChild(a); i.appendChild(n); l.appendChild(i); }); }
   renderRequestsList(r){ const l=document.getElementById('friends-requests'); if(!l)return; l.innerHTML=''; if(!r||r.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak.</p>'; return; } r.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; i.innerHTML=`<div class="friend-info text-outline" style="font-size:16px;">${x.username}</div><div class="friend-actions"><button class="action-btn btn-accept">Akceptuj</button></div>`; i.querySelector('.btn-accept').onclick=()=>this.acceptFriendRequest(x.request_id); l.appendChild(i); }); }
