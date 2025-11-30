@@ -1,3 +1,5 @@
+
+
 import * as THREE from 'three';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
@@ -23,18 +25,12 @@ export class SceneManager {
     // Współdzielona geometria (Optymalizacja RAM)
     this.sharedCollisionGeometry = new THREE.BoxGeometry(1, 1, 1);
     
-    // Maksymalna anizotropia (ostrość tekstur pod kątem)
-    // Pobierzemy ją dynamicznie po inicjalizacji renderera, 
-    // ale domyślnie ustawiamy na bezpieczną wartość.
     this.maxAnisotropy = 4; 
   }
   
   async initialize() {
     if (this.isInitialized) return;
 
-    // Próba pobrania maxAnisotropy z renderera (jeśli dostępny globalnie lub przez hack)
-    // W Three.js renderer trzyma capabilities. Tutaj użyjemy bezpiecznej wartości 16,
-    // Three.js automatycznie przytnie ją do limitu urządzenia.
     this.maxAnisotropy = 16;
 
     this.setupLighting();
@@ -43,7 +39,6 @@ export class SceneManager {
     // Próba załadowania Nexusa z bazy danych
     const nexusLoaded = await this.loadNexusFromDB();
 
-    // Jeśli nie ma Nexusa w bazie (np. pierwszy start serwera), stwórz domyślną podłogę
     if (!nexusLoaded) {
         console.log("Brak mapy Nexusa w bazie, generowanie domyślnej...");
         this.createCheckerboardFloor();
@@ -56,45 +51,32 @@ export class SceneManager {
   }
   
   setupLighting() {
-    // Światło otoczenia - nieco jaśniejsze, żeby cienie nie były smoliście czarne
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); 
     this.scene.add(ambientLight);
     
-    // Światło słoneczne (rzuca cienie)
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(30, 60, 40); // Wyżej i pod kątem
+    directionalLight.position.set(30, 60, 40); 
     directionalLight.castShadow = true;
     
-    // --- OPTYMALIZACJA WYDAJNOŚCI (Lag Fix) ---
-    // Zmniejszamy rozdzielczość cieni z 2048 na 1024. 
-    // Na telefonach to ogromna różnica w FPS, a wizualnie mało widoczna.
     directionalLight.shadow.mapSize.width = 1024;
     directionalLight.shadow.mapSize.height = 1024;
-    
-    // Optymalizacja zasięgu kamery cieni (nie renderuj cieni kilometr od gracza)
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 100;
     
-    // Dopasowanie obszaru cienia do wielkości mapy
     const shadowSize = 40;
     directionalLight.shadow.camera.left = -shadowSize;
     directionalLight.shadow.camera.right = shadowSize;
     directionalLight.shadow.camera.top = shadowSize;
     directionalLight.shadow.camera.bottom = -shadowSize;
-    
-    // Bias pomaga usunąć "shadow acne" (dziwne paski na teksturach)
     directionalLight.shadow.bias = -0.0005;
     
     this.scene.add(directionalLight);
   }
   
   setupFog() {
-    // Mgła ukrywająca koniec mapy i ucięcia renderowania
-    // Kolor 0x87CEEB to błękit nieba
     this.scene.fog = new THREE.Fog(0x87CEEB, 15, 90);
   }
 
-  // --- GŁÓWNA OPTYMALIZACJA: INSTANCED MESH + LEPSZE TEKSTURY ---
   async loadNexusFromDB() {
       try {
           const response = await fetch(`${API_BASE_URL}/api/nexus`);
@@ -105,7 +87,6 @@ export class SceneManager {
 
           console.log(`Wczytywanie Nexusa: ${blocksData.length} bloków.`);
 
-          // Grupowanie bloków według tekstury
           const blocksByTexture = {};
 
           blocksData.forEach(block => {
@@ -122,18 +103,9 @@ export class SceneManager {
               let material = this.materials[texturePath];
               if (!material) {
                   const texture = this.textureLoader.load(texturePath);
-                  
-                  // --- POPRAWKA GRAFICZNA: FILTROWANIE TEKSTUR ---
-                  // NearestFilter jest dobry do pixel-artu z bliska, ale z daleka robi "szum".
-                  // Używamy NearestMipmapLinearFilter - z bliska ostro, z daleka gładko.
                   texture.magFilter = THREE.NearestFilter;
                   texture.minFilter = THREE.NearestMipmapLinearFilter;
-                  
-                  // --- POPRAWKA GRAFICZNA: ANIZOTROPIA ---
-                  // To naprawia rozmyte/zniekształcone tekstury podłogi widziane pod kątem
                   texture.anisotropy = this.maxAnisotropy;
-                  
-                  // Włączamy powtarzanie (jeśli tekstura ma być kafelkowana, choć tu mapujemy per blok)
                   texture.wrapS = THREE.RepeatWrapping;
                   texture.wrapT = THREE.RepeatWrapping;
 
@@ -141,18 +113,15 @@ export class SceneManager {
                   this.materials[texturePath] = material;
               }
 
-              // InstancedMesh - wydajne renderowanie tysięcy bloków
               const instancedMesh = new THREE.InstancedMesh(this.sharedCollisionGeometry, material, blocks.length);
               instancedMesh.castShadow = true;
               instancedMesh.receiveShadow = true;
 
               blocks.forEach((block, index) => {
-                  // Wizualizacja
                   dummy.position.set(block.x, block.y, block.z);
                   dummy.updateMatrix();
                   instancedMesh.setMatrixAt(index, dummy.matrix);
 
-                  // Fizyka (Niewidzialny Mesh) - potrzebne dla PlayerController
                   const collisionMesh = new THREE.Mesh(this.sharedCollisionGeometry, new THREE.MeshBasicMaterial());
                   collisionMesh.position.set(block.x, block.y, block.z);
                   collisionMesh.visible = false;
@@ -165,7 +134,6 @@ export class SceneManager {
               this.scene.add(instancedMesh);
           }
 
-          // Zabezpieczenie przed spadnięciem (niewidzialna podłoga)
           const floorGeo = new THREE.PlaneGeometry(300, 300);
           floorGeo.rotateX(-Math.PI / 2);
           const floorMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -198,8 +166,8 @@ export class SceneManager {
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestMipmapLinearFilter; // Lepsze filtrowanie
-    texture.anisotropy = this.maxAnisotropy; // Lepsza jakość pod kątem
+    texture.minFilter = THREE.NearestMipmapLinearFilter;
+    texture.anisotropy = this.maxAnisotropy;
     texture.repeat.set(floorSize / 2, floorSize / 2);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -245,5 +213,34 @@ export class SceneManager {
     wallX2.position.set(-halfMapSize, barrierY, 0);
     this.scene.add(wallX2);
     this.collidableObjects.push(wallX2);
+  }
+
+  // --- FIX: METODA DO OBLICZANIA BEZPIECZNEJ WYSOKOŚCI ---
+  getSafeY(targetX, targetZ) {
+      let highestY = -100;
+      const checkRadius = 0.8; // Sprawdzamy bloki w pobliżu spawnu
+
+      for (const obj of this.collidableObjects) {
+          // Pomijamy ściany i podłogę bazową przy precyzyjnym skanie, interesują nas klocki
+          if (obj.geometry && obj.geometry.type === 'BoxGeometry') {
+              // Sprawdź czy to klocek mapy (1x1x1)
+              if (obj.visible === false) { // collisionMesh jest niewidzialny
+                  const dx = Math.abs(obj.position.x - targetX);
+                  const dz = Math.abs(obj.position.z - targetZ);
+                  
+                  if (dx < checkRadius && dz < checkRadius) {
+                      if (obj.position.y > highestY) {
+                          highestY = obj.position.y;
+                      }
+                  }
+              }
+          }
+      }
+
+      // Jeśli nie znaleziono bloków, wróć do domyślnej podłogi + margines
+      if (highestY === -100) return 1.0;
+      
+      // Zwróć wierzchołek najwyższego bloku (y to środek, więc +0.5)
+      return highestY + 0.5;
   }
 }
