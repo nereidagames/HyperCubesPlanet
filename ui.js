@@ -8,7 +8,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki
+    // Callbacki z main.js
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -38,7 +38,7 @@ export class UIManager {
     this.allShopItems = [];
     this.shopIsOwnedCallback = null;
     
-    this.pendingRewardData = null;
+    this.pendingRewardData = null; // Przechowywanie danych nagrody
   }
   
   initialize(isMobile) {
@@ -56,7 +56,7 @@ export class UIManager {
     }
   }
 
-  // --- AKTUALIZACJA LEVELA ---
+  // --- AKTUALIZACJA LEVELA I XP ---
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
@@ -71,7 +71,7 @@ export class UIManager {
       }
   }
 
-  // --- UI PARKOURA ---
+  // --- LOGIKA PARKOURA I NAGRÓD ---
   setParkourTimerVisible(visible) {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.style.display = visible ? 'block' : 'none';
@@ -103,8 +103,9 @@ export class UIManager {
       if (!panel) return;
 
       if (data) {
-          document.getElementById('reward-xp-val').textContent = `+${500}`; 
-          document.getElementById('reward-coins-val').textContent = `+${100}`; 
+          // Aktualizacja tekstów w panelu nagród
+          document.getElementById('reward-xp-val').textContent = `+500`; 
+          document.getElementById('reward-coins-val').textContent = `+100`; 
           
           document.getElementById('reward-lvl-cur').textContent = data.newLevel;
           document.getElementById('reward-lvl-next').textContent = data.newLevel + 1;
@@ -127,14 +128,16 @@ export class UIManager {
       this.pendingRewardData = null;
   }
 
-  // --- GŁÓWNE HANDLERY ---
+  // --- GŁÓWNA OBSŁUGA PRZYCISKÓW ---
   setupButtonHandlers() {
+    // Zamykanie paneli
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { const p = btn.closest('.panel-modal'); if(p) p.style.display = 'none'; };
     });
     
     document.querySelectorAll('.panel-content').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
     
+    // Główne przyciski w menu
     document.querySelectorAll('.game-btn').forEach(button => {
       const type = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(type, button));
@@ -147,7 +150,7 @@ export class UIManager {
         if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
     };
     
-    // Przyjaciele
+    // Przyjaciele (Top Bar)
     const friendsBtn = document.getElementById('btn-friends-open');
     if (friendsBtn) {
         friendsBtn.onclick = () => {
@@ -156,7 +159,7 @@ export class UIManager {
         };
     }
 
-    // Poczta
+    // Poczta (Top Bar)
     const topBarItems = document.querySelectorAll('.top-bar-item');
     topBarItems.forEach(item => {
         if (item.textContent.includes('Poczta')) {
@@ -171,7 +174,7 @@ export class UIManager {
     const chatToggle = document.getElementById('chat-toggle-button');
     if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
 
-    // Parkour Buttons
+    // --- BUTTONY PARKOURA ---
     const superBtn = document.getElementById('victory-super-btn');
     if (superBtn) {
         superBtn.onclick = () => {
@@ -197,7 +200,27 @@ export class UIManager {
         };
     }
 
-    // Builder Buttons
+    // --- BUTTONY WYBORU GRY (NOWE) ---
+    const btnPlayParkour = document.getElementById('play-choice-parkour');
+    const btnPlayChat = document.getElementById('play-choice-chat');
+    
+    if (btnPlayParkour) {
+        btnPlayParkour.onclick = () => {
+            this.closePanel('play-choice-panel');
+            // Pokaż tylko światy typu 'parkour'
+            this.showDiscoverPanel('worlds', 'parkour');
+        };
+    }
+    
+    if (btnPlayChat) {
+        btnPlayChat.onclick = () => {
+            this.closePanel('play-choice-panel');
+            // Pokaż tylko światy typu 'creative' (czat)
+            this.showDiscoverPanel('worlds', 'creative');
+        };
+    }
+
+    // --- BUDOWANIE ---
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
     setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); });
     setClick('build-choice-new-skin', () => { this.closePanel('build-choice-panel'); if(this.onSkinBuilderClick) this.onSkinBuilderClick(); });
@@ -208,7 +231,7 @@ export class UIManager {
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
 
-    // Shop Tabs
+    // --- SKLEP ---
     const tabBlocks = document.getElementById('shop-tab-blocks');
     const tabAddons = document.getElementById('shop-tab-addons');
     if (tabBlocks && tabAddons) {
@@ -226,7 +249,7 @@ export class UIManager {
         };
     }
 
-    // Name Submit
+    // Wybór nazwy
     const nameSubmitBtn = document.getElementById('name-submit-btn');
     if (nameSubmitBtn) {
         nameSubmitBtn.onclick = () => {
@@ -238,7 +261,7 @@ export class UIManager {
     }
   }
 
-  // --- STANDARD HELPERS ---
+  // --- HELPERS ---
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
@@ -264,35 +287,34 @@ export class UIManager {
   updateFPSToggleText(e) { const f=document.getElementById('fps-status'); if(f) f.textContent=e?'Włączony':'Wyłączony'; }
   updateCoinCounter(val) { const e=document.getElementById('coin-value'); if(e) e.textContent=val; }
   toggleMobileControls(s) { const m=document.getElementById('mobile-game-controls'); if(m) m.style.display=s?'block':'none'; }
-  
-  getButtonType(button) { if (button.classList.contains('btn-zagraj')) return 'zagraj'; if (button.classList.contains('btn-buduj')) return 'buduj'; if (button.classList.contains('btn-kup')) return 'kup'; if (button.classList.contains('btn-odkryj')) return 'odkryj'; if (button.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
-  
-  handleButtonClick(buttonType, buttonElement) { 
-      buttonElement.style.transform = 'translateY(-1px) scale(0.95)'; 
-      setTimeout(() => { buttonElement.style.transform = ''; }, 150); 
-      if (buttonType === 'zagraj') { this.openPanel('discover-panel'); if (this.onPlayClick) this.onPlayClick(); return; } 
-      if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; } 
-      if (buttonType === 'odkryj') { this.openPanel('discover-panel'); if (this.onDiscoverClick) this.onDiscoverClick(); return; } 
-      if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; } 
-      if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; } 
+
+  getButtonType(button) { 
+      if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
+      if (button.classList.contains('btn-buduj')) return 'buduj'; 
+      if (button.classList.contains('btn-kup')) return 'kup'; 
+      if (button.classList.contains('btn-odkryj')) return 'odkryj'; 
+      if (button.classList.contains('btn-wiecej')) return 'wiecej'; 
+      return 'unknown'; 
+  }
+
+  handleButtonClick(buttonType, buttonElement) {
+    buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
+    setTimeout(() => { buttonElement.style.transform = ''; }, 150);
+    
+    // ZAGRAJ -> Wybór trybu
+    if (buttonType === 'zagraj') { 
+        this.openPanel('play-choice-panel'); 
+        return; 
+    }
+    
+    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
+    if (buttonType === 'odkryj') { this.openPanel('discover-panel'); if (this.onDiscoverClick) this.onDiscoverClick(); return; }
+    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
+    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
-  
-  refreshShopList() { 
-      const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; 
-      const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); 
-      if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } 
-      filteredItems.forEach(b => { 
-          const i = document.createElement('div'); i.className = 'shop-item'; 
-          const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; 
-          i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; 
-          list.appendChild(i); 
-      }); 
-      list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); 
-  }
-
-  // --- CHAT ---
+  refreshShopList() { const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } filteredItems.forEach(b => { const i = document.createElement('div'); i.className = 'shop-item'; const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; list.appendChild(i); }); list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); }
   setupChatSystem() { this.setupChatInput(); }
   addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
@@ -301,23 +323,64 @@ export class UIManager {
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
 
   // --- FRIENDS ---
-  setupFriendsSystem() { 
-      const tabs = document.querySelectorAll('#friends-panel .friends-tab'); 
-      tabs.forEach(tab => { 
-          tab.onclick = () => { 
-              tabs.forEach(t => t.classList.remove('active')); 
-              tab.classList.add('active'); 
-              const targetId = tab.getAttribute('data-tab'); 
-              const views = document.querySelectorAll('#friends-panel .friends-view'); 
-              views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); }); 
-              const targetView = document.getElementById(targetId); 
-              if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); } 
-          }; 
-      }); 
-      const searchBtn = document.getElementById('friends-search-btn'); 
-      if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); } 
+  setupFriendsSystem() {
+      const tabs = document.querySelectorAll('#friends-panel .friends-tab');
+      tabs.forEach(tab => {
+          tab.onclick = () => {
+              tabs.forEach(t => t.classList.remove('active'));
+              tab.classList.add('active');
+              const targetId = tab.getAttribute('data-tab');
+              const views = document.querySelectorAll('#friends-panel .friends-view');
+              views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); });
+              const targetView = document.getElementById(targetId);
+              if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); }
+          };
+      });
+      const searchBtn = document.getElementById('friends-search-btn');
+      if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); }
   }
-  
+
+  // --- DISCOVER (FILTROWANIE) ---
+  setupDiscoverTabs() { 
+      const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
+      const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
+      const closeBtn = document.getElementById('discover-close-button'); 
+      if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; }
+      if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; }
+      if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); 
+  }
+
+  async showDiscoverPanel(type, category = null) { 
+      const title=document.getElementById('discover-panel-title'); 
+      const tabs=document.getElementById('discover-tabs'); 
+      const list=document.getElementById('discover-list'); 
+      if(!list) return; 
+      list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
+      this.openPanel('discover-panel'); 
+      
+      if(type==='worlds') { 
+          if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
+          if(tabs) tabs.style.display='none'; 
+          try {
+              const allWorlds = await WorldStorage.getAllWorlds(); 
+              // Filtrowanie światów po typie
+              let filteredWorlds = allWorlds;
+              if (category) {
+                  filteredWorlds = allWorlds.filter(w => {
+                      const wType = w.type || 'creative';
+                      return wType === category;
+                  });
+              }
+              this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); 
+          } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } 
+      } else if(type==='skins') { 
+          if(title) title.textContent='Wybierz Skina'; 
+          if(tabs) { tabs.style.display='flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) tabAll.classList.add('active'); this.refreshSkinList('all'); } 
+      } 
+  }
+
+  async refreshSkinList(mode) { const list=document.getElementById('discover-list'); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; let skins=[]; try { if(mode==='mine') skins = await SkinStorage.getMySkins(); else skins = await SkinStorage.getAllSkins(); this.populateDiscoverPanel('skins', skins, (skinId, skinName, thumbnail, ownerId)=>{ if(this.onSkinSelect) this.onSkinSelect(skinId, skinName, thumbnail, ownerId); }); } catch(e) { console.error("Błąd pobierania skinów:", e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center; color: #ff5555;">Błąd połączenia.</p>'; } }
+  populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item=>{ const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width=(type==='worlds')?'80px':'64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc=null; let label=''; let skinId=null; let ownerId=null; if(type==='worlds'){ if(typeof item==='object'){ label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; } else { label=item; } } else { label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; skinId=item.id; ownerId=item.owner_id; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent=(type==='worlds')?'🌍':'?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; thumbContainer.style.fontSize='24px'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); div.onclick=()=>{ this.closeAllPanels(); if(type==='worlds') onSelect(item); else onSelect(skinId, item.name, item.thumbnail, ownerId); }; list.appendChild(div); }); }
   async loadFriendsData() { const t=localStorage.getItem('bsp_clone_jwt_token'); if(!t)return; const l=document.getElementById('friends-list'); if(l) l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Odświeżanie...</p>'; try{ const r=await fetch(`${API_BASE_URL}/api/friends`,{headers:{'Authorization':`Bearer ${t}`}}); if(r.ok){ const d=await r.json(); this.friendsList=d.friends; this.renderFriendsList(d.friends); this.renderRequestsList(d.requests); this.updateTopBarFriends(d.friends); } else if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd serwera.</p>'; } catch(e){ if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd sieci.</p>'; } }
   renderFriendsList(f){ const l=document.getElementById('friends-list'); if(!l)return; l.innerHTML=''; if(!f||f.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak przyjaciół.</p>'; return; } f.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; const a=document.createElement('div'); a.className='friend-avatar'; if(x.current_skin_thumbnail) a.style.backgroundImage=`url(${x.current_skin_thumbnail})`; else { a.style.display='flex'; a.style.justifyContent='center'; a.style.alignItems='center'; a.textContent='👤'; a.style.color='white'; a.style.fontSize='24px'; } if(x.isOnline) a.style.borderColor='#2ed573'; else a.style.borderColor='#7f8c8d'; const n=document.createElement('div'); n.className='friend-info'; n.innerHTML=`<div class="text-outline" style="font-size:16px;">${x.username}</div><div style="font-size:12px;color:${x.isOnline?'#2ed573':'#ccc'}">${x.isOnline?'Online':'Offline'}</div>`; i.appendChild(a); i.appendChild(n); l.appendChild(i); }); }
   renderRequestsList(r){ const l=document.getElementById('friends-requests'); if(!l)return; l.innerHTML=''; if(!r||r.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak.</p>'; return; } r.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; i.innerHTML=`<div class="friend-info text-outline" style="font-size:16px;">${x.username}</div><div class="friend-actions"><button class="action-btn btn-accept">Akceptuj</button></div>`; i.querySelector('.btn-accept').onclick=()=>this.acceptFriendRequest(x.request_id); l.appendChild(i); }); }
@@ -326,13 +389,7 @@ export class UIManager {
   async acceptFriendRequest(rid){ const t=localStorage.getItem('bsp_clone_jwt_token'); try{ const r=await fetch(`${API_BASE_URL}/api/friends/accept`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({requestId:rid})}); const d=await r.json(); if(r.ok){ this.showMessage('Dodano!','success'); this.loadFriendsData(); } else this.showMessage(d.message,'error'); } catch(e){ this.showMessage('Błąd sieci','error'); } }
   updateTopBarFriends(f){ const c=document.getElementById('active-friends-container'); if(!c)return; c.innerHTML=''; const on=f.filter(x=>x.isOnline); on.forEach(fr=>{ const it=document.createElement('div'); it.className='active-friend-item'; const av=document.createElement('div'); av.className='active-friend-avatar'; if(fr.current_skin_thumbnail) av.style.backgroundImage=`url(${fr.current_skin_thumbnail})`; else { av.style.display='flex'; av.style.justifyContent='center'; av.style.alignItems='center'; av.textContent='👤'; av.style.color='white'; } av.onclick=()=>this.showSkinPreviewFromUrl(fr.current_skin_thumbnail); const nm=document.createElement('div'); nm.className='active-friend-name text-outline'; nm.textContent=fr.username; it.appendChild(av); it.appendChild(nm); c.appendChild(it); }); }
   showSkinPreviewFromUrl(url){ if(!url)return; const p=document.getElementById('player-preview-panel'); const c=document.getElementById('player-preview-renderer-container'); c.innerHTML=''; c.style.backgroundColor='#333'; const i=document.createElement('img'); i.src=url; i.style.width='100%'; i.style.height='100%'; i.style.objectFit='contain'; c.appendChild(i); this.openPanel('player-preview-panel'); }
-
-  // --- DISCOVER ---
-  setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
-  async showDiscoverPanel(type) { const title=document.getElementById('discover-panel-title'); const tabs=document.getElementById('discover-tabs'); const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; this.openPanel('discover-panel'); if(type==='worlds') { if(title) title.textContent='Wybierz Świat'; if(tabs) tabs.style.display='none'; try { const savedWorlds = await WorldStorage.getAllWorlds(); this.populateDiscoverPanel('worlds', savedWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } } else if(type==='skins') { if(title) title.textContent='Wybierz Skina'; if(tabs) { tabs.style.display='flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) tabAll.classList.add('active'); this.refreshSkinList('all'); } } }
-  async refreshSkinList(mode) { const list=document.getElementById('discover-list'); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; let skins=[]; try { if(mode==='mine') skins = await SkinStorage.getMySkins(); else skins = await SkinStorage.getAllSkins(); this.populateDiscoverPanel('skins', skins, (skinId, skinName, thumbnail, ownerId)=>{ if(this.onSkinSelect) this.onSkinSelect(skinId, skinName, thumbnail, ownerId); }); } catch(e) { console.error("Błąd pobierania skinów:", e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center; color: #ff5555;">Błąd połączenia.</p>'; } }
-  populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item=>{ const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width=(type==='worlds')?'80px':'64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc=null; let label=''; let skinId=null; let ownerId=null; if(type==='worlds'){ if(typeof item==='object'){ label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; } else { label=item; } } else { label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; skinId=item.id; ownerId=item.owner_id; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent=(type==='worlds')?'🌍':'?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; thumbContainer.style.fontSize='24px'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); div.onclick=()=>{ this.closeAllPanels(); if(type==='worlds') onSelect(item); else onSelect(skinId, item.name, item.thumbnail, ownerId); }; list.appendChild(div); }); }
-
+  
   // --- MAIL ---
   async loadMailData() {
       const t = localStorage.getItem('bsp_clone_jwt_token');
@@ -398,7 +455,7 @@ export class UIManager {
       container.scrollTop = container.scrollHeight;
   }
 
-  setupMailSystem() {
+  async setupMailSystem() {
       const closeBtn = document.querySelector('#mail-panel .panel-close-button');
       if (closeBtn) {
           closeBtn.onclick = () => {
