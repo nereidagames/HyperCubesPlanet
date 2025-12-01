@@ -80,7 +80,13 @@ class BlockStarPlanetGame {
 
       console.log("Zasoby załadowane. Inicjalizacja UI...");
       try {
+        // 1. Najpierw wstrzykujemy HTML (renderUI wewnątrz initialize)
         this.ui.initialize(this.isMobile);
+        
+        // 2. Teraz, gdy HTML istnieje, podpinamy zdarzenia do przycisków Auth
+        this.auth.bindEvents();
+        
+        // 3. Sprawdzamy czy user jest zalogowany
         this.auth.checkSession(this.ui);
       } catch (e) {
           console.error("Błąd inicjalizacji UI:", e);
@@ -100,7 +106,6 @@ class BlockStarPlanetGame {
       this.ui.checkAdminPermissions(user.username);
       this.ui.loadFriendsData();
 
-      // INICJALIZACJA LEVELA
       if (user.level) {
           this.ui.updateLevelInfo(user.level, user.xp, user.maxXp || 100);
       }
@@ -111,18 +116,13 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      // --- SCENA ---
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
       try { await this.sceneManager.initialize(); } catch(e) { console.error(e); }
 
-      // --- POSTAĆ ---
       this.characterManager = new CharacterManager(this.scene);
       this.characterManager.loadCharacter();
       
-      // --- FIX: BEZPIECZNE USTAWIANIE POZYCJI (CLIENT-SIDE SPAWN FIX) ---
-      // Obliczamy wysokość terenu w punkcie (0,0) na podstawie wczytanej mapy
       const safeY = this.sceneManager.getSafeY(0, 0);
-      // Ustawiamy gracza 2 jednostki nad ziemią, żeby na pewno nie wpadł w tekstury
       this.characterManager.character.position.set(0, safeY + 2.0, 0);
 
       const lastSkinId = SkinStorage.getLastUsedSkinId();
@@ -283,6 +283,14 @@ class BlockStarPlanetGame {
       if (this.previewCharacter && !this.isPreviewDragging) { this.previewCharacter.rotation.y += 0.005; }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
     }
+  }
+  
+  showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
+    errorDiv.textContent = message;
+    document.body.appendChild(errorDiv);
+    setTimeout(() => errorDiv.remove(), 5000);
   }
 }
 
