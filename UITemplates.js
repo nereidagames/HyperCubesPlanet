@@ -1,25 +1,27 @@
 export const AUTH_HTML = `
-    <div class="auth-container">
-        <div id="welcome-view">
-            <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
-            <button id="show-register-btn" class="btn-primary text-outline">Nowy Użytkownik</button>
+    <div id="auth-screen">
+        <div class="auth-container">
+            <div id="welcome-view">
+                <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
+                <button id="show-register-btn" class="btn-primary text-outline">Nowy Użytkownik</button>
+            </div>
+            <form id="login-form" class="auth-form">
+                <h2 class="text-outline">Zaloguj</h2>
+                <input type="text" id="login-username" placeholder="Wprowadź nick" required autocomplete="username">
+                <input type="password" id="login-password" placeholder="Wprowadź hasło" required autocomplete="current-password">
+                <button type="submit" class="btn-primary text-outline">Ok</button>
+                <button type="button" class="btn-back text-outline">Anuluj</button>
+            </form>
+            <form id="register-form" class="auth-form">
+                <h2 class="text-outline">Nowy Użytkownik</h2>
+                <input type="text" id="register-username" placeholder="Wprowadź nick" required minlength="3" maxlength="15">
+                <input type="password" id="register-password" placeholder="Wprowadź hasło" required minlength="6">
+                <input type="password" id="register-password-confirm" placeholder="Powtórz hasło" required>
+                <button type="submit" class="btn-primary text-outline">Ok</button>
+                <button type="button" class="btn-back text-outline">Anuluj</button>
+            </form>
+            <div id="auth-message" class="text-outline"></div>
         </div>
-        <form id="login-form" class="auth-form">
-            <h2 class="text-outline">Zaloguj</h2>
-            <input type="text" id="login-username" placeholder="Wprowadź nick" required autocomplete="username">
-            <input type="password" id="login-password" placeholder="Wprowadź hasło" required autocomplete="current-password">
-            <button type="submit" class="btn-primary text-outline">Ok</button>
-            <button type="button" class="btn-back text-outline">Anuluj</button>
-        </form>
-        <form id="register-form" class="auth-form">
-            <h2 class="text-outline">Nowy Użytkownik</h2>
-            <input type="text" id="register-username" placeholder="Wprowadź nick" required minlength="3" maxlength="15">
-            <input type="password" id="register-password" placeholder="Wprowadź hasło" required minlength="6">
-            <input type="password" id="register-password-confirm" placeholder="Powtórz hasło" required>
-            <button type="submit" class="btn-primary text-outline">Ok</button>
-            <button type="button" class="btn-back text-outline">Anuluj</button>
-        </form>
-        <div id="auth-message" class="text-outline"></div>
     </div>
 `;
 
