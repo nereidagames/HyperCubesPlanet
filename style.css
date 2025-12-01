@@ -74,7 +74,9 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: var(--font-main); }
 
 /* Right UI (Coins, Level, Buttons) */
+/* Domyślnie (Desktop) */
 .right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+
 .game-buttons { display: flex; gap: 15px; align-items: center; margin-bottom: 5px; }
 .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
 .game-btn:active { transform: scale(0.95); }
@@ -245,8 +247,9 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 /* --- ZMIANY DLA URZĄDZEŃ MOBILNYCH (50% MNIEJSZE IKONY - POPRAWIONY ZAKRES 1280px) --- */
 @media (max-width: 1280px) {
     /* HUD Container adjustments */
+    /* FIX: Obniżona pozycja ikon pod górny pasek (65px od góry) */
     .right-ui {
-        top: 10px; 
+        top: 65px; 
         right: 5px;
         gap: 5px;
     }
