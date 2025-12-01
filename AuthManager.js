@@ -2,7 +2,12 @@ import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 
 export class AuthManager {
     constructor(onLoginSuccess) {
-        this.onLoginSuccess = onLoginSuccess; // Funkcja z main.js (startGame)
+        this.onLoginSuccess = onLoginSuccess; 
+        // Usunięto bindEvents z konstruktora, bo HTML jeszcze nie istnieje
+    }
+
+    // Ta metoda zostanie wywołana z main.js PO załadowaniu UI
+    bindEvents() {
         this.uiElements = {
             screen: document.getElementById('auth-screen'),
             welcomeView: document.getElementById('welcome-view'),
@@ -10,8 +15,29 @@ export class AuthManager {
             registerForm: document.getElementById('register-form'),
             message: document.getElementById('auth-message')
         };
+
+        const showLoginBtn = document.getElementById('show-login-btn');
+        const showRegisterBtn = document.getElementById('show-register-btn');
+        const backButtons = document.querySelectorAll('.btn-back');
+
+        if(showLoginBtn) showLoginBtn.onclick = () => this.showView(this.uiElements.loginForm);
+        if(showRegisterBtn) showRegisterBtn.onclick = () => this.showView(this.uiElements.registerForm);
         
-        this.bindEvents();
+        if (backButtons) {
+            backButtons.forEach(btn => btn.onclick = () => this.showView(this.uiElements.welcomeView));
+        }
+
+        if(this.uiElements.registerForm) {
+            this.uiElements.registerForm.addEventListener('submit', (e) => this.handleRegister(e));
+        }
+        if(this.uiElements.loginForm) {
+            this.uiElements.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        }
+        
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.onclick = () => this.logout();
+        }
     }
 
     // Sprawdza, czy mamy token w pamięci przy starcie
@@ -27,11 +53,9 @@ export class AuthManager {
 
                 if (response.ok) {
                     const data = await response.json();
-                    // Jeśli UI jest gotowe, zaktualizuj avatar
                     if (data.thumbnail && uiManager) {
                         uiManager.updatePlayerAvatar(data.thumbnail);
                     }
-                    // Sukces - uruchom grę
                     this.onLoginSuccess(data.user, token);
                 } else {
                     throw new Error('Token invalid');
@@ -46,39 +70,20 @@ export class AuthManager {
     }
 
     showAuthScreen() {
-        if (this.uiElements.screen) this.uiElements.screen.style.display = 'flex';
-        this.showView(this.uiElements.welcomeView);
+        if (this.uiElements && this.uiElements.screen) {
+            this.uiElements.screen.style.display = 'flex';
+            this.showView(this.uiElements.welcomeView);
+        }
     }
 
     showView(viewToShow) {
-        this.uiElements.welcomeView.style.display = 'none';
-        this.uiElements.loginForm.style.display = 'none';
-        this.uiElements.registerForm.style.display = 'none';
+        if (!this.uiElements) return;
+        if (this.uiElements.welcomeView) this.uiElements.welcomeView.style.display = 'none';
+        if (this.uiElements.loginForm) this.uiElements.loginForm.style.display = 'none';
+        if (this.uiElements.registerForm) this.uiElements.registerForm.style.display = 'none';
         
         if(viewToShow) viewToShow.style.display = 'flex';
         if(this.uiElements.message) this.uiElements.message.textContent = '';
-    }
-
-    bindEvents() {
-        const showLoginBtn = document.getElementById('show-login-btn');
-        const showRegisterBtn = document.getElementById('show-register-btn');
-        const backButtons = document.querySelectorAll('.btn-back');
-
-        if(showLoginBtn) showLoginBtn.onclick = () => this.showView(this.uiElements.loginForm);
-        if(showRegisterBtn) showRegisterBtn.onclick = () => this.showView(this.uiElements.registerForm);
-        backButtons.forEach(btn => btn.onclick = () => this.showView(this.uiElements.welcomeView));
-
-        if(this.uiElements.registerForm) {
-            this.uiElements.registerForm.addEventListener('submit', (e) => this.handleRegister(e));
-        }
-        if(this.uiElements.loginForm) {
-            this.uiElements.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
-        }
-        
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.onclick = () => this.logout();
-        }
     }
 
     async handleRegister(e) {
@@ -127,8 +132,6 @@ export class AuthManager {
             if (response.ok) {
                 this.setMessage('Zalogowano pomyślnie!');
                 if (this.uiElements.screen) this.uiElements.screen.style.display = 'none';
-                
-                // Uruchom grę przez callback
                 this.onLoginSuccess(data.user, data.token, data.thumbnail);
             } else {
                 this.setMessage(data.message || 'Błąd logowania.');
@@ -146,6 +149,6 @@ export class AuthManager {
     }
 
     setMessage(msg) {
-        if(this.uiElements.message) this.uiElements.message.textContent = msg;
+        if(this.uiElements && this.uiElements.message) this.uiElements.message.textContent = msg;
     }
 }
