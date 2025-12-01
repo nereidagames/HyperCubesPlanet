@@ -117,6 +117,48 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
 #build-block-list { display: flex; flex-wrap: wrap; gap: 10px; max-height: 200px; overflow-y: auto; }
 
+/* --- MOBILE CONTROLS & FIXES --- */
+#mobile-game-controls {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 2000;
+    display: none; /* Toggled via JS */
+    pointer-events: none; /* Let clicks pass through empty space */
+}
+
+#jump-button { 
+    position: absolute !important; 
+    bottom: 30px; right: 30px; 
+    width: 80px; height: 80px; 
+    background-color: transparent; 
+    background-image: url('icons/icon-jump.png'); 
+    background-size: contain; background-position: center; background-repeat: no-repeat; 
+    border: none; 
+    cursor: pointer; 
+    z-index: 2001; 
+    display: block; /* Force display */
+    pointer-events: auto; 
+}
+
+#joystick-zone { 
+    position: absolute !important; 
+    bottom: 30px; left: 30px; 
+    width: 120px; height: 120px; 
+    z-index: 2001;
+    display: block; /* Force display */
+    pointer-events: auto;
+}
+
+#build-rotate-zone { 
+    position: absolute; bottom: 30px; right: 30px; 
+    width: 120px; height: 120px; 
+    background: rgba(0, 0, 0, 0.4); border: 4px solid white; border-radius: 50%; 
+    pointer-events: auto; cursor: grab; z-index: 2001; 
+    display: flex; justify-content: center; align-items: center; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+}
+.rotate-icon { font-size: 50px; color: white; filter: drop-shadow(2px 2px 0 #000); }
+
 /* --- MODALS --- */
 .panel-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 20px; }
 .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
@@ -140,6 +182,7 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 #reward-panel h1 { font-size: 32px; margin-bottom: 20px; text-shadow: 2px 2px 0 #000; }
 .reward-box-container { display: flex; gap: 20px; margin-bottom: 20px; }
 .reward-box { background-color: #74b9ff; border-radius: 15px; padding: 15px; width: 150px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 5px 0 #2980b9; }
+.reward-title { font-size: 16px; margin-bottom: 10px; text-shadow: 1px 1px 0 #000; }
 .reward-row { display: flex; align-items: center; gap: 5px; font-size: 20px; margin: 5px 0; text-shadow: 1px 1px 0 #000; }
 .reward-row img { width: 25px; height: 25px; filter: drop-shadow(1px 1px 2px #000); }
 .level-progress-area { display: flex; align-items: center; width: 100%; margin-bottom: 20px; justify-content: center; position: relative; }
@@ -199,8 +242,8 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .play-choice-icon { width: 100px; height: 100px; border-radius: 20px; border: 3px solid white; display: flex; justify-content: center; align-items: center; font-size: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 .play-choice-label { margin-top: 10px; font-size: 18px; color: white; }
 
-/* --- ZMIANY DLA URZĄDZEŃ MOBILNYCH (50% MNIEJSZE IKONY) --- */
-@media (max-width: 768px) {
+/* --- ZMIANY DLA URZĄDZEŃ MOBILNYCH (50% MNIEJSZE IKONY - POPRAWIONY ZAKRES 1280px) --- */
+@media (max-width: 1280px) {
     /* HUD Container adjustments */
     .right-ui {
         top: 10px; 
@@ -208,7 +251,7 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
         gap: 5px;
     }
     
-    /* 1. GŁÓWNE PRZYCISKI (Play, Build, Shop...) */
+    /* 1. GŁÓWNE PRZYCISKI */
     .game-buttons {
         gap: 5px;
         margin-bottom: 5px;
@@ -240,9 +283,6 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
         bottom: 5px;
         border-radius: 5px;
         border: 1px solid white;
-    }
-    #level-bar-fill {
-        /* Reset transition speed for smoothness on small scale */
     }
     #level-text {
         font-size: 8px; 
@@ -281,5 +321,17 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
         border-radius: 8px;
         border: 1px solid white;
         padding-bottom: 2px;
+    }
+    
+    /* Mobile Controls Fix */
+    #joystick-zone {
+        bottom: 20px;
+        left: 20px;
+    }
+    #jump-button {
+        bottom: 20px;
+        right: 20px;
+        width: 70px;
+        height: 70px;
     }
 }
