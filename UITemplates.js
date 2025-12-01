@@ -37,11 +37,7 @@ export const HUD_HTML = `
     <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
     
     <div class="right-ui ui-element">
-        <div id="level-container">
-            <div class="level-star"><div id="level-value" class="text-outline">1</div></div>
-            <div class="level-bar-background"><div id="level-bar-fill"></div><div id="level-text" class="text-outline">0/50</div></div>
-            <div class="level-plus-btn">+</div>
-        </div>
+        <!-- KOLEJNOŚĆ NAPRAWIONA: 1. Przyciski, 2. Level, 3. Monety -->
         <div class="game-buttons">
             <button class="game-btn btn-zagraj"></button>
             <button class="game-btn btn-buduj"></button>
@@ -49,6 +45,13 @@ export const HUD_HTML = `
             <button class="game-btn btn-odkryj"></button>
             <button class="game-btn btn-wiecej"></button>
         </div>
+
+        <div id="level-container">
+            <div class="level-star"><div id="level-value" class="text-outline">1</div></div>
+            <div class="level-bar-background"><div id="level-bar-fill"></div><div id="level-text" class="text-outline">0/50</div></div>
+            <div class="level-plus-btn">+</div>
+        </div>
+        
         <div id="coin-counter"><div class="coin-icon"></div><div class="coin-bar-background"><div id="coin-value" class="text-outline">0</div></div><div id="coin-add-btn" class="ui-element">+</div></div>
     </div>
     <div id="mobile-game-controls"><div id="joystick-zone"></div><button id="jump-button"></button></div>
@@ -76,7 +79,9 @@ export const BUILD_UI_HTML = `
 `;
 
 export const MODALS_HTML = `
+    <!-- Przycisk powrotu (musi być tutaj) -->
     <div id="explore-exit-button"></div>
+    
     <div id="victory-panel">
         <div class="victory-title text-outline">Parkour Ukończony!</div>
         <div class="victory-time text-outline" id="victory-time-display">00:00.00</div>
@@ -102,22 +107,25 @@ export const MODALS_HTML = `
             <button id="reward-btn-next"></button>
         </div>
     </div>
+    
+    <!-- PANEL WYBORU GRY Z NOWYMI IKONAMI -->
     <div id="play-choice-panel" class="panel-modal">
         <div class="panel-content">
             <h2>W co chcesz zagrać?</h2>
             <div class="build-choice-grid">
                 <div id="play-choice-parkour" class="play-choice-item">
-                    <div class="play-choice-icon" style="background-image: url('icons/icon-jump.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #e67e22;"></div>
+                    <div class="play-choice-icon" style="background-image: url('icons/icon-parkour.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #e67e22;"></div>
                     <span class="play-choice-label text-outline">Parkour</span>
                 </div>
                 <div id="play-choice-chat" class="play-choice-item">
-                    <div class="play-choice-icon" style="background-image: url('icons/icon-friends.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #3498db;"></div>
+                    <div class="play-choice-icon" style="background-image: url('icons/icon-chat.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #3498db;"></div>
                     <span class="play-choice-label text-outline">Czat</span>
                 </div>
             </div>
             <button class="panel-close-button">Anuluj</button>
         </div>
     </div>
+    
     <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
