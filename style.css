@@ -117,14 +117,6 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
 #build-block-list { display: flex; flex-wrap: wrap; gap: 10px; max-height: 200px; overflow-y: auto; }
 
-/* --- MOBILE CONTROLS --- */
-#mobile-game-controls { display: none; pointer-events: auto; }
-#jump-button { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; background-color: transparent; background-image: url('icons/icon-jump.png'); background-size: contain; background-position: center; background-repeat: no-repeat; border: none; cursor: pointer; z-index: 1001; border-radius: 0; box-shadow: none; display: block; }
-#jump-button:active { transform: scale(0.95); }
-#joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; display: none; z-index: 1001;}
-#build-rotate-zone { position: absolute; bottom: 30px; right: 30px; width: 120px; height: 120px; background: rgba(0, 0, 0, 0.4); border: 4px solid white; border-radius: 50%; pointer-events: auto; cursor: grab; z-index: 2001; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-.rotate-icon { font-size: 50px; color: white; filter: drop-shadow(2px 2px 0 #000); }
-
 /* --- MODALS --- */
 .panel-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 20px; }
 .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
@@ -206,3 +198,88 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .play-choice-item:active { transform: scale(0.95); }
 .play-choice-icon { width: 100px; height: 100px; border-radius: 20px; border: 3px solid white; display: flex; justify-content: center; align-items: center; font-size: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 .play-choice-label { margin-top: 10px; font-size: 18px; color: white; }
+
+/* --- ZMIANY DLA URZĄDZEŃ MOBILNYCH (50% MNIEJSZE IKONY) --- */
+@media (max-width: 768px) {
+    /* HUD Container adjustments */
+    .right-ui {
+        top: 10px; 
+        right: 5px;
+        gap: 5px;
+    }
+    
+    /* 1. GŁÓWNE PRZYCISKI (Play, Build, Shop...) */
+    .game-buttons {
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    .game-btn {
+        width: 38px;  /* 50% z 75px */
+        height: 38px;
+    }
+
+    /* 2. PASEK LEVELA */
+    #level-container {
+        width: 110px; /* 50% z 220px */
+        height: 25px; /* 50% z 50px */
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+    .level-star {
+        width: 28px; /* ~50% z 55px */
+        height: 28px;
+    }
+    #level-value {
+        font-size: 12px;
+        margin-top: 1px;
+    }
+    .level-bar-background {
+        left: 15px;
+        right: 20px;
+        top: 5px;
+        bottom: 5px;
+        border-radius: 5px;
+        border: 1px solid white;
+    }
+    #level-bar-fill {
+        /* Reset transition speed for smoothness on small scale */
+    }
+    #level-text {
+        font-size: 8px; 
+    }
+    .level-plus-btn {
+        width: 18px;
+        height: 18px;
+        font-size: 12px;
+        border-radius: 4px;
+        border: 1px solid white;
+    }
+
+    /* 3. PASEK MONET */
+    #coin-counter {
+        width: 85px; /* 50% z 170px */
+        height: 25px; /* 50% z 50px */
+        margin-top: 2px;
+    }
+    .coin-icon {
+        width: 25px;
+        height: 25px;
+    }
+    .coin-bar-background {
+        left: 12px;
+        right: 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    #coin-value {
+        font-size: 11px;
+    }
+    #coin-add-btn {
+        width: 25px;
+        height: 25px;
+        font-size: 18px;
+        border-radius: 8px;
+        border: 1px solid white;
+        padding-bottom: 2px;
+    }
+}
