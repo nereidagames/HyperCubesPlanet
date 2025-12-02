@@ -37,7 +37,6 @@ export const HUD_HTML = `
     <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
     
     <div class="right-ui ui-element">
-        <!-- KOLEJNOŚĆ NAPRAWIONA: 1. Przyciski, 2. Level, 3. Monety -->
         <div class="game-buttons">
             <button class="game-btn btn-zagraj"></button>
             <button class="game-btn btn-buduj"></button>
@@ -45,13 +44,11 @@ export const HUD_HTML = `
             <button class="game-btn btn-odkryj"></button>
             <button class="game-btn btn-wiecej"></button>
         </div>
-
         <div id="level-container">
             <div class="level-star"><div id="level-value" class="text-outline">1</div></div>
             <div class="level-bar-background"><div id="level-bar-fill"></div><div id="level-text" class="text-outline">0/50</div></div>
             <div class="level-plus-btn">+</div>
         </div>
-        
         <div id="coin-counter"><div class="coin-icon"></div><div class="coin-bar-background"><div id="coin-value" class="text-outline">0</div></div><div id="coin-add-btn" class="ui-element">+</div></div>
     </div>
     <div id="mobile-game-controls"><div id="joystick-zone"></div><button id="jump-button"></button></div>
@@ -79,9 +76,7 @@ export const BUILD_UI_HTML = `
 `;
 
 export const MODALS_HTML = `
-    <!-- Przycisk powrotu (musi być tutaj) -->
     <div id="explore-exit-button"></div>
-    
     <div id="victory-panel">
         <div class="victory-title text-outline">Parkour Ukończony!</div>
         <div class="victory-time text-outline" id="victory-time-display">00:00.00</div>
@@ -107,8 +102,6 @@ export const MODALS_HTML = `
             <button id="reward-btn-next"></button>
         </div>
     </div>
-    
-    <!-- PANEL WYBORU GRY Z NOWYMI IKONAMI -->
     <div id="play-choice-panel" class="panel-modal">
         <div class="panel-content">
             <h2>W co chcesz zagrać?</h2>
@@ -125,7 +118,6 @@ export const MODALS_HTML = `
             <button class="panel-close-button">Anuluj</button>
         </div>
     </div>
-    
     <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
@@ -136,4 +128,40 @@ export const MODALS_HTML = `
     <div id="player-preview-panel" class="panel-modal"><div class="panel-content"><h2>Podgląd</h2><div id="player-preview-renderer-container"></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="more-options-panel" class="panel-modal"><div class="panel-content"><h2>Opcje</h2><div class="panel-list"><div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div><div id="logout-btn" class="panel-item btn-danger">Wyloguj</div></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
+    
+    <!-- --- NOWY MODAL SZCZEGÓŁÓW SKINA --- -->
+    <div id="skin-details-modal" class="panel-modal">
+        <div class="skin-details-content">
+            <div class="skin-details-left">
+                <div id="skin-creator-card">
+                    <div id="skin-creator-avatar"></div>
+                    <div class="creator-info">
+                        <div id="skin-creator-name" class="text-outline">Twórca</div>
+                        <div id="skin-time-ago" class="text-outline">0 dni temu</div>
+                    </div>
+                    <div class="creator-level">
+                        <div class="level-star-small"><span id="skin-creator-level" class="text-outline">1</span></div>
+                    </div>
+                </div>
+                <div class="skin-stats-card">
+                    <div class="like-icon-big">👍</div>
+                    <div id="skin-likes-count" class="text-outline">0</div>
+                </div>
+            </div>
+            
+            <div class="skin-details-center">
+                <div id="skin-name-header" class="text-outline">Nazwa Skina</div>
+                <div id="skin-3d-container"></div>
+            </div>
+            
+            <div class="skin-details-right">
+                <button id="skin-share-btn" class="skin-action-btn"><img src="icons/icon-share.png"> Udostępnij</button>
+                <button id="skin-like-btn" class="skin-action-btn"><img src="icons/icon-like.png"> Polub</button>
+                <button id="skin-wear-btn" class="skin-action-btn" style="background-color:#2ecc71"><img src="icons/icon-wear.png"> Użyj</button>
+                <button id="skin-comments-btn" class="skin-action-btn"><img src="icons/logo-poczta.png"> <span id="skin-comments-count">0</span></button>
+            </div>
+
+            <button class="panel-close-button" style="position:absolute; top:10px; right:10px;">X</button>
+        </div>
+    </div>
 `;
