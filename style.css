@@ -74,67 +74,22 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .active-friend-avatar { width: 40px; height: 40px; background-color: #333; border: 2px solid var(--color-primary); border-radius: 8px; background-size: cover; background-position: center; }
 .active-friend-name { color: var(--color-primary); font-size: 9px; margin-top: 2px; text-shadow: 1px 1px 0 #000; }
 
-/* --- CHAT (BSP STYLE UPDATE) --- */
-.chat-container { 
-    position: absolute; 
-    top: 70px; 
-    left: 10px; 
-    display: flex; 
-    align-items: flex-start; 
-    gap: 0; /* Połączone elementy */
-}
-
+/* Chat */
+.chat-container { position: absolute; top: 70px; left: 10px; display: flex; align-items: flex-start; gap: 0; }
 .chat-area { 
-    position: static; 
-    width: 300px; 
-    height: 90px; 
-    /* Jasnoniebieskie tło z lekką przezroczystością */
+    position: static; width: 300px; height: 90px; 
     background: rgba(220, 240, 255, 0.9); 
-    /* Niebieska ramka */
-    border: 2px solid #5dade2;
-    border-right: none; /* Łączenie z przyciskiem */
-    border-radius: 8px 0 0 8px;
-    padding: 5px 8px; 
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
-    overflow-y: auto; 
+    border: 2px solid #5dade2; border-right: none; border-radius: 8px 0 0 8px;
+    padding: 5px 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); overflow-y: auto; 
 }
-
-.chat-area::-webkit-scrollbar { width: 5px; } 
-.chat-area::-webkit-scrollbar-track { background: transparent; } 
-.chat-area::-webkit-scrollbar-thumb { background: #5dade2; border-radius: 10px; }
-
-/* Styl wiadomości w czacie */
-.chat-message { 
-    color: #444; /* Ciemny tekst */
-    font-size: 13px; 
-    margin: 2px 0; 
-    font-style: italic; /* Styl systemowy */
-    font-weight: bold;
-    text-shadow: none; /* Usunięty czarny obrys dla czytelności na jasnym tle */
-}
-
-/* Przycisk otwierania czatu (Zielony kwadrat) */
+.chat-area::-webkit-scrollbar { width: 5px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background: #5dade2; border-radius: 10px; }
+.chat-message { color: #444; font-size: 13px; margin: 2px 0; font-style: italic; font-weight: bold; text-shadow: none; }
 #chat-toggle-button { 
-    width: 40px; 
-    height: 40px; 
-    background: #2ecc71; /* Zielony */
-    border: 2px solid #27ae60; /* Ciemnozielona ramka */
-    border-radius: 0 8px 8px 0; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    cursor: pointer; 
-    box-shadow: 0 4px 0 #218c74; /* Efekt 3D */
-    font-size: 20px; 
-    color: white;
-    transition: transform 0.1s, box-shadow 0.1s;
+    width: 40px; height: 40px; background: #2ecc71; border: 2px solid #27ae60; border-radius: 0 8px 8px 0; 
+    display: flex; align-items: center; justify-content: center; cursor: pointer; 
+    box-shadow: 0 4px 0 #218c74; font-size: 20px; color: white; transition: transform 0.1s, box-shadow 0.1s;
 }
-
-#chat-toggle-button:active {
-    transform: translateY(4px);
-    box-shadow: 0 0 0 #218c74;
-}
-
+#chat-toggle-button:active { transform: translateY(4px); box-shadow: 0 0 0 #218c74; }
 #chat-form { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
 #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: var(--font-main); }
 #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: var(--font-main); }
@@ -307,6 +262,164 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .play-choice-item:active { transform: scale(0.95); }
 .play-choice-icon { width: 100px; height: 100px; border-radius: 20px; border: 3px solid white; display: flex; justify-content: center; align-items: center; font-size: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 .play-choice-label { margin-top: 10px; font-size: 18px; color: white; }
+
+/* --- SKIN DETAILS MODAL (NEW) --- */
+#skin-details-modal {
+    display: none; 
+    position: fixed; 
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 85vw; max-width: 750px;
+    height: 550px; max-height: 85vh;
+    background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
+    border: 4px solid white;
+    border-radius: 20px;
+    z-index: 4000;
+    flex-direction: row;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.skin-col-left {
+    width: 25%;
+    background: rgba(0,0,0,0.1);
+    border-right: 2px solid white;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.skin-creator-box {
+    background: rgba(0,0,0,0.2);
+    width: 100%;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    color: white;
+    font-size: 12px;
+}
+.skin-creator-avatar {
+    width: 60px; height: 60px;
+    border-radius: 10px;
+    border: 2px solid white;
+    background-color: #3498db;
+    background-size: cover;
+    margin-bottom: 5px;
+}
+.skin-creator-level {
+    width: 40px; height: 40px;
+    background: url('icons/icon-level.png') center / contain no-repeat;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 16px; color: white;
+    margin-top: 5px;
+}
+
+.skin-stats-box {
+    margin-top: auto;
+    width: 100%;
+    background: #3498db;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-size: 18px;
+    border: 2px solid white;
+}
+.skin-like-icon-big {
+    width: 30px; height: 30px;
+    background: url('icons/icon-like.png') center / contain no-repeat; /* Potrzebna ikona */
+    /* Fallback: */
+    background-color: white; mask: url('icons/icon-like.png'); -webkit-mask: url('icons/icon-like.png');
+}
+
+.skin-col-center {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+}
+#skin-preview-canvas { width: 100%; height: 100%; }
+.skin-name-header {
+    position: absolute;
+    top: 20px;
+    font-size: 32px;
+    color: white;
+    text-shadow: 2px 2px 0 #000;
+    text-align: center;
+    width: 100%;
+}
+
+.skin-col-right {
+    width: 15%;
+    background: rgba(0,0,0,0.1);
+    border-left: 2px solid white;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    padding-top: 50px;
+}
+
+.skin-action-btn {
+    width: 60px; height: 60px;
+    background: linear-gradient(to bottom, #a18cd1 0%, #fbc2eb 100%);
+    border: 3px solid white;
+    border-radius: 15px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+}
+.skin-action-btn:active { transform: translateY(4px); box-shadow: none; }
+.skin-btn-icon {
+    width: 30px; height: 30px;
+    background-size: contain; background-repeat: no-repeat; background-position: center;
+}
+.skin-btn-label { font-size: 10px; color: white; margin-top: 2px; }
+
+/* Ikony akcji (placeholdery, musisz dodać pliki) */
+#skin-btn-share .skin-btn-icon { background-image: url('icons/icon-share.png'); }
+#skin-btn-like .skin-btn-icon { background-image: url('icons/icon-like.png'); }
+#skin-btn-comment .skin-btn-icon { background-image: url('icons/icon-chat.png'); }
+
+/* MOBILE ADJUSTMENTS FOR MODAL */
+@media (max-width: 768px) {
+    #skin-details-modal {
+        flex-direction: column;
+        width: 95vw; height: 90vh;
+    }
+    .skin-col-left {
+        width: 100%; height: 15%;
+        flex-direction: row;
+        padding: 5px;
+        border-right: none; border-bottom: 2px solid white;
+    }
+    .skin-creator-box { flex-direction: row; gap: 10px; width: auto; background: none; }
+    .skin-stats-box { width: auto; margin-top: 0; margin-left: auto; }
+    
+    .skin-col-center { flex: 1; }
+    
+    .skin-col-right {
+        width: 100%; height: 15%;
+        flex-direction: row;
+        justify-content: center;
+        border-left: none; border-top: 2px solid white;
+        padding: 5px;
+    }
+}
 
 /* --- ZMIANY DLA URZĄDZEŃ MOBILNYCH (50% MNIEJSZE IKONY - POPRAWIONY ZAKRES 1280px) --- */
 @media (max-width: 1280px) {
