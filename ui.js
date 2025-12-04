@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML } from './UITemplates.js';
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML } from './UITemplates.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
@@ -11,7 +11,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki
+    // Callbacki z main.js
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -29,14 +29,18 @@ export class UIManager {
     this.onMessageSent = null;
     this.onMessageReceived = null;
     this.onEditNexusClick = null;
+    
+    // Callbacki dla parkoura
     this.onExitParkour = null;
     this.onReplayParkour = null;
 
     this.friendsList = [];
     this.mailState = { conversations: [], activeConversation: null };
+    
     this.shopCurrentCategory = 'block'; 
     this.allShopItems = [];
     this.shopIsOwnedCallback = null;
+    
     this.pendingRewardData = null;
 
     // Zmienne do podglądu 3D w oknie skina
@@ -51,7 +55,10 @@ export class UIManager {
     this.isMobile = isMobile;
     console.log("Inicjalizacja UI...");
     try {
+        // 1. Wstrzykiwanie HTML
         this.renderUI();
+        
+        // 2. Podpinanie logiki
         this.setupButtonHandlers();
         this.setupChatSystem();
         this.setupFriendsSystem();
@@ -72,7 +79,8 @@ export class UIManager {
       if (authLayer) authLayer.innerHTML = AUTH_HTML;
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
-      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML;
+      // Łączymy standardowe modale z nowym oknem skina
+      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML;
   }
 
   // --- LEVEL & XP ---
@@ -146,12 +154,12 @@ export class UIManager {
       this.pendingRewardData = null;
   }
 
-  // --- NOWA FUNKCJA: SZCZEGÓŁY SKINA ---
+  // --- SZCZEGÓŁY SKINA (ZAMIAST SZYBKIEGO UBIERANIA) ---
   async showSkinDetails(item) {
-      // item zawiera: {id, name, thumbnail, owner_id, creator (username)}
+      // item: {id, name, thumbnail, owner_id, creator, creatorLevel...}
       const modal = document.getElementById('skin-details-modal');
       if (!modal) {
-          alert("Brakuje HTML dla okna skina! Zaktualizuj UITemplates.js");
+          console.error("Brak HTML okna skina! Sprawdź UITemplates.js");
           return;
       }
       
@@ -163,97 +171,75 @@ export class UIManager {
 
       if(headerName) headerName.textContent = item.name;
       if(creatorName) creatorName.textContent = item.creator || "Nieznany";
-      // Level twórcy - na razie placeholder lub pobrany jeśli jest w danych
-      if(creatorLevel) creatorLevel.textContent = item.creatorLevel || "?"; 
-      // Czas - placeholder lub oblicz
-      if(timeInfo) timeInfo.textContent = "16 dni temu"; 
+      if(creatorLevel) creatorLevel.textContent = "1"; // Placeholder, dopóki API nie zwróci levela twórcy
+      if(timeInfo) timeInfo.textContent = "niedawno"; // Placeholder daty
 
-      // 2. Uruchom renderowanie 3D
+      // 2. Uruchom podgląd 3D
       this.initSkinPreview3D(item.id);
 
-      // 3. Otwórz okno
-      this.closeAllPanels(); // Zamknij listę Odkryj
+      // 3. Pokaż okno
+      this.closeAllPanels(); 
       modal.style.display = 'flex';
 
-      // Obsługa przycisków w oknie skina
+      // Obsługa przycisków
       const btnLike = document.getElementById('skin-btn-like');
-      const btnShare = document.getElementById('skin-btn-share');
-      const btnComment = document.getElementById('skin-btn-comment');
-      const btnClose = modal.querySelector('.panel-close-button'); // Jeśli dodałeś przycisk zamknięcia
-
       if (btnLike) btnLike.onclick = () => { 
-          // TODO: Logika lajkowania
-          alert("Polubiono!"); 
+          alert("Funkcja lajkowania wkrótce!"); 
       };
-
-      // Przycisk "Użyj" lub zamknięcie
-      // Możemy dodać logikę "Ubierz" np. klikając w model 3D
   }
 
   async initSkinPreview3D(skinId) {
       const container = document.getElementById('skin-preview-canvas');
       if (!container) return;
 
-      // Czyścimy kontener i stopujemy poprzednią animację
+      // Reset
       if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
       container.innerHTML = '';
 
-      // Setup Three.js
+      // Setup
       const width = container.clientWidth || 300;
       const height = container.clientHeight || 300;
 
       this.skinPreviewScene = new THREE.Scene();
-      // Przezroczyste tło, bo w CSS mamy gradient
+      // Kamera
       this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-      this.skinPreviewCamera.position.set(0, 2, 7);
-      this.skinPreviewCamera.lookAt(0, 0, 0);
+      this.skinPreviewCamera.position.set(0, 2, 9); // Odsunięta kamera
+      this.skinPreviewCamera.lookAt(0, 1, 0);
 
       this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
       this.skinPreviewRenderer.setSize(width, height);
       container.appendChild(this.skinPreviewRenderer.domElement);
 
-      // Światło
+      // Oświetlenie
       const amb = new THREE.AmbientLight(0xffffff, 0.8);
       this.skinPreviewScene.add(amb);
       const dir = new THREE.DirectionalLight(0xffffff, 0.5);
       dir.position.set(5, 10, 7);
       this.skinPreviewScene.add(dir);
 
-      // Postać
+      // Postać (Nogi)
       this.skinPreviewCharacter = new THREE.Group();
-      createBaseCharacter(this.skinPreviewCharacter); // Nogi
-      this.skinPreviewCharacter.position.y = -1.0;
+      createBaseCharacter(this.skinPreviewCharacter);
+      this.skinPreviewCharacter.position.y = -1.5; // Pozycja startowa
       this.skinPreviewScene.add(this.skinPreviewCharacter);
 
-      // Ładowanie bloków skina
+      // Ładowanie Skina
       const skinData = await SkinStorage.loadSkinData(skinId);
       if (skinData) {
-          // Kopiujemy logikę budowania skina (uproszczona)
           const loader = new THREE.TextureLoader();
           skinData.forEach(b => {
               const geo = new THREE.BoxGeometry(1, 1, 1);
               const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) });
               const mesh = new THREE.Mesh(geo, mat);
-              mesh.position.set(b.x, b.y, b.z);
-              // Skalowanie i pozycja skina na postaci (musi pasować do character.js)
-              // Tutaj upraszczamy: dodajemy bezpośrednio do grupy, ale przeskalowane
-              // W CharacterManager jest scale 0.125. Tutaj w podglądzie chcemy duże.
-              // Dodajemy do kontenera który jest przesunięty
-              const skinBlock = mesh.clone();
-              // Dopasowanie pozycji: w character.js skinContainer jest scale 0.125.
-              // Tutaj w podglądzie chcemy widzieć detale, więc nie skalujemy tak mocno,
-              // albo skalujemy całą grupę.
-              // Zróbmy tak: skiny są budowane w skali 1:1 w edytorze.
-              // W podglądzie "pełnoekranowym" chcemy je widzieć wyraźnie.
-              // Przesuwamy każdy blok o 0.5 w górę (bo nogi są niżej)
-              skinBlock.position.y += 4.0; // Podnosimy klocki nad nogi (eksperymentalnie)
-              this.skinPreviewCharacter.add(skinBlock);
+              // Pozycjonowanie klocków względem nóg
+              mesh.position.set(b.x, b.y + 4.0, b.z); 
+              this.skinPreviewCharacter.add(mesh);
           });
-          // Skalujemy całą postać żeby weszła w kadr
-          this.skinPreviewCharacter.scale.setScalar(0.5);
+          // Skalowanie całości żeby się mieściło
+          this.skinPreviewCharacter.scale.setScalar(0.6);
       }
 
-      // Animacja
+      // Pętla animacji
       const animate = () => {
           this.skinPreviewAnimId = requestAnimationFrame(animate);
           if (this.skinPreviewCharacter) {
@@ -265,22 +251,23 @@ export class UIManager {
   }
 
   closeAllPanels() {
-      // Zatrzymanie renderera 3D przy zamykaniu
+      // Zatrzymaj animację 3D skina, żeby nie zużywać baterii w tle
       if (this.skinPreviewAnimId) {
           cancelAnimationFrame(this.skinPreviewAnimId);
           this.skinPreviewAnimId = null;
       }
       document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none');
-      document.getElementById('skin-details-modal').style.display = 'none'; // Jeśli nie ma klasy panel-modal
+      const skinModal = document.getElementById('skin-details-modal');
+      if(skinModal) skinModal.style.display = 'none';
   }
 
-  // --- HANDLERY ---
+  // --- HANDLERY PRZYCISKÓW ---
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
             const p = btn.closest('.panel-modal'); 
             if(p) p.style.display = 'none'; 
-            // Specjalne zamykanie dla skina (stop renderera)
+            // Specjalne czyszczenie dla okna skina
             if (p && p.id === 'skin-details-modal') {
                 if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
             }
@@ -288,12 +275,13 @@ export class UIManager {
     });
     
     document.querySelectorAll('.panel-content').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
+    
     document.querySelectorAll('.game-btn').forEach(button => {
       const type = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(type, button));
     });
 
-    // Avatar & Friends & Mail
+    // Avatar, Friends, Mail, Chat
     const pBtn = document.getElementById('player-avatar-button');
     if (pBtn) pBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
     const friendsBtn = document.getElementById('btn-friends-open');
@@ -338,7 +326,7 @@ export class UIManager {
     if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
   }
 
-  // --- HELPERS ---
+  // --- HELPERS (Kopiuj standardowe metody) ---
   checkAdminPermissions(username) { const admins = ['nixox2', 'admin']; if (admins.includes(username)) { const optionsList = document.querySelector('#more-options-panel .panel-list'); if (optionsList && !document.getElementById('admin-edit-nexus-btn')) { const editNexusBtn = document.createElement('div'); editNexusBtn.id = 'admin-edit-nexus-btn'; editNexusBtn.className = 'panel-item text-outline'; editNexusBtn.style.backgroundColor = '#e67e22'; editNexusBtn.style.marginTop = '10px'; editNexusBtn.textContent = '🛠️ Edytuj Nexus'; editNexusBtn.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); }; optionsList.insertBefore(editNexusBtn, optionsList.firstChild); } } }
   updatePlayerAvatar(thumbnail) { const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); if (!avatarEl) return; if (thumbnail) { avatarEl.textContent = ''; avatarEl.style.backgroundImage = `url(${thumbnail})`; avatarEl.style.backgroundSize = 'cover'; avatarEl.style.backgroundPosition = 'center'; avatarEl.style.backgroundColor = '#4a90e2'; } else { avatarEl.style.backgroundImage = 'none'; avatarEl.textContent = '👤'; } }
   updatePlayerName(name) { const nameDisplay = document.getElementById('player-name-display'); if (nameDisplay) nameDisplay.textContent = name; }
@@ -367,39 +355,20 @@ export class UIManager {
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
-  
   setupFriendsSystem() { const tabs = document.querySelectorAll('#friends-panel .friends-tab'); tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); const targetId = tab.getAttribute('data-tab'); const views = document.querySelectorAll('#friends-panel .friends-view'); views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); }); const targetView = document.getElementById(targetId); if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); } }; }); const searchBtn = document.getElementById('friends-search-btn'); if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); } }
   setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
   
   async showDiscoverPanel(type, category = null) { const title=document.getElementById('discover-panel-title'); const tabs=document.getElementById('discover-tabs'); const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; this.openPanel('discover-panel'); if(type==='worlds') { if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; if(tabs) tabs.style.display='none'; try { const allWorlds = await WorldStorage.getAllWorlds(); let filteredWorlds = allWorlds; if (category) { filteredWorlds = allWorlds.filter(w => { const wType = w.type || 'creative'; return wType === category; }); } this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } } else if(type==='skins') { if(title) title.textContent='Wybierz Skina'; if(tabs) { tabs.style.display='flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) tabAll.classList.add('active'); this.refreshSkinList('all'); } } }
-  
   async refreshSkinList(mode) { const list=document.getElementById('discover-list'); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; let skins=[]; try { if(mode==='mine') skins = await SkinStorage.getMySkins(); else skins = await SkinStorage.getAllSkins(); this.populateDiscoverPanel('skins', skins, (skinId, skinName, thumbnail, ownerId)=>{ if(this.onSkinSelect) this.onSkinSelect(skinId, skinName, thumbnail, ownerId); }); } catch(e) { console.error("Błąd pobierania skinów:", e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center; color: #ff5555;">Błąd połączenia.</p>'; } }
+  populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item=>{ const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width=(type==='worlds')?'80px':'64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc=null; let label=''; let skinId=null; let ownerId=null; if(type==='worlds'){ if(typeof item==='object'){ label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; } else { label=item; } } else { label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; skinId=item.id; ownerId=item.owner_id; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent=(type==='worlds')?'🌍':'?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; thumbContainer.style.fontSize='24px'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); 
+      // FIX: Kliknięcie w skina otwiera szczegóły, kliknięcie w świat wybiera świat
+      div.onclick=()=>{ 
+          if(type==='worlds') { this.closeAllPanels(); onSelect(item); } 
+          else { this.showSkinDetails(item); }
+      }; 
+      list.appendChild(div); 
+  }); }
   
-  populateDiscoverPanel(type, items, onSelect) { 
-      const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } 
-      items.forEach(item=>{ 
-          const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; 
-          const thumbContainer=document.createElement('div'); thumbContainer.style.width=(type==='worlds')?'80px':'64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; 
-          let thumbSrc=null; let label=''; let skinId=null; let ownerId=null; 
-          if(type==='worlds'){ if(typeof item==='object'){ label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; } else { label=item; } } else { label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; skinId=item.id; ownerId=item.owner_id; } 
-          if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent=(type==='worlds')?'🌍':'?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; thumbContainer.style.fontSize='24px'; } 
-          const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); 
-          
-          // FIX: Kliknięcie w skina otwiera szczegóły, kliknięcie w świat wybiera świat
-          div.onclick=()=>{ 
-              if(type==='worlds') {
-                  this.closeAllPanels(); 
-                  onSelect(item); 
-              } else {
-                  // Dla skinów nie zamykamy od razu, tylko otwieramy nowe okno
-                  // Przekazujemy pełny obiekt item do showSkinDetails
-                  this.showSkinDetails(item);
-              }
-          }; 
-          list.appendChild(div); 
-      }); 
-  }
-
   async loadFriendsData() { const t=localStorage.getItem('bsp_clone_jwt_token'); if(!t)return; const l=document.getElementById('friends-list'); if(l) l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Odświeżanie...</p>'; try{ const r=await fetch(`${API_BASE_URL}/api/friends`,{headers:{'Authorization':`Bearer ${t}`}}); if(r.ok){ const d=await r.json(); this.friendsList=d.friends; this.renderFriendsList(d.friends); this.renderRequestsList(d.requests); this.updateTopBarFriends(d.friends); } else if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd serwera.</p>'; } catch(e){ if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd sieci.</p>'; } }
   renderFriendsList(f){ const l=document.getElementById('friends-list'); if(!l)return; l.innerHTML=''; if(!f||f.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak przyjaciół.</p>'; return; } f.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; const a=document.createElement('div'); a.className='friend-avatar'; if(x.current_skin_thumbnail) a.style.backgroundImage=`url(${x.current_skin_thumbnail})`; else { a.style.display='flex'; a.style.justifyContent='center'; a.style.alignItems='center'; a.textContent='👤'; a.style.color='white'; a.style.fontSize='24px'; } if(x.isOnline) a.style.borderColor='#2ed573'; else a.style.borderColor='#7f8c8d'; const n=document.createElement('div'); n.className='friend-info'; n.innerHTML=`<div class="text-outline" style="font-size:16px;">${x.username}</div><div style="font-size:12px;color:${x.isOnline?'#2ed573':'#ccc'}">${x.isOnline?'Online':'Offline'}</div>`; i.appendChild(a); i.appendChild(n); l.appendChild(i); }); }
   renderRequestsList(r){ const l=document.getElementById('friends-requests'); if(!l)return; l.innerHTML=''; if(!r||r.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak.</p>'; return; } r.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; i.innerHTML=`<div class="friend-info text-outline" style="font-size:16px;">${x.username}</div><div class="friend-actions"><button class="action-btn btn-accept">Akceptuj</button></div>`; i.querySelector('.btn-accept').onclick=()=>this.acceptFriendRequest(x.request_id); l.appendChild(i); }); }
@@ -408,6 +377,7 @@ export class UIManager {
   async acceptFriendRequest(rid){ const t=localStorage.getItem('bsp_clone_jwt_token'); try{ const r=await fetch(`${API_BASE_URL}/api/friends/accept`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({requestId:rid})}); const d=await r.json(); if(r.ok){ this.showMessage('Dodano!','success'); this.loadFriendsData(); } else this.showMessage(d.message,'error'); } catch(e){ this.showMessage('Błąd sieci','error'); } }
   updateTopBarFriends(f){ const c=document.getElementById('active-friends-container'); if(!c)return; c.innerHTML=''; const on=f.filter(x=>x.isOnline); on.forEach(fr=>{ const it=document.createElement('div'); it.className='active-friend-item'; const av=document.createElement('div'); av.className='active-friend-avatar'; if(fr.current_skin_thumbnail) av.style.backgroundImage=`url(${fr.current_skin_thumbnail})`; else { av.style.display='flex'; av.style.justifyContent='center'; av.style.alignItems='center'; av.textContent='👤'; av.style.color='white'; } av.onclick=()=>this.showSkinPreviewFromUrl(fr.current_skin_thumbnail); const nm=document.createElement('div'); nm.className='active-friend-name text-outline'; nm.textContent=fr.username; it.appendChild(av); it.appendChild(nm); c.appendChild(it); }); }
   showSkinPreviewFromUrl(url){ if(!url)return; const p=document.getElementById('player-preview-panel'); const c=document.getElementById('player-preview-renderer-container'); c.innerHTML=''; c.style.backgroundColor='#333'; const i=document.createElement('img'); i.src=url; i.style.width='100%'; i.style.height='100%'; i.style.objectFit='contain'; c.appendChild(i); this.openPanel('player-preview-panel'); }
+  
   async loadMailData() { const t = localStorage.getItem('bsp_clone_jwt_token'); if (!t) return; const container = document.querySelector('.mail-conversations'); if (container) container.innerHTML = '<p class="text-outline" style="text-align:center;">Ładowanie...</p>'; try { const r = await fetch(`${API_BASE_URL}/api/messages`, { headers: { 'Authorization': `Bearer ${t}` } }); const messages = await r.json(); this.renderMailList(messages); } catch (e) { console.error(e); if (container) container.innerHTML = '<p class="text-outline" style="text-align:center;">Błąd.</p>'; } }
   renderMailList(messages) { const container = document.querySelector('.mail-conversations'); if (!container) return; container.innerHTML = ''; if (!messages || messages.length === 0) { container.innerHTML = '<p class="text-outline" style="text-align:center;">Brak wiadomości.</p>'; return; } messages.forEach(msg => { const div = document.createElement('div'); div.className = 'mail-item'; div.innerHTML = `<div class="text-outline" style="font-weight:bold;">${msg.other_username}</div><div style="font-size:12px; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${msg.message_text}</div>`; div.onclick = () => { this.openConversation(msg.other_username); }; container.appendChild(div); }); }
   async openConversation(username) { const t = localStorage.getItem('bsp_clone_jwt_token'); if (!t) return; this.mailState.activeConversation = username; const panel = document.getElementById('mail-panel'); if (panel) panel.classList.add('view-chat'); const chatHeader = document.getElementById('mail-chat-username'); if (chatHeader) chatHeader.textContent = username; const msgsContainer = document.querySelector('.mail-chat-messages'); if (msgsContainer) msgsContainer.innerHTML = '<p style="text-align:center">Pobieranie...</p>'; try { const r = await fetch(`${API_BASE_URL}/api/messages/${username}`, { headers: { 'Authorization': `Bearer ${t}` } }); const history = await r.json(); this.renderChatHistory(history, username); } catch (e) { console.error(e); } }
