@@ -1,170 +1,3 @@
-/* ... (POPRZEDNI KOD POZOSTAJE BEZ ZMIAN DO SEKCJI SKIN DETAILS) ... */
-
-/* --- SKIN DETAILS MODAL --- */
-#skin-details-modal {
-    display: none; 
-    position: fixed; 
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 85vw; max-width: 750px;
-    height: 550px; max-height: 85vh;
-    background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
-    border: 4px solid white;
-    border-radius: 20px;
-    z-index: 4000;
-    flex-direction: row;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-
-.skin-col-left {
-    width: 25%;
-    background: rgba(0,0,0,0.1);
-    border-right: 2px solid white;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
-.skin-creator-box {
-    background: rgba(0,0,0,0.2);
-    width: 100%;
-    border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    color: white;
-    font-size: 12px;
-}
-.skin-creator-avatar {
-    width: 60px; height: 60px;
-    border-radius: 10px;
-    border: 2px solid white;
-    background-color: #3498db;
-    background-size: cover;
-    margin-bottom: 5px;
-}
-.skin-creator-level {
-    width: 40px; height: 40px;
-    background: url('icons/icon-level.png') center / contain no-repeat;
-    display: flex; justify-content: center; align-items: center;
-    font-size: 16px; color: white;
-    margin-top: 5px;
-}
-
-.skin-stats-box {
-    margin-top: auto;
-    width: 100%;
-    background: #3498db;
-    border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    color: white;
-    font-size: 18px;
-    border: 2px solid white;
-}
-.skin-like-icon-big {
-    width: 30px; height: 30px;
-    background: url('icons/icon-like.png') center / contain no-repeat;
-    background-color: white; mask: url('icons/icon-like.png'); -webkit-mask: url('icons/icon-like.png');
-}
-
-.skin-col-center {
-    flex: 1;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: transparent;
-}
-#skin-preview-canvas { width: 100%; height: 100%; }
-.skin-name-header {
-    position: absolute;
-    top: 20px;
-    font-size: 32px;
-    color: white;
-    text-shadow: 2px 2px 0 #000;
-    text-align: center;
-    width: 100%;
-}
-
-.skin-col-right {
-    width: 15%;
-    background: rgba(0,0,0,0.1);
-    border-left: 2px solid white;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    align-items: center;
-    padding-top: 50px;
-}
-
-/* WSPÓLNY STYL DLA PRZYCISKÓW SKINA */
-.skin-action-btn {
-    width: 60px; height: 60px;
-    background: linear-gradient(to bottom, #a18cd1 0%, #fbc2eb 100%);
-    border: 3px solid white;
-    border-radius: 15px;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
-    transition: transform 0.1s;
-}
-.skin-action-btn:active { transform: translateY(4px); box-shadow: none; }
-.skin-btn-icon {
-    width: 30px; height: 30px;
-    background-size: contain; background-repeat: no-repeat; background-position: center;
-}
-.skin-btn-label { font-size: 10px; color: white; margin-top: 2px; }
-
-/* IKONY PRZYCISKÓW */
-#skin-btn-share .skin-btn-icon { background-image: url('icons/icon-share.png'); }
-#skin-btn-like .skin-btn-icon { background-image: url('icons/icon-like.png'); }
-#skin-btn-comment .skin-btn-icon { background-image: url('icons/icon-chat.png'); }
-
-/* NOWA IKONA: UŻYJ */
-#skin-btn-use .skin-btn-icon { background-image: url('icons/icon-play.png'); /* Zmień na icon-wear.png jeśli masz */ }
-
-/* MOBILE ADJUSTMENTS FOR MODAL */
-@media (max-width: 768px) {
-    #skin-details-modal {
-        flex-direction: column;
-        width: 95vw; height: 90vh;
-    }
-    .skin-col-left {
-        width: 100%; height: 15%;
-        flex-direction: row;
-        padding: 5px;
-        border-right: none; border-bottom: 2px solid white;
-    }
-    .skin-creator-box { flex-direction: row; gap: 10px; width: auto; background: none; }
-    .skin-stats-box { width: auto; margin-top: 0; margin-left: auto; }
-    
-    .skin-col-center { flex: 1; }
-    
-    .skin-col-right {
-        width: 100%; height: 15%;
-        flex-direction: row;
-        justify-content: center;
-        border-left: none; border-top: 2px solid white;
-        padding: 5px;
-    }
-}
-
-/* ... (RESZTA PLIKU - MOBILE 1280px ITD. - BEZ ZMIAN) ... */
-/* UPEWNIJ SIĘ ŻE WKLEJASZ CAŁY PLIK STYLE LUB ZACHOWUJESZ RESZTĘ */
-/* DLA WYGODY WKLEJAM CAŁY POPRAWIONY PLIK: */
-
 /* --- ZMIENNE I KONFIGURACJA --- */
 :root {
     --font-main: 'Titan One', cursive;
@@ -217,7 +50,18 @@ body { font-family: var(--font-main); overflow: hidden; background: #000; letter
 canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; display: none; }
 .ui-element { pointer-events: auto; }
-.top-bar { position: absolute; top: 0; left: 0; right: 0; height: 60px; background-image: url('icons/icon-bar.png'); background-repeat: repeat-x; background-size: auto 100%; background-color: #2c3e50; image-rendering: pixelated; box-shadow: 0 4px 8px rgba(0,0,0,0.4); display: flex; align-items: center; padding: 5px 15px; gap: 15px; border-radius: 0; }
+
+/* Top Bar */
+.top-bar { 
+    position: absolute; top: 0; left: 0; right: 0; height: 60px; 
+    background-image: url('icons/icon-bar.png');
+    background-repeat: repeat-x;
+    background-size: auto 100%;
+    background-color: #2c3e50;
+    image-rendering: pixelated;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    display: flex; align-items: center; padding: 5px 15px; gap: 15px; border-radius: 0; 
+}
 .top-bar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
 .player-avatar { width: 45px; height: 45px; background-color: #4a90e2; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; background-size: cover; background-position: center; }
 .player-name { color: white; font-size: 10px; }
@@ -232,18 +76,27 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 
 /* Chat */
 .chat-container { position: absolute; top: 70px; left: 10px; display: flex; align-items: flex-start; gap: 0; }
-.chat-area { position: static; width: 300px; height: 90px; background: rgba(220, 240, 255, 0.9); border: 2px solid #5dade2; border-right: none; border-radius: 8px 0 0 8px; padding: 5px 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); overflow-y: auto; }
+.chat-area { 
+    position: static; width: 300px; height: 90px; 
+    background: rgba(220, 240, 255, 0.9); 
+    border: 2px solid #5dade2; border-right: none; border-radius: 8px 0 0 8px;
+    padding: 5px 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); overflow-y: auto; 
+}
 .chat-area::-webkit-scrollbar { width: 5px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background: #5dade2; border-radius: 10px; }
 .chat-message { color: #444; font-size: 13px; margin: 2px 0; font-style: italic; font-weight: bold; text-shadow: none; }
-#chat-toggle-button { width: 40px; height: 40px; background: #2ecc71; border: 2px solid #27ae60; border-radius: 0 8px 8px 0; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 0 #218c74; font-size: 20px; color: white; transition: transform 0.1s, box-shadow 0.1s; }
+#chat-toggle-button { 
+    width: 40px; height: 40px; background: #2ecc71; border: 2px solid #27ae60; border-radius: 0 8px 8px 0; 
+    display: flex; align-items: center; justify-content: center; cursor: pointer; 
+    box-shadow: 0 4px 0 #218c74; font-size: 20px; color: white; transition: transform 0.1s, box-shadow 0.1s;
+}
 #chat-toggle-button:active { transform: translateY(4px); box-shadow: 0 0 0 #218c74; }
 #chat-form { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
 #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: var(--font-main); }
 #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: var(--font-main); }
 
-/* Right UI */
-.right-ui { position: absolute; top: 65px; right: 5px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
-.game-buttons { display: flex; gap: 5px; align-items: center; margin-bottom: 5px; }
+/* Right UI (Coins, Level, Buttons) */
+.right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+.game-buttons { display: flex; gap: 15px; align-items: center; margin-bottom: 5px; }
 .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
 .game-btn:active { transform: scale(0.95); }
 .btn-zagraj { background-image: url('icons/icon-play.png'); background-size: 110%; } 
@@ -300,7 +153,38 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .panel-item:hover { background: #4c8cff; } 
 .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; color: white; }
 
-/* SKIN DETAILS MODAL (NEW) */
+/* Explore Exit */
+#explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; z-index: 2000; cursor: pointer; pointer-events: auto; display: none; }
+
+/* Parkour & Victory */
+#parkour-timer { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); font-size: 32px; color: #ffd700; display: none; z-index: 2000; pointer-events: none; }
+#victory-panel { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; flex-direction: column; color: white; }
+.victory-title { font-size: 40px; color: var(--color-primary); margin-bottom: 20px; }
+.victory-time { font-size: 60px; color: #ffd700; margin-bottom: 40px; }
+.victory-btn { padding: 15px 40px; font-size: 24px; background: var(--color-secondary); border: 3px solid white; border-radius: 15px; color: white; font-family: var(--font-main); cursor: pointer; }
+
+/* Reward Panel */
+#reward-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80vw; max-width: 500px; background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 20px; z-index: 3001; flex-direction: column; align-items: center; padding: 20px; color: white; }
+#reward-panel h1 { font-size: 32px; margin-bottom: 20px; text-shadow: 2px 2px 0 #000; }
+.reward-box-container { display: flex; gap: 20px; margin-bottom: 20px; }
+.reward-box { background-color: #74b9ff; border-radius: 15px; padding: 15px; width: 150px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 5px 0 #2980b9; }
+.reward-title { font-size: 16px; margin-bottom: 10px; text-shadow: 1px 1px 0 #000; }
+.reward-row { display: flex; align-items: center; gap: 5px; font-size: 20px; margin: 5px 0; text-shadow: 1px 1px 0 #000; }
+.reward-row img { width: 25px; height: 25px; filter: drop-shadow(1px 1px 2px #000); }
+.level-progress-area { display: flex; align-items: center; width: 100%; margin-bottom: 20px; justify-content: center; position: relative; }
+.level-star-big { width: 60px; height: 60px; background: url('icons/icon-level.png') center / contain no-repeat; display: flex; justify-content: center; align-items: center; font-size: 24px; z-index: 2; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); }
+.level-star-big span { margin-top: 4px; text-shadow: 2px 2px 0 #000; }
+.reward-bar-bg { flex: 1; height: 30px; background: rgba(0,0,0,0.5); border: 2px solid white; margin: 0 -10px; position: relative; z-index: 1; border-radius: 10px; overflow: hidden; }
+#reward-bar-fill { height: 100%; width: 50%; background: linear-gradient(to bottom, #2ed573, #26af61); }
+#reward-bar-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; text-shadow: 1px 1px 0 #000; }
+.reward-buttons { display: flex; gap: 20px; }
+.reward-buttons button { width: 80px; height: 80px; border: 3px solid white; border-radius: 15px; cursor: pointer; background-size: 60%; background-position: center; background-repeat: no-repeat; box-shadow: 0 6px 0 rgba(0,0,0,0.3); transition: transform 0.1s, box-shadow 0.1s; }
+.reward-buttons button:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+#reward-btn-home { background-color: #e74c3c; background-image: url('icons/icon-home.png'); }
+#reward-btn-replay { background-color: var(--color-secondary); background-image: url('icons/icon-restart.png'); }
+#reward-btn-next { background-color: var(--color-primary); background-image: url('icons/icon-next.png'); }
+
+/* --- SKIN DETAILS MODAL --- */
 #skin-details-modal {
     display: none; 
     position: fixed; 
@@ -440,22 +324,103 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
     .skin-col-right { width: 100%; height: 15%; flex-direction: row; justify-content: center; border-left: none; border-top: 2px solid white; padding: 5px; }
 }
 
-/* --- MOBILE 1280px --- */
+/* Play Choice */
+#play-choice-panel .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; justify-content: center; }
+.play-choice-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
+.play-choice-item:active { transform: scale(0.95); }
+.play-choice-icon { width: 100px; height: 100px; border-radius: 20px; border: 3px solid white; display: flex; justify-content: center; align-items: center; font-size: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+.play-choice-label { margin-top: 10px; font-size: 18px; color: white; }
+
+/* --- ZMIANY DLA URZĄDZEŃ MOBILNYCH (50% MNIEJSZE IKONY - POPRAWIONY ZAKRES 1280px) --- */
 @media (max-width: 1280px) {
-    .right-ui { top: 65px; right: 5px; gap: 5px; }
-    .game-buttons { gap: 5px; margin-bottom: 5px; }
-    .game-btn { width: 38px; height: 38px; }
-    #level-container { width: 110px; height: 25px; margin-top: 2px; margin-bottom: 2px; }
-    .level-star { width: 28px; height: 28px; }
-    #level-value { font-size: 12px; margin-top: 1px; }
-    .level-bar-background { left: 15px; right: 20px; top: 5px; bottom: 5px; border-radius: 5px; border: 1px solid white; }
-    #level-text { font-size: 8px; }
-    .level-plus-btn { width: 18px; height: 18px; font-size: 12px; border-radius: 4px; border: 1px solid white; }
-    #coin-counter { width: 85px; height: 25px; margin-top: 2px; }
-    .coin-icon { width: 25px; height: 25px; }
-    .coin-bar-background { left: 12px; right: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.5); }
-    #coin-value { font-size: 11px; }
-    #coin-add-btn { width: 25px; height: 25px; font-size: 18px; border-radius: 8px; border: 1px solid white; padding-bottom: 2px; }
-    #joystick-zone { bottom: 20px; left: 20px; }
-    #jump-button { bottom: 20px; right: 20px; width: 70px; height: 70px; }
+    /* HUD Container adjustments */
+    .right-ui {
+        top: 65px; 
+        right: 5px;
+        gap: 5px;
+    }
+    
+    /* 1. GŁÓWNE PRZYCISKI */
+    .game-buttons {
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    .game-btn {
+        width: 38px;  /* 50% z 75px */
+        height: 38px;
+    }
+
+    /* 2. PASEK LEVELA */
+    #level-container {
+        width: 110px; /* 50% z 220px */
+        height: 25px; /* 50% z 50px */
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+    .level-star {
+        width: 28px; /* ~50% z 55px */
+        height: 28px;
+    }
+    #level-value {
+        font-size: 12px;
+        margin-top: 1px;
+    }
+    .level-bar-background {
+        left: 15px;
+        right: 20px;
+        top: 5px;
+        bottom: 5px;
+        border-radius: 5px;
+        border: 1px solid white;
+    }
+    #level-text {
+        font-size: 8px; 
+    }
+    .level-plus-btn {
+        width: 18px;
+        height: 18px;
+        font-size: 12px;
+        border-radius: 4px;
+        border: 1px solid white;
+    }
+
+    /* 3. PASEK MONET */
+    #coin-counter {
+        width: 85px; /* 50% z 170px */
+        height: 25px; /* 50% z 50px */
+        margin-top: 2px;
+    }
+    .coin-icon {
+        width: 25px;
+        height: 25px;
+    }
+    .coin-bar-background {
+        left: 12px;
+        right: 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    #coin-value {
+        font-size: 11px;
+    }
+    #coin-add-btn {
+        width: 25px;
+        height: 25px;
+        font-size: 18px;
+        border-radius: 8px;
+        border: 1px solid white;
+        padding-bottom: 2px;
+    }
+    
+    /* Mobile Controls Fix */
+    #joystick-zone {
+        bottom: 20px;
+        left: 20px;
+    }
+    #jump-button {
+        bottom: 20px;
+        right: 20px;
+        width: 70px;
+        height: 70px;
+    }
 }
