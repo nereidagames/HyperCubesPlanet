@@ -84,18 +84,14 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 }
 .chat-area::-webkit-scrollbar { width: 5px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background: #5dade2; border-radius: 10px; }
 .chat-message { color: #444; font-size: 13px; margin: 2px 0; font-style: italic; font-weight: bold; text-shadow: none; }
-#chat-toggle-button { 
-    width: 40px; height: 40px; background: #2ecc71; border: 2px solid #27ae60; border-radius: 0 8px 8px 0; 
-    display: flex; align-items: center; justify-content: center; cursor: pointer; 
-    box-shadow: 0 4px 0 #218c74; font-size: 20px; color: white; transition: transform 0.1s, box-shadow 0.1s;
-}
+#chat-toggle-button { width: 40px; height: 40px; background: #2ecc71; border: 2px solid #27ae60; border-radius: 0 8px 8px 0; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 0 #218c74; font-size: 20px; color: white; transition: transform 0.1s, box-shadow 0.1s; }
 #chat-toggle-button:active { transform: translateY(4px); box-shadow: 0 0 0 #218c74; }
 #chat-form { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; height: 45px; background: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 5px; z-index: 1001; }
 #chat-input-field { width: calc(100% - 60px); height: 35px; border: none; border-radius: 8px; padding: 0 10px; font-family: var(--font-main); }
 #chat-send-btn { width: 50px; height: 35px; border: none; border-radius: 8px; background: #4ecdc4; color: white; cursor: pointer; font-family: var(--font-main); }
 
-/* Right UI (Coins, Level, Buttons) */
-.right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+/* Right UI */
+.right-ui { position: absolute; top: 65px; right: 5px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
 .game-buttons { display: flex; gap: 15px; align-items: center; margin-bottom: 5px; }
 .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
 .game-btn:active { transform: scale(0.95); }
@@ -184,7 +180,7 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 #reward-btn-replay { background-color: var(--color-secondary); background-image: url('icons/icon-restart.png'); }
 #reward-btn-next { background-color: var(--color-primary); background-image: url('icons/icon-next.png'); }
 
-/* --- SKIN DETAILS MODAL --- */
+/* SKIN DETAILS MODAL */
 #skin-details-modal {
     display: none; 
     position: fixed; 
@@ -324,6 +320,43 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
     .skin-col-right { width: 100%; height: 15%; flex-direction: row; justify-content: center; border-left: none; border-top: 2px solid white; padding: 5px; }
 }
 
+/* --- Friends & Mail (Fixes for missing icons) --- */
+#friends-panel .panel-content { width: 80vw; max-width: 800px; height: 70vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.friends-tabs { display: flex; width: 100%; background: rgba(0,0,0,0.5); border-bottom: 2px solid white; }
+.friends-tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-size: 18px; transition: background 0.2s; color: white; }
+.friends-tab.active { background: var(--color-secondary); color: white; }
+.friends-view { flex: 1; width: 100%; padding: 20px; overflow-y: auto; display: none; flex-direction: column; gap: 10px; }
+.friends-view.active { display: flex; }
+
+#mail-panel .panel-content { display: flex; flex-direction: row; width: 80vw; max-width: 800px; height: 70vh; padding: 0; overflow: hidden; background-color: rgba(0, 0, 0, 0.9); }
+.mail-sidebar { width: 35%; border-right: 1px solid #555; display: flex; flex-direction: column; background: rgba(255,255,255,0.05); }
+.mail-sidebar-header { padding: 15px; background: #2980b9; display: flex; justify-content: space-between; align-items: center; }
+#new-mail-btn { width: 30px; height: 30px; background: #27ae60; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; }
+.mail-conversations { flex: 1; overflow-y: auto; }
+.mail-item { padding: 15px; border-bottom: 1px solid #444; cursor: pointer; transition: background 0.2s; }
+.mail-item:hover { background: rgba(255,255,255,0.1); }
+.mail-chat-view { flex: 1; display: flex; flex-direction: column; background: #222; }
+#mail-chat-header { padding: 10px; background: var(--color-dark); border-bottom: 1px solid #555; text-align: center; }
+.mail-chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.mail-message { padding: 8px 12px; border-radius: 15px; max-width: 70%; font-size: 14px; word-wrap: break-word; }
+.mail-message.sent { align-self: flex-end; background: #2980b9; color: white; }
+.mail-message.received { align-self: flex-start; background: #7f8c8d; color: white; }
+#mail-reply-form { display: flex; padding: 10px; background: #333; }
+#mail-reply-input { flex: 1; padding: 10px; border-radius: 20px; border: none; margin-right: 10px; }
+#mail-reply-btn { padding: 5px 15px; background: #27ae60; color: white; border: none; border-radius: 15px; cursor: pointer; }
+#new-mail-composer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #333; padding: 20px; border: 2px solid white; border-radius: 10px; width: 300px; display: none; flex-direction: column; gap: 10px; z-index: 100; }
+#new-mail-form { display: flex; flex-direction: column; gap: 10px; }
+#new-mail-form input { padding: 10px; border-radius: 5px; border: none; }
+#new-mail-form button { padding: 10px; background: #2980b9; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+@media (max-width: 600px) {
+    #mail-panel .panel-content { flex-direction: column; width: 95vw; height: 80vh; }
+    .mail-sidebar { width: 100%; height: 100%; display: flex; }
+    .mail-chat-view { width: 100%; height: 100%; display: none; }
+    .view-chat .mail-sidebar { display: none; }
+    .view-chat .mail-chat-view { display: flex; }
+}
+
 /* Play Choice */
 #play-choice-panel .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; justify-content: center; }
 .play-choice-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
@@ -331,9 +364,28 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .play-choice-icon { width: 100px; height: 100px; border-radius: 20px; border: 3px solid white; display: flex; justify-content: center; align-items: center; font-size: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 .play-choice-label { margin-top: 10px; font-size: 18px; color: white; }
 
+/* FIX: Build Panel Icons */
+#build-choice-new-skin .build-choice-icon { background-image: url('icons/icon-newhypercube.png'); }
+#build-choice-new-world .build-choice-icon { background-image: url('icons/icon-newworld.png'); }
+#build-choice-new-prefab .build-choice-icon { background-image: url('icons/icon-newprefab.png'); }
+#build-choice-new-part .build-choice-icon { background-image: url('icons/icon-newhypercubepart.png'); }
+
+.build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.build-choice-icon { 
+    width: 100px; height: 100px; 
+    background-color: #75d040; 
+    border-radius: 15px; 
+    border: 3px solid white; 
+    background-size: 90%; 
+    background-position: center; 
+    background-repeat: no-repeat; 
+}
+.build-choice-label { font-size: 13px; text-shadow: var(--text-shadow); }
+
 /* --- ZMIANY DLA URZĄDZEŃ MOBILNYCH (50% MNIEJSZE IKONY - POPRAWIONY ZAKRES 1280px) --- */
 @media (max-width: 1280px) {
     /* HUD Container adjustments */
+    /* FIX: Obniżona pozycja ikon pod górny pasek (65px od góry) */
     .right-ui {
         top: 65px; 
         right: 5px;
