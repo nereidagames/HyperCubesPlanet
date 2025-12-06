@@ -75,10 +75,11 @@ export const BUILD_UI_HTML = `
     <div id="part-selection-panel"></div>
 `;
 
-// --- FIX: DODANO PRZYCISK UŻYJ W OKNIE SKINA ---
+// --- ZMODYFIKOWANO: PRZYCISK UŻYJ PRZENIESIONY DO PRAWEJ KOLUMNY ---
 export const SKIN_DETAILS_HTML = `
     <div id="skin-details-modal" class="panel-modal" style="display:none;">
         <div class="panel-close-button" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: #e74c3c; width: 40px; height: 40px; display:flex; justify-content:center; align-items:center; font-weight:bold;">X</div>
+        
         <div class="skin-col-left">
             <div class="skin-creator-box">
                 <div class="skin-creator-avatar"></div>
@@ -92,16 +93,23 @@ export const SKIN_DETAILS_HTML = `
                 <div class="skin-likes-count text-outline">0</div>
             </div>
         </div>
+
         <div class="skin-col-center">
             <div class="skin-name-header text-outline">Nazwa Skina</div>
             <div id="skin-preview-canvas"></div>
-            <!-- NOWY PRZYCISK UŻYJ -->
-            <button id="skin-btn-use" class="victory-btn" style="display:none; margin-top: 10px;">Użyj</button>
+            <!-- USUNIĘTO STARY PRZYCISK -->
         </div>
+
         <div class="skin-col-right">
             <div id="skin-btn-share" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Udostępnij</div></div>
             <div id="skin-btn-like" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Polub</div></div>
             <div id="skin-btn-comment" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">0</div></div>
+            
+            <!-- NOWY PRZYCISK UŻYJ (W STYLU INNYCH) -->
+            <div id="skin-btn-use" class="skin-action-btn" style="display:none;">
+                <div class="skin-btn-icon"></div>
+                <div class="skin-btn-label text-outline">Użyj</div>
+            </div>
         </div>
     </div>
 `;
