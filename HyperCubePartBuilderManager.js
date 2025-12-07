@@ -61,7 +61,6 @@ export class HyperCubePartBuilderManager {
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
     
-    // Ciemniejsze tło dla kontrastu
     this.scene.background = new THREE.Color(0x5e3434); 
     this.scene.fog = new THREE.Fog(0x5e3434, 20, 100);
     
@@ -80,6 +79,8 @@ export class HyperCubePartBuilderManager {
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
+        const joy = document.getElementById('joystick-zone');
+        if(joy) { joy.innerHTML = ''; joy.style.display = 'block'; }
     }
 
     this.setupBuildEventListeners();
@@ -123,7 +124,9 @@ export class HyperCubePartBuilderManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
+    // FIX: Poprawione wywołanie stateManager
+    document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
+    
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         const panel = document.getElementById('block-selection-panel');
@@ -172,7 +175,6 @@ export class HyperCubePartBuilderManager {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('contextmenu', this.onContextMenu);
-
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchmove', this.onTouchMove);
@@ -231,7 +233,6 @@ export class HyperCubePartBuilderManager {
     }
   }
 
-  // --- GENEROWANIE MINIATURKI CZĘŚCI ---
   generateThumbnail() {
     const width = 150;
     const height = 150;
@@ -239,9 +240,7 @@ export class HyperCubePartBuilderManager {
     thumbnailRenderer.setSize(width, height);
     
     const thumbnailScene = new THREE.Scene();
-    // Brak tła (alpha) lub neutralne tło
-    // thumbnailScene.background = new THREE.Color(0x444444); 
-
+    
     const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
     thumbnailScene.add(ambLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -250,7 +249,6 @@ export class HyperCubePartBuilderManager {
 
     const box = new THREE.Box3();
 
-    // Kopiujemy tylko klocki (części nie mają nóg, to tylko element budulcowy)
     if (this.placedBlocks.length > 0) {
         this.placedBlocks.forEach(block => {
             const clone = block.clone();
@@ -289,12 +287,12 @@ export class HyperCubePartBuilderManager {
         texturePath: block.userData.texturePath
       }));
       
-      // Generujemy miniaturkę
       const thumbnail = this.generateThumbnail();
       
       if (HyperCubePartStorage.savePart(partName, blocksData, thumbnail)) {
         alert(`Część "${partName}" została pomyślnie zapisana!`);
-        this.game.switchToMainMenu();
+        // FIX: Poprawione wyjście
+        this.game.stateManager.switchToMainMenu();
       }
     }
   }
@@ -309,6 +307,7 @@ export class HyperCubePartBuilderManager {
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
+        document.getElementById('joystick-zone').style.display = 'none';
     }
   }
   
