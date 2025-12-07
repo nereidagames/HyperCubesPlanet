@@ -75,7 +75,6 @@ export const BUILD_UI_HTML = `
     <div id="part-selection-panel"></div>
 `;
 
-// --- OKNO SZCZEGÓŁÓW SKINA ---
 export const SKIN_DETAILS_HTML = `
     <div id="skin-details-modal" class="panel-modal" style="display:none;">
         <div class="panel-close-button" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: #e74c3c; width: 40px; height: 40px; display:flex; justify-content:center; align-items:center; font-weight:bold;">X</div>
@@ -104,7 +103,6 @@ export const SKIN_DETAILS_HTML = `
             <div id="skin-btn-like" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Polub</div></div>
             <div id="skin-btn-comment" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">0</div></div>
             
-            <!-- PRZYCISK UŻYJ (KWADRATOWY) -->
             <div id="skin-btn-use" class="skin-action-btn" style="display:none;">
                 <div class="skin-btn-icon"></div>
                 <div class="skin-btn-label text-outline">Użyj</div>
@@ -113,18 +111,37 @@ export const SKIN_DETAILS_HTML = `
     </div>
 `;
 
-// --- NOWOŚĆ: PANEL KOMENTARZY (Wysuwany z prawej) ---
 export const SKIN_COMMENTS_HTML = `
     <div id="skin-comments-panel" style="display:none;">
         <div class="panel-close-button" id="close-comments-btn" style="position: absolute; top: 10px; left: -50px; z-index: 10; background: #e74c3c; width: 40px; height: 40px; display:flex; justify-content:center; align-items:center; font-weight:bold;">X</div>
-        
-        <div class="comments-list-container">
-            <!-- Komentarze będą wstrzykiwane tutaj -->
-        </div>
-
+        <div class="comments-list-container"></div>
         <div class="comments-input-area">
             <input id="comment-input" type="text" placeholder="Napisz wiadomość...">
             <button id="comment-submit-btn">✔</button>
+        </div>
+    </div>
+`;
+
+// --- NOWOŚĆ: PANEL WYBORU ODKRYWANIA ---
+export const DISCOVER_CHOICE_HTML = `
+    <div id="discover-choice-panel" class="panel-modal">
+        <div class="panel-content">
+            <h2>Co dziś odkrywamy?</h2>
+            <div class="build-choice-grid">
+                <div id="discover-choice-skin" class="play-choice-item">
+                    <div class="play-choice-icon" style="background-image: url('icons/icon-newhypercube.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #3498db;"></div>
+                    <span class="play-choice-label text-outline">HyperCube</span>
+                </div>
+                <div id="discover-choice-part" class="play-choice-item">
+                    <div class="play-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #e67e22;"></div>
+                    <span class="play-choice-label text-outline">Części</span>
+                </div>
+                <div id="discover-choice-prefab" class="play-choice-item">
+                    <div class="play-choice-icon" style="background-image: url('icons/icon-newprefab.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #9b59b6;"></div>
+                    <span class="play-choice-label text-outline">Prefabrykaty</span>
+                </div>
+            </div>
+            <button class="panel-close-button">Anuluj</button>
         </div>
     </div>
 `;
@@ -177,10 +194,11 @@ export const MODALS_HTML = `
         </div>
     </div>
 
+    ${DISCOVER_CHOICE_HTML} <!-- WSTRZYKNIĘCIE NOWEGO PANELU -->
+
     <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
-    
     <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span class="build-choice-label text-outline">Nowa HyperCube</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span class="build-choice-label text-outline">Nowy Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span class="build-choice-label text-outline">Nowy Prefabrykat</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span class="build-choice-label text-outline">Nowa Część HyperCube</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
     <div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
     <div id="shop-panel" class="panel-modal"><div class="panel-content"><h2>Sklep</h2><div class="friends-tabs" style="margin-bottom:15px;"><div class="friends-tab active" id="shop-tab-blocks">Bloki</div><div class="friends-tab" id="shop-tab-addons">Dodatki</div></div><div id="shop-list" class="panel-list"></div><button class="panel-close-button">Zamknij</button></div></div>
