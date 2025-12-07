@@ -22,21 +22,16 @@ export class PrefabBuilderManager {
     
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
+    // ... bindingi bez zmian ...
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
-
-    this.longPressTimer = null;
-    this.isLongPress = false;
-    this.touchStartPosition = { x: 0, y: 0 };
     this.onTouchStart = this.onTouchStart.bind(this);
     this.onTouchEnd = this.onTouchEnd.bind(this);
     this.onTouchMove = this.onTouchMove.bind(this);
   }
 
-  onContextMenu(event) {
-    event.preventDefault();
-  }
+  onContextMenu(event) { event.preventDefault(); }
 
   preloadTextures() {
     const allBlocks = this.blockManager.getAllBlockDefinitions();
@@ -52,7 +47,6 @@ export class PrefabBuilderManager {
 
   enterBuildMode() {
     this.isActive = true;
-
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
 
@@ -119,14 +113,11 @@ export class PrefabBuilderManager {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('contextmenu', this.onContextMenu);
-
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    // FIX: Poprawione wywołanie stateManager
     document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
-    
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         const panel = document.getElementById('block-selection-panel');
@@ -178,7 +169,6 @@ export class PrefabBuilderManager {
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchmove', this.onTouchMove);
-
     document.getElementById('build-exit-button').onclick = null;
     document.getElementById('build-mode-button').onclick = null;
     document.getElementById('build-add-button').onclick = null;
@@ -238,44 +228,35 @@ export class PrefabBuilderManager {
     const height = 150;
     const thumbnailRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     thumbnailRenderer.setSize(width, height);
-    
     const thumbnailScene = new THREE.Scene();
     const ambLight = new THREE.AmbientLight(0xffffff, 1.0);
     thumbnailScene.add(ambLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(5, 10, 7);
     thumbnailScene.add(dirLight);
-
     const box = new THREE.Box3();
-
     if (this.placedBlocks.length > 0) {
         this.placedBlocks.forEach(block => {
             const clone = block.clone();
             thumbnailScene.add(clone);
             box.expandByObject(clone);
         });
-    } else {
-        return null;
-    }
-
+    } else { return null; }
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-
     const thumbnailCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
     const distance = maxDim * 2.0; 
     thumbnailCamera.position.set(center.x + distance * 0.8, center.y + distance * 0.5, center.z + distance);
     thumbnailCamera.lookAt(center);
-
     thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
-    
     const dataURL = thumbnailRenderer.domElement.toDataURL('image/png');
     thumbnailRenderer.dispose();
-    
     return dataURL;
   }
 
-  savePrefab() {
+  // --- FIX: ASYNC SAVE ---
+  async savePrefab() {
     if (this.placedBlocks.length === 0) return;
     const prefabName = prompt("Podaj nazwę dla swojego prefabrykatu:", "Moja Konstrukcja");
     if (prefabName) {
@@ -288,9 +269,10 @@ export class PrefabBuilderManager {
       
       const thumbnail = this.generateThumbnail();
       
-      if (PrefabStorage.savePrefab(prefabName, blocksData, thumbnail)) {
+      // FIX: Czekamy na serwer
+      const success = await PrefabStorage.savePrefab(prefabName, blocksData, thumbnail);
+      if (success) {
         alert(`Prefabrykat "${prefabName}" został pomyślnie zapisany!`);
-        // FIX: Poprawione wyjście
         this.game.stateManager.switchToMainMenu();
       }
     }
@@ -320,21 +302,14 @@ export class PrefabBuilderManager {
       const normal = intersect.face.normal.clone();
       const snappedPosition = new THREE.Vector3().copy(intersect.point)
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
-        
       const buildAreaLimit = this.platformSize / 2;
       const buildHeightLimit = 32;
-      if (
-          Math.abs(snappedPosition.x) < buildAreaLimit && 
-          Math.abs(snappedPosition.z) < buildAreaLimit &&
-          snappedPosition.y >= 0 &&
-          snappedPosition.y < buildHeightLimit
-      ) {
+      if (Math.abs(snappedPosition.x) < buildAreaLimit && Math.abs(snappedPosition.z) < buildAreaLimit && snappedPosition.y >= 0 && snappedPosition.y < buildHeightLimit) {
         if (this.previewBlock) this.previewBlock.visible = true;
         if (this.previewBlock) this.previewBlock.position.copy(snappedPosition);
       } else {
         if (this.previewBlock) this.previewBlock.visible = false;
       }
-
     } else {
       if (this.previewBlock) this.previewBlock.visible = false;
     }
@@ -342,48 +317,29 @@ export class PrefabBuilderManager {
 
   onTouchStart(event) {
     if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
-    
     event.preventDefault();
     this.isLongPress = false;
-    
     const touch = event.touches[0];
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-
     this.touchStartPosition.x = touch.clientX;
     this.touchStartPosition.y = touch.clientY;
-
     clearTimeout(this.longPressTimer);
-    this.longPressTimer = setTimeout(() => {
-        this.isLongPress = true;
-        this.removeBlock();
-    }, 500);
+    this.longPressTimer = setTimeout(() => { this.isLongPress = true; this.removeBlock(); }, 500);
   }
-
   onTouchEnd(event) {
     if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
-
     clearTimeout(this.longPressTimer);
-    
-    if (!this.isLongPress && this.previewBlock && this.previewBlock.visible) {
-        this.placeBlock();
-    }
+    if (!this.isLongPress && this.previewBlock && this.previewBlock.visible) { this.placeBlock(); }
   }
-
   onTouchMove(event) {
     if (!this.isActive || !this.game.isMobile) return;
-    
     const touch = event.touches[0];
-    
     const deltaX = touch.clientX - this.touchStartPosition.x;
     const deltaY = touch.clientY - this.touchStartPosition.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     const MOVE_THRESHOLD = 10; 
-
-    if (distance > MOVE_THRESHOLD) {
-        clearTimeout(this.longPressTimer);
-    }
-    
+    if (distance > MOVE_THRESHOLD) { clearTimeout(this.longPressTimer); }
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
