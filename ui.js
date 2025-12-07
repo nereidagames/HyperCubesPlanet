@@ -2,16 +2,17 @@ import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML } from './UITemplates.js';
-import { STORAGE_KEYS } from './Config.js'; // Import potrzebny do ID użytkownika
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML } from './UITemplates.js';
+import { STORAGE_KEYS } from './Config.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 export class UIManager {
-  // ... (Konstruktor bez zmian) ...
   constructor(onSendMessage) {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
+    
+    // Callbacki z main.js
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -29,22 +30,31 @@ export class UIManager {
     this.onMessageSent = null;
     this.onMessageReceived = null;
     this.onEditNexusClick = null;
+    
+    // Callbacki dla parkoura
     this.onExitParkour = null;
     this.onReplayParkour = null;
+
     this.friendsList = [];
     this.mailState = { conversations: [], activeConversation: null };
+    
     this.shopCurrentCategory = 'block'; 
     this.allShopItems = [];
     this.shopIsOwnedCallback = null;
-    this.pendingRewardData = null;
+    
+    this.pendingRewardData = null; // Przechowywanie danych nagrody
+
+    // Zmienne do podglądu 3D w oknie skina
     this.skinPreviewRenderer = null;
     this.skinPreviewScene = null;
     this.skinPreviewCamera = null;
     this.skinPreviewCharacter = null;
     this.skinPreviewAnimId = null;
+    
+    // ID skina otwartego w komentarzach
+    this.currentSkinIdForComments = null;
   }
   
-  // ... (initialize i renderUI bez zmian) ...
   initialize(isMobile) {
     this.isMobile = isMobile;
     console.log("Inicjalizacja UI...");
@@ -60,53 +70,136 @@ export class UIManager {
         console.error("Błąd podczas inicjalizacji UI:", error);
     }
   }
+
   renderUI() {
       const authLayer = document.getElementById('auth-layer');
       const uiLayer = document.getElementById('ui-layer'); 
       const buildContainer = document.getElementById('build-ui-container');
       const modalsLayer = document.getElementById('modals-layer');
+
       if (authLayer) authLayer.innerHTML = AUTH_HTML;
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
-      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML;
+      // Wstrzykujemy wszystkie modale, w tym szczegóły skina i panel komentarzy
+      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML;
   }
 
-  // ... (updateLevelInfo, parkour, rewards - bez zmian) ...
-  updateLevelInfo(level, xp, maxXp) { const lvlVal = document.getElementById('level-value'); const lvlText = document.getElementById('level-text'); const lvlFill = document.getElementById('level-bar-fill'); if (lvlVal) lvlVal.textContent = level; if (lvlText) lvlText.textContent = `${xp}/${maxXp}`; if (lvlFill) { const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100)); lvlFill.style.width = `${percent}%`; } }
-  setParkourTimerVisible(visible) { const timer = document.getElementById('parkour-timer'); if (timer) timer.style.display = visible ? 'block' : 'none'; }
-  updateParkourTimer(timeString) { const timer = document.getElementById('parkour-timer'); if (timer) timer.textContent = timeString; }
-  handleParkourCompletion(timeString, data) { this.pendingRewardData = data; this.showVictory(timeString); }
-  showVictory(timeString) { const panel = document.getElementById('victory-panel'); const timeDisplay = document.getElementById('victory-time-display'); if (panel && timeDisplay) { timeDisplay.textContent = timeString; panel.style.display = 'flex'; } }
-  showRewardPanel() { const panel = document.getElementById('reward-panel'); const data = this.pendingRewardData; if (!panel) return; if (data) { document.getElementById('reward-xp-val').textContent = `+500`; document.getElementById('reward-coins-val').textContent = `+100`; document.getElementById('reward-lvl-cur').textContent = data.newLevel; document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; const fill = document.getElementById('reward-bar-fill'); const text = document.getElementById('reward-bar-text'); if (fill && text) { const max = data.maxXp || 100; const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); fill.style.width = `${percent}%`; text.textContent = `${data.newXp}/${max}`; } } panel.style.display = 'flex'; }
-  hideVictory() { const vPanel = document.getElementById('victory-panel'); const rPanel = document.getElementById('reward-panel'); if(vPanel) vPanel.style.display = 'none'; if(rPanel) rPanel.style.display = 'none'; this.pendingRewardData = null; }
+  // --- AKTUALIZACJA LEVELA I XP ---
+  updateLevelInfo(level, xp, maxXp) {
+      const lvlVal = document.getElementById('level-value');
+      const lvlText = document.getElementById('level-text');
+      const lvlFill = document.getElementById('level-bar-fill');
 
-  // --- FIX: PEŁNA OBSŁUGA OKNA SKINA ---
+      if (lvlVal) lvlVal.textContent = level;
+      if (lvlText) lvlText.textContent = `${xp}/${maxXp}`;
+      
+      if (lvlFill) {
+          const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100));
+          lvlFill.style.width = `${percent}%`;
+      }
+  }
+
+  // --- LOGIKA PARKOURA I NAGRÓD ---
+  setParkourTimerVisible(visible) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) timer.style.display = visible ? 'block' : 'none';
+  }
+
+  updateParkourTimer(timeString) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) timer.textContent = timeString;
+  }
+
+  handleParkourCompletion(timeString, data) {
+      this.pendingRewardData = data;
+      this.showVictory(timeString);
+  }
+
+  showVictory(timeString) {
+      const panel = document.getElementById('victory-panel');
+      const timeDisplay = document.getElementById('victory-time-display');
+      if (panel && timeDisplay) {
+          timeDisplay.textContent = timeString;
+          panel.style.display = 'flex';
+      }
+  }
+
+  showRewardPanel() {
+      const panel = document.getElementById('reward-panel');
+      const data = this.pendingRewardData;
+      
+      if (!panel) return;
+
+      if (data) {
+          // Aktualizacja tekstów w panelu nagród
+          document.getElementById('reward-xp-val').textContent = `+500`; 
+          document.getElementById('reward-coins-val').textContent = `+100`; 
+          
+          document.getElementById('reward-lvl-cur').textContent = data.newLevel;
+          document.getElementById('reward-lvl-next').textContent = data.newLevel + 1;
+          
+          const fill = document.getElementById('reward-bar-fill');
+          const text = document.getElementById('reward-bar-text');
+          
+          if (fill && text) {
+              const max = data.maxXp || 100;
+              const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100));
+              fill.style.width = `${percent}%`;
+              text.textContent = `${data.newXp}/${max}`;
+          }
+      }
+      panel.style.display = 'flex';
+  }
+
+  hideVictory() {
+      document.getElementById('victory-panel').style.display = 'none';
+      document.getElementById('reward-panel').style.display = 'none';
+      this.pendingRewardData = null;
+  }
+
+  // --- SKIN DETAILS ---
   async showSkinDetails(item) {
       const modal = document.getElementById('skin-details-modal');
       if (!modal) return;
+      
+      this.currentSkinIdForComments = item.id;
       
       const headerName = modal.querySelector('.skin-name-header');
       const creatorName = modal.querySelector('.skin-creator-name');
       const creatorLevel = modal.querySelector('.skin-creator-level-val');
       const likesCount = modal.querySelector('.skin-likes-count');
       const timeInfo = modal.querySelector('.skin-time-info');
+      
       const btnUse = document.getElementById('skin-btn-use');
       const btnLike = document.getElementById('skin-btn-like');
+      const btnComment = document.getElementById('skin-btn-comment');
 
       // Wypełnianie danymi
       if(headerName) headerName.textContent = item.name;
       if(creatorName) creatorName.textContent = item.creator || "Nieznany";
       if(creatorLevel) creatorLevel.textContent = item.creatorLevel || "?"; 
       if(likesCount) likesCount.textContent = item.likes || "0";
-      if(timeInfo) timeInfo.textContent = "16 dni temu"; // TODO: Formatowanie daty
+      // Formatowanie daty (uproszczone)
+      const date = new Date(item.created_at);
+      const now = new Date();
+      const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+      if(timeInfo) timeInfo.textContent = diffDays === 0 ? "dzisiaj" : `${diffDays} dni temu`; 
 
-      // Logika przycisku "Użyj" - tylko dla właściciela
+      // Obsługa przycisku Komentarze
+      if (btnComment) {
+          const countSpan = btnComment.querySelector('.skin-btn-label');
+          if(countSpan) countSpan.textContent = item.comments || "0";
+          btnComment.onclick = () => {
+              this.openSkinComments(item.id);
+          };
+      }
+
+      // Obsługa przycisku Użyj (tylko dla właściciela)
       const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0");
       if (btnUse) {
           if (item.owner_id === myId) {
-              btnUse.style.display = 'block';
+              btnUse.style.display = 'flex';
               btnUse.onclick = () => {
-                  // Zamknij okno i załóż skina (logika z onSkinSelect)
                   this.closeAllPanels();
                   if (this.onSkinSelect) {
                       this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id);
@@ -117,10 +210,9 @@ export class UIManager {
           }
       }
       
-      // Logika przycisku "Polub"
+      // Obsługa przycisku Polub
       if (btnLike) {
-          // Reset onclick (żeby nie dodawać listenerów wielokrotnie)
-          btnLike.onclick = null;
+          btnLike.onclick = null; // Reset listenera
           btnLike.onclick = async () => {
               const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
               if(!t) return;
@@ -131,7 +223,6 @@ export class UIManager {
                   });
                   const d = await r.json();
                   if (d.success) {
-                      // Aktualizuj liczbę lajków w UI
                       if(likesCount) likesCount.textContent = d.likes;
                   }
               } catch(e) { console.error(e); }
@@ -143,36 +234,150 @@ export class UIManager {
       modal.style.display = 'flex';
   }
 
-  // ... (initSkinPreview3D, closeAllPanels - bez zmian, ale muszą być) ...
+  // --- OBSŁUGA PANELU KOMENTARZY ---
+  async openSkinComments(skinId) {
+      const panel = document.getElementById('skin-comments-panel');
+      if (!panel) return;
+      
+      panel.style.display = 'flex'; // Pokaż panel
+      
+      const closeBtn = document.getElementById('close-comments-btn');
+      if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; };
+
+      // Ładowanie listy
+      this.loadSkinComments(skinId);
+      
+      // Wysyłanie komentarza
+      const submitBtn = document.getElementById('comment-submit-btn');
+      const input = document.getElementById('comment-input');
+      
+      if(submitBtn) {
+          submitBtn.onclick = async () => {
+              const text = input.value.trim();
+              if(!text) return;
+              
+              const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+              try {
+                  const r = await fetch(`${API_BASE_URL}/api/skins/${skinId}/comments`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
+                      body: JSON.stringify({ text })
+                  });
+                  if(r.ok) {
+                      input.value = '';
+                      this.loadSkinComments(skinId); // Odśwież listę
+                  }
+              } catch(e) { console.error(e); }
+          };
+      }
+  }
+
+  async loadSkinComments(skinId) {
+      const container = document.querySelector('.comments-list-container');
+      if(!container) return;
+      container.innerHTML = '<p style="text-align:center; padding:10px;">Ładowanie...</p>';
+      
+      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/skins/${skinId}/comments`, {
+              headers: { 'Authorization': `Bearer ${t}` }
+          });
+          const comments = await r.json();
+          container.innerHTML = '';
+          
+          if(comments.length === 0) {
+              container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy. Bądź pierwszy!</p>';
+              return;
+          }
+
+          comments.forEach(c => {
+              const div = document.createElement('div');
+              div.className = 'comment-item';
+              
+              // Czas
+              const date = new Date(c.created_at);
+              const now = new Date();
+              const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
+              const timeStr = diffHours < 24 ? `${diffHours} godz. temu` : `${Math.floor(diffHours/24)} dni temu`;
+
+              div.innerHTML = `
+                  <div class="comment-avatar" style="background-image: url('${c.current_skin_thumbnail || ''}')"></div>
+                  <div class="comment-content">
+                      <div class="comment-author">${c.username}</div>
+                      <div class="comment-text">${c.text}</div>
+                      <div class="comment-time">${timeStr}</div>
+                  </div>
+                  <div class="comment-actions">
+                      <div class="comment-like-count">${c.likes || 0}</div>
+                      <div class="comment-like-btn">❤</div>
+                  </div>
+              `;
+              
+              const likeBtn = div.querySelector('.comment-like-btn');
+              likeBtn.onclick = async () => {
+                  try {
+                      const lr = await fetch(`${API_BASE_URL}/api/comments/${c.id}/like`, {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${t}` }
+                      });
+                      const ld = await lr.json();
+                      if(ld.success) {
+                          div.querySelector('.comment-like-count').textContent = ld.likes;
+                      }
+                  } catch(e) {}
+              };
+              
+              container.appendChild(div);
+          });
+
+      } catch(e) {
+          container.innerHTML = '<p style="text-align:center; padding:10px;">Błąd pobierania.</p>';
+      }
+  }
+
+  // --- PODGLĄD 3D W OKNIE SKINA ---
   async initSkinPreview3D(skinId) {
       const container = document.getElementById('skin-preview-canvas');
       if (!container) return;
       if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
       container.innerHTML = '';
+      
       const width = container.clientWidth || 300;
       const height = container.clientHeight || 300;
+
       this.skinPreviewScene = new THREE.Scene();
       this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
       this.skinPreviewCamera.position.set(0, 2, 5); 
       this.skinPreviewCamera.lookAt(0, 0.5, 0);
+
       this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
       this.skinPreviewRenderer.setSize(width, height);
       container.appendChild(this.skinPreviewRenderer.domElement);
+
       const amb = new THREE.AmbientLight(0xffffff, 0.8);
       this.skinPreviewScene.add(amb);
       const dir = new THREE.DirectionalLight(0xffffff, 0.6);
       dir.position.set(5, 10, 7);
       this.skinPreviewScene.add(dir);
+
       this.skinPreviewCharacter = new THREE.Group();
-      if (typeof createBaseCharacter !== 'undefined') createBaseCharacter(this.skinPreviewCharacter);
+      
+      // Nogi
+      if (typeof createBaseCharacter !== 'undefined') {
+           createBaseCharacter(this.skinPreviewCharacter);
+      }
       this.skinPreviewCharacter.position.y = -0.8; 
       this.skinPreviewScene.add(this.skinPreviewCharacter);
+
       const skinData = await SkinStorage.loadSkinData(skinId);
       if (skinData) {
           const loader = new THREE.TextureLoader();
+          
           const skinContainer = new THREE.Group();
+          // Skalowanie klocków do nóg (tak jak w grze)
           skinContainer.scale.setScalar(0.125); 
-          skinContainer.position.y = 0.5; 
+          skinContainer.position.y = 0.5; // Nad pasem
+
           skinData.forEach(b => {
               const geo = new THREE.BoxGeometry(1, 1, 1);
               const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) });
@@ -180,44 +385,127 @@ export class UIManager {
               mesh.position.set(b.x, b.y, b.z);
               skinContainer.add(mesh);
           });
+          
           this.skinPreviewCharacter.add(skinContainer);
       }
+      
+      // Powiększamy całość w oknie podglądu
       this.skinPreviewCharacter.scale.setScalar(1.5);
+
       const animate = () => {
           this.skinPreviewAnimId = requestAnimationFrame(animate);
-          if (this.skinPreviewCharacter) { this.skinPreviewCharacter.rotation.y += 0.01; }
+          if (this.skinPreviewCharacter) {
+              this.skinPreviewCharacter.rotation.y += 0.01;
+          }
           this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera);
       };
       animate();
   }
+
   closeAllPanels() {
-      if (this.skinPreviewAnimId) { cancelAnimationFrame(this.skinPreviewAnimId); this.skinPreviewAnimId = null; }
+      if (this.skinPreviewAnimId) {
+          cancelAnimationFrame(this.skinPreviewAnimId);
+          this.skinPreviewAnimId = null;
+      }
       document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none');
       const skinModal = document.getElementById('skin-details-modal');
       if(skinModal) skinModal.style.display = 'none';
+      const commentPanel = document.getElementById('skin-comments-panel');
+      if(commentPanel) commentPanel.style.display = 'none';
   }
 
-  // ... (setupButtonHandlers i reszta helpersów) ...
+  // --- GŁÓWNA OBSŁUGA PRZYCISKÓW ---
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
-            const p = btn.closest('.panel-modal'); 
+            // Zamknij nadrzędny panel (modal lub comments-panel)
+            const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
             if(p) p.style.display = 'none'; 
+            
             if(p && p.id === 'skin-details-modal') {
                  if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
             }
         };
     });
+    
     document.querySelectorAll('.panel-content').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
-    document.querySelectorAll('.game-btn').forEach(button => { const type = this.getButtonType(button); button.addEventListener('click', () => this.handleButtonClick(type, button)); });
-    const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
-    const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) { friendsBtn.onclick = () => { this.openPanel('friends-panel'); this.loadFriendsData(); }; }
-    const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.openPanel('mail-panel'); this.loadMailData(); }; } });
-    const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
-    const superBtn = document.getElementById('victory-super-btn'); if (superBtn) { superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); }; }
-    const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) { homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); }; }
-    const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) { replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); }; }
-    const btnPlayParkour = document.getElementById('play-choice-parkour'); const btnPlayChat = document.getElementById('play-choice-chat'); if (btnPlayParkour) { btnPlayParkour.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'parkour'); }; } if (btnPlayChat) { btnPlayChat.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'creative'); }; }
+    document.querySelectorAll('.game-btn').forEach(button => {
+      const type = this.getButtonType(button);
+      button.addEventListener('click', () => this.handleButtonClick(type, button));
+    });
+
+    const pBtn = document.getElementById('player-avatar-button');
+    if (pBtn) pBtn.onclick = () => { 
+        this.openPanel('player-preview-panel'); 
+        if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
+    };
+    
+    const friendsBtn = document.getElementById('btn-friends-open');
+    if (friendsBtn) {
+        friendsBtn.onclick = () => {
+            this.openPanel('friends-panel');
+            this.loadFriendsData();
+        };
+    }
+
+    const topBarItems = document.querySelectorAll('.top-bar-item');
+    topBarItems.forEach(item => {
+        if (item.textContent.includes('Poczta')) {
+            item.onclick = () => {
+                this.openPanel('mail-panel');
+                this.loadMailData();
+            };
+        }
+    });
+    
+    const chatToggle = document.getElementById('chat-toggle-button');
+    if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
+
+    // Parkour Buttons
+    const superBtn = document.getElementById('victory-super-btn');
+    if (superBtn) {
+        superBtn.onclick = () => {
+            document.getElementById('victory-panel').style.display = 'none';
+            if (this.pendingRewardData) this.showRewardPanel();
+            else if (this.onExitParkour) this.onExitParkour();
+        };
+    }
+
+    const homeBtn = document.getElementById('reward-btn-home');
+    if (homeBtn) {
+        homeBtn.onclick = () => {
+            this.hideVictory();
+            if (this.onExitParkour) this.onExitParkour();
+        };
+    }
+    
+    const replayBtn = document.getElementById('reward-btn-replay');
+    if (replayBtn) {
+        replayBtn.onclick = () => {
+            this.hideVictory();
+            if (this.onReplayParkour) this.onReplayParkour();
+        };
+    }
+
+    // Play Choice
+    const btnPlayParkour = document.getElementById('play-choice-parkour');
+    const btnPlayChat = document.getElementById('play-choice-chat');
+    
+    if (btnPlayParkour) {
+        btnPlayParkour.onclick = () => {
+            this.closePanel('play-choice-panel');
+            this.showDiscoverPanel('worlds', 'parkour');
+        };
+    }
+    
+    if (btnPlayChat) {
+        btnPlayChat.onclick = () => {
+            this.closePanel('play-choice-panel');
+            this.showDiscoverPanel('worlds', 'creative');
+        };
+    }
+
+    // Builder Buttons
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
     setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); });
     setClick('build-choice-new-skin', () => { this.closePanel('build-choice-panel'); if(this.onSkinBuilderClick) this.onSkinBuilderClick(); });
@@ -227,13 +515,38 @@ export class UIManager {
     setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); });
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
+
+    // Shop Tabs
     const tabBlocks = document.getElementById('shop-tab-blocks');
     const tabAddons = document.getElementById('shop-tab-addons');
-    if (tabBlocks && tabAddons) { tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; }
+    if (tabBlocks && tabAddons) {
+        tabBlocks.onclick = () => {
+            tabBlocks.classList.add('active');
+            tabAddons.classList.remove('active');
+            this.shopCurrentCategory = 'block';
+            this.refreshShopList();
+        };
+        tabAddons.onclick = () => {
+            tabAddons.classList.add('active');
+            tabBlocks.classList.remove('active');
+            this.shopCurrentCategory = 'addon';
+            this.refreshShopList();
+        };
+    }
+
+    // Name Submit
     const nameSubmitBtn = document.getElementById('name-submit-btn');
-    if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
+    if (nameSubmitBtn) {
+        nameSubmitBtn.onclick = () => {
+            const i = document.getElementById('name-input-field');
+            const v = i.value.trim();
+            if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; }
+            else alert('Nazwa nie może być pusta!');
+        };
+    }
   }
 
+  // ... (STANDARD METHODS) ...
   checkAdminPermissions(username) { const admins = ['nixox2', 'admin']; if (admins.includes(username)) { const optionsList = document.querySelector('#more-options-panel .panel-list'); if (optionsList && !document.getElementById('admin-edit-nexus-btn')) { const editNexusBtn = document.createElement('div'); editNexusBtn.id = 'admin-edit-nexus-btn'; editNexusBtn.className = 'panel-item text-outline'; editNexusBtn.style.backgroundColor = '#e67e22'; editNexusBtn.style.marginTop = '10px'; editNexusBtn.textContent = '🛠️ Edytuj Nexus'; editNexusBtn.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); }; optionsList.insertBefore(editNexusBtn, optionsList.firstChild); } } }
   updatePlayerAvatar(thumbnail) { const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); if (!avatarEl) return; if (thumbnail) { avatarEl.textContent = ''; avatarEl.style.backgroundImage = `url(${thumbnail})`; avatarEl.style.backgroundSize = 'cover'; avatarEl.style.backgroundPosition = 'center'; avatarEl.style.backgroundColor = '#4a90e2'; } else { avatarEl.style.backgroundImage = 'none'; avatarEl.textContent = '👤'; } }
   updatePlayerName(name) { const nameDisplay = document.getElementById('player-name-display'); if (nameDisplay) nameDisplay.textContent = name; }
@@ -243,7 +556,17 @@ export class UIManager {
   updateCoinCounter(val) { const e=document.getElementById('coin-value'); if(e) e.textContent=val; }
   toggleMobileControls(s) { const m=document.getElementById('mobile-game-controls'); if(m) m.style.display=s?'block':'none'; }
   getButtonType(button) { if (button.classList.contains('btn-zagraj')) return 'zagraj'; if (button.classList.contains('btn-buduj')) return 'buduj'; if (button.classList.contains('btn-kup')) return 'kup'; if (button.classList.contains('btn-odkryj')) return 'odkryj'; if (button.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
-  handleButtonClick(buttonType, buttonElement) { buttonElement.style.transform = 'translateY(-1px) scale(0.95)'; setTimeout(() => { buttonElement.style.transform = ''; }, 150); if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; } if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; } if (buttonType === 'odkryj') { this.openPanel('discover-panel'); if (this.onDiscoverClick) this.onDiscoverClick(); return; } if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; } if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; } }
+  
+  handleButtonClick(buttonType, buttonElement) {
+    buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
+    setTimeout(() => { buttonElement.style.transform = ''; }, 150);
+    if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; }
+    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
+    if (buttonType === 'odkryj') { this.openPanel('discover-panel'); if (this.onDiscoverClick) this.onDiscoverClick(); return; }
+    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
+    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
+  }
+
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
   refreshShopList() { const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } filteredItems.forEach(b => { const i = document.createElement('div'); i.className = 'shop-item'; const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; list.appendChild(i); }); list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); }
   setupChatSystem() { this.setupChatInput(); }
@@ -254,6 +577,7 @@ export class UIManager {
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
   setupFriendsSystem() { const tabs = document.querySelectorAll('#friends-panel .friends-tab'); tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); const targetId = tab.getAttribute('data-tab'); const views = document.querySelectorAll('#friends-panel .friends-view'); views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); }); const targetView = document.getElementById(targetId); if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); } }; }); const searchBtn = document.getElementById('friends-search-btn'); if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); } }
   setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
+  
   async showDiscoverPanel(type, category = null) { const title=document.getElementById('discover-panel-title'); const tabs=document.getElementById('discover-tabs'); const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; this.openPanel('discover-panel'); if(type==='worlds') { if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; if(tabs) tabs.style.display='none'; try { const allWorlds = await WorldStorage.getAllWorlds(); let filteredWorlds = allWorlds; if (category) { filteredWorlds = allWorlds.filter(w => { const wType = w.type || 'creative'; return wType === category; }); } this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } } else if(type==='skins') { if(title) title.textContent='Wybierz Skina'; if(tabs) { tabs.style.display='flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) tabAll.classList.add('active'); this.refreshSkinList('all'); } } }
   async refreshSkinList(mode) { const list=document.getElementById('discover-list'); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; let skins=[]; try { if(mode==='mine') skins = await SkinStorage.getMySkins(); else skins = await SkinStorage.getAllSkins(); this.populateDiscoverPanel('skins', skins, (skinId, skinName, thumbnail, ownerId)=>{ if(this.onSkinSelect) this.onSkinSelect(skinId, skinName, thumbnail, ownerId); }); } catch(e) { console.error("Błąd pobierania skinów:", e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center; color: #ff5555;">Błąd połączenia.</p>'; } }
   populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item=>{ const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width=(type==='worlds')?'80px':'64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc=null; let label=''; let skinId=null; let ownerId=null; if(type==='worlds'){ if(typeof item==='object'){ label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; } else { label=item; } } else { label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; skinId=item.id; ownerId=item.owner_id; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent=(type==='worlds')?'🌍':'?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; thumbContainer.style.fontSize='24px'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); div.onclick=()=>{ if(type==='worlds') { this.closeAllPanels(); onSelect(item); } else { this.showSkinDetails(item); } }; list.appendChild(div); }); }
