@@ -143,7 +143,6 @@ export class SkinBuilderManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    // FIX: Poprawione wywołanie stateManager
     document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
     
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
@@ -183,23 +182,27 @@ export class SkinBuilderManager {
       });
   }
 
-  showPartSelectionPanel() {
+  // --- FIX: ASYNCHRONICZNE POBIERANIE CZĘŚCI ---
+  async showPartSelectionPanel() {
       const panel = document.getElementById('part-selection-panel');
-      panel.innerHTML = '';
-      const partNames = HyperCubePartStorage.getSavedPartsList();
+      panel.innerHTML = '<p class="text-outline">Ładowanie...</p>';
+      panel.style.display = 'flex';
       
-      if (partNames.length === 0) {
+      const partsList = await HyperCubePartStorage.getSavedPartsList();
+      panel.innerHTML = '';
+      
+      if (partsList.length === 0) {
           panel.innerHTML = '<div class="panel-item text-outline">Brak części</div>';
       } else {
-          partNames.forEach(name => {
-              const item = document.createElement('div');
-              item.className = 'panel-item part-item';
-              item.style.display = 'flex';
-              item.style.alignItems = 'center';
-              item.style.padding = '5px';
-              item.style.justifyContent = 'flex-start';
-              item.style.height = 'auto';
-              item.style.minHeight = '60px';
+          partsList.forEach(item => {
+              const div = document.createElement('div');
+              div.className = 'panel-item part-item';
+              div.style.display = 'flex';
+              div.style.alignItems = 'center';
+              div.style.padding = '5px';
+              div.style.justifyContent = 'flex-start';
+              div.style.height = 'auto';
+              div.style.minHeight = '60px';
 
               const thumbContainer = document.createElement('div');
               thumbContainer.style.width = '50px';
@@ -211,10 +214,9 @@ export class SkinBuilderManager {
               thumbContainer.style.flexShrink = '0';
               thumbContainer.style.border = '1px solid white';
 
-              const thumbData = HyperCubePartStorage.getThumbnail(name);
-              if (thumbData) {
+              if (item.thumbnail) {
                   const img = document.createElement('img');
-                  img.src = thumbData;
+                  img.src = item.thumbnail;
                   img.style.width = '100%';
                   img.style.height = '100%';
                   img.style.objectFit = 'cover';
@@ -229,22 +231,21 @@ export class SkinBuilderManager {
               }
 
               const textSpan = document.createElement('span');
-              textSpan.textContent = name;
+              textSpan.textContent = item.name;
               textSpan.className = 'text-outline';
               textSpan.style.fontSize = '14px';
               textSpan.style.wordBreak = 'break-word';
 
-              item.appendChild(thumbContainer);
-              item.appendChild(textSpan);
+              div.appendChild(thumbContainer);
+              div.appendChild(textSpan);
 
-              item.onclick = () => {
-                  this.selectPart(name);
+              div.onclick = async () => {
+                  await this.selectPart(item.id); // Przekazujemy ID
                   panel.style.display = 'none';
               };
-              panel.appendChild(item);
+              panel.appendChild(div);
           });
       }
-      panel.style.display = 'flex';
   }
   
   selectBlockType(blockType) {
@@ -259,9 +260,12 @@ export class SkinBuilderManager {
       this.previewBlock.visible = true;
   }
 
-  selectPart(partName) {
+  // --- FIX: ASYNCHRONICZNE ŁADOWANIE CZĘŚCI ---
+  async selectPart(partId) {
       this.currentBuildMode = 'part';
-      this.selectedPartData = HyperCubePartStorage.loadPart(partName);
+      // Ładujemy dane z serwera
+      this.selectedPartData = await HyperCubePartStorage.loadPart(partId);
+      
       if (!this.selectedPartData) return;
 
       while(this.previewPart.children.length) {
@@ -461,7 +465,6 @@ export class SkinBuilderManager {
       
       if (success) {
         alert(`Skin "${skinName}" został pomyślnie zapisany!`);
-        // FIX: Poprawione wyjście
         this.game.stateManager.switchToMainMenu();
       }
     }
@@ -482,7 +485,7 @@ export class SkinBuilderManager {
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
-        document.getElementById('joystick-zone').style.display = 'none'; // Ukryj joystick budowania
+        document.getElementById('joystick-zone').style.display = 'none';
     }
   }
   
