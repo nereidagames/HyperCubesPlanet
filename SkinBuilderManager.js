@@ -19,7 +19,7 @@ export class SkinBuilderManager {
     this.placedBlocks = [];
     this.collidableBuildObjects = [];
     this.platform = null;
-    this.platformSize = 16; // Standardowa wielkość skina
+    this.platformSize = 16; 
     this.cameraController = null;
     
     this.baseCharacterVisuals = null;
@@ -69,7 +69,6 @@ export class SkinBuilderManager {
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
     
-    // Tło edytora
     this.scene.background = new THREE.Color(0x2c3e50);
     this.scene.fog = new THREE.Fog(0x2c3e50, 30, 100);
     
@@ -81,18 +80,11 @@ export class SkinBuilderManager {
     
     this.createBuildPlatform();
     
-    // --- NOGI POSTACI W EDYTORZE ---
     this.baseCharacterVisuals = new THREE.Group();
     createBaseCharacter(this.baseCharacterVisuals);
-    
-    // Skalowanie x8 (bo edytor jest 1:1, a gra 0.125)
     this.baseCharacterVisuals.scale.setScalar(8);
-    
-    // Obniżenie nóg, aby pas był na poziomie Y=0 (poziom budowania)
     this.baseCharacterVisuals.position.set(0, -4.0, 0);
-    
     this.scene.add(this.baseCharacterVisuals);
-    // -------------------------------
 
     this.createPreviewBlock();
     this.previewPart = new THREE.Group();
@@ -104,6 +96,8 @@ export class SkinBuilderManager {
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
+        const joy = document.getElementById('joystick-zone');
+        if(joy) { joy.innerHTML = ''; joy.style.display = 'block'; }
     }
 
     this.setupBuildEventListeners();
@@ -114,7 +108,6 @@ export class SkinBuilderManager {
     const material = new THREE.MeshLambertMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.2 });
     
     this.platform = new THREE.Mesh(geometry, material);
-    // Platforma ustawiona tak, by jej góra była na Y=0
     this.platform.position.y = -0.5; 
     
     this.scene.add(this.platform);
@@ -150,7 +143,9 @@ export class SkinBuilderManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
+    // FIX: Poprawione wywołanie stateManager
+    document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
+    
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'flex';
@@ -188,7 +183,6 @@ export class SkinBuilderManager {
       });
   }
 
-  // --- PANEL CZĘŚCI Z MINIATURKAMI ---
   showPartSelectionPanel() {
       const panel = document.getElementById('part-selection-panel');
       panel.innerHTML = '';
@@ -200,7 +194,6 @@ export class SkinBuilderManager {
           partNames.forEach(name => {
               const item = document.createElement('div');
               item.className = 'panel-item part-item';
-              // Style dla ładnego układu
               item.style.display = 'flex';
               item.style.alignItems = 'center';
               item.style.padding = '5px';
@@ -208,7 +201,6 @@ export class SkinBuilderManager {
               item.style.height = 'auto';
               item.style.minHeight = '60px';
 
-              // Kontener na miniaturkę
               const thumbContainer = document.createElement('div');
               thumbContainer.style.width = '50px';
               thumbContainer.style.height = '50px';
@@ -219,7 +211,6 @@ export class SkinBuilderManager {
               thumbContainer.style.flexShrink = '0';
               thumbContainer.style.border = '1px solid white';
 
-              // Pobieramy miniaturkę
               const thumbData = HyperCubePartStorage.getThumbnail(name);
               if (thumbData) {
                   const img = document.createElement('img');
@@ -229,7 +220,6 @@ export class SkinBuilderManager {
                   img.style.objectFit = 'cover';
                   thumbContainer.appendChild(img);
               } else {
-                  // Placeholder
                   thumbContainer.textContent = '🧩';
                   thumbContainer.style.display = 'flex';
                   thumbContainer.style.alignItems = 'center';
@@ -307,7 +297,6 @@ export class SkinBuilderManager {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('contextmenu', this.onContextMenu);
-
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchmove', this.onTouchMove);
@@ -407,7 +396,6 @@ export class SkinBuilderManager {
     }
   }
 
-  // --- GENEROWANIE MINIATURKI (Z NOGAMI) ---
   generateThumbnail() {
     const width = 150;
     const height = 150;
@@ -424,7 +412,6 @@ export class SkinBuilderManager {
 
     const box = new THREE.Box3();
 
-    // Dodaj nogi do zdjęcia (przeskalowane x8, obniżone o 4.0)
     const thumbLegs = new THREE.Group();
     createBaseCharacter(thumbLegs);
     thumbLegs.scale.setScalar(8);
@@ -432,7 +419,6 @@ export class SkinBuilderManager {
     thumbnailScene.add(thumbLegs);
     box.expandByObject(thumbLegs);
 
-    // Dodaj klocki
     if (this.placedBlocks.length > 0) {
         this.placedBlocks.forEach(block => {
             const clone = block.clone();
@@ -458,7 +444,6 @@ export class SkinBuilderManager {
     return dataURL;
   }
 
-  // ZAPIS ASYNCHRONICZNY NA SERWERZE
   async saveSkin() {
     if (this.placedBlocks.length === 0) return;
     const skinName = prompt("Podaj nazwę dla swojego skina:", "Mój Nowy Skin");
@@ -472,12 +457,12 @@ export class SkinBuilderManager {
       
       const thumbnail = this.generateThumbnail();
 
-      // await
       const success = await SkinStorage.saveSkin(skinName, blocksData, thumbnail);
       
       if (success) {
         alert(`Skin "${skinName}" został pomyślnie zapisany!`);
-        this.game.switchToMainMenu();
+        // FIX: Poprawione wyjście
+        this.game.stateManager.switchToMainMenu();
       }
     }
   }
@@ -497,6 +482,7 @@ export class SkinBuilderManager {
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
+        document.getElementById('joystick-zone').style.display = 'none'; // Ukryj joystick budowania
     }
   }
   
