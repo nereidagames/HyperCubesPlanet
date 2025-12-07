@@ -1,68 +1,61 @@
-const PREFABS_STORAGE_KEY = 'bsp_clone_prefabs';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class PrefabStorage {
 
-  // Dodano parametr thumbnail
-  static savePrefab(prefabName, blocksData, thumbnail = null) {
-    if (!prefabName || prefabName.trim() === '') {
-      alert('Nazwa prefabrykatu nie może być pusta!');
-      return false;
+  static async savePrefab(prefabName, blocksData, thumbnail = null) {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) {
+        alert("Musisz być zalogowany, aby zapisać prefabrykat!");
+        return false;
     }
-    const prefabs = this.getAllPrefabs();
-    
-    // Zapisz jako obiekt
-    prefabs[prefabName] = {
-        blocks: blocksData,
-        thumbnail: thumbnail
-    };
 
     try {
-      localStorage.setItem(PREFABS_STORAGE_KEY, JSON.stringify(prefabs));
-      console.log(`Prefab "${prefabName}" saved successfully!`);
-      return true;
-    } catch (error) {
-      console.error('Error saving prefab to localStorage:', error);
-      alert('Nie udało się zapisać prefabrykatu. Pamięć przeglądarki może być pełna.');
-      return false;
-    }
-  }
-
-  static loadPrefab(prefabName) {
-    const prefabs = this.getAllPrefabs();
-    const data = prefabs[prefabName];
-    
-    if (!data) return null;
-
-    // Wsteczna kompatybilność
-    if (Array.isArray(data)) {
-        return data;
-    } else {
-        return data.blocks;
-    }
-  }
-  
-  // Pobieranie miniaturki
-  static getThumbnail(prefabName) {
-      const prefabs = this.getAllPrefabs();
-      const data = prefabs[prefabName];
-      if (data && !Array.isArray(data) && data.thumbnail) {
-          return data.thumbnail;
+      const response = await fetch(`${API_BASE_URL}/api/prefabs`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: prefabName, blocks: blocksData, thumbnail })
+      });
+      
+      if (response.ok) {
+          console.log(`Prefab "${prefabName}" zapisany na serwerze!`);
+          return true;
+      } else {
+          const err = await response.json();
+          alert(`Błąd zapisu: ${err.message}`);
+          return false;
       }
-      return null;
-  }
-
-  static getSavedPrefabsList() {
-    const prefabs = this.getAllPrefabs();
-    return Object.keys(prefabs);
-  }
-
-  static getAllPrefabs() {
-    try {
-      const prefabsData = localStorage.getItem(PREFABS_STORAGE_KEY);
-      return prefabsData ? JSON.parse(prefabsData) : {};
     } catch (error) {
-      console.error('Error reading prefabs from localStorage:', error);
-      return {};
+      console.error('Network Error:', error);
+      return false;
     }
+  }
+
+  static async loadPrefab(prefabId) {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return null;
+    try {
+        const r = await fetch(`${API_BASE_URL}/api/prefabs/${prefabId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(r.ok) return await r.json();
+    } catch(e) { console.error(e); }
+    return null;
+  }
+
+  // Zwraca listę MOICH prefabrykatów
+  static async getSavedPrefabsList() {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return [];
+    try {
+        const r = await fetch(`${API_BASE_URL}/api/prefabs/mine`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(r.ok) return await r.json(); // Zwraca tablicę {id, name, thumbnail}
+    } catch(e) { console.error(e); }
+    return [];
   }
 }
