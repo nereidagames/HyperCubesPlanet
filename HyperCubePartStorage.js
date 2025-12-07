@@ -1,67 +1,65 @@
-const PARTS_STORAGE_KEY = 'bsp_clone_hypercube_parts';
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class HyperCubePartStorage {
 
-  // Dodano parametr thumbnail
-  static savePart(partName, blocksData, thumbnail = null) {
-    if (!partName || partName.trim() === '') {
-      alert('Nazwa części nie może być pusta!');
-      return false;
+  static async savePart(partName, blocksData, thumbnail = null) {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) {
+        alert("Musisz być zalogowany!");
+        return false;
     }
-    const parts = this.getAllParts();
-    
-    // Zapisujemy obiekt zamiast samej tablicy
-    parts[partName] = {
-        blocks: blocksData,
-        thumbnail: thumbnail
-    };
 
     try {
-      localStorage.setItem(PARTS_STORAGE_KEY, JSON.stringify(parts));
-      console.log(`HyperCube Part "${partName}" saved successfully!`);
-      return true;
+      const response = await fetch(`${API_BASE_URL}/api/parts`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: partName, blocks: blocksData, thumbnail })
+      });
+      
+      if (response.ok) {
+          console.log(`Część "${partName}" zapisana na serwerze!`);
+          return true;
+      } else {
+          const err = await response.json();
+          alert(`Błąd zapisu: ${err.message}`);
+          return false;
+      }
     } catch (error) {
-      console.error('Error saving part to localStorage:', error);
-      alert('Nie udało się zapisać części. Pamięć przeglądarki może być pełna.');
+      console.error('Network Error:', error);
       return false;
     }
   }
 
-  static loadPart(partName) {
-    const parts = this.getAllParts();
-    const data = parts[partName];
-    if (!data) return null;
+  static async loadPart(partId) {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return null;
+    try {
+        const r = await fetch(`${API_BASE_URL}/api/parts/${partId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(r.ok) return await r.json();
+    } catch(e) { console.error(e); }
+    return null;
+  }
 
-    // Kompatybilność wsteczna (jeśli stary zapis to tablica)
-    if (Array.isArray(data)) {
-        return data;
-    } else {
-        return data.blocks;
-    }
+  static async getSavedPartsList() {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return [];
+    try {
+        const r = await fetch(`${API_BASE_URL}/api/parts/mine`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(r.ok) return await r.json();
+    } catch(e) { console.error(e); }
+    return [];
   }
   
-  // Nowa metoda do pobierania miniaturki
-  static getThumbnail(partName) {
-      const parts = this.getAllParts();
-      const data = parts[partName];
-      if (data && !Array.isArray(data) && data.thumbnail) {
-          return data.thumbnail;
-      }
-      return null;
-  }
-
-  static getSavedPartsList() {
-    const parts = this.getAllParts();
-    return Object.keys(parts);
-  }
-
-  static getAllParts() {
-    try {
-      const partsData = localStorage.getItem(PARTS_STORAGE_KEY);
-      return partsData ? JSON.parse(partsData) : {};
-    } catch (error) {
-      console.error('Error reading parts from localStorage:', error);
-      return {};
-    }
+  // Kompatybilność (dla starego kodu, choć teraz używamy ID)
+  static getThumbnail(partObj) {
+      return partObj.thumbnail;
   }
 }
