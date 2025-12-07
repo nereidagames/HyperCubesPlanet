@@ -61,7 +61,6 @@ export class PrefabBuilderManager {
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
     
-    // Tło dla edytora prefabrykatów
     this.scene.background = new THREE.Color(0x2c3e50);
     this.scene.fog = new THREE.Fog(0x2c3e50, 20, 150);
     
@@ -80,6 +79,8 @@ export class PrefabBuilderManager {
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
+        const joy = document.getElementById('joystick-zone');
+        if(joy) { joy.innerHTML = ''; joy.style.display = 'block'; }
     }
 
     this.setupBuildEventListeners();
@@ -123,7 +124,9 @@ export class PrefabBuilderManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    document.getElementById('build-exit-button').onclick = () => this.game.switchToMainMenu();
+    // FIX: Poprawione wywołanie stateManager
+    document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
+    
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         const panel = document.getElementById('block-selection-panel');
@@ -172,7 +175,6 @@ export class PrefabBuilderManager {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('contextmenu', this.onContextMenu);
-
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchmove', this.onTouchMove);
@@ -231,7 +233,6 @@ export class PrefabBuilderManager {
     }
   }
 
-  // --- GENEROWANIE MINIATURKI DLA PREFABRYKATU ---
   generateThumbnail() {
     const width = 150;
     const height = 150;
@@ -285,12 +286,12 @@ export class PrefabBuilderManager {
         texturePath: block.userData.texturePath
       }));
       
-      // Generuj miniaturkę
       const thumbnail = this.generateThumbnail();
       
       if (PrefabStorage.savePrefab(prefabName, blocksData, thumbnail)) {
         alert(`Prefabrykat "${prefabName}" został pomyślnie zapisany!`);
-        this.game.switchToMainMenu();
+        // FIX: Poprawione wyjście
+        this.game.stateManager.switchToMainMenu();
       }
     }
   }
@@ -305,6 +306,7 @@ export class PrefabBuilderManager {
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
+        document.getElementById('joystick-zone').style.display = 'none';
     }
   }
   
