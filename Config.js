@@ -1,3 +1,5 @@
+// Adres Twojego serwera na Render.com
+// WAŻNE: Musi być bez ukośnika '/' na końcu!
 export const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 export const STORAGE_KEYS = {
@@ -8,11 +10,11 @@ export const STORAGE_KEYS = {
 };
 
 export const LOADING_TEXTS = [
-    "Dziurkowanie Kawałków Sera",
-    "Wprowadzanie Przycisku Skoku",
-    "Pompowanie Panoram Nieba",
-    "Jazda w Kierunku Zachodu Słońca",
-    "Wypełnianie Pustych Klocków",
-    "Robienie Cubo-Domowej Pracy",
+    "Dziurkowanie Kawałków Sera...",
+    "Wprowadzanie Przycisku Skoku...",
+    "Pompowanie Panoram Nieba...",
+    "Jazda w Kierunku Zachodu Słońca...",
+    "Wypełnianie Pustych Klocków...",
+    "Robienie Cubo-Domowej Pracy...",
     "Wczytywanie - Proszę czekać..."
 ];
