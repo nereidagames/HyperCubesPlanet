@@ -3,10 +3,8 @@ import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 export class AuthManager {
     constructor(onLoginSuccess) {
         this.onLoginSuccess = onLoginSuccess; 
-        // Usunięto bindEvents z konstruktora, bo HTML jeszcze nie istnieje
     }
 
-    // Ta metoda zostanie wywołana z main.js PO załadowaniu UI
     bindEvents() {
         this.uiElements = {
             screen: document.getElementById('auth-screen'),
@@ -40,13 +38,15 @@ export class AuthManager {
         }
     }
 
-    // Sprawdza, czy mamy token w pamięci przy starcie
     async checkSession(uiManager) {
         const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
         const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
 
         if (token && username) {
             try {
+                // Sprawdzamy, czy adres jest poprawny
+                if (!API_BASE_URL) throw new Error("Brak adresu API_BASE_URL");
+
                 const response = await fetch(`${API_BASE_URL}/api/user/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -112,7 +112,9 @@ export class AuthManager {
                 this.setMessage(data.message || 'Błąd rejestracji.');
             }
         } catch (error) {
-            this.setMessage('Błąd połączenia z serwerem.');
+            // WYŚWIETL DOKŁADNY BŁĄD
+            this.setMessage(`Błąd sieci: ${error.message}`);
+            console.error(error);
         }
     }
 
@@ -123,12 +125,16 @@ export class AuthManager {
         const password = document.getElementById('login-password').value;
 
         try {
+            console.log("Próba logowania do:", `${API_BASE_URL}/api/login`);
+            
             const response = await fetch(`${API_BASE_URL}/api/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
+            
             const data = await response.json();
+            
             if (response.ok) {
                 this.setMessage('Zalogowano pomyślnie!');
                 if (this.uiElements.screen) this.uiElements.screen.style.display = 'none';
@@ -137,7 +143,9 @@ export class AuthManager {
                 this.setMessage(data.message || 'Błąd logowania.');
             }
         } catch (error) {
-            this.setMessage('Błąd połączenia z serwerem.');
+            // WYŚWIETL DOKŁADNY BŁĄD
+            this.setMessage(`Błąd sieci: ${error.message}`);
+            console.error("Login error details:", error);
         }
     }
 
