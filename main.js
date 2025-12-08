@@ -54,6 +54,7 @@ class BlockStarPlanetGame {
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     this.clock = new THREE.Clock();
 
+    // Zmienne podglądu w menu głównym (np. avatar)
     this.previewScene = null;
     this.previewCamera = null;
     this.previewRenderer = null;
@@ -80,13 +81,8 @@ class BlockStarPlanetGame {
 
       console.log("Zasoby załadowane. Inicjalizacja UI...");
       try {
-        // 1. Najpierw wstrzykujemy HTML (renderUI wewnątrz initialize)
         this.ui.initialize(this.isMobile);
-        
-        // 2. Teraz, gdy HTML istnieje, podpinamy zdarzenia do przycisków Auth
         this.auth.bindEvents();
-        
-        // 3. Sprawdzamy czy user jest zalogowany
         this.auth.checkSession(this.ui);
       } catch (e) {
           console.error("Błąd inicjalizacji UI:", e);
@@ -178,27 +174,178 @@ class BlockStarPlanetGame {
       this.setupPositionUpdateLoop();
   }
 
-  setupCharacterPreview() { const container = document.getElementById('player-preview-renderer-container'); if (!container) return; this.previewScene = new THREE.Scene(); this.previewScene.background = new THREE.Color(0x333333); this.previewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); this.previewCamera.position.set(0, 1, 4); this.previewCamera.lookAt(0, 0, 0); this.previewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); this.previewRenderer.setSize(300, 300); container.innerHTML = ''; container.appendChild(this.previewRenderer.domElement); const rect = container.getBoundingClientRect(); if(rect.width > 0) { this.previewRenderer.setSize(rect.width, rect.height); this.previewCamera.aspect = rect.width / rect.height; this.previewCamera.updateProjectionMatrix(); } const ambLight = new THREE.AmbientLight(0xffffff, 0.8); this.previewScene.add(ambLight); const dirLight = new THREE.DirectionalLight(0xffffff, 0.5); dirLight.position.set(2, 5, 3); this.previewScene.add(dirLight); this.previewCharacter = new THREE.Group(); createBaseCharacter(this.previewCharacter); this.previewCharacter.position.y = -1; this.previewScene.add(this.previewCharacter); const onStart = (x) => { this.isPreviewDragging = true; this.previewMouseX = x; }; const onMove = (x) => { if (this.isPreviewDragging && this.previewCharacter) { const delta = x - this.previewMouseX; this.previewCharacter.rotation.y += delta * 0.01; this.previewMouseX = x; } }; const onEnd = () => { this.isPreviewDragging = false; }; container.addEventListener('mousedown', (e) => onStart(e.clientX)); window.addEventListener('mousemove', (e) => onMove(e.clientX)); window.addEventListener('mouseup', onEnd); container.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), {passive: false}); window.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), {passive: false}); window.addEventListener('touchend', onEnd); }
-  setupStats() { const fpsPref = localStorage.getItem(STORAGE_KEYS.FPS_ENABLED) === 'true'; if (fpsPref) { this.isFPSEnabled = true; this.stats.dom.style.display = 'block'; } this.ui.onToggleFPS = () => { this.isFPSEnabled = !this.isFPSEnabled; this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none'; this.ui.updateFPSToggleText(this.isFPSEnabled); localStorage.setItem(STORAGE_KEYS.FPS_ENABLED, this.isFPSEnabled.toString()); }; this.ui.updateFPSToggleText(this.isFPSEnabled); }
-  setupMultiplayerCallbacks() { this.ui.onSendPrivateMessage = (recipient, text) => this.multiplayer.sendPrivateMessage(recipient, text); this.coinManager.onCollect = () => this.multiplayer.sendMessage({ type: 'collectCoin' }); const originalHandle = this.multiplayer.handleMessage.bind(this.multiplayer); this.multiplayer.handleMessage = (msg) => { originalHandle(msg); if (msg.type === 'friendRequestReceived') { this.ui.showMessage(`Zaproszenie od ${msg.from}!`, 'info'); this.ui.loadFriendsData(); } if (msg.type === 'friendRequestAccepted') { this.ui.showMessage(`${msg.by} przyjął zaproszenie!`, 'success'); this.ui.loadFriendsData(); } if (msg.type === 'friendStatusChange') this.ui.loadFriendsData(); if (msg.type === 'privateMessageSent' && this.ui.onMessageSent) this.ui.onMessageSent(msg); if (msg.type === 'privateMessageReceived' && this.ui.onMessageReceived) this.ui.onMessageReceived(msg); }; }
+  setupCharacterPreview() { 
+      const container = document.getElementById('player-preview-renderer-container'); 
+      if (!container) return; 
+      
+      this.previewScene = new THREE.Scene(); 
+      this.previewScene.background = new THREE.Color(0x333333); 
+      this.previewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); 
+      this.previewCamera.position.set(0, 1, 4); 
+      this.previewCamera.lookAt(0, 0, 0); 
+      
+      this.previewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); 
+      this.previewRenderer.setSize(300, 300); 
+      container.innerHTML = ''; 
+      container.appendChild(this.previewRenderer.domElement); 
+      
+      const rect = container.getBoundingClientRect(); 
+      if(rect.width > 0) { 
+          this.previewRenderer.setSize(rect.width, rect.height); 
+          this.previewCamera.aspect = rect.width / rect.height; 
+          this.previewCamera.updateProjectionMatrix(); 
+      } 
+      
+      const ambLight = new THREE.AmbientLight(0xffffff, 0.8); 
+      this.previewScene.add(ambLight); 
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.5); 
+      dirLight.position.set(2, 5, 3); 
+      this.previewScene.add(dirLight); 
+      
+      this.previewCharacter = new THREE.Group(); 
+      createBaseCharacter(this.previewCharacter); 
+      this.previewCharacter.position.y = -1; 
+      this.previewScene.add(this.previewCharacter); 
+      
+      const onStart = (x) => { this.isPreviewDragging = true; this.previewMouseX = x; }; 
+      const onMove = (x) => { if (this.isPreviewDragging && this.previewCharacter) { const delta = x - this.previewMouseX; this.previewCharacter.rotation.y += delta * 0.01; this.previewMouseX = x; } }; 
+      const onEnd = () => { this.isPreviewDragging = false; }; 
+      
+      container.addEventListener('mousedown', (e) => onStart(e.clientX)); 
+      window.addEventListener('mousemove', (e) => onMove(e.clientX)); 
+      window.addEventListener('mouseup', onEnd); 
+      container.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), {passive: false}); 
+      window.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), {passive: false}); 
+      window.addEventListener('touchend', onEnd); 
+  }
+
+  setupStats() { 
+      const fpsPref = localStorage.getItem(STORAGE_KEYS.FPS_ENABLED) === 'true'; 
+      if (fpsPref) { this.isFPSEnabled = true; this.stats.dom.style.display = 'block'; } 
+      this.ui.onToggleFPS = () => { this.isFPSEnabled = !this.isFPSEnabled; this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none'; this.ui.updateFPSToggleText(this.isFPSEnabled); localStorage.setItem(STORAGE_KEYS.FPS_ENABLED, this.isFPSEnabled.toString()); }; 
+      this.ui.updateFPSToggleText(this.isFPSEnabled); 
+  }
+
+  setupMultiplayerCallbacks() { 
+      this.ui.onSendPrivateMessage = (recipient, text) => this.multiplayer.sendPrivateMessage(recipient, text); 
+      this.coinManager.onCollect = () => this.multiplayer.sendMessage({ type: 'collectCoin' }); 
+      
+      const originalHandle = this.multiplayer.handleMessage.bind(this.multiplayer); 
+      this.multiplayer.handleMessage = (msg) => { 
+          originalHandle(msg); 
+          if (msg.type === 'friendRequestReceived') { this.ui.showMessage(`Zaproszenie od ${msg.from}!`, 'info'); this.ui.loadFriendsData(); } 
+          if (msg.type === 'friendRequestAccepted') { this.ui.showMessage(`${msg.by} przyjął zaproszenie!`, 'success'); this.ui.loadFriendsData(); } 
+          if (msg.type === 'friendStatusChange') this.ui.loadFriendsData(); 
+          if (msg.type === 'privateMessageSent' && this.ui.onMessageSent) this.ui.onMessageSent(msg); 
+          if (msg.type === 'privateMessageReceived' && this.ui.onMessageReceived) this.ui.onMessageReceived(msg); 
+      }; 
+  }
 
   setupUIActions() {
+      // Budowanie (wybór rozmiaru)
       this.ui.onWorldSizeSelected = (size) => this.stateManager.switchToBuildMode(size);
+      
+      // Budowanie (Skiny, Prefaby, Części)
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
       this.ui.onPrefabBuilderClick = () => this.stateManager.switchToPrefabBuilder();
       this.ui.onPartBuilderClick = () => this.stateManager.switchToPartBuilder();
-      this.ui.onPlayClick = () => this.ui.showDiscoverPanel('worlds');
-      this.ui.onDiscoverClick = () => this.ui.showDiscoverPanel('skins');
-      this.ui.onPlayerAvatarClick = () => { if (this.previewCharacter) { while(this.previewCharacter.children.length > 4) { this.previewCharacter.remove(this.previewCharacter.children[this.previewCharacter.children.length-1]); } if (this.characterManager.skinContainer) { const skinClone = this.characterManager.skinContainer.clone(); this.previewCharacter.add(skinClone); } } };
-      this.ui.onWorldSelect = async (worldItem) => { if (!worldItem.id) return; const worldData = await WorldStorage.loadWorldData(worldItem.id); if (worldData) { worldData.id = worldItem.id; this.loadAndExploreWorld(worldData); } else { this.ui.showMessage("Błąd świata.", "error"); } };
-      this.ui.onBuyBlock = async (block) => { const result = await this.blockManager.buyBlock(block.name, block.cost); if(result.success) { this.ui.showMessage(`Kupiono: ${block.name}!`, 'success'); this.coinManager.updateBalance(result.newBalance); this.ui.populateShopUI(); } else { this.ui.showMessage(result.message, 'error'); } };
-      this.ui.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => { const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); if (ownerId && ownerId !== myId) { this.ui.showMessage("Tryb podglądu.", "info"); return; } const data = await SkinStorage.loadSkinData(skinId); if (data) { this.characterManager.applySkin(data); SkinStorage.setLastUsedSkinId(skinId); this.ui.updatePlayerAvatar(thumbnail); this.multiplayer.sendMessage({ type: 'mySkin', skinData: data }); this.ui.showMessage(`Założono: ${skinName}`, 'success'); } };
+      
+      // Odkrywanie (Otwiera nowe okno wyboru)
+      this.ui.onDiscoverClick = () => this.ui.openPanel('discover-choice-panel'); // To jest obsłużone w ui.js, ale warto mieć tu backup
+      
+      // Zagraj (Otwiera wybór trybu)
+      this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel');
+
+      // Avatar
+      this.ui.onPlayerAvatarClick = () => { 
+          if (this.previewCharacter) { 
+              while(this.previewCharacter.children.length > 4) { 
+                  this.previewCharacter.remove(this.previewCharacter.children[this.previewCharacter.children.length-1]); 
+              } 
+              if (this.characterManager.skinContainer) { 
+                  const skinClone = this.characterManager.skinContainer.clone(); 
+                  this.previewCharacter.add(skinClone); 
+              } 
+          } 
+      };
+
+      // Wybór świata
+      this.ui.onWorldSelect = async (worldItem) => { 
+          if (!worldItem.id) return; 
+          const worldData = await WorldStorage.loadWorldData(worldItem.id); 
+          if (worldData) { 
+              worldData.id = worldItem.id; 
+              this.loadAndExploreWorld(worldData); 
+          } else { 
+              this.ui.showMessage("Błąd świata.", "error"); 
+          } 
+      };
+
+      // Kupowanie
+      this.ui.onBuyBlock = async (block) => { 
+          const result = await this.blockManager.buyBlock(block.name, block.cost); 
+          if(result.success) { 
+              this.ui.showMessage(`Kupiono: ${block.name}!`, 'success'); 
+              this.coinManager.updateBalance(result.newBalance); 
+              this.ui.populateShopUI(); 
+          } else { 
+              this.ui.showMessage(result.message, 'error'); 
+          } 
+      };
+
+      // Wybór skina (zakładanie)
+      this.ui.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => { 
+          const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); 
+          if (ownerId && ownerId !== myId) { 
+              this.ui.showMessage("Nie możesz ubrać cudzego skina!", "error"); 
+              return; 
+          } 
+          const data = await SkinStorage.loadSkinData(skinId); 
+          if (data) { 
+              this.characterManager.applySkin(data); 
+              SkinStorage.setLastUsedSkinId(skinId); 
+              this.ui.updatePlayerAvatar(thumbnail); 
+              this.multiplayer.sendMessage({ type: 'mySkin', skinData: data }); 
+              this.ui.showMessage(`Założono: ${skinName}`, 'success'); 
+          } 
+      };
+      
+      // --- FIX: OBSŁUGA "UŻYJ" DLA PREFABÓW I CZĘŚCI ---
+      this.ui.onUsePrefab = async (item) => {
+          this.stateManager.switchToPrefabBuilder();
+          // Czekamy chwilę aż menadżer się zainicjalizuje (bezpiecznik)
+          setTimeout(async () => {
+              await this.prefabBuilderManager.selectPrefab(item.id);
+          }, 100);
+      };
+
+      this.ui.onUsePart = async (item) => {
+          this.stateManager.switchToPartBuilder();
+          setTimeout(async () => {
+              await this.partBuilderManager.selectPart(item.id);
+          }, 100);
+      };
+
       this.ui.onEditNexusClick = () => this.stateManager.switchToBuildMode(64);
       this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
   }
 
-  recreatePlayerController(collidables) { if(this.playerController) this.playerController.destroy(); this.playerController = new PlayerController(this.characterManager.character, collidables, { moveSpeed: 8, jumpForce: 18, gravity: 50, groundRestingY: this.sceneManager.FLOOR_TOP_Y }); this.playerController.setIsMobile(this.isMobile); }
-  setupPositionUpdateLoop() { if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval); this.positionUpdateInterval = setInterval(() => { if ((this.stateManager.currentState === 'MainMenu' || this.stateManager.currentState === 'ExploreMode') && this.characterManager && this.characterManager.character) { if(this.multiplayer) { this.multiplayer.sendMyPosition(this.characterManager.character.position, this.characterManager.character.quaternion); } } }, 50); }
+  recreatePlayerController(collidables) { 
+      if(this.playerController) this.playerController.destroy(); 
+      this.playerController = new PlayerController(this.characterManager.character, collidables, { moveSpeed: 8, jumpForce: 18, gravity: 50, groundRestingY: this.sceneManager.FLOOR_TOP_Y }); 
+      this.playerController.setIsMobile(this.isMobile); 
+  }
+
+  setupPositionUpdateLoop() { 
+      if (this.positionUpdateInterval) clearInterval(this.positionUpdateInterval); 
+      this.positionUpdateInterval = setInterval(() => { 
+          if ((this.stateManager.currentState === 'MainMenu' || this.stateManager.currentState === 'ExploreMode') && this.characterManager && this.characterManager.character) { 
+              if(this.multiplayer) { 
+                  this.multiplayer.sendMyPosition(this.characterManager.character.position, this.characterManager.character.quaternion); 
+              } 
+          } 
+      }, 50); 
+  }
 
   loadAndExploreWorld(worldData) {
       const worldBlocksData = Array.isArray(worldData) ? worldData : (worldData.blocks || []);
@@ -283,14 +430,6 @@ class BlockStarPlanetGame {
       if (this.previewCharacter && !this.isPreviewDragging) { this.previewCharacter.rotation.y += 0.005; }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
     }
-  }
-  
-  showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #e74c3c; color: white; padding: 20px; border-radius: 10px; font-family: Arial, sans-serif; font-weight: bold; z-index: 10000;`;
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
-    setTimeout(() => errorDiv.remove(), 5000);
   }
 }
 
