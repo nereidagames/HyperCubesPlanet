@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML } from './UITemplates.js';
+import { PrefabStorage } from './PrefabStorage.js';
+import { HyperCubePartStorage } from './HyperCubePartStorage.js';
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML } from './UITemplates.js';
 import { STORAGE_KEYS } from './Config.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
@@ -12,7 +14,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki
+    // Callbacki z main.js
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -31,6 +33,11 @@ export class UIManager {
     this.onMessageReceived = null;
     this.onEditNexusClick = null;
     
+    // Nowe callbacki dla użycia przedmiotów
+    this.onUsePrefab = null;
+    this.onUsePart = null;
+    
+    // Callbacki dla parkoura
     this.onExitParkour = null;
     this.onReplayParkour = null;
 
@@ -43,14 +50,15 @@ export class UIManager {
     
     this.pendingRewardData = null;
 
-    // Preview 3D Variables
+    // Zmienne do podglądu 3D
     this.skinPreviewRenderer = null;
     this.skinPreviewScene = null;
     this.skinPreviewCamera = null;
     this.skinPreviewCharacter = null;
     this.skinPreviewAnimId = null;
     
-    this.currentSkinIdForComments = null;
+    this.currentDetailsId = null;
+    this.currentDetailsType = 'skin'; // 'skin', 'part', 'prefab'
   }
   
   initialize(isMobile) {
@@ -78,32 +86,23 @@ export class UIManager {
       if (authLayer) authLayer.innerHTML = AUTH_HTML;
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
-      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML;
+      // Dodajemy DISCOVER_CHOICE_HTML do modali
+      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML;
   }
 
+  // --- STANDARDOWE AKTUALIZACJE ---
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
       const lvlFill = document.getElementById('level-bar-fill');
-
       if (lvlVal) lvlVal.textContent = level;
       if (lvlText) lvlText.textContent = `${xp}/${maxXp}`;
-      if (lvlFill) {
-          const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100));
-          lvlFill.style.width = `${percent}%`;
-      }
+      if (lvlFill) { const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100)); lvlFill.style.width = `${percent}%`; }
   }
 
-  setParkourTimerVisible(visible) {
-      const timer = document.getElementById('parkour-timer');
-      if (timer) timer.style.display = visible ? 'block' : 'none';
-  }
-
-  updateParkourTimer(timeString) {
-      const timer = document.getElementById('parkour-timer');
-      if (timer) timer.textContent = timeString;
-  }
-
+  setParkourTimerVisible(visible) { const timer = document.getElementById('parkour-timer'); if (timer) timer.style.display = visible ? 'block' : 'none'; }
+  updateParkourTimer(timeString) { const timer = document.getElementById('parkour-timer'); if (timer) timer.textContent = timeString; }
+  
   handleParkourCompletion(timeString, data) {
       this.pendingRewardData = data;
       this.showVictory(timeString);
@@ -122,17 +121,13 @@ export class UIManager {
       const panel = document.getElementById('reward-panel');
       const data = this.pendingRewardData;
       if (!panel) return;
-
       if (data) {
           document.getElementById('reward-xp-val').textContent = `+500`; 
           document.getElementById('reward-coins-val').textContent = `+100`; 
-          
           document.getElementById('reward-lvl-cur').textContent = data.newLevel;
           document.getElementById('reward-lvl-next').textContent = data.newLevel + 1;
-          
           const fill = document.getElementById('reward-bar-fill');
           const text = document.getElementById('reward-bar-text');
-          
           if (fill && text) {
               const max = data.maxXp || 100;
               const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100));
@@ -144,86 +139,100 @@ export class UIManager {
   }
 
   hideVictory() {
-      const vPanel = document.getElementById('victory-panel');
-      const rPanel = document.getElementById('reward-panel');
-      if(vPanel) vPanel.style.display = 'none';
-      if(rPanel) rPanel.style.display = 'none';
+      document.getElementById('victory-panel').style.display = 'none';
+      document.getElementById('reward-panel').style.display = 'none';
       this.pendingRewardData = null;
   }
 
-  async showSkinDetails(item) {
+  // --- UNIWERSALNE OKNO SZCZEGÓŁÓW (Skin / Part / Prefab) ---
+  async showItemDetails(item, type) {
       const modal = document.getElementById('skin-details-modal');
-      if (!modal) { console.error("Brak HTML okna skina!"); return; }
+      if (!modal) return;
       
-      this.currentSkinIdForComments = item.id;
+      this.currentDetailsId = item.id;
+      this.currentDetailsType = type; // 'skin', 'part', 'prefab'
       
       const headerName = modal.querySelector('.skin-name-header');
       const creatorName = modal.querySelector('.skin-creator-name');
       const creatorLevel = modal.querySelector('.skin-creator-level-val');
       const likesCount = modal.querySelector('.skin-likes-count');
       const timeInfo = modal.querySelector('.skin-time-info');
-      
       const btnUse = document.getElementById('skin-btn-use');
       const btnLike = document.getElementById('skin-btn-like');
       const btnComment = document.getElementById('skin-btn-comment');
 
+      // Wypełnianie danych
       if(headerName) headerName.textContent = item.name;
       if(creatorName) creatorName.textContent = item.creator || "Nieznany";
-      
-      // FIX: Level
-      if(creatorLevel) {
-          // Sprawdzamy czy mamy creatorLevel (duże L) lub creatorlevel (małe l)
-          const lvl = item.creatorLevel !== undefined ? item.creatorLevel : (item.creatorlevel !== undefined ? item.creatorlevel : 1);
-          creatorLevel.textContent = lvl;
-      }
-      
+      if(creatorLevel) creatorLevel.textContent = item.creatorLevel || "?"; 
       if(likesCount) likesCount.textContent = item.likes || "0";
       
-      // FIX: Data - zabezpieczenie przed NaN
       if(timeInfo) {
           let dateStr = "niedawno";
           if (item.created_at) {
               const date = new Date(item.created_at);
               if (!isNaN(date.getTime())) {
                   const now = new Date();
-                  const diffTime = Math.abs(now - date);
-                  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                  const diffDays = Math.floor(Math.abs(now - date) / (1000 * 60 * 60 * 24));
                   dateStr = diffDays === 0 ? "dzisiaj" : `${diffDays} dni temu`;
               }
           }
           timeInfo.textContent = dateStr;
       }
 
+      // Liczba komentarzy
       if (btnComment) {
           const countSpan = btnComment.querySelector('.skin-btn-label');
           if(countSpan) countSpan.textContent = item.comments || "0";
           btnComment.onclick = () => {
-              this.openSkinComments(item.id);
+              this.openItemComments(item.id, type);
           };
       }
 
+      // Logika przycisku Użyj
       const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0");
+      const isOwner = item.owner_id === myId;
+      
       if (btnUse) {
-          if (item.owner_id === myId) {
-              btnUse.style.display = 'flex';
+          btnUse.style.display = 'flex'; // Domyślnie pokaż
+          
+          if (type === 'skin') {
+              // Skiny: tylko dla właściciela "Użyj" (załóż)
+              if (isOwner) {
+                  btnUse.onclick = () => {
+                      this.closeAllPanels();
+                      if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id);
+                  };
+              } else {
+                  btnUse.style.display = 'none'; // Nie można ubrać cudzego skina (chyba że kupisz)
+              }
+          } 
+          else if (type === 'part') {
+              // Części: Zawsze "Użyj" (otwiera edytor)
               btnUse.onclick = () => {
                   this.closeAllPanels();
-                  if (this.onSkinSelect) {
-                      this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id);
-                  }
+                  if (this.onUsePart) this.onUsePart(item);
               };
-          } else {
-              btnUse.style.display = 'none';
+          }
+          else if (type === 'prefab') {
+              // Prefabrykaty: Zawsze "Użyj" (otwiera edytor świata)
+              btnUse.onclick = () => {
+                  this.closeAllPanels();
+                  if (this.onUsePrefab) this.onUsePrefab(item);
+              };
           }
       }
       
+      // Logika Lajków
       if (btnLike) {
           btnLike.onclick = null;
           btnLike.onclick = async () => {
               const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
               if(!t) return;
               try {
-                  const r = await fetch(`${API_BASE_URL}/api/skins/${item.id}/like`, {
+                  // Endpoint dynamiczny zależny od typu: /api/prefabs/:id/like, /api/skins/:id/like
+                  const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
+                  const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${item.id}/like`, {
                       method: 'POST',
                       headers: { 'Authorization': `Bearer ${t}` }
                   });
@@ -235,66 +244,72 @@ export class UIManager {
           };
       }
 
-      this.initSkinPreview3D(item.id);
+      // Podgląd 3D (zależy od typu - skina ma nogi, reszta nie)
+      this.init3DPreview(item.id, type);
       this.closeAllPanels(); 
       modal.style.display = 'flex';
   }
 
-  async openSkinComments(skinId) {
+  // --- KOMENTARZE ---
+  async openItemComments(itemId, type) {
       const panel = document.getElementById('skin-comments-panel');
       if (!panel) return;
       panel.style.display = 'flex';
       const closeBtn = document.getElementById('close-comments-btn');
       if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; };
-      this.loadSkinComments(skinId);
+
+      this.loadItemComments(itemId, type);
+      
       const submitBtn = document.getElementById('comment-submit-btn');
       const input = document.getElementById('comment-input');
+      
       if(submitBtn) {
+          submitBtn.onclick = null; // Clear old
           submitBtn.onclick = async () => {
               const text = input.value.trim();
               if(!text) return;
               const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+              const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
               try {
-                  const r = await fetch(`${API_BASE_URL}/api/skins/${skinId}/comments`, {
+                  const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
                       body: JSON.stringify({ text })
                   });
                   if(r.ok) {
                       input.value = '';
-                      this.loadSkinComments(skinId);
+                      this.loadItemComments(itemId, type);
                   }
               } catch(e) { console.error(e); }
           };
       }
   }
 
-  async loadSkinComments(skinId) {
+  async loadItemComments(itemId, type) {
       const container = document.querySelector('.comments-list-container');
       if(!container) return;
       container.innerHTML = '<p style="text-align:center; padding:10px;">Ładowanie...</p>';
-      
       const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
+      const likeEndpoint = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
+
       try {
-          const r = await fetch(`${API_BASE_URL}/api/skins/${skinId}/comments`, {
+          const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, {
               headers: { 'Authorization': `Bearer ${t}` }
           });
           const comments = await r.json();
           container.innerHTML = '';
-          
           if(comments.length === 0) {
-              container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy. Bądź pierwszy!</p>';
+              container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy.</p>';
               return;
           }
-
           comments.forEach(c => {
               const div = document.createElement('div');
               div.className = 'comment-item';
               const date = new Date(c.created_at);
               const now = new Date();
               const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
-              const timeStr = diffHours < 24 ? (diffHours === 0 ? "przed chwilą" : `${diffHours} godz. temu`) : `${Math.floor(diffHours/24)} dni temu`;
-
+              const timeStr = diffHours < 24 ? (diffHours === 0 ? "teraz" : `${diffHours}h temu`) : `${Math.floor(diffHours/24)}d temu`;
               div.innerHTML = `
                   <div class="comment-avatar" style="background-image: url('${c.current_skin_thumbnail || ''}')"></div>
                   <div class="comment-content">
@@ -310,7 +325,8 @@ export class UIManager {
               const likeBtn = div.querySelector('.comment-like-btn');
               likeBtn.onclick = async () => {
                   try {
-                      const lr = await fetch(`${API_BASE_URL}/api/comments/${c.id}/like`, {
+                      // Endpointy do lajków komentarzy: /api/skins/comments/:id/like
+                      const lr = await fetch(`${API_BASE_URL}/api/${likeEndpoint}/comments/${c.id}/like`, {
                           method: 'POST',
                           headers: { 'Authorization': `Bearer ${t}` }
                       });
@@ -322,22 +338,22 @@ export class UIManager {
               };
               container.appendChild(div);
           });
-      } catch(e) {
-          container.innerHTML = '<p style="text-align:center; padding:10px;">Błąd.</p>';
-      }
+      } catch(e) { container.innerHTML = '<p style="text-align:center;">Błąd.</p>'; }
   }
 
-  async initSkinPreview3D(skinId) {
+  // --- PODGLĄD 3D (UNIWERSALNY) ---
+  async init3DPreview(itemId, type) {
       const container = document.getElementById('skin-preview-canvas');
       if (!container) return;
       if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
       container.innerHTML = '';
+      
       const width = container.clientWidth || 300;
       const height = container.clientHeight || 300;
 
       this.skinPreviewScene = new THREE.Scene();
       this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-      this.skinPreviewCamera.position.set(0, 2, 5); 
+      this.skinPreviewCamera.position.set(0, 2, 6); 
       this.skinPreviewCamera.lookAt(0, 0.5, 0);
 
       this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -351,31 +367,47 @@ export class UIManager {
       this.skinPreviewScene.add(dir);
 
       this.skinPreviewCharacter = new THREE.Group();
-      if (typeof createBaseCharacter !== 'undefined') {
+      
+      // Jeśli to skin, dodajemy nogi
+      if (type === 'skin' && typeof createBaseCharacter !== 'undefined') {
            createBaseCharacter(this.skinPreviewCharacter);
+           this.skinPreviewCharacter.position.y = -0.8; 
+      } else {
+           // Jeśli część/prefab, centrujemy
+           this.skinPreviewCharacter.position.y = 0; 
       }
-      this.skinPreviewCharacter.position.y = -0.8; 
+      
       this.skinPreviewScene.add(this.skinPreviewCharacter);
 
-      const skinData = await SkinStorage.loadSkinData(skinId);
-      if (skinData) {
-          const loader = new THREE.TextureLoader();
-          const skinContainer = new THREE.Group();
-          // Skalowanie klocków do nóg
-          skinContainer.scale.setScalar(0.125); 
-          skinContainer.position.y = 0.5; // Nad pasem
+      // Pobieranie danych bloków
+      let blocksData = null;
+      if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId);
+      else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId);
+      else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId);
 
-          skinData.forEach(b => {
+      if (blocksData) {
+          const loader = new THREE.TextureLoader();
+          const blockGroup = new THREE.Group();
+          
+          if (type === 'skin') {
+              blockGroup.scale.setScalar(0.125); 
+              blockGroup.position.y = 0.5; // Nad pasem
+          } else {
+              blockGroup.scale.setScalar(0.125); // Też skalujemy, bo w bazie są duże (1.0)
+          }
+
+          blocksData.forEach(b => {
               const geo = new THREE.BoxGeometry(1, 1, 1);
               const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) });
               const mesh = new THREE.Mesh(geo, mat);
               mesh.position.set(b.x, b.y, b.z);
-              skinContainer.add(mesh);
+              blockGroup.add(mesh);
           });
           
-          this.skinPreviewCharacter.add(skinContainer);
+          this.skinPreviewCharacter.add(blockGroup);
       }
       
+      // Skala ogólna w podglądzie
       this.skinPreviewCharacter.scale.setScalar(1.5);
 
       const animate = () => {
@@ -386,6 +418,145 @@ export class UIManager {
           this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera);
       };
       animate();
+  }
+
+  // --- DISCOVER LOGIC UPDATE ---
+  async showDiscoverPanel(type, category = null) {
+      const title=document.getElementById('discover-panel-title'); 
+      const tabs=document.getElementById('discover-tabs'); 
+      const list=document.getElementById('discover-list'); 
+      if(!list) return; 
+      
+      list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
+      this.openPanel('discover-panel'); 
+      
+      // Wybór Świata
+      if(type === 'worlds') {
+          if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
+          if(tabs) tabs.style.display='none'; 
+          try {
+              const allWorlds = await WorldStorage.getAllWorlds(); 
+              let filteredWorlds = allWorlds;
+              if (category) {
+                  filteredWorlds = allWorlds.filter(w => {
+                      const wType = w.type || 'creative';
+                      return wType === category;
+                  });
+              }
+              this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); 
+          } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; }
+      }
+      // Odkrywanie przedmiotów (Skin, Part, Prefab)
+      else if (type === 'discovery') {
+          // category tu oznacza typ: 'skin', 'part', 'prefab'
+          const labels = { skin: 'Skiny', part: 'Części', prefab: 'Prefabrykaty' };
+          if(title) title.textContent = `Wybierz ${labels[category] || 'Element'}`;
+          
+          if(tabs) {
+              tabs.style.display = 'flex';
+              // Prosta obsługa zakładek (Moje / Wszystkie) dla każdego typu
+              const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
+              const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
+              
+              // Reset
+              if(tabMine) tabMine.classList.remove('active');
+              if(tabAll) {
+                  tabAll.classList.add('active');
+                  tabAll.onclick = () => { tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshDiscoveryList(category, 'all'); };
+              }
+              if(tabMine) {
+                  tabMine.onclick = () => { tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshDiscoveryList(category, 'mine'); };
+              }
+          }
+          this.refreshDiscoveryList(category, 'all');
+      }
+  }
+
+  async refreshDiscoveryList(type, mode) {
+      const list=document.getElementById('discover-list'); 
+      if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; 
+      
+      let items = [];
+      try {
+          if (type === 'skin') {
+              items = mode === 'mine' ? await SkinStorage.getMySkins() : await SkinStorage.getAllSkins();
+          } else if (type === 'prefab') {
+              // Musisz dodać te metody w PrefabStorage (getAllPrefabs, getMyPrefabs z API)
+              items = mode === 'mine' ? await PrefabStorage.getSavedPrefabsList() : await PrefabStorage.getAllPrefabs(); 
+          } else if (type === 'part') {
+              items = mode === 'mine' ? await HyperCubePartStorage.getSavedPartsList() : await HyperCubePartStorage.getAllParts();
+          }
+
+          this.populateDiscoverPanel(type, items, (item) => {
+              // Dla światów onSelect działa inaczej, dla przedmiotów otwieramy szczegóły
+              this.showItemDetails(item, type);
+          });
+      } catch(e) {
+          console.error(e);
+          if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Błąd połączenia.</p>';
+      }
+  }
+
+  populateDiscoverPanel(type, items, onSelect) {
+      const list=document.getElementById('discover-list'); 
+      if(!list) return; 
+      list.innerHTML=''; 
+      
+      if(!items || items.length===0){ 
+          list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; 
+          return; 
+      } 
+      
+      items.forEach(item => { 
+          const div=document.createElement('div'); 
+          div.className='panel-item skin-list-item'; 
+          div.style.display='flex'; 
+          div.style.alignItems='center'; 
+          div.style.padding='10px'; 
+          
+          const thumbContainer=document.createElement('div'); 
+          thumbContainer.style.width='64px'; thumbContainer.style.height='64px'; 
+          thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; 
+          thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; 
+          thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; 
+          
+          let thumbSrc = item.thumbnail;
+          let label = item.name;
+          if (type === 'worlds' && typeof item === 'object') {
+               if(item.creator) label += ` (od ${item.creator})`;
+          } else if (item.creator) {
+               label += ` (od ${item.creator})`;
+          }
+
+          if(thumbSrc){ 
+              const img=document.createElement('img'); img.src=thumbSrc; 
+              img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; 
+              thumbContainer.appendChild(img); 
+          } else { 
+              thumbContainer.textContent='?'; 
+              thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; 
+              thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; 
+          } 
+          
+          const nameSpan=document.createElement('span'); 
+          nameSpan.textContent=label; 
+          nameSpan.className='text-outline'; 
+          nameSpan.style.fontSize='18px'; 
+          
+          div.appendChild(thumbContainer); 
+          div.appendChild(nameSpan); 
+          
+          div.onclick=()=>{ 
+              if (type === 'worlds') {
+                  this.closeAllPanels(); 
+                  onSelect(item); // Przekazujemy cały obiekt świata
+              } else {
+                  // Dla Skin/Part/Prefab otwieramy szczegóły (nie zamykamy panelu od razu, showItemDetails to zrobi)
+                  onSelect(item); 
+              }
+          }; 
+          list.appendChild(div); 
+      }); 
   }
 
   closeAllPanels() {
@@ -400,6 +571,7 @@ export class UIManager {
       if(commentPanel) commentPanel.style.display = 'none';
   }
 
+  // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
@@ -412,18 +584,29 @@ export class UIManager {
     });
     
     document.querySelectorAll('.panel-content').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
-    document.querySelectorAll('.game-btn').forEach(button => { const type = this.getButtonType(button); button.addEventListener('click', () => this.handleButtonClick(type, button)); });
+    document.querySelectorAll('.game-btn').forEach(button => {
+      const type = this.getButtonType(button);
+      button.addEventListener('click', () => this.handleButtonClick(type, button));
+    });
 
+    // ... (Avatar, Friends, Mail, Chat, Parkour, Builder - skopiuj z poprzednich) ...
+    // Skrócona wersja dla oszczędności miejsca, ale musisz mieć całość:
     const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
     const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) { friendsBtn.onclick = () => { this.openPanel('friends-panel'); this.loadFriendsData(); }; }
     const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.openPanel('mail-panel'); this.loadMailData(); }; } });
     const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
-
     const superBtn = document.getElementById('victory-super-btn'); if (superBtn) { superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); }; }
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) { homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); }; }
     const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) { replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); }; }
-
     const btnPlayParkour = document.getElementById('play-choice-parkour'); const btnPlayChat = document.getElementById('play-choice-chat'); if (btnPlayParkour) { btnPlayParkour.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'parkour'); }; } if (btnPlayChat) { btnPlayChat.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'creative'); }; }
+    
+    // --- NOWE: DISCOVER CHOICE ---
+    const btnDiscSkin = document.getElementById('discover-choice-skin');
+    const btnDiscPart = document.getElementById('discover-choice-part');
+    const btnDiscPrefab = document.getElementById('discover-choice-prefab');
+    if(btnDiscSkin) btnDiscSkin.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'skin'); };
+    if(btnDiscPart) btnDiscPart.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'part'); };
+    if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
 
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
     setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); });
@@ -434,18 +617,11 @@ export class UIManager {
     setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); });
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
-
-    const tabBlocks = document.getElementById('shop-tab-blocks');
-    const tabAddons = document.getElementById('shop-tab-addons');
-    if (tabBlocks && tabAddons) {
-        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); };
-        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); };
-    }
-    const nameSubmitBtn = document.getElementById('name-submit-btn');
-    if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
+    const tabBlocks = document.getElementById('shop-tab-blocks'); const tabAddons = document.getElementById('shop-tab-addons'); if (tabBlocks && tabAddons) { tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; }
+    const nameSubmitBtn = document.getElementById('name-submit-btn'); if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
   }
 
-  // ... (RESZTA METOD BEZ ZMIAN) ...
+  // ... (RESZTA METOD POMOCNICZYCH bez zmian: checkAdminPermissions, updatePlayerAvatar...) ...
   checkAdminPermissions(username) { const admins = ['nixox2', 'admin']; if (admins.includes(username)) { const optionsList = document.querySelector('#more-options-panel .panel-list'); if (optionsList && !document.getElementById('admin-edit-nexus-btn')) { const editNexusBtn = document.createElement('div'); editNexusBtn.id = 'admin-edit-nexus-btn'; editNexusBtn.className = 'panel-item text-outline'; editNexusBtn.style.backgroundColor = '#e67e22'; editNexusBtn.style.marginTop = '10px'; editNexusBtn.textContent = '🛠️ Edytuj Nexus'; editNexusBtn.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); }; optionsList.insertBefore(editNexusBtn, optionsList.firstChild); } } }
   updatePlayerAvatar(thumbnail) { const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); if (!avatarEl) return; if (thumbnail) { avatarEl.textContent = ''; avatarEl.style.backgroundImage = `url(${thumbnail})`; avatarEl.style.backgroundSize = 'cover'; avatarEl.style.backgroundPosition = 'center'; avatarEl.style.backgroundColor = '#4a90e2'; } else { avatarEl.style.backgroundImage = 'none'; avatarEl.textContent = '👤'; } }
   updatePlayerName(name) { const nameDisplay = document.getElementById('player-name-display'); if (nameDisplay) nameDisplay.textContent = name; }
@@ -461,7 +637,10 @@ export class UIManager {
     setTimeout(() => { buttonElement.style.transform = ''; }, 150);
     if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; }
     if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
-    if (buttonType === 'odkryj') { this.openPanel('discover-panel'); if (this.onDiscoverClick) this.onDiscoverClick(); return; }
+    if (buttonType === 'odkryj') { 
+        this.openPanel('discover-choice-panel'); // TERAZ OTWIERA WYBÓR
+        return; 
+    }
     if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
     if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
@@ -476,9 +655,7 @@ export class UIManager {
   showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
   setupFriendsSystem() { const tabs = document.querySelectorAll('#friends-panel .friends-tab'); tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); const targetId = tab.getAttribute('data-tab'); const views = document.querySelectorAll('#friends-panel .friends-view'); views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); }); const targetView = document.getElementById(targetId); if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); } }; }); const searchBtn = document.getElementById('friends-search-btn'); if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); } }
   setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
-  async showDiscoverPanel(type, category = null) { const title=document.getElementById('discover-panel-title'); const tabs=document.getElementById('discover-tabs'); const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; this.openPanel('discover-panel'); if(type==='worlds') { if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; if(tabs) tabs.style.display='none'; try { const allWorlds = await WorldStorage.getAllWorlds(); let filteredWorlds = allWorlds; if (category) { filteredWorlds = allWorlds.filter(w => { const wType = w.type || 'creative'; return wType === category; }); } this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } } else if(type==='skins') { if(title) title.textContent='Wybierz Skina'; if(tabs) { tabs.style.display='flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) tabAll.classList.add('active'); this.refreshSkinList('all'); } } }
-  async refreshSkinList(mode) { const list=document.getElementById('discover-list'); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; let skins=[]; try { if(mode==='mine') skins = await SkinStorage.getMySkins(); else skins = await SkinStorage.getAllSkins(); this.populateDiscoverPanel('skins', skins, (skinId, skinName, thumbnail, ownerId)=>{ if(this.onSkinSelect) this.onSkinSelect(skinId, skinName, thumbnail, ownerId); }); } catch(e) { console.error("Błąd pobierania skinów:", e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center; color: #ff5555;">Błąd połączenia.</p>'; } }
-  populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item=>{ const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width=(type==='worlds')?'80px':'64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc=null; let label=''; let skinId=null; let ownerId=null; if(type==='worlds'){ if(typeof item==='object'){ label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; } else { label=item; } } else { label=item.name; if(item.creator) label+=` (od ${item.creator})`; thumbSrc=item.thumbnail; skinId=item.id; ownerId=item.owner_id; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent=(type==='worlds')?'🌍':'?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; thumbContainer.style.fontSize='24px'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); div.onclick=()=>{ if(type==='worlds') { this.closeAllPanels(); onSelect(item); } else { this.showSkinDetails(item); } }; list.appendChild(div); }); }
+  
   async loadFriendsData() { const t=localStorage.getItem('bsp_clone_jwt_token'); if(!t)return; const l=document.getElementById('friends-list'); if(l) l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Odświeżanie...</p>'; try{ const r=await fetch(`${API_BASE_URL}/api/friends`,{headers:{'Authorization':`Bearer ${t}`}}); if(r.ok){ const d=await r.json(); this.friendsList=d.friends; this.renderFriendsList(d.friends); this.renderRequestsList(d.requests); this.updateTopBarFriends(d.friends); } else if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd serwera.</p>'; } catch(e){ if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd sieci.</p>'; } }
   renderFriendsList(f){ const l=document.getElementById('friends-list'); if(!l)return; l.innerHTML=''; if(!f||f.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak przyjaciół.</p>'; return; } f.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; const a=document.createElement('div'); a.className='friend-avatar'; if(x.current_skin_thumbnail) a.style.backgroundImage=`url(${x.current_skin_thumbnail})`; else { a.style.display='flex'; a.style.justifyContent='center'; a.style.alignItems='center'; a.textContent='👤'; a.style.color='white'; a.style.fontSize='24px'; } if(x.isOnline) a.style.borderColor='#2ed573'; else a.style.borderColor='#7f8c8d'; const n=document.createElement('div'); n.className='friend-info'; n.innerHTML=`<div class="text-outline" style="font-size:16px;">${x.username}</div><div style="font-size:12px;color:${x.isOnline?'#2ed573':'#ccc'}">${x.isOnline?'Online':'Offline'}</div>`; i.appendChild(a); i.appendChild(n); l.appendChild(i); }); }
   renderRequestsList(r){ const l=document.getElementById('friends-requests'); if(!l)return; l.innerHTML=''; if(!r||r.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak.</p>'; return; } r.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; i.innerHTML=`<div class="friend-info text-outline" style="font-size:16px;">${x.username}</div><div class="friend-actions"><button class="action-btn btn-accept">Akceptuj</button></div>`; i.querySelector('.btn-accept').onclick=()=>this.acceptFriendRequest(x.request_id); l.appendChild(i); }); }
