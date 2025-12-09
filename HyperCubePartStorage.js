@@ -46,6 +46,7 @@ export class HyperCubePartStorage {
     return null;
   }
 
+  // POBIERANIE MOICH
   static async getSavedPartsList() {
     const token = localStorage.getItem(JWT_TOKEN_KEY);
     if (!token) return [];
@@ -57,8 +58,20 @@ export class HyperCubePartStorage {
     } catch(e) { console.error(e); }
     return [];
   }
+
+  // --- FIX: POBIERANIE WSZYSTKICH (BRAKOWAŁO TEGO) ---
+  static async getAllParts() {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return [];
+    try {
+        const r = await fetch(`${API_BASE_URL}/api/parts/all`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(r.ok) return await r.json();
+    } catch(e) { console.error(e); }
+    return [];
+  }
   
-  // Kompatybilność (dla starego kodu, choć teraz używamy ID)
   static getThumbnail(partObj) {
       return partObj.thumbnail;
   }
