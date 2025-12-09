@@ -46,7 +46,7 @@ export class PrefabStorage {
     return null;
   }
 
-  // Zwraca listę MOICH prefabrykatów
+  // POBIERANIE MOICH
   static async getSavedPrefabsList() {
     const token = localStorage.getItem(JWT_TOKEN_KEY);
     if (!token) return [];
@@ -54,7 +54,20 @@ export class PrefabStorage {
         const r = await fetch(`${API_BASE_URL}/api/prefabs/mine`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if(r.ok) return await r.json(); // Zwraca tablicę {id, name, thumbnail}
+        if(r.ok) return await r.json();
+    } catch(e) { console.error(e); }
+    return [];
+  }
+
+  // --- FIX: POBIERANIE WSZYSTKICH (BRAKOWAŁO TEGO) ---
+  static async getAllPrefabs() {
+    const token = localStorage.getItem(JWT_TOKEN_KEY);
+    if (!token) return [];
+    try {
+        const r = await fetch(`${API_BASE_URL}/api/prefabs/all`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(r.ok) return await r.json();
     } catch(e) { console.error(e); }
     return [];
   }
