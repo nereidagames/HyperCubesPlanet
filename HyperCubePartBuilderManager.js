@@ -66,14 +66,19 @@ export class HyperCubePartBuilderManager {
     this.createPreviewBlock();
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
-    this.cameraController.setIsMobile(this.game.isMobile);
-    this.cameraController.distance = 25;
 
+    // FIX: KOLEJNOŚĆ UI NA MOBILE
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
         const joy = document.getElementById('joystick-zone');
-        if(joy) { joy.innerHTML = ''; joy.style.display = 'block'; }
+        if(joy) { 
+            joy.style.display = 'block'; 
+            joy.innerHTML = ''; 
+        }
     }
+    
+    this.cameraController.setIsMobile(this.game.isMobile);
+    this.cameraController.distance = 25;
 
     this.setupBuildEventListeners();
   }
@@ -113,7 +118,9 @@ export class HyperCubePartBuilderManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
+    // FIX: Poprawione wywołanie stateManager
     document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
+    
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         const panel = document.getElementById('block-selection-panel');
@@ -251,7 +258,6 @@ export class HyperCubePartBuilderManager {
     return dataURL;
   }
 
-  // --- FIX: ASYNC SAVE ---
   async savePart() {
     if (this.placedBlocks.length === 0) return;
     const partName = prompt("Podaj nazwę dla swojej części HyperCube:", "Moja Część");
@@ -262,9 +268,7 @@ export class HyperCubePartBuilderManager {
         z: block.position.z,
         texturePath: block.userData.texturePath
       }));
-      
       const thumbnail = this.generateThumbnail();
-      
       // FIX: Czekamy na serwer
       const success = await HyperCubePartStorage.savePart(partName, blocksData, thumbnail);
       if (success) {
