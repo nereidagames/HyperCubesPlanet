@@ -100,8 +100,8 @@ export class BuildManager {
     this.scene.add(this.previewPrefab);
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
-    this.cameraController.setIsMobile(this.game.isMobile);
 
+    // --- FIX: NAJPIERW POKAŻ KONTENER, POTEM INICJUJ JOYSTICK ---
     if (this.game.isMobile) {
         const mobileControls = document.getElementById('mobile-game-controls');
         const jumpBtn = document.getElementById('jump-button');
@@ -109,13 +109,21 @@ export class BuildManager {
         const addBtn = document.getElementById('build-add-button');
 
         if (mobileControls) mobileControls.style.display = 'block';
-        if (jumpBtn) jumpBtn.style.display = 'none'; 
-        if (joystickZone) joystickZone.style.display = 'block';
+        if (jumpBtn) jumpBtn.style.display = 'none'; // W budowaniu nie skaczemy przyciskiem
+        
+        if (joystickZone) {
+            joystickZone.style.display = 'block';
+            joystickZone.innerHTML = ''; // Czyścimy stary joystick
+        }
+        
         if (addBtn) addBtn.style.bottom = '150px';
     } else {
         const addBtn = document.getElementById('build-add-button');
         if (addBtn) addBtn.style.bottom = '20px';
     }
+
+    // Dopiero teraz inicjujemy joystick (bo kontener jest widoczny)
+    this.cameraController.setIsMobile(this.game.isMobile);
 
     this.setupBuildEventListeners();
 
@@ -173,9 +181,7 @@ export class BuildManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    // FIX: Poprawione wyjście
     document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
-    
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     document.getElementById('build-add-button').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'flex';
@@ -198,7 +204,6 @@ export class BuildManager {
     document.getElementById('add-choice-close').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
     };
-
     const tabBlocks = document.getElementById('build-tab-blocks');
     const tabAddons = document.getElementById('build-tab-addons');
     if (tabBlocks && tabAddons) {
@@ -208,15 +213,12 @@ export class BuildManager {
     if (this.cameraController) this.cameraController.destroy();
   }
   
-  // FIX: ASYNC FETCH PREFABS
   async showPrefabSelectionPanel() { 
       const panel=document.getElementById('prefab-selection-panel'); 
       panel.innerHTML='<p style="color:white">Ładowanie...</p>'; 
       panel.style.display='flex';
-      
       const prefabList = await PrefabStorage.getSavedPrefabsList();
       panel.innerHTML = '';
-      
       if(prefabList.length===0){ 
           panel.innerHTML='<div class="panel-item text-outline">Brak prefabrykatów</div>'; 
       } else { 
@@ -234,16 +236,11 @@ export class BuildManager {
   }
   
   selectBlockType(blockType) { this.currentBuildMode='block'; this.selectedBlockType=blockType; if(this.previewBlock){ this.previewBlock.material=this.materials[blockType.texturePath].clone(); this.previewBlock.material.transparent=true; this.previewBlock.material.opacity=0.5; this.previewBlock.material.needsUpdate=true; } this.previewPrefab.visible=false; this.previewBlock.visible=true; }
-  
-  // FIX: ASYNC SELECT PREFAB
   async selectPrefab(prefabId) { 
       this.currentBuildMode='prefab'; 
       this.selectedPrefabData = await PrefabStorage.loadPrefab(prefabId);
-      
       if(!this.selectedPrefabData) return; 
-      
       while(this.previewPrefab.children.length){ this.previewPrefab.remove(this.previewPrefab.children[0]); } 
-      
       this.selectedPrefabData.forEach(blockData=>{ 
           const geo=this.sharedBoxGeometry; 
           const mat=this.materials[blockData.texturePath].clone(); 
@@ -252,7 +249,6 @@ export class BuildManager {
           block.position.set(blockData.x,blockData.y,blockData.z); 
           this.previewPrefab.add(block); 
       }); 
-      
       this.previewBlock.visible=false; 
       this.previewPrefab.visible=true; 
   }
