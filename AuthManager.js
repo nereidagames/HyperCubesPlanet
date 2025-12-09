@@ -38,18 +38,24 @@ export class AuthManager {
         }
     }
 
+    // --- FIX: LEPSZA DIAGNOSTYKA SESJI ---
     async checkSession(uiManager) {
         const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
         const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
 
         if (token && username) {
             try {
-                // Sprawdzamy, czy adres jest poprawny
-                if (!API_BASE_URL) throw new Error("Brak adresu API_BASE_URL");
+                if (!API_BASE_URL) throw new Error("Brak adresu API w Config.js");
 
                 const response = await fetch(`${API_BASE_URL}/api/user/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+
+                // Sprawdzamy czy odpowiedź to JSON
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("Serwer zwrócił błąd (HTML zamiast JSON). Sprawdź adres API.");
+                }
 
                 if (response.ok) {
                     const data = await response.json();
@@ -58,7 +64,9 @@ export class AuthManager {
                     }
                     this.onLoginSuccess(data.user, token);
                 } else {
-                    throw new Error('Token invalid');
+                    // Token wygasł lub jest nieprawidłowy
+                    console.warn("Sesja wygasła.");
+                    this.showAuthScreen();
                 }
             } catch (err) {
                 console.warn("Błąd sesji:", err);
@@ -86,6 +94,7 @@ export class AuthManager {
         if(this.uiElements.message) this.uiElements.message.textContent = '';
     }
 
+    // --- FIX: LEPSZA DIAGNOSTYKA REJESTRACJI ---
     async handleRegister(e) {
         e.preventDefault();
         this.setMessage('Rejestrowanie...');
@@ -104,20 +113,30 @@ export class AuthManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
-            const data = await response.json();
-            if (response.ok) {
-                this.setMessage('Rejestracja pomyślna! Zaloguj się.');
-                this.showView(this.uiElements.loginForm);
-            } else {
-                this.setMessage(data.message || 'Błąd rejestracji.');
+            
+            // Odczytujemy jako tekst, żeby zobaczyć co przyszło (nawet jeśli to błąd HTML)
+            const text = await response.text();
+            
+            try {
+                const data = JSON.parse(text); // Próbujemy parsować JSON
+                if (response.ok) {
+                    this.setMessage('Rejestracja pomyślna! Zaloguj się.');
+                    this.showView(this.uiElements.loginForm);
+                } else {
+                    this.setMessage(data.message || 'Błąd rejestracji.');
+                }
+            } catch (jsonError) {
+                // To nie jest JSON! To prawdopodobnie strona błędu HTML (500/404)
+                console.error("Otrzymano HTML zamiast JSON:", text);
+                this.setMessage(`Błąd serwera! (Otrzymano HTML). Sprawdź konsolę.`);
+                alert("Serwer zwrócił błąd HTML zamiast danych. Prawdopodobnie błąd kodu serwera lub zły adres.\nTreść: " + text.substring(0, 50));
             }
         } catch (error) {
-            // WYŚWIETL DOKŁADNY BŁĄD
             this.setMessage(`Błąd sieci: ${error.message}`);
-            console.error(error);
         }
     }
 
+    // --- FIX: LEPSZA DIAGNOSTYKA LOGOWANIA ---
     async handleLogin(e) {
         e.preventDefault();
         this.setMessage('Logowanie...');
@@ -125,27 +144,30 @@ export class AuthManager {
         const password = document.getElementById('login-password').value;
 
         try {
-            console.log("Próba logowania do:", `${API_BASE_URL}/api/login`);
-            
             const response = await fetch(`${API_BASE_URL}/api/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
             
-            const data = await response.json();
+            const text = await response.text();
             
-            if (response.ok) {
-                this.setMessage('Zalogowano pomyślnie!');
-                if (this.uiElements.screen) this.uiElements.screen.style.display = 'none';
-                this.onLoginSuccess(data.user, data.token, data.thumbnail);
-            } else {
-                this.setMessage(data.message || 'Błąd logowania.');
+            try {
+                const data = JSON.parse(text);
+                if (response.ok) {
+                    this.setMessage('Zalogowano pomyślnie!');
+                    if (this.uiElements.screen) this.uiElements.screen.style.display = 'none';
+                    this.onLoginSuccess(data.user, data.token, data.thumbnail);
+                } else {
+                    this.setMessage(data.message || 'Błąd logowania.');
+                }
+            } catch (jsonError) {
+                console.error("Otrzymano HTML zamiast JSON:", text);
+                this.setMessage(`Błąd serwera! (Otrzymano HTML).`);
+                alert("Serwer zwrócił błąd HTML zamiast danych.\nTreść: " + text.substring(0, 50));
             }
         } catch (error) {
-            // WYŚWIETL DOKŁADNY BŁĄD
             this.setMessage(`Błąd sieci: ${error.message}`);
-            console.error("Login error details:", error);
         }
     }
 
