@@ -1,4 +1,3 @@
---- START OF FILE controls.txt ---
 
 import * as THREE from 'three';
 import nipplejs from 'nipplejs';
