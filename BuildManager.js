@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
@@ -27,7 +26,7 @@ export class BuildManager {
     
     this.isDraggingLine = false;
     this.dragStartPos = null;
-    this.lastLineTargetPos = null; // OPTYMALIZACJA
+    this.lastLineTargetPos = null;
 
     this.selectedPrefabData = null;
     this.placedBlocks = [];
@@ -178,7 +177,6 @@ export class BuildManager {
       return points; 
   }
 
-  // OPTYMALIZACJA: Nie usuwamy i nie tworzymy siatki co klatkę, jeśli pozycja się nie zmieniła
   updateLinePreview(targetPos) { 
       if(!this.isDraggingLine || !this.dragStartPos || !this.selectedBlockType) return;
       
@@ -380,7 +378,6 @@ export class BuildManager {
   
   updateRaycast() { 
       this.raycaster.setFromCamera(this.mouse,this.game.camera); 
-      // Kolizja z wszystkim (bloki + platforma)
       const intersects=this.raycaster.intersectObjects(this.collidableBuildObjects); 
       
       if(intersects.length>0){ 
