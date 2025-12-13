@@ -1,4 +1,3 @@
---- START OF FILE MultiplayerManager.txt ---
 
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'; 
