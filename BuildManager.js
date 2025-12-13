@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
@@ -26,6 +27,7 @@ export class BuildManager {
     
     this.isDraggingLine = false;
     this.dragStartPos = null;
+    this.lastLineTargetPos = null; // OPTYMALIZACJA
 
     this.selectedPrefabData = null;
     this.placedBlocks = [];
@@ -101,7 +103,6 @@ export class BuildManager {
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
 
-    // --- FIX: NAJPIERW POKAŻ KONTENER, POTEM INICJUJ JOYSTICK ---
     if (this.game.isMobile) {
         const mobileControls = document.getElementById('mobile-game-controls');
         const jumpBtn = document.getElementById('jump-button');
@@ -109,11 +110,11 @@ export class BuildManager {
         const addBtn = document.getElementById('build-add-button');
 
         if (mobileControls) mobileControls.style.display = 'block';
-        if (jumpBtn) jumpBtn.style.display = 'none'; // W budowaniu nie skaczemy przyciskiem
+        if (jumpBtn) jumpBtn.style.display = 'none'; 
         
         if (joystickZone) {
             joystickZone.style.display = 'block';
-            joystickZone.innerHTML = ''; // Czyścimy stary joystick
+            joystickZone.innerHTML = ''; 
         }
         
         if (addBtn) addBtn.style.bottom = '150px';
@@ -122,9 +123,7 @@ export class BuildManager {
         if (addBtn) addBtn.style.bottom = '20px';
     }
 
-    // Dopiero teraz inicjujemy joystick (bo kontener jest widoczny)
     this.cameraController.setIsMobile(this.game.isMobile);
-
     this.setupBuildEventListeners();
 
     if (this.isNexusMode) {
@@ -165,12 +164,128 @@ export class BuildManager {
       });
   }
 
-  getPointsOnLine(start, end) { const points=[]; const dist=start.distanceTo(end); const steps=Math.ceil(dist); for(let i=0;i<=steps;i++){ const t=steps===0?0:i/steps; const point=new THREE.Vector3().lerpVectors(start,end,t); point.floor().addScalar(0.5); const exists=points.some(p=>p.equals(point)); if(!exists) points.push(point); } return points; }
-  updateLinePreview(targetPos) { while(this.previewLineGroup.children.length>0){ this.previewLineGroup.remove(this.previewLineGroup.children[0]); } if(!this.isDraggingLine||!this.dragStartPos||!this.selectedBlockType) return; const points=this.getPointsOnLine(this.dragStartPos,targetPos); const geo=this.sharedBoxGeometry; const mat=this.materials[this.selectedBlockType.texturePath].clone(); mat.transparent=true; mat.opacity=0.4; points.forEach(p=>{ const mesh=new THREE.Mesh(geo,mat); mesh.position.copy(p); this.previewLineGroup.add(mesh); }); }
-  placeLine() { this.previewLineGroup.children.forEach(ghost=>{ const geo=this.sharedBoxGeometry; const mat=this.materials[this.selectedBlockType.texturePath]; const b=new THREE.Mesh(geo,mat); b.userData.name=this.selectedBlockType.name; b.userData.texturePath=this.selectedBlockType.texturePath; b.position.copy(ghost.position); b.castShadow=false; b.receiveShadow=false; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); }); while(this.previewLineGroup.children.length>0){ this.previewLineGroup.remove(this.previewLineGroup.children[0]); } this.updateSaveButton(); }
-  async loadExistingNexus() { try{ const response=await fetch(`${API_BASE_URL}/api/nexus`); if(response.ok){ const blocksData=await response.json(); if(Array.isArray(blocksData)){ const batchSize=200; for(let i=0;i<blocksData.length;i+=batchSize){ const batch=blocksData.slice(i,i+batchSize); batch.forEach(blockData=>{ const geometry=this.sharedBoxGeometry; let material=this.materials[blockData.texturePath]; if(!material){ const texture=this.textureLoader.load(blockData.texturePath); texture.magFilter=THREE.NearestFilter; texture.minFilter=THREE.NearestMipmapNearestFilter; texture.anisotropy=2; material=new THREE.MeshLambertMaterial({map:texture}); this.materials[blockData.texturePath]=material; } const mesh=new THREE.Mesh(geometry,material); mesh.position.set(blockData.x,blockData.y,blockData.z); mesh.userData.texturePath=blockData.texturePath; mesh.castShadow=false; mesh.receiveShadow=false; this.scene.add(mesh); this.placedBlocks.push(mesh); this.collidableBuildObjects.push(mesh); }); if(i%500===0) await new Promise(r=>setTimeout(r,0)); } this.updateSaveButton(); } } }catch(e){ console.warn("Błąd pobierania Nexusa (może być pusty):",e); } }
-  createBuildPlatform() { const geometry=new THREE.BoxGeometry(this.platformSize,1,this.platformSize); const material=new THREE.MeshLambertMaterial({color:0x559022}); this.platform=new THREE.Mesh(geometry,material); this.platform.position.y=-0.5; this.platform.receiveShadow=false; this.scene.add(this.platform); this.collidableBuildObjects.push(this.platform); const edges=new THREE.EdgesGeometry(geometry); const line=new THREE.LineSegments(edges,new THREE.LineBasicMaterial({color:0x8A2BE2,linewidth:4})); line.position.y=-0.5; this.scene.add(line); }
-  createPreviewBlock() { if(!this.selectedBlockType) return; const previewGeo=new THREE.BoxGeometry(1.01,1.01,1.01); const previewMat=this.materials[this.selectedBlockType.texturePath].clone(); previewMat.transparent=true; previewMat.opacity=0.5; this.previewBlock=new THREE.Mesh(previewGeo,previewMat); this.previewBlock.visible=false; this.scene.add(this.previewBlock); }
+  getPointsOnLine(start, end) { 
+      const points=[]; 
+      const dist=start.distanceTo(end); 
+      const steps=Math.ceil(dist); 
+      for(let i=0;i<=steps;i++){ 
+          const t=steps===0?0:i/steps; 
+          const point=new THREE.Vector3().lerpVectors(start,end,t); 
+          point.floor().addScalar(0.5); 
+          const exists=points.some(p=>p.equals(point)); 
+          if(!exists) points.push(point); 
+      } 
+      return points; 
+  }
+
+  // OPTYMALIZACJA: Nie usuwamy i nie tworzymy siatki co klatkę, jeśli pozycja się nie zmieniła
+  updateLinePreview(targetPos) { 
+      if(!this.isDraggingLine || !this.dragStartPos || !this.selectedBlockType) return;
+      
+      if (this.lastLineTargetPos && this.lastLineTargetPos.equals(targetPos)) {
+          return;
+      }
+      this.lastLineTargetPos = targetPos.clone();
+
+      while(this.previewLineGroup.children.length > 0){ 
+          this.previewLineGroup.remove(this.previewLineGroup.children[0]); 
+      } 
+      
+      const points = this.getPointsOnLine(this.dragStartPos, targetPos); 
+      const geo = this.sharedBoxGeometry; 
+      const mat = this.materials[this.selectedBlockType.texturePath].clone(); 
+      mat.transparent = true; 
+      mat.opacity = 0.4; 
+      
+      points.forEach(p => { 
+          const mesh = new THREE.Mesh(geo, mat); 
+          mesh.position.copy(p); 
+          this.previewLineGroup.add(mesh); 
+      }); 
+  }
+
+  placeLine() { 
+      this.previewLineGroup.children.forEach(ghost=>{ 
+          const geo=this.sharedBoxGeometry; 
+          const mat=this.materials[this.selectedBlockType.texturePath]; 
+          const b=new THREE.Mesh(geo,mat); 
+          b.userData.name=this.selectedBlockType.name; 
+          b.userData.texturePath=this.selectedBlockType.texturePath; 
+          b.position.copy(ghost.position); 
+          b.castShadow=false; 
+          b.receiveShadow=false; 
+          this.scene.add(b); 
+          this.placedBlocks.push(b); 
+          this.collidableBuildObjects.push(b); 
+      }); 
+      while(this.previewLineGroup.children.length>0){ 
+          this.previewLineGroup.remove(this.previewLineGroup.children[0]); 
+      } 
+      this.updateSaveButton(); 
+      this.lastLineTargetPos = null;
+  }
+
+  async loadExistingNexus() { 
+      try{ 
+          const response=await fetch(`${API_BASE_URL}/api/nexus`); 
+          if(response.ok){ 
+              const blocksData=await response.json(); 
+              if(Array.isArray(blocksData)){ 
+                  const batchSize=200; 
+                  for(let i=0;i<blocksData.length;i+=batchSize){ 
+                      const batch=blocksData.slice(i,i+batchSize); 
+                      batch.forEach(blockData=>{ 
+                          const geometry=this.sharedBoxGeometry; 
+                          let material=this.materials[blockData.texturePath]; 
+                          if(!material){ 
+                              const texture=this.textureLoader.load(blockData.texturePath); 
+                              texture.magFilter=THREE.NearestFilter; 
+                              texture.minFilter=THREE.NearestMipmapNearestFilter; 
+                              texture.anisotropy=2; 
+                              material=new THREE.MeshLambertMaterial({map:texture}); 
+                              this.materials[blockData.texturePath]=material; 
+                          } 
+                          const mesh=new THREE.Mesh(geometry,material); 
+                          mesh.position.set(blockData.x,blockData.y,blockData.z); 
+                          mesh.userData.texturePath=blockData.texturePath; 
+                          mesh.castShadow=false; 
+                          mesh.receiveShadow=false; 
+                          this.scene.add(mesh); 
+                          this.placedBlocks.push(mesh); 
+                          this.collidableBuildObjects.push(mesh); 
+                      }); 
+                      if(i%500===0) await new Promise(r=>setTimeout(r,0)); 
+                  } 
+                  this.updateSaveButton(); 
+              } 
+          } 
+      }catch(e){ console.warn("Błąd pobierania Nexusa:",e); } 
+  }
+
+  createBuildPlatform() { 
+      const geometry=new THREE.BoxGeometry(this.platformSize,1,this.platformSize); 
+      const material=new THREE.MeshLambertMaterial({color:0x559022}); 
+      this.platform=new THREE.Mesh(geometry,material); 
+      this.platform.position.y=-0.5; 
+      this.platform.receiveShadow=false; 
+      this.scene.add(this.platform); 
+      this.collidableBuildObjects.push(this.platform); 
+      const edges=new THREE.EdgesGeometry(geometry); 
+      const line=new THREE.LineSegments(edges,new THREE.LineBasicMaterial({color:0x8A2BE2,linewidth:4})); 
+      line.position.y=-0.5; 
+      this.scene.add(line); 
+  }
+
+  createPreviewBlock() { 
+      if(!this.selectedBlockType) return; 
+      const previewGeo=new THREE.BoxGeometry(1.01,1.01,1.01); 
+      const previewMat=this.materials[this.selectedBlockType.texturePath].clone(); 
+      previewMat.transparent=true; 
+      previewMat.opacity=0.5; 
+      this.previewBlock=new THREE.Mesh(previewGeo,previewMat); 
+      this.previewBlock.visible=false; 
+      this.scene.add(this.previewBlock); 
+  }
   
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
@@ -262,8 +377,43 @@ export class BuildManager {
   onTouchStart(event) { if(!this.isActive||!this.game.isMobile) return; if(this.isEventOnUI(event)) return; const touch=event.touches[0]; if(event.touches.length>1) return; event.preventDefault(); this.isLongPress=false; this.mouse.x=(touch.clientX/window.innerWidth)*2-1; this.mouse.y=-(touch.clientY/window.innerHeight)*2+1; this.touchStartPosition.x=touch.clientX; this.touchStartPosition.y=touch.clientY; this.updateRaycast(); if(this.currentTool==='line'&&this.previewBlock.visible){ this.isDraggingLine=true; this.dragStartPos=this.previewBlock.position.clone(); this.previewBlock.visible=false; this.isLongPress=false; } else { this.isLongPress=false; clearTimeout(this.longPressTimer); this.longPressTimer=setTimeout(()=>{ this.isLongPress=true; this.removeBlock(); },500); } }
   onTouchMove(event) { if(!this.isActive||!this.game.isMobile) return; const touch=event.touches[0]; if(this.isDraggingLine){ this.mouse.x=(touch.clientX/window.innerWidth)*2-1; this.mouse.y=-(touch.clientY/window.innerHeight)*2+1; this.updateRaycast(); if(this.previewBlock.visible){ this.updateLinePreview(this.previewBlock.position); } } else { const deltaX=touch.clientX-this.touchStartPosition.x; const deltaY=touch.clientY-this.touchStartPosition.y; if(Math.sqrt(deltaX*deltaX+deltaY*deltaY)>10) clearTimeout(this.longPressTimer); } }
   onTouchEnd(event) { if(!this.isActive||!this.game.isMobile) return; if(this.isEventOnUI(event)) return; clearTimeout(this.longPressTimer); if(this.isDraggingLine){ this.isDraggingLine=false; this.placeLine(); this.previewBlock.visible=true; } else if(!this.isLongPress){ if(this.currentBuildMode==='block'&&this.previewBlock.visible&&this.currentTool==='single') this.placeBlock(); else if(this.currentBuildMode==='prefab'&&this.previewPrefab.visible) this.placePrefab(); } }
-  updateRaycast() { this.raycaster.setFromCamera(this.mouse,this.game.camera); const intersects=this.raycaster.intersectObjects(this.collidableBuildObjects); if(intersects.length>0){ const intersect=intersects[0]; const normal=intersect.face.normal.clone(); const snappedPosition=new THREE.Vector3().copy(intersect.point).add(normal.multiplyScalar(0.5)).floor().addScalar(0.5); const limit=this.platformSize/2; if(Math.abs(snappedPosition.x)<limit&&Math.abs(snappedPosition.z)<limit&&snappedPosition.y>=0){ this.previewBlock.position.copy(snappedPosition); this.previewBlock.visible=true; } else { this.previewBlock.visible=false; } } else { this.previewBlock.visible=false; } }
-  update(deltaTime) { if(!this.isActive) return; this.cameraController.update(deltaTime); if(!this.isDraggingLine){ this.updateRaycast(); if(this.currentBuildMode==='prefab'&&this.previewBlock.visible){ this.previewPrefab.position.copy(this.previewBlock.position); this.previewPrefab.visible=true; this.previewBlock.visible=false; } } }
+  
+  updateRaycast() { 
+      this.raycaster.setFromCamera(this.mouse,this.game.camera); 
+      // Kolizja z wszystkim (bloki + platforma)
+      const intersects=this.raycaster.intersectObjects(this.collidableBuildObjects); 
+      
+      if(intersects.length>0){ 
+          const intersect=intersects[0]; 
+          const normal=intersect.face.normal.clone(); 
+          const snappedPosition=new THREE.Vector3().copy(intersect.point).add(normal.multiplyScalar(0.5)).floor().addScalar(0.5); 
+          const limit=this.platformSize/2; 
+          
+          if(Math.abs(snappedPosition.x)<limit&&Math.abs(snappedPosition.z)<limit&&snappedPosition.y>=0){ 
+              this.previewBlock.position.copy(snappedPosition); 
+              this.previewBlock.visible=true; 
+          } else { 
+              this.previewBlock.visible=false; 
+          } 
+      } else { 
+          this.previewBlock.visible=false; 
+      } 
+  }
+
+  update(deltaTime) { 
+      if(!this.isActive) return; 
+      this.cameraController.update(deltaTime); 
+      
+      if(!this.isDraggingLine){ 
+          this.updateRaycast(); 
+          if(this.currentBuildMode==='prefab'&&this.previewBlock.visible){ 
+              this.previewPrefab.position.copy(this.previewBlock.position); 
+              this.previewPrefab.visible=true; 
+              this.previewBlock.visible=false; 
+          } 
+      } 
+  }
+
   placeBlock() { if(!this.selectedBlockType) return; const g=this.sharedBoxGeometry; const m=this.materials[this.selectedBlockType.texturePath]; const b=new THREE.Mesh(g,m); b.userData.name=this.selectedBlockType.name; b.userData.texturePath=this.selectedBlockType.texturePath; b.position.copy(this.previewBlock.position); b.castShadow=false; b.receiveShadow=false; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); this.updateSaveButton(); }
   placePrefab() { if(!this.selectedPrefabData) return; const l=this.platformSize/2; this.selectedPrefabData.forEach(d=>{ const p=new THREE.Vector3(d.x,d.y,d.z).add(this.previewPrefab.position); if(Math.abs(p.x)<l&&Math.abs(p.z)<l&&p.y>=0){ const g=this.sharedBoxGeometry; const m=this.materials[d.texturePath]; const b=new THREE.Mesh(g,m); b.userData.texturePath=d.texturePath; b.position.copy(p); b.castShadow=false; b.receiveShadow=false; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); } }); this.updateSaveButton(); }
   removeBlock() { this.raycaster.setFromCamera(this.mouse,this.game.camera); const i=this.raycaster.intersectObjects(this.placedBlocks); if(i.length>0){ const o=i[0].object; this.scene.remove(o); this.placedBlocks=this.placedBlocks.filter(b=>b!==o); this.collidableBuildObjects=this.collidableBuildObjects.filter(b=>b!==o); this.updateSaveButton(); } }
