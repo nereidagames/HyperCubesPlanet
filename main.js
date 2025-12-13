@@ -54,7 +54,6 @@ class BlockStarPlanetGame {
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     this.clock = new THREE.Clock();
 
-    // Zmienne podglądu w menu głównym (np. avatar)
     this.previewScene = null;
     this.previewCamera = null;
     this.previewRenderer = null;
@@ -242,21 +241,14 @@ class BlockStarPlanetGame {
   }
 
   setupUIActions() {
-      // Budowanie (wybór rozmiaru)
       this.ui.onWorldSizeSelected = (size) => this.stateManager.switchToBuildMode(size);
       
-      // Budowanie (Skiny, Prefaby, Części)
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
       this.ui.onPrefabBuilderClick = () => this.stateManager.switchToPrefabBuilder();
       this.ui.onPartBuilderClick = () => this.stateManager.switchToPartBuilder();
-      
-      // Odkrywanie (Otwiera nowe okno wyboru)
-      this.ui.onDiscoverClick = () => this.ui.openPanel('discover-choice-panel'); // To jest obsłużone w ui.js, ale warto mieć tu backup
-      
-      // Zagraj (Otwiera wybór trybu)
+      this.ui.onDiscoverClick = () => this.ui.openPanel('discover-choice-panel'); 
       this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel');
 
-      // Avatar
       this.ui.onPlayerAvatarClick = () => { 
           if (this.previewCharacter) { 
               while(this.previewCharacter.children.length > 4) { 
@@ -269,7 +261,6 @@ class BlockStarPlanetGame {
           } 
       };
 
-      // Wybór świata
       this.ui.onWorldSelect = async (worldItem) => { 
           if (!worldItem.id) return; 
           const worldData = await WorldStorage.loadWorldData(worldItem.id); 
@@ -281,7 +272,6 @@ class BlockStarPlanetGame {
           } 
       };
 
-      // Kupowanie
       this.ui.onBuyBlock = async (block) => { 
           const result = await this.blockManager.buyBlock(block.name, block.cost); 
           if(result.success) { 
@@ -293,7 +283,6 @@ class BlockStarPlanetGame {
           } 
       };
 
-      // Wybór skina (zakładanie)
       this.ui.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => { 
           const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); 
           if (ownerId && ownerId !== myId) { 
@@ -310,10 +299,8 @@ class BlockStarPlanetGame {
           } 
       };
       
-      // --- FIX: OBSŁUGA "UŻYJ" DLA PREFABÓW I CZĘŚCI ---
       this.ui.onUsePrefab = async (item) => {
           this.stateManager.switchToPrefabBuilder();
-          // Czekamy chwilę aż menadżer się zainicjalizuje (bezpiecznik)
           setTimeout(async () => {
               await this.prefabBuilderManager.selectPrefab(item.id);
           }, 100);
@@ -326,7 +313,8 @@ class BlockStarPlanetGame {
           }, 100);
       };
 
-      this.ui.onEditNexusClick = () => this.stateManager.switchToBuildMode(64);
+      // FIX: Przekazywanie flagi true dla trybu Nexusa
+      this.ui.onEditNexusClick = () => this.stateManager.switchToBuildMode(64, true);
       this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
   }
 
