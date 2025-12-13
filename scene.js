@@ -1,5 +1,4 @@
 
-
 import * as THREE from 'three';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
@@ -215,16 +214,13 @@ export class SceneManager {
     this.collidableObjects.push(wallX2);
   }
 
-  // --- FIX: METODA DO OBLICZANIA BEZPIECZNEJ WYSOKOŚCI ---
   getSafeY(targetX, targetZ) {
       let highestY = -100;
-      const checkRadius = 0.8; // Sprawdzamy bloki w pobliżu spawnu
+      const checkRadius = 0.8; 
 
       for (const obj of this.collidableObjects) {
-          // Pomijamy ściany i podłogę bazową przy precyzyjnym skanie, interesują nas klocki
           if (obj.geometry && obj.geometry.type === 'BoxGeometry') {
-              // Sprawdź czy to klocek mapy (1x1x1)
-              if (obj.visible === false) { // collisionMesh jest niewidzialny
+              if (obj.visible === false) { 
                   const dx = Math.abs(obj.position.x - targetX);
                   const dz = Math.abs(obj.position.z - targetZ);
                   
@@ -237,10 +233,8 @@ export class SceneManager {
           }
       }
 
-      // Jeśli nie znaleziono bloków, wróć do domyślnej podłogi + margines
       if (highestY === -100) return 1.0;
       
-      // Zwróć wierzchołek najwyższego bloku (y to środek, więc +0.5)
       return highestY + 0.5;
   }
 }
