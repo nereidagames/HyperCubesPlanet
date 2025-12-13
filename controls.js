@@ -1,3 +1,5 @@
+--- START OF FILE controls.txt ---
+
 import * as THREE from 'three';
 import nipplejs from 'nipplejs';
 
@@ -25,7 +27,7 @@ export class PlayerController {
     this.joystickDirection = new THREE.Vector2();
     this.joystick = null;
 
-    // Cache dla obiektów fizycznych (unikamy tworzenia ich w pętli renderowania)
+    // Cache dla obiektów fizycznych
     this.playerBox = new THREE.Box3();
     this.objectBox = new THREE.Box3();
   }
@@ -90,9 +92,13 @@ export class PlayerController {
   }
   
   update(deltaTime, cameraRotation) {
+    // OPTYMALIZACJA: Ograniczenie kroku czasowego fizyki do max 50ms
+    // Zapobiega to przelatywaniu przez podłogę przy dużych lagach
+    const timeStep = Math.min(deltaTime, 0.05);
+
     // Grawitacja
     if (!this.isOnGround) {
-      this.velocity.y -= this.gravity * deltaTime;
+      this.velocity.y -= this.gravity * timeStep;
     }
 
     // Obliczanie wektora ruchu
@@ -109,7 +115,6 @@ export class PlayerController {
         moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
     }
 
-    // Obracanie modelu w stronę ruchu
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       const angle = Math.atan2(moveDirection.x, moveDirection.z);
@@ -118,35 +123,29 @@ export class PlayerController {
     this.velocity.x = moveDirection.x * this.moveSpeed;
     this.velocity.z = moveDirection.z * this.moveSpeed;
 
-    this.applyMovementAndCollisions(deltaTime);
+    this.applyMovementAndCollisions(timeStep);
   }
 
-  // --- POPRAWIONA DETEKCJA KOLIZJI (Z FILTROWANIEM) ---
   applyMovementAndCollisions(deltaTime) {
     const halfHeight = this.playerDimensions.y / 2;
     const halfWidth = this.playerDimensions.x / 2;
     const halfDepth = this.playerDimensions.z / 2;
     const epsilon = 0.001;
 
-    // KROK 1: Filtrowanie obiektów (Spatial Partitioning)
-    // Zamiast sprawdzać 5000 bloków, sprawdzamy tylko te w pobliżu gracza + duże obiekty (podłoga/ściany)
-    
+    // Spatial Partitioning (Proste filtrowanie kandydatów)
     const playerPos = this.player.position;
     const candidates = [];
-    const checkRange = 3.0; // Sprawdzamy bloki w promieniu 3 metrów
-    const verticalRange = 4.0; // Trochę więcej w pionie dla spadania
+    const checkRange = 3.0; 
+    const verticalRange = 4.0;
 
     for (let i = 0; i < this.collidableObjects.length; i++) {
         const obj = this.collidableObjects[i];
 
-        // Sprawdź, czy obiekt jest "duży" (np. podłoga, ściany graniczne)
         let isLarge = false;
         if (obj.geometry) {
-            // PlaneGeometry to zazwyczaj podłoga
             if (obj.geometry.type === 'PlaneGeometry') {
                 isLarge = true;
             } 
-            // Jeśli obiekt ma parametry (np. BoxGeometry) i jest większy niż standardowy blok 1x1
             else if (obj.geometry.parameters) {
                 if (obj.geometry.parameters.width > 1.1 || 
                     obj.geometry.parameters.height > 1.1 || 
@@ -157,10 +156,8 @@ export class PlayerController {
         }
 
         if (isLarge) {
-            // Duże obiekty sprawdzamy zawsze
             candidates.push(obj);
         } else {
-            // Małe bloki (1x1x1) filtrujemy po dystansie
             const dx = Math.abs(obj.position.x - playerPos.x);
             const dz = Math.abs(obj.position.z - playerPos.z);
             const dy = Math.abs(obj.position.y - playerPos.y);
@@ -195,7 +192,6 @@ export class PlayerController {
         }
     }
     
-    // Aktualizacja Boxa po ruchu Y
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     // --- Kolizja pozioma (X) ---
@@ -205,8 +201,6 @@ export class PlayerController {
 
     for (const object of candidates) {
         this.objectBox.setFromObject(object);
-
-        // Ignoruj podłogę przy kolizji bocznej, jeśli jesteśmy nad nią
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
@@ -227,7 +221,6 @@ export class PlayerController {
 
     for (const object of candidates) {
         this.objectBox.setFromObject(object);
-
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
@@ -241,8 +234,6 @@ export class PlayerController {
         }
     }
 
-    // --- Logika podłogi / spadania ---
-    // Sprawdzenie czy jesteśmy poniżej "podłogi świata" (bezpiecznik)
     if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY + halfHeight;
@@ -454,5 +445,3 @@ export class ThirdPersonCameraController {
         this.cleanupControls();
     }
 }
-
-export class FirstPersonCameraController {}
