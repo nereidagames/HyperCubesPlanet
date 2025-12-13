@@ -17,7 +17,7 @@ export class GameStateManager {
             skinBuild: null,
             prefabBuild: null,
             partBuild: null,
-            parkour: null // Dodano parkour
+            parkour: null
         };
 
         this.exploreScene = null;
@@ -42,7 +42,6 @@ export class GameStateManager {
             if (multiplayer && multiplayer.update) multiplayer.update(deltaTime);
             if (coin && coin.update) coin.update(deltaTime);
             
-            // --- FIX: AKTUALIZACJA PARKOURA ---
             if (parkour && this.currentState === 'ExploreMode' && parkour.update) {
                 parkour.update(deltaTime);
             }
@@ -80,11 +79,12 @@ export class GameStateManager {
         if(joystickZone) joystickZone.style.display = 'block'; 
     }
 
-    switchToBuildMode(size) {
+    // FIX: Dodano parametr isNexusMode i przekazano go dalej
+    switchToBuildMode(size, isNexusMode = false) {
         if (this.currentState !== 'MainMenu') return;
         this.currentState = 'BuildMode';
         this.toggleGameControls(false);
-        if (this.managers.build) this.managers.build.enterBuildMode(size);
+        if (this.managers.build) this.managers.build.enterBuildMode(size, isNexusMode);
     }
 
     switchToSkinBuilder() { if (this.currentState !== 'MainMenu') return; this.currentState = 'SkinBuilderMode'; this.toggleGameControls(false); if (this.managers.skinBuild) this.managers.skinBuild.enterBuildMode(); }
@@ -100,7 +100,6 @@ export class GameStateManager {
                 this.managers.multiplayer.joinWorld('nexus');
                 this.managers.multiplayer.setScene(this.core.scene);
             }
-            // --- FIX: CZYSZCZENIE PARKOURA PRZY WYJŚCIU ---
             if (this.managers.parkour) {
                 this.managers.parkour.cleanup();
             }
