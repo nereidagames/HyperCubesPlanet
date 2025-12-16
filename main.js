@@ -105,7 +105,7 @@ class BlockStarPlanetGame {
           this.ui.updateLevelInfo(user.level, user.xp, user.maxXp || 100);
       }
       
-      // FIX: Aktualizacja oczekujących nagród przy starcie
+      // FIX: Aktualizacja oczekujących nagród (badge) przy starcie
       if (user.pendingXp) {
           this.ui.updatePendingRewards(user.pendingXp);
       }
@@ -318,7 +318,6 @@ class BlockStarPlanetGame {
           }, 100);
       };
 
-      // FIX: Przekazywanie flagi true dla trybu Nexusa
       this.ui.onEditNexusClick = () => this.stateManager.switchToBuildMode(64, true);
       this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
   }
