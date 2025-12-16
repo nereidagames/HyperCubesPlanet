@@ -122,7 +122,6 @@ export const SKIN_COMMENTS_HTML = `
     </div>
 `;
 
-// --- NOWOŚĆ: PANEL WYBORU ODKRYWANIA ---
 export const DISCOVER_CHOICE_HTML = `
     <div id="discover-choice-panel" class="panel-modal">
         <div class="panel-content">
@@ -156,10 +155,10 @@ export const MODALS_HTML = `
     </div>
     
     <div id="reward-panel">
-        <h1 class="text-outline">Otrzymujesz:</h1>
+        <h1 class="text-outline" id="reward-title-text">Otrzymujesz:</h1>
         <div class="reward-box-container">
             <div class="reward-box">
-                <div class="reward-title text-outline">Bez VIP</div>
+                <div class="reward-title text-outline">Nagroda</div>
                 <div class="reward-row"><span id="reward-xp-val" class="text-outline">+500</span> <img src="icons/icon-level.png"></div>
                 <div class="reward-row"><span id="reward-coins-val" class="text-outline">+100</span> <img src="icons/icon-coin.png"></div>
             </div>
@@ -194,7 +193,7 @@ export const MODALS_HTML = `
         </div>
     </div>
 
-    ${DISCOVER_CHOICE_HTML} <!-- WSTRZYKNIĘCIE NOWEGO PANELU -->
+    ${DISCOVER_CHOICE_HTML} 
 
     <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
@@ -204,6 +203,22 @@ export const MODALS_HTML = `
     <div id="shop-panel" class="panel-modal"><div class="panel-content"><h2>Sklep</h2><div class="friends-tabs" style="margin-bottom:15px;"><div class="friends-tab active" id="shop-tab-blocks">Bloki</div><div class="friends-tab" id="shop-tab-addons">Dodatki</div></div><div id="shop-list" class="panel-list"></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="add-choice-panel" class="panel-modal"><div class="panel-content"><h2>Dodaj</h2><div class="panel-list"><div id="add-choice-blocks" class="panel-item">Bloki</div><div id="add-choice-prefabs" class="panel-item">Prefabrykaty</div><div id="add-choice-parts" class="panel-item">Części</div></div><button id="add-choice-close" class="panel-close-button">Anuluj</button></div></div>
     <div id="player-preview-panel" class="panel-modal"><div class="panel-content"><h2>Podgląd</h2><div id="player-preview-renderer-container"></div><button class="panel-close-button">Zamknij</button></div></div>
-    <div id="more-options-panel" class="panel-modal"><div class="panel-content"><h2>Opcje</h2><div class="panel-list"><div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div><div id="logout-btn" class="panel-item btn-danger">Wyloguj</div></div><button class="panel-close-button">Zamknij</button></div></div>
+    
+    <!-- MODIFIED OPTIONS PANEL WITH REWARDS BUTTON -->
+    <div id="more-options-panel" class="panel-modal">
+        <div class="panel-content">
+            <h2>Opcje</h2>
+            <div class="panel-list">
+                <div id="btn-claim-rewards" class="panel-item" style="background-color: #f1c40f; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    🏆 Nagrody 
+                    <span id="rewards-badge" style="background: red; border-radius: 50%; padding: 2px 6px; font-size: 12px; display: none;">0</span>
+                </div>
+                <div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div>
+                <div id="logout-btn" class="panel-item btn-danger">Wyloguj</div>
+            </div>
+            <button class="panel-close-button">Zamknij</button>
+        </div>
+    </div>
+    
     <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
 `;
