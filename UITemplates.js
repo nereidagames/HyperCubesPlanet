@@ -1,3 +1,4 @@
+
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -145,6 +146,121 @@ export const DISCOVER_CHOICE_HTML = `
     </div>
 `;
 
+// --- NOWY PANEL: TWOJE AKTUALNOŚCI (BSP STYLE) ---
+export const NEWS_MODAL_HTML = `
+    <style>
+        .news-container {
+            width: 85vw; max-width: 600px; height: 70vh;
+            background-color: #e0e0e0; border-radius: 15px;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 4px solid white; font-family: 'Titan One', cursive;
+        }
+        
+        .news-header {
+            background: linear-gradient(to bottom, #4facfe, #00f2fe);
+            color: white; padding: 10px 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .news-header-title { font-size: 20px; text-shadow: 2px 2px 0 #000; }
+        
+        .btn-claim-all {
+            background: linear-gradient(to bottom, #2ecc71, #27ae60);
+            border: 2px solid white; border-radius: 10px;
+            padding: 8px 15px; color: white; cursor: pointer; font-family: inherit;
+            box-shadow: 0 4px 0 #1e8449; font-size: 14px; text-shadow: 1px 1px 0 #000;
+            transition: transform 0.1s;
+        }
+        .btn-claim-all:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e8449; }
+        
+        #news-list {
+            flex: 1; overflow-y: auto; padding: 15px;
+            background-color: #bdc3c7; /* Szare tło listy */
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        
+        .news-item {
+            background-color: #a3e635; /* Jasnozielone tło elementu */
+            border-radius: 12px;
+            display: flex; height: 90px;
+            box-shadow: 0 4px 0 #86bf2b; /* Ciemniejszy zielony cień */
+            border: 2px solid white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Lewa ikona (Typ) */
+        .news-icon-area {
+            width: 70px; display: flex; justify-content: center; align-items: center;
+            background: rgba(255,255,255,0.2);
+        }
+        .news-type-icon { font-size: 40px; color: white; filter: drop-shadow(2px 2px 0 #000); }
+        
+        /* Środek (Treść) */
+        .news-content-area {
+            flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center;
+            color: white; text-shadow: 1px 1px 0 #000;
+        }
+        .news-text-main { font-size: 14px; margin-bottom: 5px; line-height: 1.2; }
+        .news-sub-info { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .news-source-avatar { width: 24px; height: 24px; border-radius: 50%; background-color: #eee; background-size: cover; border: 1px solid white; }
+        
+        /* Prawa strona (Nagroda i Przycisk) */
+        .news-action-area {
+            width: 110px; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; gap: 5px;
+            background: rgba(0,0,0,0.1); padding: 5px;
+        }
+        
+        .news-reward-val { color: #f1c40f; font-size: 16px; display: flex; align-items: center; gap: 4px; }
+        
+        .btn-claim-one {
+            background: linear-gradient(to bottom, #2ecc71, #27ae60);
+            border: 2px solid white; border-radius: 8px;
+            padding: 5px 12px; color: white; cursor: pointer; font-family: inherit; font-size: 12px;
+            box-shadow: 0 3px 0 #1e8449; text-shadow: 1px 1px 0 #000;
+        }
+        .btn-claim-one:active { transform: translateY(3px); box-shadow: none; }
+
+        .news-footer {
+            height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9); color: white;
+            display: flex; align-items: center; padding: 0 15px; gap: 15px;
+            border-top: 3px solid white;
+        }
+        .footer-chest { width: 50px; height: 50px; background: url('icons/icon-shop.png') center/contain no-repeat; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
+        
+        /* Like thumb icon style */
+        .thumb-icon { 
+            width: 40px; height: 40px; 
+            background: url('icons/icon-like.png') center/contain no-repeat; 
+            filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); 
+        }
+    </style>
+
+    <div id="news-modal" class="panel-modal" style="display:none;">
+        <div class="news-container">
+            <div class="news-header">
+                <span class="news-header-title">Twoje aktualności (<span id="news-count-header">0</span>)</span>
+                <button id="btn-news-claim-all" class="btn-claim-all">Odbierz wszystkie!</button>
+            </div>
+            
+            <div id="news-list">
+                <!-- JavaScript wstrzyknie tu elementy .news-item -->
+            </div>
+            
+            <div class="news-footer">
+                <div class="footer-chest"></div>
+                <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">
+                    Namów innych graczy do korzystania z Twoich prefabrykatów i skórek
+                </span>
+                <button class="panel-close-button" style="margin: 0; padding: 8px 15px; background: #e74c3c; border: 2px solid white; box-shadow: 0 4px 0 #c0392b;">X</button>
+            </div>
+        </div>
+    </div>
+`;
+
 export const MODALS_HTML = `
     <div id="explore-exit-button"></div>
     
@@ -194,6 +310,7 @@ export const MODALS_HTML = `
     </div>
 
     ${DISCOVER_CHOICE_HTML} 
+    ${NEWS_MODAL_HTML}
 
     <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
@@ -209,9 +326,9 @@ export const MODALS_HTML = `
         <div class="panel-content">
             <h2>Opcje</h2>
             <div class="panel-list">
-                <div id="btn-claim-rewards" class="panel-item" style="background-color: #f1c40f; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                <div id="btn-open-news" class="panel-item" style="background: linear-gradient(to bottom, #2ecc71, #27ae60); display: flex; justify-content: center; align-items: center; gap: 10px; border: 2px solid white;">
                     🏆 Nagrody 
-                    <span id="rewards-badge" style="background: red; border-radius: 50%; padding: 2px 6px; font-size: 12px; display: none;">0</span>
+                    <span id="rewards-badge" style="background: red; border-radius: 50%; padding: 2px 6px; font-size: 12px; display: none; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">0</span>
                 </div>
                 <div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div>
                 <div id="logout-btn" class="panel-item btn-danger">Wyloguj</div>
