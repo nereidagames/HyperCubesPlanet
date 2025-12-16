@@ -1,3 +1,5 @@
+
+
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -36,7 +38,6 @@ export class UIManager {
     this.onUsePart = null;
     this.onExitParkour = null;
     this.onReplayParkour = null;
-    this.onClaimRewards = null; // New callback
 
     this.friendsList = [];
     this.mailState = { conversations: [], activeConversation: null };
@@ -46,7 +47,7 @@ export class UIManager {
     this.shopIsOwnedCallback = null;
     
     this.pendingRewardData = null;
-    this.pendingXp = 0; // Local tracking
+    this.pendingNewsCount = 0;
 
     this.skinPreviewRenderer = null;
     this.skinPreviewScene = null;
@@ -96,25 +97,23 @@ export class UIManager {
       if (lvlFill) { const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100)); lvlFill.style.width = `${percent}%`; }
   }
 
-  // NOWA METODA: Aktualizacja wizualna oczekujących nagród
-  updatePendingRewards(xpAmount) {
-      this.pendingXp = xpAmount || 0;
+  // Aktualizacja badge'a na przycisku nagród
+  updatePendingRewards(count) {
+      this.pendingNewsCount = parseInt(count) || 0;
       const btnMore = document.querySelector('.btn-wiecej');
       const badge = document.getElementById('rewards-badge');
       
-      // Update badge inside panel
       if (badge) {
-          if (this.pendingXp > 0) {
-              badge.textContent = `+${this.pendingXp} XP`;
+          if (this.pendingNewsCount > 0) {
+              badge.textContent = this.pendingNewsCount;
               badge.style.display = 'inline-block';
           } else {
               badge.style.display = 'none';
           }
       }
 
-      // Visual indicator on "More" button (glow effect)
       if (btnMore) {
-          if (this.pendingXp > 0) {
+          if (this.pendingNewsCount > 0) {
               btnMore.style.filter = "drop-shadow(0 0 5px #f1c40f)";
           } else {
               btnMore.style.filter = "none";
@@ -151,9 +150,9 @@ export class UIManager {
           const xpVal = document.getElementById('reward-xp-val');
           const coinVal = document.getElementById('reward-coins-val');
           
-          // Determine values to show (either claimed amount or total gained)
-          const gainedXp = data.claimedXp || (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); 
-          const gainedCoins = data.bonusCoins || 100;
+          // Dane nagrody mogą być bezpośrednie (np. z parkoura) lub zagregowane (z claim all)
+          const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500);
+          const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100;
 
           if (xpVal) xpVal.textContent = `+${gainedXp}`;
           if (coinVal) coinVal.textContent = `+${gainedCoins}`;
@@ -176,6 +175,123 @@ export class UIManager {
       document.getElementById('victory-panel').style.display = 'none';
       document.getElementById('reward-panel').style.display = 'none';
       this.pendingRewardData = null;
+  }
+
+  // --- LOGIKA AKTUALNOŚCI (NEWS FEED) ---
+  async openNewsPanel() {
+      const panel = document.getElementById('news-modal');
+      const list = document.getElementById('news-list');
+      if(!panel || !list) return;
+      
+      panel.style.display = 'flex';
+      list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Ładowanie...</p>';
+      
+      try {
+          const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+          const r = await fetch(`${API_BASE_URL}/api/news`, {
+              headers: { 'Authorization': `Bearer ${t}` }
+          });
+          const newsItems = await r.json();
+          this.renderNewsList(newsItems);
+          
+          const headerCount = document.getElementById('news-count-header');
+          if(headerCount) headerCount.textContent = newsItems.length;
+          
+      } catch(e) {
+          list.innerHTML = '<p class="text-outline" style="text-align:center;">Błąd pobierania.</p>';
+      }
+  }
+
+  renderNewsList(items) {
+      const list = document.getElementById('news-list');
+      if(!list) return;
+      list.innerHTML = '';
+      
+      if(items.length === 0) {
+          list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px; color:#555;">Brak nowych wiadomości.</p>';
+          return;
+      }
+
+      items.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'news-item';
+          
+          let iconClass = 'thumb-icon'; // Domyślna ikona (kciuk)
+          let titleText = "System";
+          let userAvatar = item.source_user_skin || '';
+          
+          // Określenie tekstu na podstawie typu powiadomienia
+          if (item.type.includes('like_skin') || item.type.includes('like_prefab') || item.type.includes('like_part')) {
+              titleText = "Inny gracz polubił Twojego BlockStar";
+          } else if (item.type.includes('like_comment')) {
+              titleText = "Inny gracz polubił Twój komentarz";
+          } else {
+              titleText = "Wiadomość systemowa";
+          }
+          
+          // Konstrukcja HTML elementu listy
+          div.innerHTML = `
+              <div class="news-item-left">
+                  <div class="${iconClass}"></div>
+              </div>
+              <div class="news-item-content">
+                  <div class="news-item-title">${titleText}</div>
+                  <div class="news-item-desc">
+                      ${userAvatar ? `<div class="news-user-avatar" style="background-image: url('${userAvatar}')"></div>` : ''}
+                      <span><b>${item.source_username || 'Gracz'}</b> i inni gracze</span>
+                  </div>
+              </div>
+              <div class="news-item-right">
+                  <div class="news-reward-info">
+                      <img src="icons/icon-level.png" width="16"> ${item.reward_xp}
+                  </div>
+                  <button class="btn-claim-one text-outline">Odbierz!</button>
+              </div>
+          `;
+          
+          // Obsługa przycisku "Odbierz" (pojedyncze)
+          const btn = div.querySelector('.btn-claim-one');
+          btn.onclick = () => this.claimReward(item.id);
+          
+          list.appendChild(div);
+      });
+  }
+
+  async claimReward(newsId = null) {
+      try {
+          const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+          const r = await fetch(`${API_BASE_URL}/api/news/claim`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
+              body: JSON.stringify({ newsId })
+          });
+          const d = await r.json();
+          if (d.success) {
+              // Aktualizacja UI (Monety, Poziom)
+              this.updateCoinCounter(d.newCoins);
+              this.updateLevelInfo(d.newLevel, d.newXp, d.maxXp);
+              
+              if(newsId) {
+                  // Odbiór pojedynczy: odśwież listę, zaktualizuj badge
+                  this.openNewsPanel();
+                  this.updatePendingRewards(Math.max(0, this.pendingNewsCount - 1));
+                  
+                  // Mały feedback wizualny
+                  this.showMessage("Odebrano nagrodę!", "success");
+              } else {
+                  // Odbiór wszystkich: zamknij okno aktualności, pokaż duże okno nagrody
+                  this.updatePendingRewards(0);
+                  document.getElementById('news-modal').style.display = 'none';
+                  d.message = "Odebrano wszystkie nagrody!";
+                  this.showRewardPanel(d);
+              }
+          } else {
+              this.showMessage(d.message || "Błąd", "error");
+          }
+      } catch(e) { 
+          console.error(e); 
+          this.showMessage("Błąd sieci.", "error");
+      }
   }
 
   // --- UNIWERSALNE OKNO SZCZEGÓŁÓW ---
@@ -625,29 +741,14 @@ export class UIManager {
     const tabBlocks = document.getElementById('shop-tab-blocks'); const tabAddons = document.getElementById('shop-tab-addons'); if (tabBlocks && tabAddons) { tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; }
     const nameSubmitBtn = document.getElementById('name-submit-btn'); if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
     
-    // NOWA LOGIKA: Obsługa przycisku Odbierz Nagrody
-    setClick('btn-claim-rewards', async () => {
-        if (this.pendingXp > 0) {
-            try {
-                const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-                const r = await fetch(`${API_BASE_URL}/api/rewards/claim`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${t}` }
-                });
-                const d = await r.json();
-                if (d.success) {
-                    this.updatePendingRewards(0);
-                    this.updateCoinCounter(d.newCoins);
-                    this.updateLevelInfo(d.newLevel, d.newXp, d.maxXp);
-                    d.message = "Odebrano Nagrody!";
-                    this.showRewardPanel(d);
-                } else {
-                    this.showMessage(d.message, 'info');
-                }
-            } catch(e) { console.error(e); }
-        } else {
-            this.showMessage("Brak nagród do odebrania.", "info");
-        }
+    // NEW: Open News Panel
+    setClick('btn-open-news', () => {
+        this.openNewsPanel();
+    });
+    
+    // Claim All
+    setClick('btn-news-claim-all', () => {
+        this.claimReward(null); // null means all
     });
   }
 
