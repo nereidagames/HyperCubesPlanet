@@ -104,6 +104,11 @@ class BlockStarPlanetGame {
       if (user.level) {
           this.ui.updateLevelInfo(user.level, user.xp, user.maxXp || 100);
       }
+      
+      // FIX: Aktualizacja oczekujących nagród przy starcie
+      if (user.pendingXp) {
+          this.ui.updatePendingRewards(user.pendingXp);
+      }
 
       if (user.ownedBlocks) {
           this.blockManager.setOwnedBlocks(user.ownedBlocks);
