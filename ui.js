@@ -1,5 +1,4 @@
 
-
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -16,7 +15,6 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -38,6 +36,7 @@ export class UIManager {
     this.onUsePart = null;
     this.onExitParkour = null;
     this.onReplayParkour = null;
+    this.onClaimRewards = null; 
 
     this.friendsList = [];
     this.mailState = { conversations: [], activeConversation: null };
@@ -87,7 +86,6 @@ export class UIManager {
       if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML;
   }
 
-  // --- AKTUALIZACJE ---
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
@@ -97,16 +95,16 @@ export class UIManager {
       if (lvlFill) { const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100)); lvlFill.style.width = `${percent}%`; }
   }
 
-  // Aktualizacja badge'a na przycisku nagród
   updatePendingRewards(count) {
       this.pendingNewsCount = parseInt(count) || 0;
       const btnMore = document.querySelector('.btn-wiecej');
       const badge = document.getElementById('rewards-badge');
       
+      // Update badge in new Navigation Grid
       if (badge) {
           if (this.pendingNewsCount > 0) {
               badge.textContent = this.pendingNewsCount;
-              badge.style.display = 'inline-block';
+              badge.style.display = 'flex'; // Changed to flex for centering
           } else {
               badge.style.display = 'none';
           }
@@ -150,7 +148,6 @@ export class UIManager {
           const xpVal = document.getElementById('reward-xp-val');
           const coinVal = document.getElementById('reward-coins-val');
           
-          // Dane nagrody mogą być bezpośrednie (np. z parkoura) lub zagregowane (z claim all)
           const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500);
           const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100;
 
@@ -177,7 +174,6 @@ export class UIManager {
       this.pendingRewardData = null;
   }
 
-  // --- LOGIKA AKTUALNOŚCI (NEWS FEED) ---
   async openNewsPanel() {
       const panel = document.getElementById('news-modal');
       const list = document.getElementById('news-list');
@@ -216,11 +212,10 @@ export class UIManager {
           const div = document.createElement('div');
           div.className = 'news-item';
           
-          let iconClass = 'thumb-icon'; // Domyślna ikona (kciuk)
+          let iconClass = 'thumb-icon'; 
           let titleText = "System";
           let userAvatar = item.source_user_skin || '';
           
-          // Określenie tekstu na podstawie typu powiadomienia
           if (item.type.includes('like_skin') || item.type.includes('like_prefab') || item.type.includes('like_part')) {
               titleText = "Inny gracz polubił Twojego BlockStar";
           } else if (item.type.includes('like_comment')) {
@@ -229,7 +224,6 @@ export class UIManager {
               titleText = "Wiadomość systemowa";
           }
           
-          // Konstrukcja HTML elementu listy
           div.innerHTML = `
               <div class="news-item-left">
                   <div class="${iconClass}"></div>
@@ -249,7 +243,6 @@ export class UIManager {
               </div>
           `;
           
-          // Obsługa przycisku "Odbierz" (pojedyncze)
           const btn = div.querySelector('.btn-claim-one');
           btn.onclick = () => this.claimReward(item.id);
           
@@ -267,19 +260,14 @@ export class UIManager {
           });
           const d = await r.json();
           if (d.success) {
-              // Aktualizacja UI (Monety, Poziom)
               this.updateCoinCounter(d.newCoins);
               this.updateLevelInfo(d.newLevel, d.newXp, d.maxXp);
               
               if(newsId) {
-                  // Odbiór pojedynczy: odśwież listę, zaktualizuj badge
                   this.openNewsPanel();
                   this.updatePendingRewards(Math.max(0, this.pendingNewsCount - 1));
-                  
-                  // Mały feedback wizualny
                   this.showMessage("Odebrano nagrodę!", "success");
               } else {
-                  // Odbiór wszystkich: zamknij okno aktualności, pokaż duże okno nagrody
                   this.updatePendingRewards(0);
                   document.getElementById('news-modal').style.display = 'none';
                   d.message = "Odebrano wszystkie nagrody!";
@@ -294,7 +282,6 @@ export class UIManager {
       }
   }
 
-  // --- UNIWERSALNE OKNO SZCZEGÓŁÓW ---
   async showItemDetails(item, type) {
       const modal = document.getElementById('skin-details-modal');
       if (!modal) return;
@@ -390,7 +377,6 @@ export class UIManager {
       modal.style.display = 'flex';
   }
 
-  // --- KOMENTARZE ---
   async openItemComments(itemId, type) {
       const panel = document.getElementById('skin-comments-panel');
       if (!panel) return;
@@ -707,6 +693,13 @@ export class UIManager {
         };
     });
     
+    // Obsługa zamknięcia nowego panelu Więcej przez kliknięcie w tło
+    document.getElementById('more-options-panel').addEventListener('click', (e) => {
+        if (e.target.id === 'more-options-panel') {
+            e.target.style.display = 'none';
+        }
+    });
+    
     document.querySelectorAll('.panel-content').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
     document.querySelectorAll('.game-btn').forEach(button => {
       const type = this.getButtonType(button);
@@ -737,19 +730,31 @@ export class UIManager {
     setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); });
     setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); });
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
-    setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
+    
+    // OLD BUTTON LOGIC REPLACEMENT
+    // setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
     const tabBlocks = document.getElementById('shop-tab-blocks'); const tabAddons = document.getElementById('shop-tab-addons'); if (tabBlocks && tabAddons) { tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; }
     const nameSubmitBtn = document.getElementById('name-submit-btn'); if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
     
-    // NEW: Open News Panel
-    setClick('btn-open-news', () => {
-        this.openNewsPanel();
+    // NEW GRID BUTTONS HANDLERS
+    setClick('btn-open-news', () => { this.openNewsPanel(); });
+    
+    setClick('btn-nav-options', () => { 
+        if(this.onToggleFPS) {
+            this.onToggleFPS(); 
+            this.showMessage("Przełączono licznik FPS", "info");
+        }
     });
     
-    // Claim All
-    setClick('btn-news-claim-all', () => {
-        this.claimReward(null); // null means all
+    setClick('logout-btn', () => {
+        // Find logout function logic from old btn (usually localStorage clear and reload)
+        localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME);
+        localStorage.removeItem(STORAGE_KEYS.USER_ID);
+        window.location.reload();
     });
+
+    setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
   checkAdminPermissions(username) { const admins = ['nixox2', 'admin']; if (admins.includes(username)) { const optionsList = document.querySelector('#more-options-panel .panel-list'); if (optionsList && !document.getElementById('admin-edit-nexus-btn')) { const editNexusBtn = document.createElement('div'); editNexusBtn.id = 'admin-edit-nexus-btn'; editNexusBtn.className = 'panel-item text-outline'; editNexusBtn.style.backgroundColor = '#e67e22'; editNexusBtn.style.marginTop = '10px'; editNexusBtn.textContent = '🛠️ Edytuj Nexus'; editNexusBtn.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); }; optionsList.insertBefore(editNexusBtn, optionsList.firstChild); } } }
