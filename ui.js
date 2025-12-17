@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -15,6 +14,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
+    // Callbacki
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -55,7 +55,10 @@ export class UIManager {
     this.skinPreviewAnimId = null;
     
     this.currentDetailsId = null;
-    this.currentDetailsType = 'skin'; 
+    this.currentDetailsType = 'skin';
+    
+    // FIX: Licznik warstw, aby nowe okna były zawsze na wierzchu
+    this.activeZIndex = 20000; 
   }
   
   initialize(isMobile) {
@@ -86,6 +89,14 @@ export class UIManager {
       if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML;
   }
 
+  // FIX: Metoda do wyciągania okna na wierzch
+  bringToFront(element) {
+      if (element) {
+          this.activeZIndex++;
+          element.style.zIndex = this.activeZIndex;
+      }
+  }
+
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
@@ -100,11 +111,10 @@ export class UIManager {
       const btnMore = document.querySelector('.btn-wiecej');
       const badge = document.getElementById('rewards-badge');
       
-      // Update badge in new Navigation Grid
       if (badge) {
           if (this.pendingNewsCount > 0) {
               badge.textContent = this.pendingNewsCount;
-              badge.style.display = 'flex'; // Changed to flex for centering
+              badge.style.display = 'flex'; // Centered thanks to flex in CSS
           } else {
               badge.style.display = 'none';
           }
@@ -132,6 +142,7 @@ export class UIManager {
       const timeDisplay = document.getElementById('victory-time-display');
       if (panel && timeDisplay) {
           timeDisplay.textContent = timeString;
+          this.bringToFront(panel); // FIX: Na wierzch
           panel.style.display = 'flex';
       }
   }
@@ -140,6 +151,8 @@ export class UIManager {
       const panel = document.getElementById('reward-panel');
       const data = customData || this.pendingRewardData;
       if (!panel) return;
+      
+      this.bringToFront(panel); // FIX: Na wierzch
       
       if (data) {
           const title = document.getElementById('reward-title-text');
@@ -179,6 +192,7 @@ export class UIManager {
       const list = document.getElementById('news-list');
       if(!panel || !list) return;
       
+      this.bringToFront(panel); // FIX: Na wierzch (nad panel Opcje)
       panel.style.display = 'flex';
       list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Ładowanie...</p>';
       
@@ -264,7 +278,7 @@ export class UIManager {
               this.updateLevelInfo(d.newLevel, d.newXp, d.maxXp);
               
               if(newsId) {
-                  this.openNewsPanel();
+                  this.openNewsPanel(); // Odśwież listę
                   this.updatePendingRewards(Math.max(0, this.pendingNewsCount - 1));
                   this.showMessage("Odebrano nagrodę!", "success");
               } else {
@@ -288,6 +302,8 @@ export class UIManager {
       
       this.currentDetailsId = item.id;
       this.currentDetailsType = type; 
+      
+      this.bringToFront(modal); // FIX: Na wierzch
       
       const headerName = modal.querySelector('.skin-name-header');
       const creatorName = modal.querySelector('.skin-creator-name');
@@ -380,6 +396,8 @@ export class UIManager {
   async openItemComments(itemId, type) {
       const panel = document.getElementById('skin-comments-panel');
       if (!panel) return;
+      
+      this.bringToFront(panel); // FIX: Na wierzch
       panel.style.display = 'flex';
       const closeBtn = document.getElementById('close-comments-btn');
       if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; };
@@ -546,8 +564,9 @@ export class UIManager {
       const list=document.getElementById('discover-list'); 
       if(!list) return; 
       
+      this.openPanel('discover-panel'); // FIX: Używa teraz z-index boost
+      
       list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
-      this.openPanel('discover-panel'); 
       
       if(type === 'worlds') {
           if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
@@ -682,6 +701,31 @@ export class UIManager {
       if(commentPanel) commentPanel.style.display = 'none';
   }
 
+  // FIX: Użycie bringToFront w openPanel
+  openPanel(id) { 
+      const p = document.getElementById(id); 
+      if(p) {
+          this.bringToFront(p);
+          p.style.display = 'flex'; 
+      }
+  }
+  
+  closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
+  updateFPSToggleText(e) { const f=document.getElementById('fps-status'); if(f) f.textContent=e?'Włączony':'Wyłączony'; }
+  updateCoinCounter(val) { const e=document.getElementById('coin-value'); if(e) e.textContent=val; }
+  toggleMobileControls(s) { const m=document.getElementById('mobile-game-controls'); if(m) m.style.display=s?'block':'none'; }
+  getButtonType(button) { if (button.classList.contains('btn-zagraj')) return 'zagraj'; if (button.classList.contains('btn-buduj')) return 'buduj'; if (button.classList.contains('btn-kup')) return 'kup'; if (button.classList.contains('btn-odkryj')) return 'odkryj'; if (button.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
+  
+  handleButtonClick(buttonType, buttonElement) {
+    buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
+    setTimeout(() => { buttonElement.style.transform = ''; }, 150);
+    if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; }
+    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
+    if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; }
+    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
+    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
+  }
+
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
@@ -693,7 +737,7 @@ export class UIManager {
         };
     });
     
-    // Obsługa zamknięcia nowego panelu Więcej przez kliknięcie w tło
+    // Obsługa zamknięcia panelu Więcej przez kliknięcie w tło
     document.getElementById('more-options-panel').addEventListener('click', (e) => {
         if (e.target.id === 'more-options-panel') {
             e.target.style.display = 'none';
@@ -731,8 +775,6 @@ export class UIManager {
     setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); });
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     
-    // OLD BUTTON LOGIC REPLACEMENT
-    // setClick('toggle-fps-btn', () => { if(this.onToggleFPS) this.onToggleFPS(); });
     const tabBlocks = document.getElementById('shop-tab-blocks'); const tabAddons = document.getElementById('shop-tab-addons'); if (tabBlocks && tabAddons) { tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; }
     const nameSubmitBtn = document.getElementById('name-submit-btn'); if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
     
@@ -747,7 +789,6 @@ export class UIManager {
     });
     
     setClick('logout-btn', () => {
-        // Find logout function logic from old btn (usually localStorage clear and reload)
         localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME);
         localStorage.removeItem(STORAGE_KEYS.USER_ID);
@@ -757,26 +798,6 @@ export class UIManager {
     setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
-  checkAdminPermissions(username) { const admins = ['nixox2', 'admin']; if (admins.includes(username)) { const optionsList = document.querySelector('#more-options-panel .panel-list'); if (optionsList && !document.getElementById('admin-edit-nexus-btn')) { const editNexusBtn = document.createElement('div'); editNexusBtn.id = 'admin-edit-nexus-btn'; editNexusBtn.className = 'panel-item text-outline'; editNexusBtn.style.backgroundColor = '#e67e22'; editNexusBtn.style.marginTop = '10px'; editNexusBtn.textContent = '🛠️ Edytuj Nexus'; editNexusBtn.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); }; optionsList.insertBefore(editNexusBtn, optionsList.firstChild); } } }
-  updatePlayerAvatar(thumbnail) { const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); if (!avatarEl) return; if (thumbnail) { avatarEl.textContent = ''; avatarEl.style.backgroundImage = `url(${thumbnail})`; avatarEl.style.backgroundSize = 'cover'; avatarEl.style.backgroundPosition = 'center'; avatarEl.style.backgroundColor = '#4a90e2'; } else { avatarEl.style.backgroundImage = 'none'; avatarEl.textContent = '👤'; } }
-  updatePlayerName(name) { const nameDisplay = document.getElementById('player-name-display'); if (nameDisplay) nameDisplay.textContent = name; }
-  openPanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'flex'; }
-  closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
-  updateFPSToggleText(e) { const f=document.getElementById('fps-status'); if(f) f.textContent=e?'Włączony':'Wyłączony'; }
-  updateCoinCounter(val) { const e=document.getElementById('coin-value'); if(e) e.textContent=val; }
-  toggleMobileControls(s) { const m=document.getElementById('mobile-game-controls'); if(m) m.style.display=s?'block':'none'; }
-  getButtonType(button) { if (button.classList.contains('btn-zagraj')) return 'zagraj'; if (button.classList.contains('btn-buduj')) return 'buduj'; if (button.classList.contains('btn-kup')) return 'kup'; if (button.classList.contains('btn-odkryj')) return 'odkryj'; if (button.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
-  
-  handleButtonClick(buttonType, buttonElement) {
-    buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
-    setTimeout(() => { buttonElement.style.transform = ''; }, 150);
-    if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; }
-    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
-    if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; }
-    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
-    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
-  }
-
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
   refreshShopList() { const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } filteredItems.forEach(b => { const i = document.createElement('div'); i.className = 'shop-item'; const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; list.appendChild(i); }); list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); }
   setupChatSystem() { this.setupChatInput(); }
@@ -784,7 +805,7 @@ export class UIManager {
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
-  showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:10000;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
+  showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:99999;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
   setupFriendsSystem() { const tabs = document.querySelectorAll('#friends-panel .friends-tab'); tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); const targetId = tab.getAttribute('data-tab'); const views = document.querySelectorAll('#friends-panel .friends-view'); views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); }); const targetView = document.getElementById(targetId); if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); } }; }); const searchBtn = document.getElementById('friends-search-btn'); if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); } }
   setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
   
