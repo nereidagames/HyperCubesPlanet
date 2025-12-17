@@ -1,3 +1,4 @@
+
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -214,12 +215,11 @@ export const NEWS_MODAL_HTML = `
     </div>
 `;
 
-// NOWY WYGLĄD: MORE OPTIONS PANEL (GRID Z PRZYCISKAMI)
 export const MODALS_HTML = `
     <style>
         .nav-grid-container {
             display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 4 kolumny jak w BSP */
+            grid-template-columns: repeat(4, 1fr);
             grid-template-rows: auto;
             gap: 15px;
             justify-content: center;
@@ -237,10 +237,13 @@ export const MODALS_HTML = `
         }
         .nav-item:active { transform: scale(0.95); }
         
+        /* FIX: Użycie NavigationButton.png jako tła */
         .nav-btn-box {
             width: 80px; height: 80px;
-            background-image: url('icons/navigationbutton.png');
-            background-size: contain; background-repeat: no-repeat; background-position: center;
+            background-image: url('icons/NavigationButton.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
             display: flex; justify-content: center; align-items: center;
             position: relative;
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
@@ -275,18 +278,17 @@ export const MODALS_HTML = `
             z-index: 5;
         }
         
-        /* Modal Override dla panelu Więcej */
         #more-options-panel .panel-content {
-            background: rgba(0,0,0,0.5) !important; /* Przezroczyste tło jak w grze */
+            background: rgba(0,0,0,0.5) !important;
             border: none !important;
             box-shadow: none !important;
             width: 90vw !important;
             max-width: 800px !important;
         }
         
-        #more-options-panel h2 { display: none; } /* Ukrywamy standardowy nagłówek */
-        #more-options-panel .panel-list { display: none; } /* Ukrywamy starą listę */
-        #more-options-panel .panel-close-button { display: none; } /* Przycisk zamknięcia nie pasuje do stylu, kliknięcie w tło zamyka */
+        #more-options-panel h2 { display: none; }
+        #more-options-panel .panel-list { display: none; }
+        #more-options-panel .panel-close-button { display: none; }
         
     </style>
 
@@ -408,8 +410,6 @@ export const MODALS_HTML = `
                 <span class="nav-label">Wyloguj</span>
             </div>
         </div>
-        
-        <!-- Zamknięcie po kliknięciu w tło (JS w ui.txt) -->
     </div>
     
     <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
