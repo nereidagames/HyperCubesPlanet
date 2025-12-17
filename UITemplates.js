@@ -1,4 +1,3 @@
-
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -146,7 +145,6 @@ export const DISCOVER_CHOICE_HTML = `
     </div>
 `;
 
-// --- NOWY PANEL: TWOJE AKTUALNOŚCI (BSP STYLE) ---
 export const NEWS_MODAL_HTML = `
     <style>
         .news-container {
@@ -156,16 +154,13 @@ export const NEWS_MODAL_HTML = `
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             border: 4px solid white; font-family: 'Titan One', cursive;
         }
-        
         .news-header {
             background: linear-gradient(to bottom, #4facfe, #00f2fe);
             color: white; padding: 10px 15px;
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px solid white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-bottom: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .news-header-title { font-size: 20px; text-shadow: 2px 2px 0 #000; }
-        
         .btn-claim-all {
             background: linear-gradient(to bottom, #2ecc71, #27ae60);
             border: 2px solid white; border-radius: 10px;
@@ -174,69 +169,33 @@ export const NEWS_MODAL_HTML = `
             transition: transform 0.1s;
         }
         .btn-claim-all:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e8449; }
-        
         #news-list {
             flex: 1; overflow-y: auto; padding: 15px;
-            background-color: #bdc3c7; /* Szare tło listy */
-            display: flex; flex-direction: column; gap: 12px;
+            background-color: #bdc3c7; display: flex; flex-direction: column; gap: 12px;
         }
-        
         .news-item {
-            background-color: #a3e635; /* Jasnozielone tło elementu */
-            border-radius: 12px;
+            background-color: #a3e635; border-radius: 12px;
             display: flex; height: 90px;
-            box-shadow: 0 4px 0 #86bf2b; /* Ciemniejszy zielony cień */
-            border: 2px solid white;
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 4px 0 #86bf2b; border: 2px solid white;
+            position: relative; overflow: hidden;
         }
-        
-        /* Lewa ikona (Typ) */
-        .news-icon-area {
-            width: 70px; display: flex; justify-content: center; align-items: center;
-            background: rgba(255,255,255,0.2);
-        }
+        .news-icon-area { width: 70px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.2); }
         .news-type-icon { font-size: 40px; color: white; filter: drop-shadow(2px 2px 0 #000); }
-        
-        /* Środek (Treść) */
-        .news-content-area {
-            flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center;
-            color: white; text-shadow: 1px 1px 0 #000;
-        }
+        .news-content-area { flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center; color: white; text-shadow: 1px 1px 0 #000; }
         .news-text-main { font-size: 14px; margin-bottom: 5px; line-height: 1.2; }
         .news-sub-info { display: flex; align-items: center; gap: 8px; font-size: 12px; }
         .news-source-avatar { width: 24px; height: 24px; border-radius: 50%; background-color: #eee; background-size: cover; border: 1px solid white; }
-        
-        /* Prawa strona (Nagroda i Przycisk) */
-        .news-action-area {
-            width: 110px; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; gap: 5px;
-            background: rgba(0,0,0,0.1); padding: 5px;
-        }
-        
+        .news-action-area { width: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; background: rgba(0,0,0,0.1); padding: 5px; }
         .news-reward-val { color: #f1c40f; font-size: 16px; display: flex; align-items: center; gap: 4px; }
-        
         .btn-claim-one {
-            background: linear-gradient(to bottom, #2ecc71, #27ae60);
-            border: 2px solid white; border-radius: 8px;
+            background: linear-gradient(to bottom, #2ecc71, #27ae60); border: 2px solid white; border-radius: 8px;
             padding: 5px 12px; color: white; cursor: pointer; font-family: inherit; font-size: 12px;
             box-shadow: 0 3px 0 #1e8449; text-shadow: 1px 1px 0 #000;
         }
         .btn-claim-one:active { transform: translateY(3px); box-shadow: none; }
-
-        .news-footer {
-            height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9); color: white;
-            display: flex; align-items: center; padding: 0 15px; gap: 15px;
-            border-top: 3px solid white;
-        }
+        .news-footer { height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9); color: white; display: flex; align-items: center; padding: 0 15px; gap: 15px; border-top: 3px solid white; }
         .footer-chest { width: 50px; height: 50px; background: url('icons/icon-shop.png') center/contain no-repeat; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
-        
-        /* Like thumb icon style */
-        .thumb-icon { 
-            width: 40px; height: 40px; 
-            background: url('icons/icon-like.png') center/contain no-repeat; 
-            filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); 
-        }
+        .thumb-icon { width: 40px; height: 40px; background: url('icons/icon-like.png') center/contain no-repeat; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); }
     </style>
 
     <div id="news-modal" class="panel-modal" style="display:none;">
@@ -245,23 +204,92 @@ export const NEWS_MODAL_HTML = `
                 <span class="news-header-title">Twoje aktualności (<span id="news-count-header">0</span>)</span>
                 <button id="btn-news-claim-all" class="btn-claim-all">Odbierz wszystkie!</button>
             </div>
-            
-            <div id="news-list">
-                <!-- JavaScript wstrzyknie tu elementy .news-item -->
-            </div>
-            
+            <div id="news-list"></div>
             <div class="news-footer">
                 <div class="footer-chest"></div>
-                <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">
-                    Namów innych graczy do korzystania z Twoich prefabrykatów i skórek
-                </span>
+                <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">Namów innych graczy do korzystania z Twoich prefabrykatów i skórek</span>
                 <button class="panel-close-button" style="margin: 0; padding: 8px 15px; background: #e74c3c; border: 2px solid white; box-shadow: 0 4px 0 #c0392b;">X</button>
             </div>
         </div>
     </div>
 `;
 
+// NOWY WYGLĄD: MORE OPTIONS PANEL (GRID Z PRZYCISKAMI)
 export const MODALS_HTML = `
+    <style>
+        .nav-grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 kolumny jak w BSP */
+            grid-template-rows: auto;
+            gap: 15px;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+            position: relative;
+        }
+        .nav-item:active { transform: scale(0.95); }
+        
+        .nav-btn-box {
+            width: 80px; height: 80px;
+            background-image: url('icons/navigationbutton.png');
+            background-size: contain; background-repeat: no-repeat; background-position: center;
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+        }
+        
+        .nav-icon {
+            width: 60%; height: 60%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+        }
+        
+        .nav-label {
+            margin-top: 5px;
+            color: white;
+            font-size: 14px;
+            font-family: 'Titan One', cursive;
+            text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
+            text-align: center;
+        }
+        
+        .nav-badge {
+            position: absolute;
+            top: -5px; right: -5px;
+            background-color: #e74c3c;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 24px; height: 24px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 12px; font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+        
+        /* Modal Override dla panelu Więcej */
+        #more-options-panel .panel-content {
+            background: rgba(0,0,0,0.5) !important; /* Przezroczyste tło jak w grze */
+            border: none !important;
+            box-shadow: none !important;
+            width: 90vw !important;
+            max-width: 800px !important;
+        }
+        
+        #more-options-panel h2 { display: none; } /* Ukrywamy standardowy nagłówek */
+        #more-options-panel .panel-list { display: none; } /* Ukrywamy starą listę */
+        #more-options-panel .panel-close-button { display: none; } /* Przycisk zamknięcia nie pasuje do stylu, kliknięcie w tło zamyka */
+        
+    </style>
+
     <div id="explore-exit-button"></div>
     
     <div id="victory-panel">
@@ -291,7 +319,6 @@ export const MODALS_HTML = `
         </div>
     </div>
 
-    <!-- PANEL WYBORU GRY -->
     <div id="play-choice-panel" class="panel-modal">
         <div class="panel-content">
             <h2>W co chcesz zagrać?</h2>
@@ -321,20 +348,68 @@ export const MODALS_HTML = `
     <div id="add-choice-panel" class="panel-modal"><div class="panel-content"><h2>Dodaj</h2><div class="panel-list"><div id="add-choice-blocks" class="panel-item">Bloki</div><div id="add-choice-prefabs" class="panel-item">Prefabrykaty</div><div id="add-choice-parts" class="panel-item">Części</div></div><button id="add-choice-close" class="panel-close-button">Anuluj</button></div></div>
     <div id="player-preview-panel" class="panel-modal"><div class="panel-content"><h2>Podgląd</h2><div id="player-preview-renderer-container"></div><button class="panel-close-button">Zamknij</button></div></div>
     
-    <!-- MODIFIED OPTIONS PANEL WITH REWARDS BUTTON -->
+    <!-- NOWA STRUKTURA PANELU OPCJI (BSP GRID) -->
     <div id="more-options-panel" class="panel-modal">
-        <div class="panel-content">
-            <h2>Opcje</h2>
-            <div class="panel-list">
-                <div id="btn-open-news" class="panel-item" style="background: linear-gradient(to bottom, #2ecc71, #27ae60); display: flex; justify-content: center; align-items: center; gap: 10px; border: 2px solid white;">
-                    🏆 Nagrody 
-                    <span id="rewards-badge" style="background: red; border-radius: 50%; padding: 2px 6px; font-size: 12px; display: none; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">0</span>
+        <div class="nav-grid-container">
+            <!-- 1. Misje (Placeholder) -->
+            <div class="nav-item">
+                <div class="nav-btn-box">
+                    <img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon">
                 </div>
-                <div id="toggle-fps-btn" class="panel-item">Licznik FPS: <span id="fps-status">Wyłączony</span></div>
-                <div id="logout-btn" class="panel-item btn-danger">Wyloguj</div>
+                <span class="nav-label">Misje</span>
             </div>
-            <button class="panel-close-button">Zamknij</button>
+
+            <!-- 2. Nagrody -->
+            <div class="nav-item" id="btn-open-news">
+                <div class="nav-btn-box">
+                    <img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon">
+                    <div id="rewards-badge" class="nav-badge" style="display:none;">0</div>
+                </div>
+                <span class="nav-label">Nagrody</span>
+            </div>
+
+            <!-- 3. HighScores (Placeholder) -->
+            <div class="nav-item">
+                <div class="nav-btn-box">
+                    <img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon">
+                </div>
+                <span class="nav-label">HighScores</span>
+            </div>
+
+            <!-- 4. Tworzenie (Placeholder) -->
+            <div class="nav-item">
+                <div class="nav-btn-box">
+                    <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                </div>
+                <span class="nav-label">Tworzenie</span>
+            </div>
+
+            <!-- 5. Bezpieczeństwo (Placeholder) -->
+            <div class="nav-item">
+                <div class="nav-btn-box">
+                    <img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
+                </div>
+                <span class="nav-label">Bezpiecz.</span>
+            </div>
+
+            <!-- 6. Opcje (FPS Toggle) -->
+            <div class="nav-item" id="btn-nav-options">
+                <div class="nav-btn-box">
+                    <img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
+                </div>
+                <span class="nav-label">Opcje</span>
+            </div>
+
+            <!-- 7. Wyloguj -->
+            <div class="nav-item" id="logout-btn">
+                <div class="nav-btn-box">
+                    <img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon">
+                </div>
+                <span class="nav-label">Wyloguj</span>
+            </div>
         </div>
+        
+        <!-- Zamknięcie po kliknięciu w tło (JS w ui.txt) -->
     </div>
     
     <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
