@@ -1,4 +1,3 @@
-
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -215,13 +214,14 @@ export const NEWS_MODAL_HTML = `
     </div>
 `;
 
+// ZMODYFIKOWANY PANEL OPCJI (BSP GRID)
 export const MODALS_HTML = `
     <style>
         .nav-grid-container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             grid-template-rows: auto;
-            gap: 15px;
+            gap: 20px; /* Nieco większy odstęp */
             justify-content: center;
             width: 100%;
             padding: 20px;
@@ -237,31 +237,42 @@ export const MODALS_HTML = `
         }
         .nav-item:active { transform: scale(0.95); }
         
-        /* FIX: Użycie NavigationButton.png jako tła */
         .nav-btn-box {
-            width: 80px; height: 80px;
+            /* Zwiększono rozmiar przycisku */
+            width: 110px; height: 110px;
             background-image: url('icons/NavigationButton.png');
             background-size: 100% 100%;
             background-repeat: no-repeat;
             background-position: center;
-            display: flex; justify-content: center; align-items: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Ikona u góry */
+            align-items: center;
             position: relative;
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+            padding-top: 10px;
         }
         
         .nav-icon {
-            width: 60%; height: 60%;
+            width: 55%; height: 55%;
             object-fit: contain;
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+            z-index: 1;
         }
         
         .nav-label {
-            margin-top: 5px;
+            /* Pozycjonowanie absolutne na dole przycisku */
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            width: 100%;
             color: white;
-            font-size: 14px;
+            font-size: 13px;
             font-family: 'Titan One', cursive;
             text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
             text-align: center;
+            z-index: 2;
+            pointer-events: none; /* Żeby kliknięcie w tekst też działało na przycisk */
         }
         
         .nav-badge {
@@ -271,24 +282,40 @@ export const MODALS_HTML = `
             color: white;
             border: 2px solid white;
             border-radius: 50%;
-            width: 24px; height: 24px;
+            width: 28px; height: 28px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 12px; font-weight: bold;
+            font-size: 14px; font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            z-index: 5;
+            z-index: 10;
         }
         
+        /* Modal Override dla panelu Więcej */
         #more-options-panel .panel-content {
             background: rgba(0,0,0,0.5) !important;
             border: none !important;
             box-shadow: none !important;
-            width: 90vw !important;
+            width: 95vw !important;
             max-width: 800px !important;
         }
         
         #more-options-panel h2 { display: none; }
         #more-options-panel .panel-list { display: none; }
         #more-options-panel .panel-close-button { display: none; }
+        
+        /* Responsywność dla małych ekranów */
+        @media (max-width: 600px) {
+            .nav-grid-container {
+                gap: 10px;
+                grid-template-columns: repeat(3, 1fr); /* 3 kolumny na telefonie */
+            }
+            .nav-btn-box {
+                width: 90px; height: 90px;
+            }
+            .nav-label {
+                font-size: 11px;
+                bottom: 10px;
+            }
+        }
         
     </style>
 
@@ -357,59 +384,61 @@ export const MODALS_HTML = `
             <div class="nav-item">
                 <div class="nav-btn-box">
                     <img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon">
+                    <span class="nav-label">Misje</span>
                 </div>
-                <span class="nav-label">Misje</span>
             </div>
 
             <!-- 2. Nagrody -->
             <div class="nav-item" id="btn-open-news">
                 <div class="nav-btn-box">
                     <img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon">
+                    <span class="nav-label">Nagrody</span>
                     <div id="rewards-badge" class="nav-badge" style="display:none;">0</div>
                 </div>
-                <span class="nav-label">Nagrody</span>
             </div>
 
             <!-- 3. HighScores (Placeholder) -->
             <div class="nav-item">
                 <div class="nav-btn-box">
                     <img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon">
+                    <span class="nav-label">HighScores</span>
                 </div>
-                <span class="nav-label">HighScores</span>
             </div>
 
             <!-- 4. Tworzenie (Placeholder) -->
             <div class="nav-item">
                 <div class="nav-btn-box">
                     <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                    <span class="nav-label">Tworzenie</span>
                 </div>
-                <span class="nav-label">Tworzenie</span>
             </div>
 
             <!-- 5. Bezpieczeństwo (Placeholder) -->
             <div class="nav-item">
                 <div class="nav-btn-box">
                     <img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
+                    <span class="nav-label">Bezpiecz.</span>
                 </div>
-                <span class="nav-label">Bezpiecz.</span>
             </div>
 
             <!-- 6. Opcje (FPS Toggle) -->
             <div class="nav-item" id="btn-nav-options">
                 <div class="nav-btn-box">
                     <img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
+                    <span class="nav-label">Opcje</span>
                 </div>
-                <span class="nav-label">Opcje</span>
             </div>
 
             <!-- 7. Wyloguj -->
             <div class="nav-item" id="logout-btn">
                 <div class="nav-btn-box">
                     <img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon">
+                    <span class="nav-label">Wyloguj</span>
                 </div>
-                <span class="nav-label">Wyloguj</span>
             </div>
         </div>
+        
+        <!-- Zamknięcie po kliknięciu w tło (JS w ui.txt) -->
     </div>
     
     <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
