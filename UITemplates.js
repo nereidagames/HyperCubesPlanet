@@ -1,3 +1,4 @@
+
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -214,14 +215,13 @@ export const NEWS_MODAL_HTML = `
     </div>
 `;
 
-// ZMODYFIKOWANY PANEL OPCJI (BSP GRID)
 export const MODALS_HTML = `
     <style>
         .nav-grid-container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             grid-template-rows: auto;
-            gap: 20px; /* Nieco większy odstęp */
+            gap: 20px;
             justify-content: center;
             width: 100%;
             padding: 20px;
@@ -238,7 +238,6 @@ export const MODALS_HTML = `
         .nav-item:active { transform: scale(0.95); }
         
         .nav-btn-box {
-            /* Zwiększono rozmiar przycisku */
             width: 110px; height: 110px;
             background-image: url('icons/NavigationButton.png');
             background-size: 100% 100%;
@@ -246,7 +245,7 @@ export const MODALS_HTML = `
             background-position: center;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start; /* Ikona u góry */
+            justify-content: flex-start;
             align-items: center;
             position: relative;
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
@@ -261,7 +260,6 @@ export const MODALS_HTML = `
         }
         
         .nav-label {
-            /* Pozycjonowanie absolutne na dole przycisku */
             position: absolute;
             bottom: 12px;
             left: 0;
@@ -272,7 +270,7 @@ export const MODALS_HTML = `
             text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
             text-align: center;
             z-index: 2;
-            pointer-events: none; /* Żeby kliknięcie w tekst też działało na przycisk */
+            pointer-events: none;
         }
         
         .nav-badge {
@@ -289,7 +287,6 @@ export const MODALS_HTML = `
             z-index: 10;
         }
         
-        /* Modal Override dla panelu Więcej */
         #more-options-panel .panel-content {
             background: rgba(0,0,0,0.5) !important;
             border: none !important;
@@ -302,11 +299,10 @@ export const MODALS_HTML = `
         #more-options-panel .panel-list { display: none; }
         #more-options-panel .panel-close-button { display: none; }
         
-        /* Responsywność dla małych ekranów */
         @media (max-width: 600px) {
             .nav-grid-container {
                 gap: 10px;
-                grid-template-columns: repeat(3, 1fr); /* 3 kolumny na telefonie */
+                grid-template-columns: repeat(3, 1fr);
             }
             .nav-btn-box {
                 width: 90px; height: 90px;
@@ -316,7 +312,6 @@ export const MODALS_HTML = `
                 bottom: 10px;
             }
         }
-        
     </style>
 
     <div id="explore-exit-button"></div>
@@ -437,8 +432,6 @@ export const MODALS_HTML = `
                 </div>
             </div>
         </div>
-        
-        <!-- Zamknięcie po kliknięciu w tło (JS w ui.txt) -->
     </div>
     
     <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
