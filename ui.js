@@ -4,7 +4,7 @@ import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML } from './UITemplates.js';
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML } from './UITemplates.js';
 import { STORAGE_KEYS } from './Config.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
@@ -14,7 +14,6 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -86,11 +85,15 @@ export class UIManager {
       if (authLayer) authLayer.innerHTML = AUTH_HTML;
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
-      // FIX: Usunięto DISCOVER_CHOICE_HTML stąd, bo jest już w MODALS_HTML
+      // FIX: Sklejamy wszystkie szablony w jedną całość. 
+      // MODALS_HTML zawiera w sobie placeholders ${...}, ale upewnijmy się, że wczytujemy komplet.
+      // W wersji dostarczonej wyżej w UITemplates.txt, MODALS_HTML już zawiera zmienne ${...}.
+      // ALE importujemy je osobno, więc bezpieczniej jest je po prostu dokleić, jeśli MODALS_HTML ich nie ma.
+      // W moim kodzie powyżej MODALS_HTML zawiera ${DISCOVER...} i ${NEWS...}.
+      // Zatem wystarczy wstawić MODALS_HTML + SKIN...
       if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML;
   }
 
-  // Metoda do wyciągania okna na wierzch
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -702,7 +705,6 @@ export class UIManager {
       if(commentPanel) commentPanel.style.display = 'none';
   }
 
-  // FIX: Użycie bringToFront w openPanel
   openPanel(id) { 
       const p = document.getElementById(id); 
       if(p) {
@@ -738,7 +740,6 @@ export class UIManager {
         };
     });
     
-    // Obsługa zamknięcia panelu Więcej przez kliknięcie w tło
     document.getElementById('more-options-panel').addEventListener('click', (e) => {
         if (e.target.id === 'more-options-panel') {
             e.target.style.display = 'none';
@@ -779,7 +780,6 @@ export class UIManager {
     const tabBlocks = document.getElementById('shop-tab-blocks'); const tabAddons = document.getElementById('shop-tab-addons'); if (tabBlocks && tabAddons) { tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; }
     const nameSubmitBtn = document.getElementById('name-submit-btn'); if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
     
-    // NEW GRID BUTTONS HANDLERS
     setClick('btn-open-news', () => { this.openNewsPanel(); });
     
     setClick('btn-nav-options', () => { 
