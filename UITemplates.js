@@ -1,4 +1,3 @@
-
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -79,7 +78,6 @@ export const BUILD_UI_HTML = `
 export const SKIN_DETAILS_HTML = `
     <div id="skin-details-modal" class="panel-modal" style="display:none;">
         <div class="panel-close-button" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: #e74c3c; width: 40px; height: 40px; display:flex; justify-content:center; align-items:center; font-weight:bold;">X</div>
-        
         <div class="skin-col-left">
             <div class="skin-creator-box">
                 <div class="skin-creator-avatar"></div>
@@ -93,17 +91,14 @@ export const SKIN_DETAILS_HTML = `
                 <div class="skin-likes-count text-outline">0</div>
             </div>
         </div>
-
         <div class="skin-col-center">
             <div class="skin-name-header text-outline">Nazwa Skina</div>
             <div id="skin-preview-canvas"></div>
         </div>
-
         <div class="skin-col-right">
             <div id="skin-btn-share" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Udostępnij</div></div>
             <div id="skin-btn-like" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Polub</div></div>
             <div id="skin-btn-comment" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">0</div></div>
-            
             <div id="skin-btn-use" class="skin-action-btn" style="display:none;">
                 <div class="skin-btn-icon"></div>
                 <div class="skin-btn-label text-outline">Użyj</div>
@@ -221,7 +216,7 @@ export const MODALS_HTML = `
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             grid-template-rows: auto;
-            gap: 20px;
+            gap: 15px;
             justify-content: center;
             width: 100%;
             padding: 20px;
@@ -237,6 +232,7 @@ export const MODALS_HTML = `
         }
         .nav-item:active { transform: scale(0.95); }
         
+        /* Styl głównego przycisku nawigacji */
         .nav-btn-box {
             width: 110px; height: 110px;
             background-image: url('icons/NavigationButton.png');
@@ -249,23 +245,24 @@ export const MODALS_HTML = `
             align-items: center;
             position: relative;
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
-            padding-top: 10px;
+            padding-top: 15px; /* Ikona nieco niżej od górnej krawędzi */
         }
         
         .nav-icon {
-            width: 55%; height: 55%;
+            width: 50%; height: 50%;
             object-fit: contain;
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
             z-index: 1;
         }
         
+        /* Napis wewnątrz przycisku, na dole */
         .nav-label {
             position: absolute;
             bottom: 12px;
             left: 0;
             width: 100%;
             color: white;
-            font-size: 13px;
+            font-size: 12px;
             font-family: 'Titan One', cursive;
             text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
             text-align: center;
@@ -275,20 +272,20 @@ export const MODALS_HTML = `
         
         .nav-badge {
             position: absolute;
-            top: -5px; right: -5px;
+            top: 0px; right: 0px;
             background-color: #e74c3c;
             color: white;
             border: 2px solid white;
             border-radius: 50%;
-            width: 28px; height: 28px;
+            width: 26px; height: 26px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 14px; font-weight: bold;
+            font-size: 12px; font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             z-index: 10;
         }
         
         #more-options-panel .panel-content {
-            background: rgba(0,0,0,0.5) !important;
+            background: rgba(0,0,0,0.6) !important;
             border: none !important;
             box-shadow: none !important;
             width: 95vw !important;
@@ -308,7 +305,7 @@ export const MODALS_HTML = `
                 width: 90px; height: 90px;
             }
             .nav-label {
-                font-size: 11px;
+                font-size: 10px;
                 bottom: 10px;
             }
         }
@@ -359,9 +356,6 @@ export const MODALS_HTML = `
             <button class="panel-close-button">Anuluj</button>
         </div>
     </div>
-
-    ${DISCOVER_CHOICE_HTML} 
-    ${NEWS_MODAL_HTML}
 
     <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
