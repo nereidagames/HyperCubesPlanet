@@ -1,11 +1,10 @@
-
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML } from './UITemplates.js';
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML } from './UITemplates.js';
 import { STORAGE_KEYS } from './Config.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
@@ -58,7 +57,7 @@ export class UIManager {
     this.currentDetailsId = null;
     this.currentDetailsType = 'skin';
     
-    // Licznik warstw (Z-Index)
+    // Licznik warstw
     this.activeZIndex = 20000; 
   }
   
@@ -88,9 +87,9 @@ export class UIManager {
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
       
-      // FIX: Dodanie wszystkich szablonów, w tym MAIL_MODAL_HTML
+      // Dodanie wszystkich szablonów do warstwy modali
       if (modalsLayer) {
-          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML;
+          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML + FRIENDS_MODAL_HTML;
       }
   }
 
@@ -102,7 +101,6 @@ export class UIManager {
       }
   }
 
-  // --- AKTUALIZACJE HUD ---
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
@@ -117,6 +115,7 @@ export class UIManager {
       const btnMore = document.querySelector('.btn-wiecej');
       const badge = document.getElementById('rewards-badge');
       
+      // Update badge w panelu Opcje
       if (badge) {
           if (this.pendingNewsCount > 0) {
               badge.textContent = this.pendingNewsCount;
@@ -126,6 +125,7 @@ export class UIManager {
           }
       }
 
+      // Wizualny wskaźnik na przycisku "Więcej" (glow)
       if (btnMore) {
           if (this.pendingNewsCount > 0) {
               btnMore.style.filter = "drop-shadow(0 0 5px #f1c40f)";
@@ -191,6 +191,362 @@ export class UIManager {
       document.getElementById('victory-panel').style.display = 'none';
       document.getElementById('reward-panel').style.display = 'none';
       this.pendingRewardData = null;
+  }
+
+  // --- FRIENDS SYSTEM REWORK ---
+  setupFriendsSystem() {
+      // 1. Obsługa zakładek (Moi przyjaciele, W tym świecie itd.)
+      const tabs = document.querySelectorAll('.friend-nav-tab');
+      tabs.forEach(tab => {
+          tab.onclick = () => {
+              // Deaktywuj wszystkie
+              tabs.forEach(t => t.classList.remove('active'));
+              document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+              // Aktywuj kliknięty
+              tab.classList.add('active');
+              const targetId = tab.getAttribute('data-target');
+              const targetContent = document.getElementById(targetId);
+              if (targetContent) targetContent.classList.add('active');
+          };
+      });
+
+      // 2. Obsługa przycisku zamknięcia
+      const closeBtn = document.getElementById('btn-friends-close-main');
+      if (closeBtn) {
+          closeBtn.onclick = () => {
+              document.getElementById('friends-panel').style.display = 'none';
+          };
+      }
+
+      // 3. Obsługa wyszukiwania w nowym panelu
+      const searchBtn = document.getElementById('friends-search-btn-new');
+      const searchInput = document.getElementById('friends-search-input-new');
+      const clearBtn = document.getElementById('friends-search-clear');
+      
+      if (searchBtn) searchBtn.onclick = () => this.handleFriendSearch();
+      if (clearBtn) clearBtn.onclick = () => {
+          if(searchInput) searchInput.value = '';
+          document.getElementById('search-results-grid-new').innerHTML = '';
+      };
+  }
+
+  async loadFriendsData() {
+      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      if (!t) return;
+      
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/friends`, { headers: { 'Authorization': `Bearer ${t}` } });
+          if (r.ok) {
+              const d = await r.json();
+              this.friendsList = d.friends;
+              this.renderFriendsUI(d.friends, d.requests);
+              this.updateTopBarFriends(d.friends);
+          }
+      } catch (e) {
+          console.error(e);
+      }
+  }
+
+  renderFriendsUI(friends, requests) {
+      // 1. Prośby
+      const requestsSection = document.getElementById('section-requests');
+      const requestsGrid = document.getElementById('requests-grid');
+      
+      if (requests && requests.length > 0) {
+          requestsSection.style.display = 'block';
+          requestsGrid.innerHTML = '';
+          requests.forEach(req => {
+              requestsGrid.appendChild(this.createFriendCard(req, 'accept'));
+          });
+      } else {
+          requestsSection.style.display = 'none';
+      }
+
+      // 2. Podział Online/Offline
+      const online = friends.filter(f => f.isOnline);
+      const offline = friends.filter(f => !f.isOnline);
+
+      // 3. Renderowanie Online
+      document.getElementById('online-count').textContent = online.length;
+      const onlineGrid = document.getElementById('friends-online-grid');
+      onlineGrid.innerHTML = '';
+      online.forEach(f => onlineGrid.appendChild(this.createFriendCard(f, 'chat')));
+
+      // 4. Renderowanie Offline
+      document.getElementById('offline-count').textContent = offline.length;
+      const offlineGrid = document.getElementById('friends-offline-grid');
+      offlineGrid.innerHTML = '';
+      offline.forEach(f => offlineGrid.appendChild(this.createFriendCard(f, 'mail')));
+  }
+
+  createFriendCard(user, actionType) {
+      const div = document.createElement('div');
+      div.className = 'friend-card';
+      
+      let avatarUrl = user.current_skin_thumbnail ? `url('${user.current_skin_thumbnail}')` : "url('icons/avatar_placeholder.png')";
+      
+      // HTML KARTY
+      div.innerHTML = `
+          <div class="friend-card-header">${user.username}</div>
+          <div class="friend-card-body" style="background-image: ${avatarUrl};">
+              <div class="vip-badge"></div> <!-- Placeholder -->
+          </div>
+      `;
+      
+      // Przycisk akcji (zielony plus / dymek)
+      const actionBtn = document.createElement('div');
+      actionBtn.className = 'add-friend-btn';
+      
+      if (actionType === 'add') {
+          // Ikona dodawania (domyślna w CSS)
+          actionBtn.onclick = () => this.sendFriendRequest(user.id);
+      } else if (actionType === 'accept') {
+          // Zmień ikonę na "ptaszek"
+          actionBtn.style.backgroundImage = "url('icons/icon-check.png')"; 
+          actionBtn.onclick = () => this.acceptFriendRequest(user.request_id);
+      } else if (actionType === 'chat' || actionType === 'mail') {
+          // Ikona wiadomości
+          actionBtn.style.backgroundImage = "url('icons/icon-chat.png')";
+          actionBtn.onclick = () => {
+              // Otwórz pocztę i czat z tym graczem
+              this.openPanel('mail-panel');
+              document.getElementById('mail-inbox-view').classList.add('hidden');
+              document.getElementById('mail-conversation-view').classList.remove('hidden');
+              document.getElementById('mail-conversation-view').style.display = 'flex';
+              this.openConversation(user.username);
+          };
+      }
+      
+      // Kliknięcie w awatar -> Podgląd
+      const body = div.querySelector('.friend-card-body');
+      body.onclick = (e) => {
+          if (e.target !== actionBtn) {
+              this.showSkinPreviewFromUrl(user.current_skin_thumbnail);
+          }
+      };
+
+      div.querySelector('.friend-card-body').appendChild(actionBtn);
+      
+      return div;
+  }
+
+  async handleFriendSearch() {
+      const input = document.getElementById('friends-search-input-new');
+      const query = input.value.trim();
+      const grid = document.getElementById('search-results-grid-new');
+      
+      if (!query) return;
+      
+      grid.innerHTML = '<p style="color:white; grid-column: 1/-1; text-align:center;">Szukanie...</p>';
+      
+      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/friends/search`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
+              body: JSON.stringify({ query })
+          });
+          const results = await r.json();
+          
+          grid.innerHTML = '';
+          if (results.length === 0) {
+              grid.innerHTML = '<p style="color:white; grid-column: 1/-1; text-align:center;">Nikogo nie znaleziono.</p>';
+          } else {
+              results.forEach(u => {
+                  grid.appendChild(this.createFriendCard(u, 'add'));
+              });
+          }
+      } catch (e) {
+          grid.innerHTML = '<p style="color:red; grid-column: 1/-1; text-align:center;">Błąd sieci.</p>';
+      }
+  }
+
+  // --- MAIL SYSTEM ---
+  async loadMailData() {
+      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      if (!t) return;
+      
+      const inboxList = document.getElementById('mail-inbox-list');
+      if (inboxList) inboxList.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Ładowanie...</p>';
+      
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/messages`, { headers: { 'Authorization': `Bearer ${t}` } });
+          const messages = await r.json();
+          this.renderMailList(messages);
+      } catch (e) {
+          console.error(e);
+          if (inboxList) inboxList.innerHTML = '<p class="text-outline" style="text-align:center; color:red;">Błąd.</p>';
+      }
+  }
+
+  renderMailList(messages) {
+      const list = document.getElementById('mail-inbox-list');
+      if (!list) return;
+      list.innerHTML = '';
+      
+      if (!messages || messages.length === 0) {
+          list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px; color:#fff;">Skrzynka pusta.</p>';
+          return;
+      }
+      
+      messages.forEach(msg => {
+          const div = document.createElement('div');
+          div.className = 'mail-inbox-item';
+          
+          const date = new Date(msg.created_at);
+          const now = new Date();
+          const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+          let timeStr = diffDays < 1 ? "dzisiaj" : `${diffDays} dni temu`;
+          if (diffDays > 30) timeStr = `${Math.floor(diffDays/30)} mies. temu`;
+
+          div.innerHTML = `
+            <div class="mail-item-avatar" style="background-image: url('icons/avatar_placeholder.png');"></div>
+            <div class="mail-item-content">
+                <div class="mail-item-user text-outline">${msg.other_username}</div>
+                <div class="mail-item-preview">${msg.message_text}</div>
+            </div>
+            <div class="mail-item-time text-outline">${timeStr}</div>
+          `;
+          
+          div.onclick = () => { this.openConversation(msg.other_username); };
+          list.appendChild(div);
+      });
+  }
+
+  async openConversation(username) {
+      this.mailState.activeConversation = username;
+      
+      const inboxView = document.getElementById('mail-inbox-view');
+      const chatView = document.getElementById('mail-conversation-view');
+      const composer = document.getElementById('new-mail-composer');
+      
+      if(inboxView) inboxView.classList.add('hidden');
+      if(composer) composer.classList.add('hidden');
+      if(chatView) {
+          chatView.classList.remove('hidden');
+          chatView.style.display = 'flex';
+      }
+
+      const headerName = document.getElementById('mail-chat-username');
+      if(headerName) headerName.textContent = username;
+
+      const msgsContainer = document.getElementById('mail-chat-messages');
+      if(msgsContainer) msgsContainer.innerHTML = '<p style="text-align:center; padding:20px;">Pobieranie...</p>';
+
+      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/messages/${username}`, { headers: { 'Authorization': `Bearer ${t}` } });
+          const history = await r.json();
+          this.renderChatHistory(history, username);
+      } catch (e) { console.error(e); }
+  }
+
+  renderChatHistory(history, otherUser) {
+      const container = document.getElementById('mail-chat-messages');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      const myName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
+      
+      history.forEach(msg => {
+          const isMine = msg.sender_username === myName;
+          
+          const row = document.createElement('div');
+          row.className = `chat-msg-row ${isMine ? 'sent' : 'received'}`;
+          
+          const avatar = `<div class="chat-avatar-small" style="background-image: url('icons/avatar_placeholder.png');"></div>`;
+          const bubble = `<div class="chat-bubble">${msg.message_text}</div>`;
+          
+          if(isMine) {
+              row.innerHTML = bubble + avatar;
+          } else {
+              row.innerHTML = avatar + bubble;
+          }
+          
+          container.appendChild(row);
+      });
+      container.scrollTop = container.scrollHeight;
+  }
+
+  async setupMailSystem() {
+      const topBarItems = document.querySelectorAll('.top-bar-item');
+      topBarItems.forEach(item => { 
+        if (item.textContent.includes('Poczta')) { 
+            item.onclick = () => { 
+                this.openPanel('mail-panel'); 
+                document.getElementById('mail-inbox-view').classList.remove('hidden');
+                document.getElementById('mail-conversation-view').classList.add('hidden');
+                document.getElementById('new-mail-composer').classList.add('hidden');
+                this.loadMailData(); 
+            }; 
+        } 
+      });
+
+      const btnCompose = document.getElementById('btn-mail-compose');
+      if(btnCompose) {
+          btnCompose.onclick = () => {
+              document.getElementById('mail-inbox-view').classList.add('hidden');
+              document.getElementById('mail-conversation-view').classList.add('hidden');
+              const composer = document.getElementById('new-mail-composer');
+              if(composer) {
+                  composer.classList.remove('hidden');
+                  composer.style.display = 'flex';
+              }
+          };
+      }
+
+      const btnBack = document.getElementById('btn-mail-back');
+      if(btnBack) {
+          btnBack.onclick = () => {
+              document.getElementById('mail-conversation-view').classList.add('hidden');
+              document.getElementById('mail-inbox-view').classList.remove('hidden');
+              this.loadMailData(); 
+          };
+      }
+      
+      const btnCancel = document.getElementById('btn-cancel-new');
+      if(btnCancel) {
+          btnCancel.onclick = () => {
+              document.getElementById('new-mail-composer').classList.add('hidden');
+              document.getElementById('mail-inbox-view').classList.remove('hidden');
+          };
+      }
+
+      const btnSendNew = document.getElementById('btn-send-new');
+      if(btnSendNew) {
+          btnSendNew.onclick = async () => {
+              const recipient = document.getElementById('new-mail-recipient').value.trim();
+              const text = document.getElementById('new-mail-text').value.trim();
+              if(recipient && text && this.onSendPrivateMessage) {
+                  this.onSendPrivateMessage(recipient, text);
+                  document.getElementById('new-mail-composer').classList.add('hidden');
+                  document.getElementById('mail-inbox-view').classList.remove('hidden');
+                  this.loadMailData();
+                  document.getElementById('new-mail-recipient').value = '';
+                  document.getElementById('new-mail-text').value = '';
+              }
+          };
+      }
+
+      const btnReply = document.getElementById('mail-reply-btn');
+      if(btnReply) {
+          btnReply.onclick = async () => {
+              const input = document.getElementById('mail-reply-input');
+              const text = input.value.trim();
+              if(text && this.mailState.activeConversation && this.onSendPrivateMessage) {
+                  this.onSendPrivateMessage(this.mailState.activeConversation, text);
+                  input.value = '';
+                  
+                  const container = document.getElementById('mail-chat-messages');
+                  const row = document.createElement('div');
+                  row.className = 'chat-msg-row sent';
+                  row.innerHTML = `<div class="chat-bubble">${text}</div><div class="chat-avatar-small" style="background-image: url('icons/avatar_placeholder.png');"></div>`;
+                  container.appendChild(row);
+                  container.scrollTop = container.scrollHeight;
+              }
+          };
+      }
   }
 
   // --- NEWS SYSTEM ---
@@ -303,411 +659,23 @@ export class UIManager {
       }
   }
 
-  // --- ITEM DETAILS ---
-  async showItemDetails(item, type) {
-      const modal = document.getElementById('skin-details-modal');
-      if (!modal) return;
-      
-      this.currentDetailsId = item.id;
-      this.currentDetailsType = type; 
-      
-      this.bringToFront(modal); 
-      
-      const headerName = modal.querySelector('.skin-name-header');
-      const creatorName = modal.querySelector('.skin-creator-name');
-      const creatorLevel = modal.querySelector('.skin-creator-level-val');
-      const likesCount = modal.querySelector('.skin-likes-count');
-      const timeInfo = modal.querySelector('.skin-time-info');
-      const btnUse = document.getElementById('skin-btn-use');
-      const btnLike = document.getElementById('skin-btn-like');
-      const btnComment = document.getElementById('skin-btn-comment');
-
-      if(headerName) headerName.textContent = item.name;
-      if(creatorName) creatorName.textContent = item.creator || "Nieznany";
-      if(creatorLevel) creatorLevel.textContent = item.creatorLevel || "?"; 
-      if(likesCount) likesCount.textContent = item.likes || "0";
-      
-      if(timeInfo) {
-          let dateStr = "niedawno";
-          if (item.created_at) {
-              const date = new Date(item.created_at);
-              if (!isNaN(date.getTime())) {
-                  const now = new Date();
-                  const diffDays = Math.floor(Math.abs(now - date) / (1000 * 60 * 60 * 24));
-                  dateStr = diffDays === 0 ? "dzisiaj" : `${diffDays} dni temu`;
-              }
-          }
-          timeInfo.textContent = dateStr;
-      }
-
-      if (btnComment) {
-          const countSpan = btnComment.querySelector('.skin-btn-label');
-          if(countSpan) countSpan.textContent = item.comments || "0";
-          btnComment.onclick = () => {
-              this.openItemComments(item.id, type);
-          };
-      }
-
-      const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0");
-      const isOwner = item.owner_id === myId;
-      
-      if (btnUse) {
-          btnUse.style.display = 'flex'; 
-          if (type === 'skin') {
-              if (isOwner) {
-                  btnUse.onclick = () => {
-                      this.closeAllPanels();
-                      if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id);
-                  };
-              } else {
-                  btnUse.style.display = 'none'; 
-              }
-          } 
-          else if (type === 'part') {
-              btnUse.onclick = () => {
-                  this.closeAllPanels();
-                  if (this.onUsePart) this.onUsePart(item);
-              };
-          }
-          else if (type === 'prefab') {
-              btnUse.onclick = () => {
-                  this.closeAllPanels();
-                  if (this.onUsePrefab) this.onUsePrefab(item);
-              };
-          }
-      }
-      
-      if (btnLike) {
-          btnLike.onclick = null;
-          btnLike.onclick = async () => {
-              const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-              if(!t) return;
-              try {
-                  const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
-                  const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${item.id}/like`, {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${t}` }
-                  });
-                  const d = await r.json();
-                  if (d.success) {
-                      if(likesCount) likesCount.textContent = d.likes;
-                  }
-              } catch(e) { console.error(e); }
-          };
-      }
-
-      this.init3DPreview(item.id, type);
-      this.closeAllPanels(); 
-      modal.style.display = 'flex';
+  // --- GENERAL SETUP ---
+  async refreshSkinList(mode) {
+      await this.refreshDiscoveryList('skin', mode);
   }
 
-  async openItemComments(itemId, type) {
-      const panel = document.getElementById('skin-comments-panel');
-      if (!panel) return;
-      
-      this.bringToFront(panel); 
-      panel.style.display = 'flex';
-      const closeBtn = document.getElementById('close-comments-btn');
-      if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; };
-
-      this.loadItemComments(itemId, type);
-      
-      const submitBtn = document.getElementById('comment-submit-btn');
-      const input = document.getElementById('comment-input');
-      
-      if(submitBtn) {
-          submitBtn.onclick = null; 
-          submitBtn.onclick = async () => {
-              const text = input.value.trim();
-              if(!text) return;
-              const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-              const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
-              try {
-                  const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
-                      body: JSON.stringify({ text })
-                  });
-                  if(r.ok) {
-                      input.value = '';
-                      this.loadItemComments(itemId, type);
-                  }
-              } catch(e) { console.error(e); }
-          };
-      }
-  }
-
-  async loadItemComments(itemId, type) {
-      const container = document.querySelector('.comments-list-container');
-      if(!container) return;
-      container.innerHTML = '<p style="text-align:center; padding:10px;">Ładowanie...</p>';
-      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-      const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
-      const likeEndpoint = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs');
-
-      try {
-          const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, {
-              headers: { 'Authorization': `Bearer ${t}` }
-          });
-          const comments = await r.json();
-          container.innerHTML = '';
-          if(comments.length === 0) {
-              container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy.</p>';
-              return;
-          }
-          comments.forEach(c => {
-              const div = document.createElement('div');
-              div.className = 'comment-item';
-              const date = new Date(c.created_at);
-              const now = new Date();
-              const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
-              const timeStr = diffHours < 24 ? (diffHours === 0 ? "teraz" : `${diffHours}h temu`) : `${Math.floor(diffHours/24)}d temu`;
-              div.innerHTML = `
-                  <div class="comment-avatar" style="background-image: url('${c.current_skin_thumbnail || ''}')"></div>
-                  <div class="comment-content">
-                      <div class="comment-author">${c.username}</div>
-                      <div class="comment-text">${c.text}</div>
-                      <div class="comment-time">${timeStr}</div>
-                  </div>
-                  <div class="comment-actions">
-                      <div class="comment-like-count">${c.likes || 0}</div>
-                      <div class="comment-like-btn">❤</div>
-                  </div>
-              `;
-              const likeBtn = div.querySelector('.comment-like-btn');
-              likeBtn.onclick = async () => {
-                  try {
-                      const lr = await fetch(`${API_BASE_URL}/api/${likeEndpoint}/comments/${c.id}/like`, {
-                          method: 'POST',
-                          headers: { 'Authorization': `Bearer ${t}` }
-                      });
-                      const ld = await lr.json();
-                      if(ld.success) {
-                          div.querySelector('.comment-like-count').textContent = ld.likes;
-                      }
-                  } catch(e) {}
-              };
-              container.appendChild(div);
-          });
-      } catch(e) { container.innerHTML = '<p style="text-align:center;">Błąd.</p>'; }
-  }
-
-  async init3DPreview(itemId, type) {
-      const container = document.getElementById('skin-preview-canvas');
-      if (!container) return;
-      if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
-      container.innerHTML = '';
-      
-      const width = container.clientWidth || 300;
-      const height = container.clientHeight || 300;
-
-      this.skinPreviewScene = new THREE.Scene();
-      this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-      this.skinPreviewCamera.position.set(0, 2, 6); 
-      this.skinPreviewCamera.lookAt(0, 0.5, 0);
-
-      this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-      this.skinPreviewRenderer.setSize(width, height);
-      container.appendChild(this.skinPreviewRenderer.domElement);
-
-      const amb = new THREE.AmbientLight(0xffffff, 0.8);
-      this.skinPreviewScene.add(amb);
-      const dir = new THREE.DirectionalLight(0xffffff, 0.6);
-      dir.position.set(5, 10, 7);
-      this.skinPreviewScene.add(dir);
-
-      this.skinPreviewCharacter = new THREE.Group();
-      
-      if (type === 'skin' && typeof createBaseCharacter !== 'undefined') {
-           createBaseCharacter(this.skinPreviewCharacter);
-           this.skinPreviewCharacter.position.y = -0.8; 
-      } else {
-           this.skinPreviewCharacter.position.y = 0; 
-      }
-      
-      this.skinPreviewScene.add(this.skinPreviewCharacter);
-
-      let blocksData = null;
-      if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId);
-      else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId);
-      else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId);
-
-      if (blocksData) {
-          const loader = new THREE.TextureLoader();
-          const blockGroup = new THREE.Group();
-          
-          if (type === 'skin') {
-              blockGroup.scale.setScalar(0.125); 
-              blockGroup.position.y = 0.5; 
-          } else {
-              blockGroup.scale.setScalar(0.125); 
-          }
-
-          blocksData.forEach(b => {
-              const geo = new THREE.BoxGeometry(1, 1, 1);
-              const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) });
-              const mesh = new THREE.Mesh(geo, mat);
-              mesh.position.set(b.x, b.y, b.z);
-              blockGroup.add(mesh);
-          });
-          
-          this.skinPreviewCharacter.add(blockGroup);
-      }
-      
-      this.skinPreviewCharacter.scale.setScalar(1.5);
-
-      const animate = () => {
-          this.skinPreviewAnimId = requestAnimationFrame(animate);
-          if (this.skinPreviewCharacter) {
-              this.skinPreviewCharacter.rotation.y += 0.01;
-          }
-          this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera);
-      };
-      animate();
-  }
-
-  async showDiscoverPanel(type, category = null) {
-      const title=document.getElementById('discover-panel-title'); 
-      const tabs=document.getElementById('discover-tabs'); 
-      const list=document.getElementById('discover-list'); 
-      if(!list) return; 
-      
-      this.openPanel('discover-panel'); 
-      
-      list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
-      
-      if(type === 'worlds') {
-          if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
-          if(tabs) tabs.style.display='none'; 
-          try {
-              const allWorlds = await WorldStorage.getAllWorlds(); 
-              let filteredWorlds = allWorlds;
-              if (category) {
-                  filteredWorlds = allWorlds.filter(w => {
-                      const wType = w.type || 'creative';
-                      return wType === category;
-                  });
-              }
-              this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); 
-          } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; }
-      }
-      else if (type === 'discovery') {
-          const labels = { skin: 'Skiny', part: 'Części', prefab: 'Prefabrykaty' };
-          if(title) title.textContent = `Wybierz ${labels[category] || 'Element'}`;
-          
-          if(tabs) {
-              tabs.style.display = 'flex';
-              const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]');
-              const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]');
-              
-              if(tabMine) tabMine.classList.remove('active');
-              if(tabAll) {
-                  tabAll.classList.add('active');
-                  tabAll.onclick = () => { tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshDiscoveryList(category, 'all'); };
-              }
-              if(tabMine) {
-                  tabMine.onclick = () => { tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshDiscoveryList(category, 'mine'); };
-              }
-          }
-          this.refreshDiscoveryList(category, 'all');
-      }
-  }
-
-  async refreshDiscoveryList(type, mode) {
-      const list=document.getElementById('discover-list'); 
-      if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; 
-      
-      let items = [];
-      try {
-          if (type === 'skin') {
-              items = mode === 'mine' ? await SkinStorage.getMySkins() : await SkinStorage.getAllSkins();
-          } else if (type === 'prefab') {
-              items = mode === 'mine' ? await PrefabStorage.getSavedPrefabsList() : await PrefabStorage.getAllPrefabs(); 
-          } else if (type === 'part') {
-              items = mode === 'mine' ? await HyperCubePartStorage.getSavedPartsList() : await HyperCubePartStorage.getAllParts();
-          }
-
-          this.populateDiscoverPanel(type, items, (item) => {
-              this.showItemDetails(item, type);
-          });
-      } catch(e) {
-          console.error(e);
-          if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Błąd połączenia.</p>';
-      }
-  }
-
-  populateDiscoverPanel(type, items, onSelect) {
-      const list=document.getElementById('discover-list'); 
-      if(!list) return; 
-      list.innerHTML=''; 
-      
-      if(!items || items.length===0){ 
-          list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; 
-          return; 
-      } 
-      
-      items.forEach(item => { 
-          const div=document.createElement('div'); 
-          div.className='panel-item skin-list-item'; 
-          div.style.display='flex'; 
-          div.style.alignItems='center'; 
-          div.style.padding='10px'; 
-          
-          const thumbContainer=document.createElement('div'); 
-          thumbContainer.style.width='64px'; thumbContainer.style.height='64px'; 
-          thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; 
-          thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; 
-          thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; 
-          
-          let thumbSrc = item.thumbnail;
-          let label = item.name;
-          if (type === 'worlds' && typeof item === 'object') {
-               if(item.creator) label += ` (od ${item.creator})`;
-          } else if (item.creator) {
-               label += ` (od ${item.creator})`;
-          }
-
-          if(thumbSrc){ 
-              const img=document.createElement('img'); img.src=thumbSrc; 
-              img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; 
-              thumbContainer.appendChild(img); 
-          } else { 
-              thumbContainer.textContent='?'; 
-              thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; 
-              thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; 
-          } 
-          
-          const nameSpan=document.createElement('span'); 
-          nameSpan.textContent=label; 
-          nameSpan.className='text-outline'; 
-          nameSpan.style.fontSize='18px'; 
-          
-          div.appendChild(thumbContainer); 
-          div.appendChild(nameSpan); 
-          
-          div.onclick=()=>{ 
-              if (type === 'worlds') {
-                  this.closeAllPanels(); 
-                  onSelect(item); 
-              } else {
-                  onSelect(item); 
-              }
-          }; 
-          list.appendChild(div); 
-      }); 
-  }
-
-  closeAllPanels() {
-      if (this.skinPreviewAnimId) {
-          cancelAnimationFrame(this.skinPreviewAnimId);
-          this.skinPreviewAnimId = null;
-      }
-      document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none');
-      const skinModal = document.getElementById('skin-details-modal');
-      if(skinModal) skinModal.style.display = 'none';
-      const commentPanel = document.getElementById('skin-comments-panel');
-      if(commentPanel) commentPanel.style.display = 'none';
-  }
+  setupChatSystem() { this.setupChatInput(); }
+  addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
+  clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
+  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
+  setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
+  showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:99999;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
+  setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
+  
+  async sendFriendRequest(tid){ const t=localStorage.getItem('bsp_clone_jwt_token'); try{ const r=await fetch(`${API_BASE_URL}/api/friends/request`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({targetUserId:tid})}); const d=await r.json(); if(r.ok) this.showMessage(d.message,'success'); else this.showMessage(d.message,'error'); } catch(e){ this.showMessage('Błąd sieci','error'); } }
+  async acceptFriendRequest(rid){ const t=localStorage.getItem('bsp_clone_jwt_token'); try{ const r=await fetch(`${API_BASE_URL}/api/friends/accept`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({requestId:rid})}); const d=await r.json(); if(r.ok){ this.showMessage('Dodano!','success'); this.loadFriendsData(); } else this.showMessage(d.message,'error'); } catch(e){ this.showMessage('Błąd sieci','error'); } }
+  updateTopBarFriends(f){ const c=document.getElementById('active-friends-container'); if(!c)return; c.innerHTML=''; const on=f.filter(x=>x.isOnline); on.forEach(fr=>{ const it=document.createElement('div'); it.className='active-friend-item'; const av=document.createElement('div'); av.className='active-friend-avatar'; if(fr.current_skin_thumbnail) av.style.backgroundImage=`url(${fr.current_skin_thumbnail})`; else { av.style.display='flex'; av.style.justifyContent='center'; av.style.alignItems='center'; av.textContent='👤'; av.style.color='white'; } av.onclick=()=>this.showSkinPreviewFromUrl(fr.current_skin_thumbnail); const nm=document.createElement('div'); nm.className='active-friend-name text-outline'; nm.textContent=fr.username; it.appendChild(av); it.appendChild(nm); c.appendChild(it); }); }
+  showSkinPreviewFromUrl(url){ if(!url)return; const p=document.getElementById('player-preview-panel'); const c=document.getElementById('player-preview-renderer-container'); c.innerHTML=''; c.style.backgroundColor='#333'; const i=document.createElement('img'); i.src=url; i.style.width='100%'; i.style.height='100%'; i.style.objectFit='contain'; c.appendChild(i); this.openPanel('player-preview-panel'); }
 
   // FIX: Użycie bringToFront w openPanel
   openPanel(id) { 
@@ -715,6 +683,8 @@ export class UIManager {
       if(p) {
           this.bringToFront(p);
           p.style.display = 'flex'; 
+          
+          if(id === 'friends-panel') this.loadFriendsData();
       }
   }
   
@@ -745,7 +715,6 @@ export class UIManager {
         };
     });
     
-    // Obsługa zamknięcia panelu Więcej przez kliknięcie w tło
     document.getElementById('more-options-panel').addEventListener('click', (e) => {
         if (e.target.id === 'more-options-panel') {
             e.target.style.display = 'none';
@@ -759,8 +728,11 @@ export class UIManager {
     });
 
     const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPanel('player-preview-panel'); if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); };
-    const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) { friendsBtn.onclick = () => { this.openPanel('friends-panel'); this.loadFriendsData(); }; }
-    const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.openPanel('mail-panel'); this.loadMailData(); }; } });
+    const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) { friendsBtn.onclick = () => { this.openPanel('friends-panel'); }; }
+    
+    const topBarItems = document.querySelectorAll('.top-bar-item'); 
+    // Fix: Poczta otwiera się przez setupMailSystem, ale tu można dodać fallback
+    
     const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
     const superBtn = document.getElementById('victory-super-btn'); if (superBtn) { superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); }; }
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) { homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); }; }
@@ -806,39 +778,47 @@ export class UIManager {
     setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
-  populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
-  refreshShopList() { const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } filteredItems.forEach(b => { const i = document.createElement('div'); i.className = 'shop-item'; const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; list.appendChild(i); }); list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); }
-  
-  // PRZYWRÓCONE METODY (Chat, Friends, Mail)
-  setupChatSystem() { this.setupChatInput(); }
-  addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
-  clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
-  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
-  setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
-  showMessage(text,type='info'){ const m=document.createElement('div'); m.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${type==='success'?'#27ae60':(type==='error'?'#e74c3c':'#3498db')};color:white;padding:15px 25px;border-radius:10px;font-weight:bold;z-index:99999;box-shadow:0 6px 12px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease;`; m.classList.add('text-outline'); m.textContent=text; document.body.appendChild(m); setTimeout(()=>{m.style.opacity='1';m.style.transform='translate(-50%,-50%) translateY(-10px)';},10); setTimeout(()=>{m.style.opacity='0';setTimeout(()=>{if(m.parentNode)m.parentNode.removeChild(m);},300);},2500); }
-  setupFriendsSystem() { const tabs = document.querySelectorAll('#friends-panel .friends-tab'); tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); const targetId = tab.getAttribute('data-tab'); const views = document.querySelectorAll('#friends-panel .friends-view'); views.forEach(view => { view.style.display = 'none'; view.classList.remove('active'); }); const targetView = document.getElementById(targetId); if (targetView) { targetView.style.display = 'flex'; targetView.classList.add('active'); } }; }); const searchBtn = document.getElementById('friends-search-btn'); if (searchBtn) { searchBtn.onclick = () => this.handleFriendSearch(); } }
-  setupDiscoverTabs() { const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); const closeBtn = document.getElementById('discover-close-button'); if(tabAll) { tabAll.onclick = () => { if(tabMine) tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshSkinList('all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshSkinList('mine'); }; } if(closeBtn) closeBtn.onclick = () => this.closeAllPanels(); }
-  
-  async loadFriendsData() { const t=localStorage.getItem('bsp_clone_jwt_token'); if(!t)return; const l=document.getElementById('friends-list'); if(l) l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Odświeżanie...</p>'; try{ const r=await fetch(`${API_BASE_URL}/api/friends`,{headers:{'Authorization':`Bearer ${t}`}}); if(r.ok){ const d=await r.json(); this.friendsList=d.friends; this.renderFriendsList(d.friends); this.renderRequestsList(d.requests); this.updateTopBarFriends(d.friends); } else if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd serwera.</p>'; } catch(e){ if(l) l.innerHTML='<p class="text-outline" style="text-align:center;color:#e74c3c;">Błąd sieci.</p>'; } }
-  renderFriendsList(f){ const l=document.getElementById('friends-list'); if(!l)return; l.innerHTML=''; if(!f||f.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak przyjaciół.</p>'; return; } f.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; const a=document.createElement('div'); a.className='friend-avatar'; if(x.current_skin_thumbnail) a.style.backgroundImage=`url(${x.current_skin_thumbnail})`; else { a.style.display='flex'; a.style.justifyContent='center'; a.style.alignItems='center'; a.textContent='👤'; a.style.color='white'; a.style.fontSize='24px'; } if(x.isOnline) a.style.borderColor='#2ed573'; else a.style.borderColor='#7f8c8d'; const n=document.createElement('div'); n.className='friend-info'; n.innerHTML=`<div class="text-outline" style="font-size:16px;">${x.username}</div><div style="font-size:12px;color:${x.isOnline?'#2ed573':'#ccc'}">${x.isOnline?'Online':'Offline'}</div>`; i.appendChild(a); i.appendChild(n); l.appendChild(i); }); }
-  renderRequestsList(r){ const l=document.getElementById('friends-requests'); if(!l)return; l.innerHTML=''; if(!r||r.length===0){ l.innerHTML='<p class="text-outline" style="text-align:center;margin-top:20px;">Brak.</p>'; return; } r.forEach(x=>{ const i=document.createElement('div'); i.className='friend-item'; i.innerHTML=`<div class="friend-info text-outline" style="font-size:16px;">${x.username}</div><div class="friend-actions"><button class="action-btn btn-accept">Akceptuj</button></div>`; i.querySelector('.btn-accept').onclick=()=>this.acceptFriendRequest(x.request_id); l.appendChild(i); }); }
-  async handleFriendSearch(){ const i=document.getElementById('friends-search-input'); const q=i.value.trim(); if(!q)return; const t=localStorage.getItem('bsp_clone_jwt_token'); const c=document.getElementById('friends-search-results'); c.innerHTML='<p class="text-outline" style="text-align:center;">Szukanie...</p>'; try{ const r=await fetch(`${API_BASE_URL}/api/friends/search`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({query:q})}); const d=await r.json(); c.innerHTML=''; if(d.length===0){ c.innerHTML='<p class="text-outline">Nikogo nie znaleziono.</p>'; return; } d.forEach(u=>{ const it=document.createElement('div'); it.className='friend-item'; const av=document.createElement('div'); av.className='friend-avatar'; if(u.current_skin_thumbnail){ av.style.backgroundImage=`url(${u.current_skin_thumbnail})`; av.style.cursor='pointer'; av.onclick=()=>this.showSkinPreviewFromUrl(u.current_skin_thumbnail); } else { av.style.display='flex'; av.style.justifyContent='center'; av.style.alignItems='center'; av.textContent='👤'; av.style.color='white'; av.style.fontSize='24px'; } const n=document.createElement('div'); n.className='friend-info text-outline'; n.textContent=u.username; const b=document.createElement('button'); b.className='action-btn btn-invite'; b.textContent='Dodaj'; b.onclick=()=>this.sendFriendRequest(u.id); it.appendChild(av); it.appendChild(n); it.appendChild(b); c.appendChild(it); }); } catch(e){ c.innerHTML='<p class="text-outline">Błąd.</p>'; } }
-  async sendFriendRequest(tid){ const t=localStorage.getItem('bsp_clone_jwt_token'); try{ const r=await fetch(`${API_BASE_URL}/api/friends/request`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({targetUserId:tid})}); const d=await r.json(); if(r.ok) this.showMessage(d.message,'success'); else this.showMessage(d.message,'error'); } catch(e){ this.showMessage('Błąd sieci','error'); } }
-  async acceptFriendRequest(rid){ const t=localStorage.getItem('bsp_clone_jwt_token'); try{ const r=await fetch(`${API_BASE_URL}/api/friends/accept`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${t}`},body:JSON.stringify({requestId:rid})}); const d=await r.json(); if(r.ok){ this.showMessage('Dodano!','success'); this.loadFriendsData(); } else this.showMessage(d.message,'error'); } catch(e){ this.showMessage('Błąd sieci','error'); } }
-  updateTopBarFriends(f){ const c=document.getElementById('active-friends-container'); if(!c)return; c.innerHTML=''; const on=f.filter(x=>x.isOnline); on.forEach(fr=>{ const it=document.createElement('div'); it.className='active-friend-item'; const av=document.createElement('div'); av.className='active-friend-avatar'; if(fr.current_skin_thumbnail) av.style.backgroundImage=`url(${fr.current_skin_thumbnail})`; else { av.style.display='flex'; av.style.justifyContent='center'; av.style.alignItems='center'; av.textContent='👤'; av.style.color='white'; } av.onclick=()=>this.showSkinPreviewFromUrl(fr.current_skin_thumbnail); const nm=document.createElement('div'); nm.className='active-friend-name text-outline'; nm.textContent=fr.username; it.appendChild(av); it.appendChild(nm); c.appendChild(it); }); }
-  showSkinPreviewFromUrl(url){ if(!url)return; const p=document.getElementById('player-preview-panel'); const c=document.getElementById('player-preview-renderer-container'); c.innerHTML=''; c.style.backgroundColor='#333'; const i=document.createElement('img'); i.src=url; i.style.width='100%'; i.style.height='100%'; i.style.objectFit='contain'; c.appendChild(i); this.openPanel('player-preview-panel'); }
-  async loadMailData() { const t = localStorage.getItem('bsp_clone_jwt_token'); if (!t) return; const container = document.querySelector('.mail-conversations'); if (container) container.innerHTML = '<p class="text-outline" style="text-align:center;">Ładowanie...</p>'; try { const r = await fetch(`${API_BASE_URL}/api/messages`, { headers: { 'Authorization': `Bearer ${t}` } }); const messages = await r.json(); this.renderMailList(messages); } catch (e) { console.error(e); if (container) container.innerHTML = '<p class="text-outline" style="text-align:center;">Błąd.</p>'; } }
-  renderMailList(messages) { const list = document.getElementById('mail-inbox-list'); if (!list) return; list.innerHTML = ''; if (!messages || messages.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px; color:#fff;">Skrzynka pusta.</p>'; return; } messages.forEach(msg => { const div = document.createElement('div'); div.className = 'mail-inbox-item'; const date = new Date(msg.created_at); const now = new Date(); const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24)); let timeStr = diffDays < 1 ? "dzisiaj" : `${diffDays} dni temu`; if (diffDays > 30) timeStr = `${Math.floor(diffDays/30)} mies. temu`; div.innerHTML = `<div class="mail-item-avatar" style="background-image: url('icons/avatar_placeholder.png');"></div><div class="mail-item-content"><div class="mail-item-user text-outline">${msg.other_username}</div><div class="mail-item-preview">${msg.message_text}</div></div><div class="mail-item-time text-outline">${timeStr}</div>`; div.onclick = () => { this.openConversation(msg.other_username); }; list.appendChild(div); }); }
-  async openConversation(username) { this.mailState.activeConversation = username; const inboxView = document.getElementById('mail-inbox-view'); const chatView = document.getElementById('mail-conversation-view'); const composer = document.getElementById('new-mail-composer'); if(inboxView) inboxView.classList.add('hidden'); if(composer) composer.classList.add('hidden'); if(chatView) { chatView.classList.remove('hidden'); chatView.style.display = 'flex'; } const headerName = document.getElementById('mail-chat-username'); if(headerName) headerName.textContent = username; const msgsContainer = document.getElementById('mail-chat-messages'); if(msgsContainer) msgsContainer.innerHTML = '<p style="text-align:center; padding:20px;">Pobieranie...</p>'; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); try { const r = await fetch(`${API_BASE_URL}/api/messages/${username}`, { headers: { 'Authorization': `Bearer ${t}` } }); const history = await r.json(); this.renderChatHistory(history, username); } catch (e) { console.error(e); } }
-  renderChatHistory(history, otherUser) { const container = document.getElementById('mail-chat-messages'); if (!container) return; container.innerHTML = ''; const myName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME); history.forEach(msg => { const isMine = msg.sender_username === myName; const row = document.createElement('div'); row.className = `chat-msg-row ${isMine ? 'sent' : 'received'}`; const avatar = `<div class="chat-avatar-small" style="background-image: url('icons/avatar_placeholder.png');"></div>`; const bubble = `<div class="chat-bubble">${msg.message_text}</div>`; if(isMine) { row.innerHTML = bubble + avatar; } else { row.innerHTML = avatar + bubble; } container.appendChild(row); }); container.scrollTop = container.scrollHeight; }
-  async setupMailSystem() { const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.openPanel('mail-panel'); document.getElementById('mail-inbox-view').classList.remove('hidden'); document.getElementById('mail-conversation-view').classList.add('hidden'); document.getElementById('new-mail-composer').classList.add('hidden'); this.loadMailData(); }; } }); const btnCompose = document.getElementById('btn-mail-compose'); if(btnCompose) { btnCompose.onclick = () => { document.getElementById('mail-inbox-view').classList.add('hidden'); document.getElementById('mail-conversation-view').classList.add('hidden'); const composer = document.getElementById('new-mail-composer'); if(composer) { composer.classList.remove('hidden'); composer.style.display = 'flex'; } }; } const btnBack = document.getElementById('btn-mail-back'); if(btnBack) { btnBack.onclick = () => { document.getElementById('mail-conversation-view').classList.add('hidden'); document.getElementById('mail-inbox-view').classList.remove('hidden'); this.loadMailData(); }; } const btnCancel = document.getElementById('btn-cancel-new'); if(btnCancel) { btnCancel.onclick = () => { document.getElementById('new-mail-composer').classList.add('hidden'); document.getElementById('mail-inbox-view').classList.remove('hidden'); }; } const btnSendNew = document.getElementById('btn-send-new'); if(btnSendNew) { btnSendNew.onclick = async () => { const recipient = document.getElementById('new-mail-recipient').value.trim(); const text = document.getElementById('new-mail-text').value.trim(); if(recipient && text && this.onSendPrivateMessage) { this.onSendPrivateMessage(recipient, text); document.getElementById('new-mail-composer').classList.add('hidden'); document.getElementById('mail-inbox-view').classList.remove('hidden'); this.loadMailData(); document.getElementById('new-mail-recipient').value = ''; document.getElementById('new-mail-text').value = ''; } }; } const btnReply = document.getElementById('mail-reply-btn'); if(btnReply) { btnReply.onclick = async () => { const input = document.getElementById('mail-reply-input'); const text = input.value.trim(); if(text && this.mailState.activeConversation && this.onSendPrivateMessage) { this.onSendPrivateMessage(this.mailState.activeConversation, text); input.value = ''; const container = document.getElementById('mail-chat-messages'); const row = document.createElement('div'); row.className = 'chat-msg-row sent'; row.innerHTML = `<div class="chat-bubble">${text}</div><div class="chat-avatar-small" style="background-image: url('icons/avatar_placeholder.png');"></div>`; container.appendChild(row); container.scrollTop = container.scrollHeight; } }; } }
-  
-  async refreshSkinList(mode) {
-      await this.refreshDiscoveryList('skin', mode);
+  // --- MISSING METHODS ADDED ---
+  updatePlayerName(name) {
+      const nameDisplay = document.getElementById('player-name-display');
+      if (nameDisplay) nameDisplay.textContent = name;
   }
 
-  // Admin & User Updates
-  updatePlayerName(name) { const nameDisplay = document.getElementById('player-name-display'); if (nameDisplay) nameDisplay.textContent = name; }
-  updatePlayerAvatar(thumbnail) { const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); if (!avatarEl) return; if (thumbnail) { avatarEl.textContent = ''; avatarEl.style.backgroundImage = `url(${thumbnail})`; avatarEl.style.backgroundSize = 'cover'; avatarEl.style.backgroundPosition = 'center'; avatarEl.style.backgroundColor = '#4a90e2'; } else { avatarEl.style.backgroundImage = 'none'; avatarEl.textContent = '👤'; } }
-  checkAdminPermissions(username) { const admins = ['nixox2', 'admin']; if (admins.includes(username)) { const grid = document.querySelector('#more-options-panel .nav-grid-container'); if (grid && !document.getElementById('admin-edit-nexus-btn')) { const adminDiv = document.createElement('div'); adminDiv.className = 'nav-item'; adminDiv.id = 'admin-edit-nexus-btn'; adminDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Admin</span></div>`; adminDiv.onclick = () => { this.closeAllPanels(); if (this.onEditNexusClick) this.onEditNexusClick(); }; grid.insertBefore(adminDiv, grid.firstChild); } } }
+  updatePlayerAvatar(thumbnail) {
+      const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
+      if (!avatarEl) return;
+      if (thumbnail) {
+          avatarEl.textContent = '';
+          avatarEl.style.backgroundImage = `url(${thumbnail})`;
+          avatarEl.style.backgroundSize = 'cover';
+          avatarEl.style.backgroundPosition = 'center';
+          avatarEl.style.backgroundColor = '#4a90e2';
+      } else {
+          avatarEl.style.backgroundImage = 'none';
+          avatarEl.textContent = '👤';
+      }
+  }
+
+  checkAdminPermissions(username) {
+      const admins = ['nixox2', 'admin'];
+      if (admins.includes(username)) {
+          const grid = document.querySelector('#more-options-panel .nav-grid-container');
+          if (grid && !document.getElementById('admin-edit-nexus-btn')) {
+               const adminDiv = document.createElement('div');
+               adminDiv.className = 'nav-item';
+               adminDiv.id = 'admin-edit-nexus-btn';
+               adminDiv.innerHTML = `
+                  <div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
+                      <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                      <span class="nav-label">Admin</span>
+                  </div>
+               `;
+               adminDiv.onclick = () => {
+                   this.closeAllPanels();
+                   if (this.onEditNexusClick) this.onEditNexusClick();
+               };
+               grid.insertBefore(adminDiv, grid.firstChild);
+          }
+      }
+  }
 }
