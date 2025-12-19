@@ -1,4 +1,3 @@
-
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -163,6 +162,7 @@ export const NEWS_MODAL_HTML = `
         .btn-claim-one:active { transform: translateY(3px); box-shadow: none; }
         .news-footer { height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9); color: white; display: flex; align-items: center; padding: 0 15px; gap: 15px; border-top: 3px solid white; }
         .footer-chest { width: 50px; height: 50px; background: url('icons/icon-shop.png') center/contain no-repeat; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
+        .thumb-icon { width: 40px; height: 40px; background: url('icons/icon-like.png') center/contain no-repeat; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); }
     </style>
 
     <div id="news-modal" class="panel-modal" style="display:none;">
@@ -181,181 +181,60 @@ export const NEWS_MODAL_HTML = `
     </div>
 `;
 
-// NOWE: MAIL MODAL (BSP STYLE)
 export const MAIL_MODAL_HTML = `
     <style>
-        .mail-wrapper {
-            width: 85vw; max-width: 600px; height: 70vh;
-            background-color: #74b9ff; /* Jasnoniebieskie tło */
-            border-radius: 10px;
-            display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 4px solid white;
-            font-family: 'Titan One', sans-serif;
-            position: relative;
-        }
-
-        /* INBOX HEADER */
-        .mail-header {
-            background: linear-gradient(to bottom, #3498db, #2980b9);
-            height: 50px;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; border-bottom: 3px solid rgba(0,0,0,0.2);
-            color: white; font-size: 24px; text-shadow: 2px 2px 0 #000;
-        }
-        .mail-header-btn-new {
-            position: absolute; right: 10px; top: 5px;
-            width: 40px; height: 40px;
-            background: #2ecc71; border: 2px solid white; border-radius: 8px;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 24px; cursor: pointer;
-            box-shadow: 0 4px 0 #27ae60;
-        }
+        .mail-wrapper { width: 85vw; max-width: 600px; height: 70vh; background-color: #74b9ff; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 4px solid white; font-family: 'Titan One', sans-serif; position: relative; }
+        .mail-header { background: linear-gradient(to bottom, #3498db, #2980b9); height: 50px; display: flex; align-items: center; justify-content: center; position: relative; border-bottom: 3px solid rgba(0,0,0,0.2); color: white; font-size: 24px; text-shadow: 2px 2px 0 #000; }
+        .mail-header-btn-new { position: absolute; right: 10px; top: 5px; width: 40px; height: 40px; background: #2ecc71; border: 2px solid white; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; box-shadow: 0 4px 0 #27ae60; }
         .mail-header-btn-new:active { transform: translateY(3px); box-shadow: 0 1px 0 #27ae60; }
-
-        /* INBOX LIST */
-        .mail-inbox-list {
-            flex: 1; overflow-y: auto;
-            background-color: #81ecec; /* Jasny turkus tła listy */
-            display: flex; flex-direction: column;
-        }
-        .mail-inbox-item {
-            display: flex; height: 70px;
-            background-color: #82ccdd; /* Niebieski pasek */
-            border-bottom: 2px solid #60a3bc;
-            cursor: pointer; position: relative;
-        }
-        .mail-inbox-item:nth-child(even) { background-color: #6a89cc; } /* Naprzemienne kolory */
-        
-        .mail-item-avatar {
-            width: 70px; height: 100%;
-            background-color: white; border-right: 2px solid #555;
-            background-size: cover; background-position: center;
-        }
-        .mail-item-content {
-            flex: 1; padding: 5px 10px; display: flex; flex-direction: column; justify-content: center;
-        }
+        .mail-inbox-list { flex: 1; overflow-y: auto; background-color: #81ecec; display: flex; flex-direction: column; }
+        .mail-inbox-item { display: flex; height: 70px; background-color: #82ccdd; border-bottom: 2px solid #60a3bc; cursor: pointer; position: relative; }
+        .mail-inbox-item:nth-child(even) { background-color: #6a89cc; }
+        .mail-item-avatar { width: 70px; height: 100%; background-color: white; border-right: 2px solid #555; background-size: cover; background-position: center; }
+        .mail-item-content { flex: 1; padding: 5px 10px; display: flex; flex-direction: column; justify-content: center; }
         .mail-item-user { color: white; font-size: 16px; text-shadow: 1px 1px 0 #000; }
         .mail-item-preview { color: #eee; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mail-item-time { 
-            position: absolute; bottom: 5px; right: 5px; 
-            font-size: 10px; color: #dfe6e9; 
-        }
-
-        /* CHAT VIEW HEADER */
-        .chat-header {
-            background: linear-gradient(to bottom, #74b9ff, #0984e3);
-            height: 60px; display: flex; align-items: center;
-            padding: 0 10px; gap: 10px; border-bottom: 4px solid rgba(0,0,0,0.2);
-        }
-        .chat-btn-back {
-            width: 45px; height: 45px;
-            background-color: #e74c3c; border: 2px solid white; border-radius: 8px;
-            background-image: url('icons/icon-back.png'); background-size: 60%; background-repeat: no-repeat; background-position: center;
-            box-shadow: 0 4px 0 #c0392b; cursor: pointer;
-        }
+        .mail-item-time { position: absolute; bottom: 5px; right: 5px; font-size: 10px; color: #dfe6e9; }
+        .chat-header { background: linear-gradient(to bottom, #74b9ff, #0984e3); height: 60px; display: flex; align-items: center; padding: 0 10px; gap: 10px; border-bottom: 4px solid rgba(0,0,0,0.2); }
+        .chat-btn-back { width: 45px; height: 45px; background-color: #e74c3c; border: 2px solid white; border-radius: 8px; background-image: url('icons/icon-back.png'); background-size: 60%; background-repeat: no-repeat; background-position: center; box-shadow: 0 4px 0 #c0392b; cursor: pointer; }
         .chat-btn-back:active { transform: translateY(3px); box-shadow: none; }
-        
-        .chat-header-user-bar {
-            flex: 1; height: 40px;
-            background-color: #2ecc71; border: 2px solid white; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 18px; text-shadow: 1.5px 1.5px 0 #000;
-            box-shadow: 0 3px 0 #27ae60;
-        }
-
-        /* CHAT MESSAGES AREA */
-        .chat-messages-area {
-            flex: 1; overflow-y: auto; padding: 15px;
-            background-color: #ecf0f1; /* Tło czatu */
-            display: flex; flex-direction: column; gap: 15px;
-        }
-
-        /* CHAT BUBBLES */
+        .chat-header-user-bar { flex: 1; height: 40px; background-color: #2ecc71; border: 2px solid white; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; text-shadow: 1.5px 1.5px 0 #000; box-shadow: 0 3px 0 #27ae60; }
+        .chat-messages-area { flex: 1; overflow-y: auto; padding: 15px; background-color: #ecf0f1; display: flex; flex-direction: column; gap: 15px; }
         .chat-msg-row { display: flex; width: 100%; align-items: flex-end; gap: 10px; }
         .chat-msg-row.sent { justify-content: flex-end; }
         .chat-msg-row.received { justify-content: flex-start; }
-
-        .chat-avatar-small {
-            width: 40px; height: 40px; background-color: #bdc3c7; border: 2px solid white;
-            background-size: cover;
-            /* Postacie z BSP są kanciaste, więc brak border-radius lub mały */
-            border-radius: 4px;
-        }
-
-        .chat-bubble {
-            max-width: 70%; padding: 10px 15px;
-            font-size: 14px; position: relative;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        
-        /* RECEIVED (White bubble, blue text) */
-        .chat-msg-row.received .chat-bubble {
-            background-color: white; color: #3498db;
-            border-radius: 15px 15px 15px 0;
-        }
-
-        /* SENT (Blue bubble, white text) */
-        .chat-msg-row.sent .chat-bubble {
-            background-color: #3498db; color: white;
-            border-radius: 15px 15px 0 15px;
-        }
-
-        /* FOOTER INPUT */
-        .chat-footer {
-            height: 60px; background-color: #3498db;
-            display: flex; align-items: center; padding: 0 10px; gap: 10px;
-            border-top: 3px solid white;
-        }
-        .chat-input {
-            flex: 1; height: 40px;
-            border: 2px solid #bdc3c7; border-radius: 5px;
-            padding: 0 10px; font-family: inherit; font-size: 16px;
-        }
-        .chat-btn-send {
-            width: 50px; height: 50px;
-            background-color: #2ecc71; border: 2px solid white; border-radius: 8px;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 24px; color: white; cursor: pointer;
-            box-shadow: 0 4px 0 #27ae60;
-        }
+        .chat-avatar-small { width: 40px; height: 40px; background-color: #bdc3c7; border: 2px solid white; background-size: cover; border-radius: 4px; }
+        .chat-bubble { max-width: 70%; padding: 10px 15px; font-size: 14px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .chat-msg-row.received .chat-bubble { background-color: white; color: #3498db; border-radius: 15px 15px 15px 0; }
+        .chat-msg-row.sent .chat-bubble { background-color: #3498db; color: white; border-radius: 15px 15px 0 15px; }
+        .chat-footer { height: 60px; background-color: #3498db; display: flex; align-items: center; padding: 0 10px; gap: 10px; border-top: 3px solid white; }
+        .chat-input { flex: 1; height: 40px; border: 2px solid #bdc3c7; border-radius: 5px; padding: 0 10px; font-family: inherit; font-size: 16px; }
+        .chat-btn-send { width: 50px; height: 50px; background-color: #2ecc71; border: 2px solid white; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 24px; color: white; cursor: pointer; box-shadow: 0 4px 0 #27ae60; }
         .chat-btn-send:active { transform: translateY(3px); box-shadow: none; }
-        
-        /* Ukrywanie widoków */
         .hidden { display: none !important; }
     </style>
 
     <div id="mail-panel" class="panel-modal" style="display:none;">
         <div class="mail-wrapper">
-            
-            <!-- WIDOK 1: LISTA (INBOX) -->
             <div id="mail-inbox-view" style="display: flex; flex-direction: column; height: 100%;">
                 <div class="mail-header">
                     <span>Poczta</span>
                     <div id="btn-mail-compose" class="mail-header-btn-new">+</div>
                 </div>
-                <div id="mail-inbox-list" class="mail-inbox-list">
-                    <!-- JS wstrzyknie .mail-inbox-item tutaj -->
-                </div>
+                <div id="mail-inbox-list" class="mail-inbox-list"></div>
                 <button class="panel-close-button" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10;">Zamknij</button>
             </div>
-
-            <!-- WIDOK 2: KONWERSACJA (CHAT) -->
             <div id="mail-conversation-view" class="hidden" style="flex-direction: column; height: 100%;">
                 <div class="chat-header">
                     <div id="btn-mail-back" class="chat-btn-back"></div>
                     <div id="mail-chat-username" class="chat-header-user-bar">Nazwa Gracza</div>
                 </div>
-                <div id="mail-chat-messages" class="chat-messages-area">
-                    <!-- JS wstrzyknie .chat-msg-row tutaj -->
-                </div>
+                <div id="mail-chat-messages" class="chat-messages-area"></div>
                 <div class="chat-footer">
                     <input id="mail-reply-input" class="chat-input" placeholder="Napisz wiadomość...">
                     <div id="mail-reply-btn" class="chat-btn-send">✔</div>
                 </div>
             </div>
-
-            <!-- WIDOK 3: NOWA WIADOMOŚĆ (COMPOSER) -->
             <div id="new-mail-composer" class="hidden" style="flex-direction: column; height: 100%; background: #3498db; padding: 20px; color: white;">
                  <h2 class="text-outline">Nowa wiadomość</h2>
                  <input id="new-mail-recipient" class="chat-input" placeholder="Do kogo?" style="margin-bottom: 10px;">
@@ -365,7 +244,214 @@ export const MAIL_MODAL_HTML = `
                     <button id="btn-cancel-new" class="panel-close-button" style="margin:0; flex:1;">Anuluj</button>
                  </div>
             </div>
+        </div>
+    </div>
+`;
 
+export const FRIENDS_MODAL_HTML = `
+    <style>
+        #friends-panel .panel-content {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+        }
+
+        .friends-full-container {
+            width: 100%; height: 100%;
+            background-color: #1e375a; 
+            display: flex; flex-direction: column;
+            position: relative;
+            padding-top: 60px; 
+        }
+
+        .friends-nav-bar {
+            background-color: #3498db;
+            height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 10px;
+            border-bottom: 4px solid #2980b9;
+        }
+        
+        .friends-back-btn {
+            width: 50px; height: 50px;
+            background: #e74c3c url('icons/icon-back.png') center/60% no-repeat;
+            border: 2px solid white; border-radius: 10px;
+            box-shadow: 0 4px 0 #c0392b; cursor: pointer;
+            flex-shrink: 0; margin-right: 10px;
+        }
+        
+        .friends-tabs-container {
+            flex: 1; display: flex; gap: 5px; overflow-x: auto;
+            align-items: center; height: 100%;
+        }
+        
+        .friend-nav-tab {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center;
+            width: 80px; height: 50px;
+            cursor: pointer; opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .friend-nav-tab.active { opacity: 1.0; border-bottom: 4px solid white; }
+        
+        .tab-icon { width: 30px; height: 30px; background-size: contain; background-position: center; background-repeat: no-repeat; }
+        .tab-label { font-size: 10px; color: white; text-align: center; text-shadow: 1px 1px 0 #000; font-weight: bold; white-space: nowrap; }
+
+        .friends-content-area {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            background-color: #1e375a;
+            padding: 10px;
+            position: relative;
+        }
+
+        .friends-section-header {
+            color: #00cec9;
+            font-size: 18px; margin: 15px 0 5px 10px;
+            text-shadow: 1.5px 1.5px 0 #000;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .status-dot.online { background: #2ecc71; }
+        .status-dot.offline { background: #e74c3c; }
+
+        .friends-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            padding: 0 5px;
+        }
+        
+        .friend-card {
+            background-color: #54a0ff;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+            position: relative;
+            box-shadow: 0 4px 0 #2e86de;
+            height: 120px;
+            border: 2px solid #2e86de;
+        }
+        
+        .friend-card-header {
+            background-color: #2e86de;
+            color: white; font-size: 11px; text-align: center;
+            padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: bold; text-shadow: 1px 1px 0 #000;
+        }
+        
+        .friend-card-body {
+            flex: 1; background-color: #54a0ff;
+            background-image: url('icons/avatar_placeholder.png'); 
+            background-size: cover; background-position: center;
+            position: relative;
+        }
+        
+        .vip-badge {
+            position: absolute; top: 2px; right: 2px;
+            width: 25px; height: 15px;
+            background: url('icons/vip_badge.png') center/contain no-repeat; 
+        }
+        
+        .add-friend-btn {
+            position: absolute; bottom: 5px; right: 5px;
+            width: 30px; height: 30px;
+            background: #2ecc71 url('icons/icon-add-friend.png') center/60% no-repeat;
+            border: 2px solid white; border-radius: 5px;
+            box-shadow: 0 2px 0 #27ae60; cursor: pointer;
+        }
+        .add-friend-btn:active { transform: translateY(2px); box-shadow: none; }
+        
+        .search-bar-container {
+            display: flex; gap: 5px; padding: 10px;
+            background-color: #2e86de;
+            align-items: center;
+        }
+        .search-input {
+            flex: 1; height: 35px; border-radius: 5px; border: none; padding: 0 10px;
+            font-family: inherit;
+        }
+        .search-btn {
+            width: 40px; height: 35px; background: #3498db url('icons/icon-discover.png') center/60% no-repeat;
+            border-radius: 5px; border: 2px solid white; cursor: pointer;
+        }
+        .clear-btn {
+            height: 35px; padding: 0 10px; background: #74b9ff; color: white;
+            border-radius: 5px; border: 2px solid white; cursor: pointer; font-weight: bold; text-shadow: 1px 1px 0 #000;
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+    </style>
+
+    <div id="friends-panel" class="panel-modal" style="display:none;">
+        <div class="panel-content">
+            <div class="friends-full-container">
+                <div class="friends-nav-bar">
+                    <div id="btn-friends-close-main" class="friends-back-btn"></div>
+                    <div class="friends-tabs-container">
+                        <div class="friend-nav-tab active" data-target="tab-my-friends">
+                            <div class="tab-icon" style="background-image: url('icons/icon-friends.png');"></div>
+                            <span class="tab-label">Moi Przyjaciele</span>
+                        </div>
+                        <div class="friend-nav-tab" data-target="tab-world">
+                            <div class="tab-icon" style="background-image: url('icons/icon-smallworld.png');"></div>
+                            <span class="tab-label">W tym świecie</span>
+                        </div>
+                        <div class="friend-nav-tab" data-target="tab-games">
+                            <div class="tab-icon" style="background-image: url('icons/icon-play.png');"></div>
+                            <span class="tab-label">Gra z innymi</span>
+                        </div>
+                        <div class="friend-nav-tab" data-target="tab-search">
+                            <div class="tab-icon" style="background-image: url('icons/icon-discover.png');"></div>
+                            <span class="tab-label">Szukaj</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="friends-content-area">
+                    <div id="tab-my-friends" class="tab-content active">
+                        <div id="section-requests" style="display:none;">
+                            <div class="friends-section-header">Prośby</div>
+                            <div id="requests-grid" class="friends-grid"></div>
+                        </div>
+                        <div class="friends-section-header" style="opacity:0.5;">Wysłane</div>
+                        <div class="friends-section-header">
+                            <div class="status-dot online"></div>
+                            Przyjaciele Online: <span id="online-count">0</span>
+                        </div>
+                        <div id="friends-online-grid" class="friends-grid"></div>
+                        <div class="friends-section-header">
+                            <div class="status-dot offline"></div>
+                            Przyjaciele Offline: <span id="offline-count">0</span>
+                        </div>
+                        <div id="friends-offline-grid" class="friends-grid"></div>
+                    </div>
+
+                    <div id="tab-world" class="tab-content">
+                        <p style="color:white; text-align:center; margin-top:50px;">Brak graczy w pobliżu.</p>
+                    </div>
+                    
+                    <div id="tab-games" class="tab-content">
+                        <p style="color:white; text-align:center; margin-top:50px;">Funkcja niedostępna.</p>
+                    </div>
+
+                    <div id="tab-search" class="tab-content">
+                        <div class="search-bar-container">
+                            <input id="friends-search-input-new" class="search-input" placeholder="gracz">
+                            <div id="friends-search-btn-new" class="search-btn"></div>
+                            <div id="friends-search-clear" class="clear-btn">Wyczyść</div>
+                        </div>
+                        <div id="search-results-grid-new" class="friends-grid" style="margin-top: 15px;"></div>
+                    </div>
+
+                </div>
+
+            </div>
         </div>
     </div>
 `;
@@ -508,8 +594,11 @@ export const MODALS_HTML = `
         </div>
     </div>
 
-    <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
-    
+    ${FRIENDS_MODAL_HTML}
+    ${DISCOVER_CHOICE_HTML} 
+    ${NEWS_MODAL_HTML}
+    ${MAIL_MODAL_HTML}
+
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
     <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span class="build-choice-label text-outline">Nowa HyperCube</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span class="build-choice-label text-outline">Nowy Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span class="build-choice-label text-outline">Nowy Prefabrykat</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span class="build-choice-label text-outline">Nowa Część HyperCube</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
     <div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
@@ -520,62 +609,13 @@ export const MODALS_HTML = `
     <!-- NOWA STRUKTURA PANELU OPCJI (BSP GRID) -->
     <div id="more-options-panel" class="panel-modal">
         <div class="nav-grid-container">
-            <!-- 1. Misje (Placeholder) -->
-            <div class="nav-item">
-                <div class="nav-btn-box">
-                    <img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon">
-                    <span class="nav-label">Misje</span>
-                </div>
-            </div>
-
-            <!-- 2. Nagrody -->
-            <div class="nav-item" id="btn-open-news">
-                <div class="nav-btn-box">
-                    <img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon">
-                    <span class="nav-label">Nagrody</span>
-                    <div id="rewards-badge" class="nav-badge" style="display:none;">0</div>
-                </div>
-            </div>
-
-            <!-- 3. HighScores (Placeholder) -->
-            <div class="nav-item">
-                <div class="nav-btn-box">
-                    <img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon">
-                    <span class="nav-label">HighScores</span>
-                </div>
-            </div>
-
-            <!-- 4. Tworzenie (Placeholder) -->
-            <div class="nav-item">
-                <div class="nav-btn-box">
-                    <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                    <span class="nav-label">Tworzenie</span>
-                </div>
-            </div>
-
-            <!-- 5. Bezpieczeństwo (Placeholder) -->
-            <div class="nav-item">
-                <div class="nav-btn-box">
-                    <img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
-                    <span class="nav-label">Bezpiecz.</span>
-                </div>
-            </div>
-
-            <!-- 6. Opcje (FPS Toggle) -->
-            <div class="nav-item" id="btn-nav-options">
-                <div class="nav-btn-box">
-                    <img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
-                    <span class="nav-label">Opcje</span>
-                </div>
-            </div>
-
-            <!-- 7. Wyloguj -->
-            <div class="nav-item" id="logout-btn">
-                <div class="nav-btn-box">
-                    <img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon">
-                    <span class="nav-label">Wyloguj</span>
-                </div>
-            </div>
+            <div class="nav-item"><div class="nav-btn-box"><img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon"><span class="nav-label">Misje</span></div></div>
+            <div class="nav-item" id="btn-open-news"><div class="nav-btn-box"><img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon"><span class="nav-label">Nagrody</span><div id="rewards-badge" class="nav-badge" style="display:none;">0</div></div></div>
+            <div class="nav-item"><div class="nav-btn-box"><img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon"><span class="nav-label">HighScores</span></div></div>
+            <div class="nav-item"><div class="nav-btn-box"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Tworzenie</span></div></div>
+            <div class="nav-item"><div class="nav-btn-box"><img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon"><span class="nav-label">Bezpiecz.</span></div></div>
+            <div class="nav-item" id="btn-nav-options"><div class="nav-btn-box"><img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon"><span class="nav-label">Opcje</span></div></div>
+            <div class="nav-item" id="logout-btn"><div class="nav-btn-box"><img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon"><span class="nav-label">Wyloguj</span></div></div>
         </div>
     </div>
     
