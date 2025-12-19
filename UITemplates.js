@@ -221,7 +221,6 @@ export const MODALS_HTML = `
             width: 100%;
             padding: 20px;
         }
-        
         .nav-item {
             display: flex;
             flex-direction: column;
@@ -231,8 +230,6 @@ export const MODALS_HTML = `
             position: relative;
         }
         .nav-item:active { transform: scale(0.95); }
-        
-        /* Styl głównego przycisku nawigacji */
         .nav-btn-box {
             width: 110px; height: 110px;
             background-image: url('icons/NavigationButton.png');
@@ -245,17 +242,14 @@ export const MODALS_HTML = `
             align-items: center;
             position: relative;
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
-            padding-top: 15px; /* Ikona nieco niżej od górnej krawędzi */
+            padding-top: 15px;
         }
-        
         .nav-icon {
-            width: 50%; height: 50%;
+            width: 55%; height: 55%;
             object-fit: contain;
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
             z-index: 1;
         }
-        
-        /* Napis wewnątrz przycisku, na dole */
         .nav-label {
             position: absolute;
             bottom: 12px;
@@ -269,21 +263,19 @@ export const MODALS_HTML = `
             z-index: 2;
             pointer-events: none;
         }
-        
         .nav-badge {
             position: absolute;
-            top: 0px; right: 0px;
+            top: -5px; right: -5px;
             background-color: #e74c3c;
             color: white;
             border: 2px solid white;
             border-radius: 50%;
-            width: 26px; height: 26px;
+            width: 28px; height: 28px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 12px; font-weight: bold;
+            font-size: 14px; font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             z-index: 10;
         }
-        
         #more-options-panel .panel-content {
             background: rgba(0,0,0,0.6) !important;
             border: none !important;
@@ -291,11 +283,9 @@ export const MODALS_HTML = `
             width: 95vw !important;
             max-width: 800px !important;
         }
-        
         #more-options-panel h2 { display: none; }
         #more-options-panel .panel-list { display: none; }
         #more-options-panel .panel-close-button { display: none; }
-        
         @media (max-width: 600px) {
             .nav-grid-container {
                 gap: 10px;
