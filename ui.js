@@ -57,7 +57,6 @@ export class UIManager {
     this.currentDetailsId = null;
     this.currentDetailsType = 'skin';
     
-    // Licznik warstw
     this.activeZIndex = 20000; 
   }
   
@@ -86,11 +85,9 @@ export class UIManager {
       if (authLayer) authLayer.innerHTML = AUTH_HTML;
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
-      // FIX: Dodajemy wszystkie szablony modali
       if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + NEWS_MODAL_HTML;
   }
 
-  // Metoda do wyciągania okna na wierzch
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -728,8 +725,6 @@ export class UIManager {
 
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
   refreshShopList() { const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } filteredItems.forEach(b => { const i = document.createElement('div'); i.className = 'shop-item'; const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; list.appendChild(i); }); list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); }
-  
-  // PRZYWRÓCONE METODY (Chat, Friends, Mail)
   setupChatSystem() { this.setupChatInput(); }
   addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
@@ -753,7 +748,6 @@ export class UIManager {
   renderChatHistory(history, otherUser) { const container = document.querySelector('.mail-chat-messages'); if (!container) return; container.innerHTML = ''; const myName = localStorage.getItem('bsp_clone_player_name'); history.forEach(msg => { const div = document.createElement('div'); const isMine = msg.sender_username === myName; div.className = `mail-message ${isMine ? 'sent' : 'received'}`; div.textContent = msg.message_text; container.appendChild(div); }); container.scrollTop = container.scrollHeight; }
   async setupMailSystem() { const closeBtn = document.querySelector('#mail-panel .panel-close-button'); if (closeBtn) { closeBtn.onclick = () => { const panel = document.getElementById('mail-panel'); if (panel) { panel.style.display = 'none'; panel.classList.remove('view-chat'); } }; } if(!document.getElementById('new-mail-btn')) return; const t=localStorage.getItem('bsp_clone_jwt_token'); if(!t)return; const btn=document.getElementById('new-mail-btn'); btn.onclick=()=>{ this.mailState.activeConversation=null; const panel = document.getElementById('mail-panel'); if(panel) panel.classList.remove('view-chat'); const composer = document.getElementById('new-mail-composer'); if(composer) composer.style.display='flex'; const recipientInput = document.getElementById('new-mail-recipient'); if(recipientInput) recipientInput.value = ''; const textInput = document.getElementById('new-mail-text'); if(textInput) textInput.value = ''; }; const mailForm = document.getElementById('new-mail-form'); if(mailForm) { mailForm.onsubmit=(e)=>{ e.preventDefault(); const r=document.getElementById('new-mail-recipient').value.trim(); const x=document.getElementById('new-mail-text').value.trim(); if(r&&x&&this.onSendPrivateMessage) { this.onSendPrivateMessage(r,x); document.getElementById('new-mail-composer').style.display = 'none'; this.loadMailData(); } }; } const replyForm = document.getElementById('mail-reply-form'); if(replyForm) { replyForm.onsubmit=(e)=>{ e.preventDefault(); const input = document.getElementById('mail-reply-input'); const x=input.value.trim(); if(x && this.mailState.activeConversation && this.onSendPrivateMessage){ this.onSendPrivateMessage(this.mailState.activeConversation,x); input.value=''; const el=document.createElement('div'); el.className='mail-message sent'; el.textContent=x; const msgs = document.querySelector('.mail-chat-messages'); if(msgs) { msgs.appendChild(el); msgs.scrollTop = msgs.scrollHeight; } } }; } }
   
-  // FIX: Dodano brakującą metodę do listy skinów (używaną przez setupDiscoverTabs)
   async refreshSkinList(mode) {
       await this.refreshDiscoveryList('skin', mode);
   }
@@ -769,7 +763,6 @@ export class UIManager {
         };
     });
     
-    // Obsługa zamknięcia panelu Więcej przez kliknięcie w tło
     document.getElementById('more-options-panel').addEventListener('click', (e) => {
         if (e.target.id === 'more-options-panel') {
             e.target.style.display = 'none';
@@ -810,7 +803,6 @@ export class UIManager {
     const tabBlocks = document.getElementById('shop-tab-blocks'); const tabAddons = document.getElementById('shop-tab-addons'); if (tabBlocks && tabAddons) { tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; }
     const nameSubmitBtn = document.getElementById('name-submit-btn'); if (nameSubmitBtn) { nameSubmitBtn.onclick = () => { const i = document.getElementById('name-input-field'); const v = i.value.trim(); if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); }; }
     
-    // NEW GRID BUTTONS HANDLERS
     setClick('btn-open-news', () => { this.openNewsPanel(); });
     
     setClick('btn-nav-options', () => { 
@@ -828,5 +820,50 @@ export class UIManager {
     });
 
     setClick('btn-news-claim-all', () => { this.claimReward(null); });
+  }
+
+  // --- MISSING METHODS ADDED ---
+  updatePlayerName(name) {
+      const nameDisplay = document.getElementById('player-name-display');
+      if (nameDisplay) nameDisplay.textContent = name;
+  }
+
+  updatePlayerAvatar(thumbnail) {
+      const avatarEl = document.querySelector('#player-avatar-button .player-avatar');
+      if (!avatarEl) return;
+      if (thumbnail) {
+          avatarEl.textContent = '';
+          avatarEl.style.backgroundImage = `url(${thumbnail})`;
+          avatarEl.style.backgroundSize = 'cover';
+          avatarEl.style.backgroundPosition = 'center';
+          avatarEl.style.backgroundColor = '#4a90e2';
+      } else {
+          avatarEl.style.backgroundImage = 'none';
+          avatarEl.textContent = '👤';
+      }
+  }
+
+  checkAdminPermissions(username) {
+      const admins = ['nixox2', 'admin'];
+      if (admins.includes(username)) {
+          const grid = document.querySelector('#more-options-panel .nav-grid-container');
+          if (grid && !document.getElementById('admin-edit-nexus-btn')) {
+               const adminDiv = document.createElement('div');
+               adminDiv.className = 'nav-item';
+               adminDiv.id = 'admin-edit-nexus-btn';
+               adminDiv.innerHTML = `
+                  <div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
+                      <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                  </div>
+                  <span class="nav-label">Admin</span>
+               `;
+               adminDiv.onclick = () => {
+                   this.closeAllPanels();
+                   if (this.onEditNexusClick) this.onEditNexusClick();
+               };
+               // Wstaw jako pierwszy element
+               grid.insertBefore(adminDiv, grid.firstChild);
+          }
+      }
   }
 }
