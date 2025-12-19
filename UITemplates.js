@@ -1,3 +1,4 @@
+
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -143,38 +144,13 @@ export const DISCOVER_CHOICE_HTML = `
 
 export const NEWS_MODAL_HTML = `
     <style>
-        .news-container {
-            width: 85vw; max-width: 600px; height: 70vh;
-            background-color: #e0e0e0; border-radius: 15px;
-            display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 4px solid white; font-family: 'Titan One', cursive;
-        }
-        .news-header {
-            background: linear-gradient(to bottom, #4facfe, #00f2fe);
-            color: white; padding: 10px 15px;
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+        .news-container { width: 85vw; max-width: 600px; height: 70vh; background-color: #e0e0e0; border-radius: 15px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 4px solid white; font-family: 'Titan One', cursive; }
+        .news-header { background: linear-gradient(to bottom, #4facfe, #00f2fe); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .news-header-title { font-size: 20px; text-shadow: 2px 2px 0 #000; }
-        .btn-claim-all {
-            background: linear-gradient(to bottom, #2ecc71, #27ae60);
-            border: 2px solid white; border-radius: 10px;
-            padding: 8px 15px; color: white; cursor: pointer; font-family: inherit;
-            box-shadow: 0 4px 0 #1e8449; font-size: 14px; text-shadow: 1px 1px 0 #000;
-            transition: transform 0.1s;
-        }
+        .btn-claim-all { background: linear-gradient(to bottom, #2ecc71, #27ae60); border: 2px solid white; border-radius: 10px; padding: 8px 15px; color: white; cursor: pointer; font-family: inherit; box-shadow: 0 4px 0 #1e8449; font-size: 14px; text-shadow: 1px 1px 0 #000; transition: transform 0.1s; }
         .btn-claim-all:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e8449; }
-        #news-list {
-            flex: 1; overflow-y: auto; padding: 15px;
-            background-color: #bdc3c7; display: flex; flex-direction: column; gap: 12px;
-        }
-        .news-item {
-            background-color: #a3e635; border-radius: 12px;
-            display: flex; height: 90px;
-            box-shadow: 0 4px 0 #86bf2b; border: 2px solid white;
-            position: relative; overflow: hidden;
-        }
+        #news-list { flex: 1; overflow-y: auto; padding: 15px; background-color: #bdc3c7; display: flex; flex-direction: column; gap: 12px; }
+        .news-item { background-color: #a3e635; border-radius: 12px; display: flex; height: 90px; box-shadow: 0 4px 0 #86bf2b; border: 2px solid white; position: relative; overflow: hidden; }
         .news-icon-area { width: 70px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.2); }
         .news-type-icon { font-size: 40px; color: white; filter: drop-shadow(2px 2px 0 #000); }
         .news-content-area { flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center; color: white; text-shadow: 1px 1px 0 #000; }
@@ -183,15 +159,10 @@ export const NEWS_MODAL_HTML = `
         .news-source-avatar { width: 24px; height: 24px; border-radius: 50%; background-color: #eee; background-size: cover; border: 1px solid white; }
         .news-action-area { width: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; background: rgba(0,0,0,0.1); padding: 5px; }
         .news-reward-val { color: #f1c40f; font-size: 16px; display: flex; align-items: center; gap: 4px; }
-        .btn-claim-one {
-            background: linear-gradient(to bottom, #2ecc71, #27ae60); border: 2px solid white; border-radius: 8px;
-            padding: 5px 12px; color: white; cursor: pointer; font-family: inherit; font-size: 12px;
-            box-shadow: 0 3px 0 #1e8449; text-shadow: 1px 1px 0 #000;
-        }
+        .btn-claim-one { background: linear-gradient(to bottom, #2ecc71, #27ae60); border: 2px solid white; border-radius: 8px; padding: 5px 12px; color: white; cursor: pointer; font-family: inherit; font-size: 12px; box-shadow: 0 3px 0 #1e8449; text-shadow: 1px 1px 0 #000; }
         .btn-claim-one:active { transform: translateY(3px); box-shadow: none; }
         .news-footer { height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9); color: white; display: flex; align-items: center; padding: 0 15px; gap: 15px; border-top: 3px solid white; }
         .footer-chest { width: 50px; height: 50px; background: url('icons/icon-shop.png') center/contain no-repeat; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
-        .thumb-icon { width: 40px; height: 40px; background: url('icons/icon-like.png') center/contain no-repeat; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); }
     </style>
 
     <div id="news-modal" class="panel-modal" style="display:none;">
@@ -206,6 +177,195 @@ export const NEWS_MODAL_HTML = `
                 <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">Namów innych graczy do korzystania z Twoich prefabrykatów i skórek</span>
                 <button class="panel-close-button" style="margin: 0; padding: 8px 15px; background: #e74c3c; border: 2px solid white; box-shadow: 0 4px 0 #c0392b;">X</button>
             </div>
+        </div>
+    </div>
+`;
+
+// NOWE: MAIL MODAL (BSP STYLE)
+export const MAIL_MODAL_HTML = `
+    <style>
+        .mail-wrapper {
+            width: 85vw; max-width: 600px; height: 70vh;
+            background-color: #74b9ff; /* Jasnoniebieskie tło */
+            border-radius: 10px;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 4px solid white;
+            font-family: 'Titan One', sans-serif;
+            position: relative;
+        }
+
+        /* INBOX HEADER */
+        .mail-header {
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            height: 50px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; border-bottom: 3px solid rgba(0,0,0,0.2);
+            color: white; font-size: 24px; text-shadow: 2px 2px 0 #000;
+        }
+        .mail-header-btn-new {
+            position: absolute; right: 10px; top: 5px;
+            width: 40px; height: 40px;
+            background: #2ecc71; border: 2px solid white; border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; cursor: pointer;
+            box-shadow: 0 4px 0 #27ae60;
+        }
+        .mail-header-btn-new:active { transform: translateY(3px); box-shadow: 0 1px 0 #27ae60; }
+
+        /* INBOX LIST */
+        .mail-inbox-list {
+            flex: 1; overflow-y: auto;
+            background-color: #81ecec; /* Jasny turkus tła listy */
+            display: flex; flex-direction: column;
+        }
+        .mail-inbox-item {
+            display: flex; height: 70px;
+            background-color: #82ccdd; /* Niebieski pasek */
+            border-bottom: 2px solid #60a3bc;
+            cursor: pointer; position: relative;
+        }
+        .mail-inbox-item:nth-child(even) { background-color: #6a89cc; } /* Naprzemienne kolory */
+        
+        .mail-item-avatar {
+            width: 70px; height: 100%;
+            background-color: white; border-right: 2px solid #555;
+            background-size: cover; background-position: center;
+        }
+        .mail-item-content {
+            flex: 1; padding: 5px 10px; display: flex; flex-direction: column; justify-content: center;
+        }
+        .mail-item-user { color: white; font-size: 16px; text-shadow: 1px 1px 0 #000; }
+        .mail-item-preview { color: #eee; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mail-item-time { 
+            position: absolute; bottom: 5px; right: 5px; 
+            font-size: 10px; color: #dfe6e9; 
+        }
+
+        /* CHAT VIEW HEADER */
+        .chat-header {
+            background: linear-gradient(to bottom, #74b9ff, #0984e3);
+            height: 60px; display: flex; align-items: center;
+            padding: 0 10px; gap: 10px; border-bottom: 4px solid rgba(0,0,0,0.2);
+        }
+        .chat-btn-back {
+            width: 45px; height: 45px;
+            background-color: #e74c3c; border: 2px solid white; border-radius: 8px;
+            background-image: url('icons/icon-back.png'); background-size: 60%; background-repeat: no-repeat; background-position: center;
+            box-shadow: 0 4px 0 #c0392b; cursor: pointer;
+        }
+        .chat-btn-back:active { transform: translateY(3px); box-shadow: none; }
+        
+        .chat-header-user-bar {
+            flex: 1; height: 40px;
+            background-color: #2ecc71; border: 2px solid white; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 18px; text-shadow: 1.5px 1.5px 0 #000;
+            box-shadow: 0 3px 0 #27ae60;
+        }
+
+        /* CHAT MESSAGES AREA */
+        .chat-messages-area {
+            flex: 1; overflow-y: auto; padding: 15px;
+            background-color: #ecf0f1; /* Tło czatu */
+            display: flex; flex-direction: column; gap: 15px;
+        }
+
+        /* CHAT BUBBLES */
+        .chat-msg-row { display: flex; width: 100%; align-items: flex-end; gap: 10px; }
+        .chat-msg-row.sent { justify-content: flex-end; }
+        .chat-msg-row.received { justify-content: flex-start; }
+
+        .chat-avatar-small {
+            width: 40px; height: 40px; background-color: #bdc3c7; border: 2px solid white;
+            background-size: cover;
+            /* Postacie z BSP są kanciaste, więc brak border-radius lub mały */
+            border-radius: 4px;
+        }
+
+        .chat-bubble {
+            max-width: 70%; padding: 10px 15px;
+            font-size: 14px; position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        /* RECEIVED (White bubble, blue text) */
+        .chat-msg-row.received .chat-bubble {
+            background-color: white; color: #3498db;
+            border-radius: 15px 15px 15px 0;
+        }
+
+        /* SENT (Blue bubble, white text) */
+        .chat-msg-row.sent .chat-bubble {
+            background-color: #3498db; color: white;
+            border-radius: 15px 15px 0 15px;
+        }
+
+        /* FOOTER INPUT */
+        .chat-footer {
+            height: 60px; background-color: #3498db;
+            display: flex; align-items: center; padding: 0 10px; gap: 10px;
+            border-top: 3px solid white;
+        }
+        .chat-input {
+            flex: 1; height: 40px;
+            border: 2px solid #bdc3c7; border-radius: 5px;
+            padding: 0 10px; font-family: inherit; font-size: 16px;
+        }
+        .chat-btn-send {
+            width: 50px; height: 50px;
+            background-color: #2ecc71; border: 2px solid white; border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; color: white; cursor: pointer;
+            box-shadow: 0 4px 0 #27ae60;
+        }
+        .chat-btn-send:active { transform: translateY(3px); box-shadow: none; }
+        
+        /* Ukrywanie widoków */
+        .hidden { display: none !important; }
+    </style>
+
+    <div id="mail-panel" class="panel-modal" style="display:none;">
+        <div class="mail-wrapper">
+            
+            <!-- WIDOK 1: LISTA (INBOX) -->
+            <div id="mail-inbox-view" style="display: flex; flex-direction: column; height: 100%;">
+                <div class="mail-header">
+                    <span>Poczta</span>
+                    <div id="btn-mail-compose" class="mail-header-btn-new">+</div>
+                </div>
+                <div id="mail-inbox-list" class="mail-inbox-list">
+                    <!-- JS wstrzyknie .mail-inbox-item tutaj -->
+                </div>
+                <button class="panel-close-button" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10;">Zamknij</button>
+            </div>
+
+            <!-- WIDOK 2: KONWERSACJA (CHAT) -->
+            <div id="mail-conversation-view" class="hidden" style="flex-direction: column; height: 100%;">
+                <div class="chat-header">
+                    <div id="btn-mail-back" class="chat-btn-back"></div>
+                    <div id="mail-chat-username" class="chat-header-user-bar">Nazwa Gracza</div>
+                </div>
+                <div id="mail-chat-messages" class="chat-messages-area">
+                    <!-- JS wstrzyknie .chat-msg-row tutaj -->
+                </div>
+                <div class="chat-footer">
+                    <input id="mail-reply-input" class="chat-input" placeholder="Napisz wiadomość...">
+                    <div id="mail-reply-btn" class="chat-btn-send">✔</div>
+                </div>
+            </div>
+
+            <!-- WIDOK 3: NOWA WIADOMOŚĆ (COMPOSER) -->
+            <div id="new-mail-composer" class="hidden" style="flex-direction: column; height: 100%; background: #3498db; padding: 20px; color: white;">
+                 <h2 class="text-outline">Nowa wiadomość</h2>
+                 <input id="new-mail-recipient" class="chat-input" placeholder="Do kogo?" style="margin-bottom: 10px;">
+                 <textarea id="new-mail-text" class="chat-input" style="height: 100px; padding-top: 10px;" placeholder="Treść"></textarea>
+                 <div style="display:flex; gap: 10px; margin-top: 20px;">
+                    <button id="btn-send-new" class="btn-claim-all" style="flex:1;">Wyślij</button>
+                    <button id="btn-cancel-new" class="panel-close-button" style="margin:0; flex:1;">Anuluj</button>
+                 </div>
+            </div>
+
         </div>
     </div>
 `;
@@ -286,6 +446,7 @@ export const MODALS_HTML = `
         #more-options-panel h2 { display: none; }
         #more-options-panel .panel-list { display: none; }
         #more-options-panel .panel-close-button { display: none; }
+        
         @media (max-width: 600px) {
             .nav-grid-container {
                 gap: 10px;
@@ -348,7 +509,7 @@ export const MODALS_HTML = `
     </div>
 
     <div id="friends-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs"><div class="friends-tab active" data-tab="friends-list">Lista</div><div class="friends-tab" data-tab="friends-requests">Zaproszenia</div><div class="friends-tab" data-tab="friends-search">Szukaj</div></div><div id="friends-list" class="friends-view active"></div><div id="friends-requests" class="friends-view"></div><div id="friends-search" class="friends-view"><div id="friends-search-bar"><input id="friends-search-input" placeholder="Szukaj..."><button id="friends-search-btn">Szukaj</button></div><div id="friends-search-results"></div></div><button class="panel-close-button">Zamknij</button></div></div>
-    <div id="mail-panel" class="panel-modal"><div class="panel-content"><div class="mail-sidebar"><div class="mail-sidebar-header"><h3>Wiadomości</h3><div id="new-mail-btn">+</div></div><div class="mail-conversations"></div></div><div class="mail-chat-view"><div id="mail-chat-header"><h2 id="mail-chat-username">Czat</h2></div><div class="mail-chat-messages"></div><form id="mail-reply-form"><input id="mail-reply-input"><button id="mail-reply-btn">Wyślij</button></form></div><div id="new-mail-composer" style="display:none;"><h2 class="text-outline" style="margin-bottom:20px;">Nowa wiadomość</h2><form id="new-mail-form"><input id="new-mail-recipient" placeholder="Do kogo?"><input id="new-mail-text" placeholder="Treść"><button>Wyślij</button></form></div><button class="panel-close-button" style="position:absolute;top:10px;right:10px;">X</button></div></div>
+    
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
     <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span class="build-choice-label text-outline">Nowa HyperCube</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span class="build-choice-label text-outline">Nowy Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span class="build-choice-label text-outline">Nowy Prefabrykat</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span class="build-choice-label text-outline">Nowa Część HyperCube</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
     <div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
