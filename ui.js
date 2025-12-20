@@ -6,7 +6,7 @@ import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 
 // Import szablonów
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML } from './UITemplates.js';
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML } from './UITemplates.js';
 import { STORAGE_KEYS } from './Config.js';
 
 // Import Menedżerów
@@ -105,10 +105,9 @@ export class UIManager {
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
       
-      // Renderujemy MODALS_HTML (zawiera Grid Opcji, Poczta, Znajomi, Newsy, Odkrywanie)
-      // Doklejamy tylko Skin Details i Comments, bo one nie są w MODALS_HTML
+      // Renderujemy wszystkie szablony
       if (modalsLayer) {
-          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML;
+          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML + FRIENDS_MODAL_HTML;
       }
   }
 
@@ -157,8 +156,6 @@ export class UIManager {
 
   updatePendingRewards(count) {
       if (this.newsManager) {
-          // Delegacja odświeżania badge'a do managera (jeśli ma taką metodę)
-          // lub bezpośrednia aktualizacja tutaj, bo przycisk jest w głównym HTML
           this.pendingNewsCount = parseInt(count) || 0;
           const badge = document.getElementById('rewards-badge');
           if (badge) {
@@ -211,7 +208,6 @@ export class UIManager {
                    this.closePanel('more-options-panel');
                    if (this.onEditNexusClick) this.onEditNexusClick();
                };
-               // Wstaw jako pierwszy element
                grid.insertBefore(adminDiv, grid.firstChild);
           }
       }
@@ -256,6 +252,66 @@ export class UIManager {
       }); 
   }
 
+  // --- PARKOUR TIMER & LOGIC (FIXED) ---
+  setParkourTimerVisible(visible) { 
+      const timer = document.getElementById('parkour-timer'); 
+      if (timer) timer.style.display = visible ? 'block' : 'none'; 
+  }
+
+  updateParkourTimer(timeString) { 
+      const timer = document.getElementById('parkour-timer'); 
+      if (timer) timer.textContent = timeString; 
+  }
+  
+  handleParkourCompletion(timeString, data) {
+      this.pendingRewardData = data;
+      this.showVictory(timeString);
+  }
+
+  showVictory(timeString) {
+      const panel = document.getElementById('victory-panel');
+      const timeDisplay = document.getElementById('victory-time-display');
+      if (panel && timeDisplay) {
+          timeDisplay.textContent = timeString;
+          this.bringToFront(panel);
+          panel.style.display = 'flex';
+      }
+  }
+
+  hideVictory() { 
+      document.getElementById('victory-panel').style.display = 'none'; 
+      document.getElementById('reward-panel').style.display = 'none'; 
+      this.pendingRewardData = null; 
+  }
+
+  showRewardPanel(customData = null) { 
+      const panel = document.getElementById('reward-panel'); 
+      const data = customData || this.pendingRewardData; 
+      if (!panel) return; 
+      this.bringToFront(panel); 
+      if (data) { 
+          const title = document.getElementById('reward-title-text'); 
+          if(title) title.textContent = data.message || (customData ? "Odebrano Nagrody!" : "Ukończono!"); 
+          const xpVal = document.getElementById('reward-xp-val'); 
+          const coinVal = document.getElementById('reward-coins-val'); 
+          const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); 
+          const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100; 
+          if (xpVal) xpVal.textContent = `+${gainedXp}`; 
+          if (coinVal) coinVal.textContent = `+${gainedCoins}`; 
+          document.getElementById('reward-lvl-cur').textContent = data.newLevel; 
+          document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; 
+          const fill = document.getElementById('reward-bar-fill'); 
+          const text = document.getElementById('reward-bar-text'); 
+          if (fill && text) { 
+              const max = data.maxXp || 100; 
+              const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); 
+              fill.style.width = `${percent}%`; 
+              text.textContent = `${data.newXp}/${max}`; 
+          } 
+      } 
+      panel.style.display = 'flex'; 
+  }
+
   // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
     // Zamknięcie paneli
@@ -285,7 +341,6 @@ export class UIManager {
       button.addEventListener('click', () => this.handleButtonClick(type, button));
     });
 
-    // Avatar
     const pBtn = document.getElementById('player-avatar-button'); 
     if (pBtn) pBtn.onclick = () => { 
         this.openPanel('player-preview-panel'); 
@@ -384,11 +439,6 @@ export class UIManager {
         localStorage.removeItem(STORAGE_KEYS.USER_ID);
         window.location.reload();
     });
-
-    setClick('btn-news-claim-all', () => { 
-        // Przycisk "Odbierz wszystkie" wewnątrz modala newsów, ale obsłużony tu dla pewności
-        if(this.newsManager) this.newsManager.claimReward(null); 
-    });
   }
 
   // --- HELPERS DLA PRZYCISKÓW ---
@@ -416,38 +466,7 @@ export class UIManager {
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
   refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
 
-  // --- PARKOUR & REWARDS (Wspólne UI) ---
-  hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
-  
-  showRewardPanel(customData = null) { 
-      const panel = document.getElementById('reward-panel'); 
-      const data = customData || this.pendingRewardData; 
-      if (!panel) return; 
-      this.bringToFront(panel); 
-      if (data) { 
-          const title = document.getElementById('reward-title-text'); 
-          if(title) title.textContent = data.message || (customData ? "Odebrano Nagrody!" : "Ukończono!"); 
-          const xpVal = document.getElementById('reward-xp-val'); 
-          const coinVal = document.getElementById('reward-coins-val'); 
-          const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); 
-          const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100; 
-          if (xpVal) xpVal.textContent = `+${gainedXp}`; 
-          if (coinVal) coinVal.textContent = `+${gainedCoins}`; 
-          document.getElementById('reward-lvl-cur').textContent = data.newLevel; 
-          document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; 
-          const fill = document.getElementById('reward-bar-fill'); 
-          const text = document.getElementById('reward-bar-text'); 
-          if (fill && text) { 
-              const max = data.maxXp || 100; 
-              const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); 
-              fill.style.width = `${percent}%`; 
-              text.textContent = `${data.newXp}/${max}`; 
-          } 
-      } 
-      panel.style.display = 'flex'; 
-  }
-
-  // --- ZARZĄDZANIE PANELAMI ---
+  // --- DISCOVER / SHOP / SKINS (Logika, która została w UI.js) ---
   openPanel(id) { 
       const p = document.getElementById(id); 
       if(p) {
@@ -458,7 +477,6 @@ export class UIManager {
   }
   
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
-  
   closeAllPanels() {
       if (this.skinPreviewAnimId) {
           cancelAnimationFrame(this.skinPreviewAnimId);
