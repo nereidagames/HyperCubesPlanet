@@ -78,6 +78,7 @@ export const BUILD_UI_HTML = `
 export const SKIN_DETAILS_HTML = `
     <div id="skin-details-modal" class="panel-modal" style="display:none;">
         <div class="panel-close-button" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: #e74c3c; width: 40px; height: 40px; display:flex; justify-content:center; align-items:center; font-weight:bold;">X</div>
+        
         <div class="skin-col-left">
             <div class="skin-creator-box">
                 <div class="skin-creator-avatar"></div>
@@ -91,14 +92,17 @@ export const SKIN_DETAILS_HTML = `
                 <div class="skin-likes-count text-outline">0</div>
             </div>
         </div>
+
         <div class="skin-col-center">
             <div class="skin-name-header text-outline">Nazwa Skina</div>
             <div id="skin-preview-canvas"></div>
         </div>
+
         <div class="skin-col-right">
             <div id="skin-btn-share" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Udostępnij</div></div>
             <div id="skin-btn-like" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Polub</div></div>
             <div id="skin-btn-comment" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">0</div></div>
+            
             <div id="skin-btn-use" class="skin-action-btn" style="display:none;">
                 <div class="skin-btn-icon"></div>
                 <div class="skin-btn-label text-outline">Użyj</div>
@@ -587,15 +591,17 @@ export const PLAYER_PROFILE_HTML = `
         /* Strzałki nawigacji na dole */
         .nav-arrow {
             position: absolute; bottom: 20px;
-            width: 50px; height: 50px;
+            width: 60px; height: 60px;
             background-color: #8accff;
             border: 3px solid white; border-radius: 10px;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 30px; color: white; cursor: pointer;
+            cursor: pointer;
             box-shadow: 0 4px 0 #54a0ff;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 50%;
         }
-        .nav-arrow.left { left: 20px; }
-        .nav-arrow.right { right: 100px; } /* Zostawiamy miejsce bo sidebar wystaje */
+        .nav-arrow.left { left: 20px; background-image: url('icons/arrow-left.png'); }
+        .nav-arrow.right { right: 100px; background-image: url('icons/arrow-right.png'); } /* Zostawiamy miejsce bo sidebar wystaje */
         
         .nav-arrow:active { transform: translateY(3px); box-shadow: none; }
 
@@ -637,14 +643,11 @@ export const PLAYER_PROFILE_HTML = `
                         <div class="sidebar-icon" style="background-image: url('icons/icon-like.png');"></div>
                         <span class="sidebar-label">Ściana</span>
                     </div>
-                    <!-- Inne przyciski usunięte zgodnie z życzeniem -->
                 </div>
 
-                <!-- Strzałki nawigacji (atrapy lub do zmiany skinów w przyszłości) -->
-                <div class="nav-arrow left">⬅</div>
-                <div class="nav-arrow right">➡</div>
-
-                <!-- Zamknięcie (kliknięcie w tło zamyka, ale można dodać też ukryty przycisk) -->
+                <!-- Strzałki nawigacji (Zaktualizowane na obrazki) -->
+                <div class="nav-arrow left"></div>
+                <div class="nav-arrow right"></div>
             </div>
         </div>
     </div>
@@ -672,6 +675,7 @@ export const MODALS_HTML = `
         }
         .nav-item:active { transform: scale(0.95); }
         
+        /* FIX: Użycie NavigationButton.png jako tła */
         .nav-btn-box {
             width: 110px; height: 110px;
             background-image: url('icons/NavigationButton.png');
@@ -799,7 +803,7 @@ export const MODALS_HTML = `
     ${DISCOVER_CHOICE_HTML} 
     ${NEWS_MODAL_HTML}
     ${MAIL_MODAL_HTML}
-    ${PLAYER_PROFILE_HTML} <!-- DODANE NOWE -->
+    ${PLAYER_PROFILE_HTML}
 
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
     <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span class="build-choice-label text-outline">Nowa HyperCube</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span class="build-choice-label text-outline">Nowy Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span class="build-choice-label text-outline">Nowy Prefabrykat</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span class="build-choice-label text-outline">Nowa Część HyperCube</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
@@ -811,13 +815,62 @@ export const MODALS_HTML = `
     <!-- NOWA STRUKTURA PANELU OPCJI (BSP GRID) -->
     <div id="more-options-panel" class="panel-modal">
         <div class="nav-grid-container">
-            <div class="nav-item"><div class="nav-btn-box"><img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon"><span class="nav-label">Misje</span></div></div>
-            <div class="nav-item" id="btn-open-news"><div class="nav-btn-box"><img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon"><span class="nav-label">Nagrody</span><div id="rewards-badge" class="nav-badge" style="display:none;">0</div></div></div>
-            <div class="nav-item" id="btn-open-highscores"><div class="nav-btn-box"><img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon"><span class="nav-label">HighScores</span></div></div>
-            <div class="nav-item"><div class="nav-btn-box"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Tworzenie</span></div></div>
-            <div class="nav-item"><div class="nav-btn-box"><img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon"><span class="nav-label">Bezpiecz.</span></div></div>
-            <div class="nav-item" id="btn-nav-options"><div class="nav-btn-box"><img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon"><span class="nav-label">Opcje</span></div></div>
-            <div class="nav-item" id="logout-btn"><div class="nav-btn-box"><img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon"><span class="nav-label">Wyloguj</span></div></div>
+            <!-- 1. Misje (Placeholder) -->
+            <div class="nav-item">
+                <div class="nav-btn-box">
+                    <img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon">
+                    <span class="nav-label">Misje</span>
+                </div>
+            </div>
+
+            <!-- 2. Nagrody -->
+            <div class="nav-item" id="btn-open-news">
+                <div class="nav-btn-box">
+                    <img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon">
+                    <span class="nav-label">Nagrody</span>
+                    <div id="rewards-badge" class="nav-badge" style="display:none;">0</div>
+                </div>
+            </div>
+
+            <!-- 3. HighScores -->
+            <div class="nav-item" id="btn-open-highscores">
+                <div class="nav-btn-box">
+                    <img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon">
+                    <span class="nav-label">HighScores</span>
+                </div>
+            </div>
+
+            <!-- 4. Tworzenie (Placeholder) -->
+            <div class="nav-item">
+                <div class="nav-btn-box">
+                    <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                    <span class="nav-label">Tworzenie</span>
+                </div>
+            </div>
+
+            <!-- 5. Bezpieczeństwo (Placeholder) -->
+            <div class="nav-item">
+                <div class="nav-btn-box">
+                    <img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
+                    <span class="nav-label">Bezpiecz.</span>
+                </div>
+            </div>
+
+            <!-- 6. Opcje (FPS Toggle) -->
+            <div class="nav-item" id="btn-nav-options">
+                <div class="nav-btn-box">
+                    <img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
+                    <span class="nav-label">Opcje</span>
+                </div>
+            </div>
+
+            <!-- 7. Wyloguj -->
+            <div class="nav-item" id="logout-btn">
+                <div class="nav-btn-box">
+                    <img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon">
+                    <span class="nav-label">Wyloguj</span>
+                </div>
+            </div>
         </div>
     </div>
     
