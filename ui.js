@@ -6,7 +6,7 @@ import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 
 // Import szablonów
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML } from './UITemplates.js';
+import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML, PLAYER_PROFILE_HTML } from './UITemplates.js';
 import { STORAGE_KEYS } from './Config.js';
 
 // Import Menedżerów
@@ -69,6 +69,9 @@ export class UIManager {
     this.currentDetailsType = 'skin';
     
     this.activeZIndex = 20000; 
+    
+    // Cache danych gracza (do profilu)
+    this.myProfileData = null;
   }
   
   initialize(isMobile) {
@@ -77,7 +80,7 @@ export class UIManager {
     try {
         this.renderUI();
         
-        // Inicjalizacja menedżerów (wstrzykiwanie ich HTML)
+        // Inicjalizacja menedżerów
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
         if (this.newsManager.initialize) this.newsManager.initialize();
@@ -85,8 +88,6 @@ export class UIManager {
 
         this.setupButtonHandlers();
         this.setupChatSystem(); 
-        
-        // Ładowanie danych wstępnych
         this.loadFriendsData(); 
         
         console.log('UI Manager zainicjalizowany pomyślnie.');
@@ -105,9 +106,9 @@ export class UIManager {
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
       
-      // Renderujemy wszystkie szablony
+      // Renderujemy wszystkie szablony (w tym nowy PLAYER_PROFILE_HTML)
       if (modalsLayer) {
-          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML + FRIENDS_MODAL_HTML;
+          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML + FRIENDS_MODAL_HTML + PLAYER_PROFILE_HTML;
       }
   }
 
@@ -134,6 +135,11 @@ export class UIManager {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
       const lvlFill = document.getElementById('level-bar-fill');
+      
+      // Zapisujemy te dane lokalnie, by użyć w profilu
+      if (!this.myProfileData) this.myProfileData = {};
+      this.myProfileData.level = level;
+      
       if (lvlVal) lvlVal.textContent = level;
       if (lvlText) lvlText.textContent = `${xp}/${maxXp}`;
       if (lvlFill) { const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100)); lvlFill.style.width = `${percent}%`; }
@@ -169,15 +175,24 @@ export class UIManager {
       }
   }
 
-  // --- PLAYER & ADMIN ---
+  // --- PLAYER PROFILE & ADMIN ---
   updatePlayerName(name) { 
       const nameDisplay = document.getElementById('player-name-display'); 
-      if (nameDisplay) nameDisplay.textContent = name; 
+      if (nameDisplay) nameDisplay.textContent = name;
+      
+      // Cache
+      if (!this.myProfileData) this.myProfileData = {};
+      this.myProfileData.username = name;
   }
   
   updatePlayerAvatar(thumbnail) { 
       const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); 
       if (!avatarEl) return; 
+      
+      // Cache thumbnail
+      if (!this.myProfileData) this.myProfileData = {};
+      this.myProfileData.thumbnail = thumbnail;
+
       if (thumbnail) { 
           avatarEl.textContent = ''; 
           avatarEl.style.backgroundImage = `url(${thumbnail})`; 
@@ -188,6 +203,129 @@ export class UIManager {
           avatarEl.style.backgroundImage = 'none'; 
           avatarEl.textContent = '👤'; 
       } 
+  }
+
+  // Pomocnicza funkcja do daty
+  formatMemberSince() {
+      // Ponieważ nie mamy daty rejestracji w updatePlayerName, 
+      // można ją pobrać z API /user/me przy starcie, ale tutaj zrobimy
+      // prosty fallback lub pobierzemy dynamicznie.
+      // Domyślnie użyjemy dzisiejszej, jeśli brak danych.
+      const now = new Date();
+      const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
+      return `Członek od ${monthNames[now.getMonth()]}, ${now.getFullYear()}`;
+  }
+
+  // Otwieranie NOWEGO profilu
+  async openPlayerProfile() {
+      const panel = document.getElementById('player-profile-panel');
+      if (!panel) return;
+      
+      this.bringToFront(panel);
+      panel.style.display = 'flex';
+
+      // Ustaw dane
+      const nameEl = document.getElementById('profile-username');
+      const lvlEl = document.getElementById('profile-level-val');
+      const dateEl = document.getElementById('profile-joined-date');
+      const canvasContainer = document.getElementById('profile-preview-canvas');
+
+      if (this.myProfileData) {
+          if(nameEl) nameEl.textContent = this.myProfileData.username || "PLAYER";
+          if(lvlEl) lvlEl.textContent = this.myProfileData.level || 1;
+      }
+      
+      // Fetch dokładnej daty rejestracji
+      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      if(t) {
+          try {
+              const r = await fetch(`${API_BASE_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${t}` } });
+              const d = await r.json();
+              if (d && d.user && d.user.created_at) { // Potrzebujesz dodać created_at do api/user/me w server.txt jeśli go nie ma, ale zazwyczaj jest w DB
+                  // Jeśli serwer nie zwraca created_at, użyj fallbacka.
+                  // Zakładam, że endpoint /api/user/me zwraca 'user' object.
+                  // W server.txt endpoint zwraca id, username, coins, level, xp, pendingXp. Brakuje created_at.
+                  // Więc użyjemy fallbacka.
+                  if(dateEl) dateEl.textContent = this.formatMemberSince(); // Fallback
+              } else {
+                  if(dateEl) dateEl.textContent = this.formatMemberSince();
+              }
+          } catch(e) {
+              if(dateEl) dateEl.textContent = this.formatMemberSince();
+          }
+      }
+
+      // Renderowanie postaci 3D
+      if (this.onPlayerAvatarClick) {
+          // Używamy istniejącej logiki podglądu, ale przekierowujemy render do nowego kontenera
+          this.init3DPreviewForProfile(canvasContainer);
+      }
+  }
+
+  // Specjalna wersja renderera dla profilu
+  async init3DPreviewForProfile(container) {
+      if (!container) return;
+      
+      // Czyścimy poprzedni
+      if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+      container.innerHTML = '';
+      
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      const scene = new THREE.Scene();
+      // Brak tła - przezroczyste, by widać było gradient
+      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      camera.position.set(0, 1, 5);
+      camera.lookAt(0, 0, 0);
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(width, height);
+      container.appendChild(renderer.domElement);
+
+      const amb = new THREE.AmbientLight(0xffffff, 0.9);
+      scene.add(amb);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+      dir.position.set(2, 5, 3);
+      scene.add(dir);
+
+      const character = new THREE.Group();
+      
+      // Importujemy funkcję budowania postaci z character.js (musisz mieć dostęp do createBaseCharacter)
+      // W tym pliku jest zaimportowana na górze.
+      createBaseCharacter(character);
+      character.position.y = -1; // Lekko w dół
+      scene.add(character);
+
+      // Pobierz aktualny skin gracza
+      const skinId = SkinStorage.getLastUsedSkinId();
+      if (skinId) {
+          const blocks = await SkinStorage.loadSkinData(skinId);
+          if (blocks) {
+             // ... (Logika nakładania skina identyczna jak w init3DPreview)
+             const loader = new THREE.TextureLoader();
+             const blockGroup = new THREE.Group();
+             blockGroup.scale.setScalar(0.125);
+             blockGroup.position.y = 0.5;
+             
+             blocks.forEach(b => {
+                 const geo = new THREE.BoxGeometry(1, 1, 1);
+                 const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) });
+                 const mesh = new THREE.Mesh(geo, mat);
+                 mesh.position.set(b.x, b.y, b.z);
+                 blockGroup.add(mesh);
+             });
+             character.add(blockGroup);
+          }
+      }
+      
+      // Animacja
+      const animate = () => {
+          this.skinPreviewAnimId = requestAnimationFrame(animate);
+          character.rotation.y += 0.01;
+          renderer.render(scene, camera);
+      };
+      animate();
   }
   
   checkAdminPermissions(username) {
@@ -215,75 +353,160 @@ export class UIManager {
 
   // --- GLOBAL CHAT (HUD) ---
   setupChatSystem() { this.setupChatInput(); }
-  
-  addChatMessage(m) { 
-      const c = document.querySelector('.chat-area'); 
-      if(c) { 
-          const el = document.createElement('div'); 
-          el.className = 'chat-message text-outline'; 
-          el.textContent = m; 
-          c.appendChild(el); 
-          c.scrollTop = c.scrollHeight; 
-      } 
-  }
-  
-  clearChat() { 
-      const c = document.querySelector('.chat-area'); 
-      if(c) c.innerHTML = ''; 
-  }
-  
-  handleChatClick() { 
-      const f = document.getElementById('chat-form'); 
-      if(f) f.style.display = 'flex'; 
-      const i = document.getElementById('chat-input-field'); 
-      if(i) i.focus(); 
-  }
-  
-  setupChatInput() { 
-      const f = document.getElementById('chat-form'); 
-      if(!f) return; 
-      f.addEventListener('submit', e => { 
-          e.preventDefault(); 
-          const i = document.getElementById('chat-input-field'); 
-          const v = i.value.trim(); 
-          if(v && this.onSendMessage) this.onSendMessage(v); 
-          i.value = ''; 
-          f.style.display = 'none'; 
-      }); 
+  addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
+  clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
+  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
+  setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
+
+  // --- BUTTON HANDLERS ---
+  setupButtonHandlers() {
+    // Zamknięcie paneli (w tym nowego profilu)
+    document.querySelectorAll('.panel-close-button').forEach(btn => {
+        btn.onclick = () => { 
+            const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
+            if(p) p.style.display = 'none'; 
+            if(p && p.id === 'skin-details-modal' && this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+            if(p && p.id === 'player-profile-panel' && this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+        };
+    });
+    
+    // Kliknięcie w tło zamyka panel "Więcej"
+    const moreOptions = document.getElementById('more-options-panel');
+    if (moreOptions) {
+        moreOptions.addEventListener('click', (e) => {
+            if (e.target.id === 'more-options-panel') {
+                e.target.style.display = 'none';
+            }
+        });
+    }
+    
+    // Główne przyciski gry
+    document.querySelectorAll('.game-btn').forEach(button => {
+      const type = this.getButtonType(button);
+      button.addEventListener('click', () => this.handleButtonClick(type, button));
+    });
+
+    // Avatar -> Nowy Profil
+    const pBtn = document.getElementById('player-avatar-button'); 
+    if (pBtn) pBtn.onclick = () => { 
+        this.openPlayerProfile(); 
+    };
+    
+    // Przyjaciele
+    const friendsBtn = document.getElementById('btn-friends-open'); 
+    if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
+    
+    // Poczta
+    const topBarItems = document.querySelectorAll('.top-bar-item'); 
+    topBarItems.forEach(item => { 
+        if (item.textContent.includes('Poczta')) { 
+            item.onclick = () => { this.mailManager.open(); }; 
+        } 
+    });
+    
+    const chatToggle = document.getElementById('chat-toggle-button'); 
+    if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
+    
+    const superBtn = document.getElementById('victory-super-btn'); 
+    if (superBtn) superBtn.onclick = () => { 
+        document.getElementById('victory-panel').style.display = 'none'; 
+        if (this.pendingRewardData) this.showRewardPanel(); 
+        else if (this.onExitParkour) this.onExitParkour(); 
+    };
+    
+    const homeBtn = document.getElementById('reward-btn-home'); 
+    if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
+    
+    const replayBtn = document.getElementById('reward-btn-replay'); 
+    if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
+
+    const btnPlayParkour = document.getElementById('play-choice-parkour'); 
+    const btnPlayChat = document.getElementById('play-choice-chat'); 
+    if (btnPlayParkour) btnPlayParkour.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'parkour'); }; 
+    if (btnPlayChat) btnPlayChat.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'creative'); };
+    
+    const btnDiscSkin = document.getElementById('discover-choice-skin');
+    const btnDiscPart = document.getElementById('discover-choice-part');
+    const btnDiscPrefab = document.getElementById('discover-choice-prefab');
+    if(btnDiscSkin) btnDiscSkin.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'skin'); };
+    if(btnDiscPart) btnDiscPart.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'part'); };
+    if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
+
+    const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
+    setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); });
+    setClick('build-choice-new-skin', () => { this.closePanel('build-choice-panel'); if(this.onSkinBuilderClick) this.onSkinBuilderClick(); });
+    setClick('build-choice-new-prefab', () => { this.closePanel('build-choice-panel'); if(this.onPrefabBuilderClick) this.onPrefabBuilderClick(); });
+    setClick('build-choice-new-part', () => { this.closePanel('build-choice-panel'); if(this.onPartBuilderClick) this.onPartBuilderClick(); });
+    setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); });
+    setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); });
+    setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
+    
+    const tabBlocks = document.getElementById('shop-tab-blocks'); 
+    const tabAddons = document.getElementById('shop-tab-addons'); 
+    if (tabBlocks && tabAddons) { 
+        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; 
+        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; 
+    }
+    
+    const nameSubmitBtn = document.getElementById('name-submit-btn'); 
+    if (nameSubmitBtn) { 
+        nameSubmitBtn.onclick = () => { 
+            const i = document.getElementById('name-input-field'); 
+            const v = i.value.trim(); 
+            if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); 
+        }; 
+    }
+    
+    setClick('btn-open-news', () => { this.newsManager.open(); });
+    
+    setClick('btn-open-highscores', () => { 
+        if (this.highScoresManager) this.highScoresManager.open(); 
+    });
+    
+    setClick('btn-nav-options', () => { 
+        if(this.onToggleFPS) {
+            this.onToggleFPS(); 
+            this.showMessage("Przełączono licznik FPS", "info");
+        }
+    });
+    
+    setClick('logout-btn', () => {
+        localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME);
+        localStorage.removeItem(STORAGE_KEYS.USER_ID);
+        window.location.reload();
+    });
+
+    setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
-  // --- PARKOUR TIMER & LOGIC (FIXED) ---
-  setParkourTimerVisible(visible) { 
-      const timer = document.getElementById('parkour-timer'); 
-      if (timer) timer.style.display = visible ? 'block' : 'none'; 
-  }
-
-  updateParkourTimer(timeString) { 
-      const timer = document.getElementById('parkour-timer'); 
-      if (timer) timer.textContent = timeString; 
+  // --- HELPERS ---
+  getButtonType(button) { 
+      if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
+      if (button.classList.contains('btn-buduj')) return 'buduj'; 
+      if (button.classList.contains('btn-kup')) return 'kup'; 
+      if (button.classList.contains('btn-odkryj')) return 'odkryj'; 
+      if (button.classList.contains('btn-wiecej')) return 'wiecej'; 
+      return 'unknown'; 
   }
   
-  handleParkourCompletion(timeString, data) {
-      this.pendingRewardData = data;
-      this.showVictory(timeString);
+  handleButtonClick(buttonType, buttonElement) {
+    buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
+    setTimeout(() => { buttonElement.style.transform = ''; }, 150);
+    
+    if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; }
+    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
+    if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; }
+    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
+    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
-  showVictory(timeString) {
-      const panel = document.getElementById('victory-panel');
-      const timeDisplay = document.getElementById('victory-time-display');
-      if (panel && timeDisplay) {
-          timeDisplay.textContent = timeString;
-          this.bringToFront(panel);
-          panel.style.display = 'flex';
-      }
-  }
+  // --- DELEGACJA ---
+  loadFriendsData() { this.friendsManager.loadFriendsData(); }
+  refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
 
-  hideVictory() { 
-      document.getElementById('victory-panel').style.display = 'none'; 
-      document.getElementById('reward-panel').style.display = 'none'; 
-      this.pendingRewardData = null; 
-  }
-
+  // --- PARKOUR & REWARDS ---
+  hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
   showRewardPanel(customData = null) { 
       const panel = document.getElementById('reward-panel'); 
       const data = customData || this.pendingRewardData; 
@@ -312,161 +535,7 @@ export class UIManager {
       panel.style.display = 'flex'; 
   }
 
-  // --- BUTTON HANDLERS ---
-  setupButtonHandlers() {
-    // Zamknięcie paneli
-    document.querySelectorAll('.panel-close-button').forEach(btn => {
-        btn.onclick = () => { 
-            const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
-            if(p) p.style.display = 'none'; 
-            if(p && p.id === 'skin-details-modal') {
-                 if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
-            }
-        };
-    });
-    
-    // Kliknięcie w tło zamyka panel "Więcej"
-    const moreOptions = document.getElementById('more-options-panel');
-    if (moreOptions) {
-        moreOptions.addEventListener('click', (e) => {
-            if (e.target.id === 'more-options-panel') {
-                e.target.style.display = 'none';
-            }
-        });
-    }
-    
-    // Główne przyciski gry
-    document.querySelectorAll('.game-btn').forEach(button => {
-      const type = this.getButtonType(button);
-      button.addEventListener('click', () => this.handleButtonClick(type, button));
-    });
-
-    const pBtn = document.getElementById('player-avatar-button'); 
-    if (pBtn) pBtn.onclick = () => { 
-        this.openPanel('player-preview-panel'); 
-        if (this.onPlayerAvatarClick) this.onPlayerAvatarClick(); 
-    };
-    
-    // Przyjaciele (Delegacja)
-    const friendsBtn = document.getElementById('btn-friends-open'); 
-    if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
-    
-    // Poczta (Delegacja)
-    const topBarItems = document.querySelectorAll('.top-bar-item'); 
-    topBarItems.forEach(item => { 
-        if (item.textContent.includes('Poczta')) { 
-            item.onclick = () => { this.mailManager.open(); }; 
-        } 
-    });
-    
-    const chatToggle = document.getElementById('chat-toggle-button'); 
-    if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
-    
-    // Parkour Victory
-    const superBtn = document.getElementById('victory-super-btn'); 
-    if (superBtn) superBtn.onclick = () => { 
-        document.getElementById('victory-panel').style.display = 'none'; 
-        if (this.pendingRewardData) this.showRewardPanel(); 
-        else if (this.onExitParkour) this.onExitParkour(); 
-    };
-    
-    const homeBtn = document.getElementById('reward-btn-home'); 
-    if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
-    
-    const replayBtn = document.getElementById('reward-btn-replay'); 
-    if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
-
-    // Wybór trybu
-    const btnPlayParkour = document.getElementById('play-choice-parkour'); 
-    const btnPlayChat = document.getElementById('play-choice-chat'); 
-    if (btnPlayParkour) btnPlayParkour.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'parkour'); }; 
-    if (btnPlayChat) btnPlayChat.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'creative'); };
-    
-    // Odkrywanie
-    const btnDiscSkin = document.getElementById('discover-choice-skin');
-    const btnDiscPart = document.getElementById('discover-choice-part');
-    const btnDiscPrefab = document.getElementById('discover-choice-prefab');
-    if(btnDiscSkin) btnDiscSkin.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'skin'); };
-    if(btnDiscPart) btnDiscPart.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'part'); };
-    if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
-
-    // Budowanie
-    const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
-    setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); });
-    setClick('build-choice-new-skin', () => { this.closePanel('build-choice-panel'); if(this.onSkinBuilderClick) this.onSkinBuilderClick(); });
-    setClick('build-choice-new-prefab', () => { this.closePanel('build-choice-panel'); if(this.onPrefabBuilderClick) this.onPrefabBuilderClick(); });
-    setClick('build-choice-new-part', () => { this.closePanel('build-choice-panel'); if(this.onPartBuilderClick) this.onPartBuilderClick(); });
-    setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); });
-    setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); });
-    setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
-    
-    // Sklep
-    const tabBlocks = document.getElementById('shop-tab-blocks'); 
-    const tabAddons = document.getElementById('shop-tab-addons'); 
-    if (tabBlocks && tabAddons) { 
-        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; 
-        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; 
-    }
-    
-    // Zmiana nicku
-    const nameSubmitBtn = document.getElementById('name-submit-btn'); 
-    if (nameSubmitBtn) { 
-        nameSubmitBtn.onclick = () => { 
-            const i = document.getElementById('name-input-field'); 
-            const v = i.value.trim(); 
-            if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } else alert('Nazwa nie może być pusta!'); 
-        }; 
-    }
-    
-    // --- NOWE HANDLERY GRIDU (WIĘCEJ) ---
-    
-    setClick('btn-open-news', () => { this.newsManager.open(); });
-    
-    setClick('btn-open-highscores', () => { 
-        if (this.highScoresManager) this.highScoresManager.open(); 
-    });
-    
-    setClick('btn-nav-options', () => { 
-        if(this.onToggleFPS) {
-            this.onToggleFPS(); 
-            this.showMessage("Przełączono licznik FPS", "info");
-        }
-    });
-    
-    setClick('logout-btn', () => {
-        localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME);
-        localStorage.removeItem(STORAGE_KEYS.USER_ID);
-        window.location.reload();
-    });
-  }
-
-  // --- HELPERS DLA PRZYCISKÓW ---
-  getButtonType(button) { 
-      if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
-      if (button.classList.contains('btn-buduj')) return 'buduj'; 
-      if (button.classList.contains('btn-kup')) return 'kup'; 
-      if (button.classList.contains('btn-odkryj')) return 'odkryj'; 
-      if (button.classList.contains('btn-wiecej')) return 'wiecej'; 
-      return 'unknown'; 
-  }
-  
-  handleButtonClick(buttonType, buttonElement) {
-    buttonElement.style.transform = 'translateY(-1px) scale(0.95)';
-    setTimeout(() => { buttonElement.style.transform = ''; }, 150);
-    
-    if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; }
-    if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; }
-    if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; }
-    if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; }
-    if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
-  }
-
-  // --- DELEGACJA ---
-  loadFriendsData() { this.friendsManager.loadFriendsData(); }
-  refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
-
-  // --- DISCOVER / SHOP / SKINS (Logika, która została w UI.js) ---
+  // --- DISCOVER / SHOP / SKINS ---
   openPanel(id) { 
       const p = document.getElementById(id); 
       if(p) {
