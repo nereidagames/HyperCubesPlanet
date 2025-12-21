@@ -25,6 +25,8 @@ import { HyperCubePartBuilderManager } from './HyperCubePartBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
 
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+
 class BlockStarPlanetGame {
   constructor() {
     console.log("Uruchamianie silnika gry...");
@@ -105,7 +107,6 @@ class BlockStarPlanetGame {
           this.ui.updateLevelInfo(user.level, user.xp, user.maxXp || 100);
       }
       
-      // FIX: Aktualizacja oczekujących nagród (badge) przy starcie
       if (user.pendingXp) {
           this.ui.updatePendingRewards(user.pendingXp);
       }
@@ -125,9 +126,18 @@ class BlockStarPlanetGame {
       const safeY = this.sceneManager.getSafeY(0, 0);
       this.characterManager.character.position.set(0, safeY + 2.0, 0);
 
-      const lastSkinId = SkinStorage.getLastUsedSkinId();
-      if (lastSkinId) {
-          SkinStorage.loadSkinData(lastSkinId).then(data => { if(data) this.characterManager.applySkin(data); });
+      // --- FIX: Ładowanie skina z bazy (user.currentSkinId) ---
+      if (user.currentSkinId) {
+          SkinStorage.loadSkinData(user.currentSkinId).then(data => { 
+              if(data) this.characterManager.applySkin(data); 
+          });
+      } else {
+          // Fallback (opcjonalnie) - jeśli gracz nie ma skina w bazie, można sprawdzić localStorage
+          // ale docelowo chcemy tego unikać.
+          const lastSkinId = SkinStorage.getLastUsedSkinId();
+          if (lastSkinId) {
+             // SkinStorage.loadSkinData(lastSkinId).then(data => { if(data) this.characterManager.applySkin(data); });
+          }
       }
 
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
@@ -247,7 +257,6 @@ class BlockStarPlanetGame {
 
   setupUIActions() {
       this.ui.onWorldSizeSelected = (size) => this.stateManager.switchToBuildMode(size);
-      
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
       this.ui.onPrefabBuilderClick = () => this.stateManager.switchToPrefabBuilder();
       this.ui.onPartBuilderClick = () => this.stateManager.switchToPartBuilder();
@@ -288,6 +297,7 @@ class BlockStarPlanetGame {
           } 
       };
 
+      // --- FIX: ZAPIS SKINA NA SERWERZE (EQUIP) ---
       this.ui.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => { 
           const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); 
           if (ownerId && ownerId !== myId) { 
@@ -297,10 +307,24 @@ class BlockStarPlanetGame {
           const data = await SkinStorage.loadSkinData(skinId); 
           if (data) { 
               this.characterManager.applySkin(data); 
-              SkinStorage.setLastUsedSkinId(skinId); 
               this.ui.updatePlayerAvatar(thumbnail); 
               this.multiplayer.sendMessage({ type: 'mySkin', skinData: data }); 
               this.ui.showMessage(`Założono: ${skinName}`, 'success'); 
+
+              // Wyślij request o zmianę skina do serwera
+              try {
+                  const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+                  await fetch(`${API_BASE_URL}/api/user/equip`, {
+                      method: 'POST',
+                      headers: { 
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}` 
+                      },
+                      body: JSON.stringify({ skinId, thumbnail })
+                  });
+              } catch (e) {
+                  console.error("Błąd zapisu skina na serwerze", e);
+              }
           } 
       };
       
