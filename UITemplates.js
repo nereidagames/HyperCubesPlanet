@@ -99,12 +99,24 @@ export const SKIN_DETAILS_HTML = `
         </div>
 
         <div class="skin-col-right">
-            <div id="skin-btn-share" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Udostępnij</div></div>
-            <div id="skin-btn-like" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Polub</div></div>
-            <div id="skin-btn-comment" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">0</div></div>
+            <!-- PRZYCISKI AKCJI Z IKONAMI -->
+            <div id="skin-btn-share" class="skin-action-btn">
+                <div class="skin-btn-icon" style="background-image: url('icons/icon-share.png');"></div>
+                <div class="skin-btn-label text-outline">Udostępnij</div>
+            </div>
+            
+            <div id="skin-btn-like" class="skin-action-btn">
+                <div class="skin-btn-icon" style="background-image: url('icons/icon-like.png');"></div>
+                <div class="skin-btn-label text-outline">Polub</div>
+            </div>
+            
+            <div id="skin-btn-comment" class="skin-action-btn">
+                <div class="skin-btn-icon" style="background-image: url('icons/icon-chat.png');"></div>
+                <div class="skin-btn-label text-outline">0</div>
+            </div>
             
             <div id="skin-btn-use" class="skin-action-btn" style="display:none;">
-                <div class="skin-btn-icon"></div>
+                <div class="skin-btn-icon" style="background-image: url('icons/icon-play.png');"></div>
                 <div class="skin-btn-label text-outline">Użyj</div>
             </div>
         </div>
@@ -476,7 +488,6 @@ export const FRIENDS_MODAL_HTML = `
     </div>
 `;
 
-// NOWY MODAL DLA PLAYER PROFILE (1:1 z BSP)
 export const PLAYER_PROFILE_HTML = `
     <style>
         #player-profile-panel .panel-content {
@@ -815,62 +826,13 @@ export const MODALS_HTML = `
     <!-- NOWA STRUKTURA PANELU OPCJI (BSP GRID) -->
     <div id="more-options-panel" class="panel-modal">
         <div class="nav-grid-container">
-            <!-- 1. Misje (Placeholder) -->
-            <div class="nav-item">
-                <div class="nav-btn-box">
-                    <img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon">
-                    <span class="nav-label">Misje</span>
-                </div>
-            </div>
-
-            <!-- 2. Nagrody -->
-            <div class="nav-item" id="btn-open-news">
-                <div class="nav-btn-box">
-                    <img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon">
-                    <span class="nav-label">Nagrody</span>
-                    <div id="rewards-badge" class="nav-badge" style="display:none;">0</div>
-                </div>
-            </div>
-
-            <!-- 3. HighScores -->
-            <div class="nav-item" id="btn-open-highscores">
-                <div class="nav-btn-box">
-                    <img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon">
-                    <span class="nav-label">HighScores</span>
-                </div>
-            </div>
-
-            <!-- 4. Tworzenie (Placeholder) -->
-            <div class="nav-item">
-                <div class="nav-btn-box">
-                    <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                    <span class="nav-label">Tworzenie</span>
-                </div>
-            </div>
-
-            <!-- 5. Bezpieczeństwo (Placeholder) -->
-            <div class="nav-item">
-                <div class="nav-btn-box">
-                    <img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
-                    <span class="nav-label">Bezpiecz.</span>
-                </div>
-            </div>
-
-            <!-- 6. Opcje (FPS Toggle) -->
-            <div class="nav-item" id="btn-nav-options">
-                <div class="nav-btn-box">
-                    <img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon">
-                    <span class="nav-label">Opcje</span>
-                </div>
-            </div>
-
-            <!-- 7. Wyloguj -->
-            <div class="nav-item" id="logout-btn">
-                <div class="nav-btn-box">
-                    <img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon">
-                    <span class="nav-label">Wyloguj</span>
-                </div>
-            </div>
+            <div class="nav-item"><div class="nav-btn-box"><img src="icons/misje.png" onerror="this.src='icons/icon-friends.png'" class="nav-icon"><span class="nav-label">Misje</span></div></div>
+            <div class="nav-item" id="btn-open-news"><div class="nav-btn-box"><img src="icons/nagrody.png" onerror="this.src='icons/icon-shop.png'" class="nav-icon"><span class="nav-label">Nagrody</span><div id="rewards-badge" class="nav-badge" style="display:none;">0</div></div></div>
+            <div class="nav-item" id="btn-open-highscores"><div class="nav-btn-box"><img src="icons/highscores.png" onerror="this.src='icons/icon-level.png'" class="nav-icon"><span class="nav-label">HighScores</span></div></div>
+            <div class="nav-item"><div class="nav-btn-box"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Tworzenie</span></div></div>
+            <div class="nav-item"><div class="nav-btn-box"><img src="icons/bezpieczenstwo.png" onerror="this.src='icons/icon-more.png'" class="nav-icon"><span class="nav-label">Bezpiecz.</span></div></div>
+            <div class="nav-item" id="btn-nav-options"><div class="nav-btn-box"><img src="icons/opcje.png" onerror="this.src='icons/icon-more.png'" class="nav-icon"><span class="nav-label">Opcje</span></div></div>
+            <div class="nav-item" id="logout-btn"><div class="nav-btn-box"><img src="icons/wyloguj.png" onerror="this.src='icons/icon-back.png'" class="nav-icon"><span class="nav-label">Wyloguj</span></div></div>
         </div>
     </div>
     
