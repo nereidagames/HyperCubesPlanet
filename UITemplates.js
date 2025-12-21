@@ -78,7 +78,6 @@ export const BUILD_UI_HTML = `
 export const SKIN_DETAILS_HTML = `
     <div id="skin-details-modal" class="panel-modal" style="display:none;">
         <div class="panel-close-button" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: #e74c3c; width: 40px; height: 40px; display:flex; justify-content:center; align-items:center; font-weight:bold;">X</div>
-        
         <div class="skin-col-left">
             <div class="skin-creator-box">
                 <div class="skin-creator-avatar"></div>
@@ -92,17 +91,14 @@ export const SKIN_DETAILS_HTML = `
                 <div class="skin-likes-count text-outline">0</div>
             </div>
         </div>
-
         <div class="skin-col-center">
             <div class="skin-name-header text-outline">Nazwa Skina</div>
             <div id="skin-preview-canvas"></div>
         </div>
-
         <div class="skin-col-right">
             <div id="skin-btn-share" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Udostępnij</div></div>
             <div id="skin-btn-like" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Polub</div></div>
             <div id="skin-btn-comment" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">0</div></div>
-            
             <div id="skin-btn-use" class="skin-action-btn" style="display:none;">
                 <div class="skin-btn-icon"></div>
                 <div class="skin-btn-label text-outline">Użyj</div>
@@ -395,6 +391,8 @@ export const FRIENDS_MODAL_HTML = `
     <div id="friends-panel" class="panel-modal" style="display:none;">
         <div class="panel-content">
             <div class="friends-full-container">
+                
+                <!-- NAVIGATION -->
                 <div class="friends-nav-bar">
                     <div id="btn-friends-close-main" class="friends-back-btn"></div>
                     <div class="friends-tabs-container">
@@ -417,18 +415,29 @@ export const FRIENDS_MODAL_HTML = `
                     </div>
                 </div>
 
+                <!-- CONTENT AREA -->
                 <div class="friends-content-area">
+                    
+                    <!-- TAB 1: MOI PRZYJACIELE -->
                     <div id="tab-my-friends" class="tab-content active">
+                        
+                        <!-- SEKCJA: PROŚBY -->
                         <div id="section-requests" style="display:none;">
                             <div class="friends-section-header">Prośby</div>
                             <div id="requests-grid" class="friends-grid"></div>
                         </div>
+
+                        <!-- SEKCJA: WYSŁANE (Placeholder) -->
                         <div class="friends-section-header" style="opacity:0.5;">Wysłane</div>
+                        
+                        <!-- SEKCJA: ONLINE -->
                         <div class="friends-section-header">
                             <div class="status-dot online"></div>
                             Przyjaciele Online: <span id="online-count">0</span>
                         </div>
                         <div id="friends-online-grid" class="friends-grid"></div>
+
+                        <!-- SEKCJA: OFFLINE -->
                         <div class="friends-section-header">
                             <div class="status-dot offline"></div>
                             Przyjaciele Offline: <span id="offline-count">0</span>
@@ -436,14 +445,17 @@ export const FRIENDS_MODAL_HTML = `
                         <div id="friends-offline-grid" class="friends-grid"></div>
                     </div>
 
+                    <!-- TAB 2: W TYM ŚWIECIE (Placeholder) -->
                     <div id="tab-world" class="tab-content">
                         <p style="color:white; text-align:center; margin-top:50px;">Brak graczy w pobliżu.</p>
                     </div>
                     
+                    <!-- TAB 3: GRA Z INNYMI (Placeholder) -->
                     <div id="tab-games" class="tab-content">
                         <p style="color:white; text-align:center; margin-top:50px;">Funkcja niedostępna.</p>
                     </div>
 
+                    <!-- TAB 4: SZUKAJ -->
                     <div id="tab-search" class="tab-content">
                         <div class="search-bar-container">
                             <input id="friends-search-input-new" class="search-input" placeholder="gracz">
@@ -460,6 +472,184 @@ export const FRIENDS_MODAL_HTML = `
     </div>
 `;
 
+// NOWY MODAL DLA PLAYER PROFILE (1:1 z BSP)
+export const PLAYER_PROFILE_HTML = `
+    <style>
+        #player-profile-panel .panel-content {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            width: auto !important;
+            height: auto !important;
+            max-width: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        /* Główny kontener profilu */
+        .profile-container {
+            width: 450px;
+            height: 400px;
+            background: radial-gradient(circle, #5addc5 0%, #16a085 100%); /* Turkusowy gradient */
+            border-radius: 20px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            font-family: 'Titan One', cursive;
+        }
+
+        /* Górny pasek z nickiem */
+        .profile-header {
+            position: absolute;
+            top: 15px; left: 0; right: 0;
+            height: 50px;
+            background-color: #0d8a72; /* Ciemniejszy turkus */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-shadow: 1.5px 1.5px 0 #000;
+            z-index: 2;
+        }
+
+        .profile-name { font-size: 20px; text-transform: uppercase; }
+        .profile-joined { font-size: 10px; opacity: 0.9; }
+
+        /* Gwiazda z levelem (nachodząca na pasek) */
+        .level-star-large {
+            position: absolute;
+            top: -10px; left: -10px;
+            width: 90px; height: 90px;
+            background: url('icons/icon-level.png') center/contain no-repeat;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 32px; color: white;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 10;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+        }
+
+        /* Flaga pod gwiazdą */
+        .profile-flag {
+            position: absolute;
+            top: 85px; left: 20px;
+            width: 40px; height: 25px;
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 20px;
+        }
+
+        /* Canvas 3D (Postać) */
+        #profile-preview-canvas {
+            position: absolute;
+            top: 65px; left: 50px; right: 80px; bottom: 50px;
+            z-index: 1;
+        }
+        
+        /* Cień/Poświata za postacią */
+        .profile-glow {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Pasek boczny (Przyciski) */
+        .profile-sidebar {
+            position: absolute;
+            top: 15px; right: -15px; /* Wystaje poza kontener */
+            display: flex; flex-direction: column; gap: 10px;
+            z-index: 5;
+        }
+
+        .sidebar-btn {
+            width: 80px; height: 80px;
+            background: linear-gradient(to bottom, #54a0ff, #2e86de);
+            border: 3px solid white;
+            border-radius: 15px;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            box-shadow: 0 5px 0 #1e60a3, 5px 5px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .sidebar-btn:active { transform: translateY(4px); box-shadow: 5px 1px 10px rgba(0,0,0,0.3); }
+
+        .sidebar-icon { width: 40px; height: 40px; background-size: contain; background-repeat: no-repeat; background-position: center; margin-bottom: 2px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
+        .sidebar-label { color: white; font-size: 12px; text-shadow: 1px 1px 0 #000; }
+
+        /* Strzałki nawigacji na dole */
+        .nav-arrow {
+            position: absolute; bottom: 20px;
+            width: 50px; height: 50px;
+            background-color: #8accff;
+            border: 3px solid white; border-radius: 10px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 30px; color: white; cursor: pointer;
+            box-shadow: 0 4px 0 #54a0ff;
+        }
+        .nav-arrow.left { left: 20px; }
+        .nav-arrow.right { right: 100px; } /* Zostawiamy miejsce bo sidebar wystaje */
+        
+        .nav-arrow:active { transform: translateY(3px); box-shadow: none; }
+
+        /* Responsywność dla mobile */
+        @media (max-width: 600px) {
+            .profile-container { width: 90vw; height: 80vw; max-height: 400px; }
+            .sidebar-btn { width: 60px; height: 60px; right: -5px; }
+            .sidebar-icon { width: 30px; height: 30px; }
+            .sidebar-label { font-size: 10px; }
+            .level-star-large { width: 70px; height: 70px; font-size: 24px; }
+            .nav-arrow { width: 40px; height: 40px; font-size: 24px; }
+        }
+    </style>
+
+    <div id="player-profile-panel" class="panel-modal" style="display:none;">
+        <div class="panel-content">
+            <div class="profile-container">
+                <!-- Gwiazda -->
+                <div class="level-star-large">
+                    <span id="profile-level-val" style="margin-top:5px;">1</span>
+                </div>
+
+                <!-- Nagłówek -->
+                <div class="profile-header">
+                    <div id="profile-username" class="profile-name">PLAYER</div>
+                    <div id="profile-joined-date" class="profile-joined">Członek od maj, 2024</div>
+                </div>
+
+                <!-- Flaga -->
+                <div class="profile-flag">🇵🇱</div>
+
+                <!-- Postać 3D -->
+                <div class="profile-glow"></div>
+                <div id="profile-preview-canvas"></div>
+
+                <!-- Przyciski boczne (tylko Ściana) -->
+                <div class="profile-sidebar">
+                    <div id="btn-profile-wall" class="sidebar-btn">
+                        <div class="sidebar-icon" style="background-image: url('icons/icon-like.png');"></div>
+                        <span class="sidebar-label">Ściana</span>
+                    </div>
+                    <!-- Inne przyciski usunięte zgodnie z życzeniem -->
+                </div>
+
+                <!-- Strzałki nawigacji (atrapy lub do zmiany skinów w przyszłości) -->
+                <div class="nav-arrow left">⬅</div>
+                <div class="nav-arrow right">➡</div>
+
+                <!-- Zamknięcie (kliknięcie w tło zamyka, ale można dodać też ukryty przycisk) -->
+            </div>
+        </div>
+    </div>
+`;
+
 export const MODALS_HTML = `
     <style>
         .nav-grid-container {
@@ -471,6 +661,7 @@ export const MODALS_HTML = `
             width: 100%;
             padding: 20px;
         }
+        
         .nav-item {
             display: flex;
             flex-direction: column;
@@ -480,6 +671,7 @@ export const MODALS_HTML = `
             position: relative;
         }
         .nav-item:active { transform: scale(0.95); }
+        
         .nav-btn-box {
             width: 110px; height: 110px;
             background-image: url('icons/NavigationButton.png');
@@ -494,12 +686,14 @@ export const MODALS_HTML = `
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
             padding-top: 15px;
         }
+        
         .nav-icon {
             width: 55%; height: 55%;
             object-fit: contain;
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
             z-index: 1;
         }
+        
         .nav-label {
             position: absolute;
             bottom: 12px;
@@ -513,6 +707,7 @@ export const MODALS_HTML = `
             z-index: 2;
             pointer-events: none;
         }
+        
         .nav-badge {
             position: absolute;
             top: -5px; right: -5px;
@@ -526,6 +721,7 @@ export const MODALS_HTML = `
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             z-index: 10;
         }
+        
         #more-options-panel .panel-content {
             background: rgba(0,0,0,0.6) !important;
             border: none !important;
@@ -533,6 +729,7 @@ export const MODALS_HTML = `
             width: 95vw !important;
             max-width: 800px !important;
         }
+        
         #more-options-panel h2 { display: none; }
         #more-options-panel .panel-list { display: none; }
         #more-options-panel .panel-close-button { display: none; }
@@ -602,6 +799,7 @@ export const MODALS_HTML = `
     ${DISCOVER_CHOICE_HTML} 
     ${NEWS_MODAL_HTML}
     ${MAIL_MODAL_HTML}
+    ${PLAYER_PROFILE_HTML} <!-- DODANE NOWE -->
 
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
     <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span class="build-choice-label text-outline">Nowa HyperCube</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span class="build-choice-label text-outline">Nowy Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span class="build-choice-label text-outline">Nowy Prefabrykat</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span class="build-choice-label text-outline">Nowa Część HyperCube</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
