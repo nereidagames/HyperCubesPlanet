@@ -5,11 +5,9 @@ import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 
-// Import szablonów
 import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML, PLAYER_PROFILE_HTML } from './UITemplates.js';
 import { STORAGE_KEYS } from './Config.js';
 
-// Import Menedżerów
 import { FriendsManager } from './FriendsManager.js';
 import { MailManager } from './MailManager.js';
 import { NewsManager } from './NewsManager.js';
@@ -70,7 +68,6 @@ export class UIManager {
     
     this.activeZIndex = 20000; 
     
-    // Cache danych gracza (do profilu)
     this.myProfileData = null;
   }
   
@@ -80,7 +77,6 @@ export class UIManager {
     try {
         this.renderUI();
         
-        // Inicjalizacja menedżerów
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
         if (this.newsManager.initialize) this.newsManager.initialize();
@@ -106,13 +102,11 @@ export class UIManager {
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
       
-      // Renderujemy wszystkie szablony (w tym nowy PLAYER_PROFILE_HTML)
       if (modalsLayer) {
           modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML + FRIENDS_MODAL_HTML + PLAYER_PROFILE_HTML;
       }
   }
 
-  // --- HELPERS ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -130,13 +124,11 @@ export class UIManager {
       setTimeout(() => { m.style.opacity = '0'; setTimeout(() => { if(m.parentNode) m.parentNode.removeChild(m); }, 300); }, 2500);
   }
 
-  // --- HUD UPDATES ---
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
       const lvlFill = document.getElementById('level-bar-fill');
       
-      // Zapisujemy te dane lokalnie, by użyć w profilu
       if (!this.myProfileData) this.myProfileData = {};
       this.myProfileData.level = level;
       
@@ -175,12 +167,10 @@ export class UIManager {
       }
   }
 
-  // --- PLAYER PROFILE & ADMIN ---
   updatePlayerName(name) { 
       const nameDisplay = document.getElementById('player-name-display'); 
       if (nameDisplay) nameDisplay.textContent = name;
       
-      // Cache
       if (!this.myProfileData) this.myProfileData = {};
       this.myProfileData.username = name;
   }
@@ -189,7 +179,6 @@ export class UIManager {
       const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); 
       if (!avatarEl) return; 
       
-      // Cache thumbnail
       if (!this.myProfileData) this.myProfileData = {};
       this.myProfileData.thumbnail = thumbnail;
 
@@ -205,18 +194,12 @@ export class UIManager {
       } 
   }
 
-  // Pomocnicza funkcja do daty
-  formatMemberSince() {
-      // Ponieważ nie mamy daty rejestracji w updatePlayerName, 
-      // można ją pobrać z API /user/me przy starcie, ale tutaj zrobimy
-      // prosty fallback lub pobierzemy dynamicznie.
-      // Domyślnie użyjemy dzisiejszej, jeśli brak danych.
-      const now = new Date();
+  formatMemberSince(dateString) {
+      const date = dateString ? new Date(dateString) : new Date();
       const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
-      return `Członek od ${monthNames[now.getMonth()]}, ${now.getFullYear()}`;
+      return `Członek od ${monthNames[date.getMonth()]}, ${date.getFullYear()}`;
   }
 
-  // Otwieranie NOWEGO profilu
   async openPlayerProfile() {
       const panel = document.getElementById('player-profile-panel');
       if (!panel) return;
@@ -224,7 +207,6 @@ export class UIManager {
       this.bringToFront(panel);
       panel.style.display = 'flex';
 
-      // Ustaw dane
       const nameEl = document.getElementById('profile-username');
       const lvlEl = document.getElementById('profile-level-val');
       const dateEl = document.getElementById('profile-joined-date');
@@ -235,38 +217,22 @@ export class UIManager {
           if(lvlEl) lvlEl.textContent = this.myProfileData.level || 1;
       }
       
-      // Fetch dokładnej daty rejestracji
       const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
       if(t) {
           try {
               const r = await fetch(`${API_BASE_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${t}` } });
               const d = await r.json();
-              if (d && d.user && d.user.created_at) { // Potrzebujesz dodać created_at do api/user/me w server.txt jeśli go nie ma, ale zazwyczaj jest w DB
-                  // Jeśli serwer nie zwraca created_at, użyj fallbacka.
-                  // Zakładam, że endpoint /api/user/me zwraca 'user' object.
-                  // W server.txt endpoint zwraca id, username, coins, level, xp, pendingXp. Brakuje created_at.
-                  // Więc użyjemy fallbacka.
-                  if(dateEl) dateEl.textContent = this.formatMemberSince(); // Fallback
-              } else {
-                  if(dateEl) dateEl.textContent = this.formatMemberSince();
+              if (d && d.user && d.user.created_at && dateEl) {
+                  dateEl.textContent = this.formatMemberSince(d.user.created_at);
               }
-          } catch(e) {
-              if(dateEl) dateEl.textContent = this.formatMemberSince();
-          }
+          } catch(e) { console.error(e); }
       }
 
-      // Renderowanie postaci 3D
-      if (this.onPlayerAvatarClick) {
-          // Używamy istniejącej logiki podglądu, ale przekierowujemy render do nowego kontenera
-          this.init3DPreviewForProfile(canvasContainer);
-      }
+      this.init3DPreviewForProfile(canvasContainer);
   }
 
-  // Specjalna wersja renderera dla profilu
   async init3DPreviewForProfile(container) {
       if (!container) return;
-      
-      // Czyścimy poprzedni
       if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
       container.innerHTML = '';
       
@@ -274,7 +240,6 @@ export class UIManager {
       const height = container.clientHeight;
 
       const scene = new THREE.Scene();
-      // Brak tła - przezroczyste, by widać było gradient
       const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
       camera.position.set(0, 1, 5);
       camera.lookAt(0, 0, 0);
@@ -290,19 +255,14 @@ export class UIManager {
       scene.add(dir);
 
       const character = new THREE.Group();
-      
-      // Importujemy funkcję budowania postaci z character.js (musisz mieć dostęp do createBaseCharacter)
-      // W tym pliku jest zaimportowana na górze.
       createBaseCharacter(character);
-      character.position.y = -1; // Lekko w dół
+      character.position.y = -1; 
       scene.add(character);
 
-      // Pobierz aktualny skin gracza
       const skinId = SkinStorage.getLastUsedSkinId();
       if (skinId) {
           const blocks = await SkinStorage.loadSkinData(skinId);
           if (blocks) {
-             // ... (Logika nakładania skina identyczna jak w init3DPreview)
              const loader = new THREE.TextureLoader();
              const blockGroup = new THREE.Group();
              blockGroup.scale.setScalar(0.125);
@@ -319,7 +279,6 @@ export class UIManager {
           }
       }
       
-      // Animacja
       const animate = () => {
           this.skinPreviewAnimId = requestAnimationFrame(animate);
           character.rotation.y += 0.01;
@@ -351,16 +310,13 @@ export class UIManager {
       }
   }
 
-  // --- GLOBAL CHAT (HUD) ---
   setupChatSystem() { this.setupChatInput(); }
   addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
 
-  // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
-    // Zamknięcie paneli (w tym nowego profilu)
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
             const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
@@ -370,7 +326,6 @@ export class UIManager {
         };
     });
     
-    // Kliknięcie w tło zamyka panel "Więcej"
     const moreOptions = document.getElementById('more-options-panel');
     if (moreOptions) {
         moreOptions.addEventListener('click', (e) => {
@@ -380,23 +335,19 @@ export class UIManager {
         });
     }
     
-    // Główne przyciski gry
     document.querySelectorAll('.game-btn').forEach(button => {
       const type = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(type, button));
     });
 
-    // Avatar -> Nowy Profil
     const pBtn = document.getElementById('player-avatar-button'); 
     if (pBtn) pBtn.onclick = () => { 
         this.openPlayerProfile(); 
     };
     
-    // Przyjaciele
     const friendsBtn = document.getElementById('btn-friends-open'); 
     if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
     
-    // Poczta
     const topBarItems = document.querySelectorAll('.top-bar-item'); 
     topBarItems.forEach(item => { 
         if (item.textContent.includes('Poczta')) { 
@@ -476,11 +427,8 @@ export class UIManager {
         localStorage.removeItem(STORAGE_KEYS.USER_ID);
         window.location.reload();
     });
-
-    setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
-  // --- HELPERS ---
   getButtonType(button) { 
       if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
       if (button.classList.contains('btn-buduj')) return 'buduj'; 
@@ -501,12 +449,11 @@ export class UIManager {
     if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
-  // --- DELEGACJA ---
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
   refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
 
-  // --- PARKOUR & REWARDS ---
   hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
+  
   showRewardPanel(customData = null) { 
       const panel = document.getElementById('reward-panel'); 
       const data = customData || this.pendingRewardData; 
@@ -535,7 +482,6 @@ export class UIManager {
       panel.style.display = 'flex'; 
   }
 
-  // --- DISCOVER / SHOP / SKINS ---
   openPanel(id) { 
       const p = document.getElementById(id); 
       if(p) {
