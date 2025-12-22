@@ -14,6 +14,7 @@ import { FriendsManager } from './FriendsManager.js';
 import { MailManager } from './MailManager.js';
 import { NewsManager } from './NewsManager.js';
 import { HighScoresManager } from './HighScoresManager.js';
+import { WallManager } from './WallManager.js'; // NOWOŚĆ
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
@@ -50,6 +51,7 @@ export class UIManager {
     this.mailManager = new MailManager(this);
     this.newsManager = new NewsManager(this);
     this.highScoresManager = new HighScoresManager(this);
+    this.wallManager = new WallManager(this); // NOWOŚĆ
 
     // Stan lokalny
     this.shopCurrentCategory = 'block'; 
@@ -80,14 +82,17 @@ export class UIManager {
     try {
         this.renderUI();
         
-        // Inicjalizacja menedżerów
+        // Inicjalizacja menedżerów (wstrzykiwanie ich HTML)
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
         if (this.newsManager.initialize) this.newsManager.initialize();
         if (this.highScoresManager.init) this.highScoresManager.init();
+        if (this.wallManager.initialize) this.wallManager.initialize(); // NOWOŚĆ
 
         this.setupButtonHandlers();
         this.setupChatSystem(); 
+        
+        // Ładowanie danych wstępnych
         this.loadFriendsData(); 
         
         console.log('UI Manager zainicjalizowany pomyślnie.');
@@ -346,7 +351,7 @@ export class UIManager {
         });
     }
 
-    // FIX: Kliknięcie w tło zamyka "Profil Gracza"
+    // Kliknięcie w tło zamyka "Profil Gracza"
     const profilePanel = document.getElementById('player-profile-panel');
     if (profilePanel) {
         profilePanel.addEventListener('click', (e) => {
@@ -369,6 +374,22 @@ export class UIManager {
     if (pBtn) pBtn.onclick = () => { 
         this.openPlayerProfile(); 
     };
+
+    // Obsługa przycisku "Ściana" w profilu (NOWOŚĆ)
+    const btnWall = document.getElementById('btn-profile-wall');
+    if (btnWall) {
+        btnWall.onclick = () => {
+            // Zamknij profil, żeby nie zasłaniał
+            const profile = document.getElementById('player-profile-panel');
+            if(profile) profile.style.display = 'none';
+            if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+
+            // Otwórz ścianę
+            const userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
+            const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
+            this.wallManager.open(userId, username);
+        };
+    }
     
     // Przyjaciele
     const friendsBtn = document.getElementById('btn-friends-open'); 
@@ -522,6 +543,7 @@ export class UIManager {
   }
   
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
+  
   closeAllPanels() {
       if (this.skinPreviewAnimId) {
           cancelAnimationFrame(this.skinPreviewAnimId);
@@ -532,6 +554,7 @@ export class UIManager {
       this.mailManager.close();
       this.friendsManager.close();
       this.highScoresManager.close();
+      this.wallManager.close(); // NOWOŚĆ
   }
 
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
