@@ -14,7 +14,7 @@ import { FriendsManager } from './FriendsManager.js';
 import { MailManager } from './MailManager.js';
 import { NewsManager } from './NewsManager.js';
 import { HighScoresManager } from './HighScoresManager.js';
-import { WallManager } from './WallManager.js'; // NOWOŚĆ
+import { WallManager } from './WallManager.js'; 
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
@@ -51,7 +51,7 @@ export class UIManager {
     this.mailManager = new MailManager(this);
     this.newsManager = new NewsManager(this);
     this.highScoresManager = new HighScoresManager(this);
-    this.wallManager = new WallManager(this); // NOWOŚĆ
+    this.wallManager = new WallManager(this); 
 
     // Stan lokalny
     this.shopCurrentCategory = 'block'; 
@@ -82,12 +82,12 @@ export class UIManager {
     try {
         this.renderUI();
         
-        // Inicjalizacja menedżerów (wstrzykiwanie ich HTML)
+        // Inicjalizacja menedżerów
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
         if (this.newsManager.initialize) this.newsManager.initialize();
         if (this.highScoresManager.init) this.highScoresManager.init();
-        if (this.wallManager.initialize) this.wallManager.initialize(); // NOWOŚĆ
+        if (this.wallManager.initialize) this.wallManager.initialize(); 
 
         this.setupButtonHandlers();
         this.setupChatSystem(); 
@@ -355,7 +355,6 @@ export class UIManager {
     const profilePanel = document.getElementById('player-profile-panel');
     if (profilePanel) {
         profilePanel.addEventListener('click', (e) => {
-            // Zamknij tylko jeśli kliknięto w ciemne tło, a nie w samą kartę profilu
             if (e.target.id === 'player-profile-panel') {
                 profilePanel.style.display = 'none';
                 if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
@@ -375,16 +374,14 @@ export class UIManager {
         this.openPlayerProfile(); 
     };
 
-    // Obsługa przycisku "Ściana" w profilu (NOWOŚĆ)
+    // Obsługa przycisku "Ściana" w profilu
     const btnWall = document.getElementById('btn-profile-wall');
     if (btnWall) {
         btnWall.onclick = () => {
-            // Zamknij profil, żeby nie zasłaniał
             const profile = document.getElementById('player-profile-panel');
             if(profile) profile.style.display = 'none';
             if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
 
-            // Otwórz ścianę
             const userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
             const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
             this.wallManager.open(userId, username);
@@ -475,6 +472,8 @@ export class UIManager {
         localStorage.removeItem(STORAGE_KEYS.USER_ID);
         window.location.reload();
     });
+
+    setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
   // --- HELPERS ---
@@ -543,7 +542,6 @@ export class UIManager {
   }
   
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
-  
   closeAllPanels() {
       if (this.skinPreviewAnimId) {
           cancelAnimationFrame(this.skinPreviewAnimId);
@@ -554,7 +552,7 @@ export class UIManager {
       this.mailManager.close();
       this.friendsManager.close();
       this.highScoresManager.close();
-      this.wallManager.close(); // NOWOŚĆ
+      this.wallManager.close(); 
   }
 
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
@@ -625,18 +623,30 @@ export class UIManager {
           if (type === 'skin') { items = mode === 'mine' ? await SkinStorage.getMySkins() : await SkinStorage.getAllSkins(); } 
           else if (type === 'prefab') { items = mode === 'mine' ? await PrefabStorage.getSavedPrefabsList() : await PrefabStorage.getAllPrefabs(); } 
           else if (type === 'part') { items = mode === 'mine' ? await HyperCubePartStorage.getSavedPartsList() : await HyperCubePartStorage.getAllParts(); }
-          this.populateDiscoverPanel(type, items, (item) => { this.showItemDetails(item, type); });
+          this.populateDiscoverPanel(type, items, (item) => { 
+              // FIX: Przekazujemy true, aby nie zamykać ściany/odkrywania
+              this.showItemDetails(item, type, true); 
+          });
       } catch(e) { console.error(e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Błąd połączenia.</p>'; }
   }
 
   populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item => { const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width='64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc = item.thumbnail; let label = item.name; if (type === 'worlds' && typeof item === 'object') { if(item.creator) label += ` (od ${item.creator})`; } else if (item.creator) { label += ` (od ${item.creator})`; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent='?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); div.onclick=()=>{ if (type === 'worlds') { this.closeAllPanels(); onSelect(item); } else { onSelect(item); } }; list.appendChild(div); }); }
 
-  async showItemDetails(item, type) { 
+  // FIX: Dodano parametr keepOpen do showItemDetails
+  async showItemDetails(item, type, keepOpen = false) { 
       const modal = document.getElementById('skin-details-modal'); 
       if (!modal) return; 
+      
       this.currentDetailsId = item.id; 
       this.currentDetailsType = type; 
+      
       this.bringToFront(modal); 
+      
+      // Jeśli nie mamy keepOpen, to zamykamy inne
+      if (!keepOpen) {
+          this.closeAllPanels();
+      }
+
       const headerName = modal.querySelector('.skin-name-header'); 
       const creatorName = modal.querySelector('.skin-creator-name'); 
       const creatorLevel = modal.querySelector('.skin-creator-level-val'); 
@@ -645,17 +655,63 @@ export class UIManager {
       const btnUse = document.getElementById('skin-btn-use'); 
       const btnLike = document.getElementById('skin-btn-like'); 
       const btnComment = document.getElementById('skin-btn-comment'); 
+      
       if(headerName) headerName.textContent = item.name; 
       if(creatorName) creatorName.textContent = item.creator || "Nieznany"; 
       if(creatorLevel) creatorLevel.textContent = item.creatorLevel || "?"; 
       if(likesCount) likesCount.textContent = item.likes || "0"; 
       if(timeInfo) { let dateStr = "niedawno"; if (item.created_at) { const date = new Date(item.created_at); if (!isNaN(date.getTime())) { const now = new Date(); const diffDays = Math.floor(Math.abs(now - date) / (1000 * 60 * 60 * 24)); dateStr = diffDays === 0 ? "dzisiaj" : `${diffDays} dni temu`; } } timeInfo.textContent = dateStr; } 
       if (btnComment) { const countSpan = btnComment.querySelector('.skin-btn-label'); if(countSpan) countSpan.textContent = item.comments || "0"; btnComment.onclick = () => { this.openItemComments(item.id, type); }; } 
-      const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); const isOwner = item.owner_id === myId; 
-      if (btnUse) { btnUse.style.display = 'flex'; if (type === 'skin') { if (isOwner) { btnUse.onclick = () => { this.closeAllPanels(); if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id); }; } else { btnUse.style.display = 'none'; } } else if (type === 'part') { btnUse.onclick = () => { this.closeAllPanels(); if (this.onUsePart) this.onUsePart(item); }; } else if (type === 'prefab') { btnUse.onclick = () => { this.closeAllPanels(); if (this.onUsePrefab) this.onUsePrefab(item); }; } } 
-      if (btnLike) { btnLike.onclick = null; btnLike.onclick = async () => { const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); if(!t) return; try { const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${item.id}/like`, { method: 'POST', headers: { 'Authorization': `Bearer ${t}` } }); const d = await r.json(); if (d.success) { if(likesCount) likesCount.textContent = d.likes; } } catch(e) { console.error(e); } }; } 
+      
+      const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); 
+      const isOwner = item.owner_id === myId; 
+      
+      if (btnUse) { 
+          btnUse.style.display = 'flex'; 
+          if (type === 'skin') { 
+              if (isOwner) { 
+                  btnUse.onclick = () => { 
+                      this.closeAllPanels(); 
+                      if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id); 
+                  }; 
+              } else { 
+                  btnUse.style.display = 'none'; 
+              } 
+          } 
+          else if (type === 'part') { 
+              btnUse.onclick = () => { 
+                  this.closeAllPanels(); 
+                  if (this.onUsePart) this.onUsePart(item); 
+              }; 
+          } 
+          else if (type === 'prefab') { 
+              btnUse.onclick = () => { 
+                  this.closeAllPanels(); 
+                  if (this.onUsePrefab) this.onUsePrefab(item); 
+              }; 
+          } 
+      } 
+      
+      if (btnLike) { 
+          btnLike.onclick = null; 
+          btnLike.onclick = async () => { 
+              const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); 
+              if(!t) return; 
+              try { 
+                  const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); 
+                  const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${item.id}/like`, { 
+                      method: 'POST', 
+                      headers: { 'Authorization': `Bearer ${t}` } 
+                  }); 
+                  const d = await r.json(); 
+                  if (d.success) { 
+                      if(likesCount) likesCount.textContent = d.likes; 
+                  } 
+              } catch(e) { console.error(e); } 
+          }; 
+      } 
+      
       this.init3DPreview(item.id, type); 
-      this.closeAllPanels(); 
       modal.style.display = 'flex'; 
   }
 
