@@ -5,9 +5,11 @@ import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 
+// Import szablonów
 import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML, PLAYER_PROFILE_HTML } from './UITemplates.js';
 import { STORAGE_KEYS } from './Config.js';
 
+// Import Menedżerów
 import { FriendsManager } from './FriendsManager.js';
 import { MailManager } from './MailManager.js';
 import { NewsManager } from './NewsManager.js';
@@ -68,6 +70,7 @@ export class UIManager {
     
     this.activeZIndex = 20000; 
     
+    // Cache danych gracza (do profilu)
     this.myProfileData = null;
   }
   
@@ -77,6 +80,7 @@ export class UIManager {
     try {
         this.renderUI();
         
+        // Inicjalizacja menedżerów
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
         if (this.newsManager.initialize) this.newsManager.initialize();
@@ -107,6 +111,7 @@ export class UIManager {
       }
   }
 
+  // --- HELPERS ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -124,6 +129,7 @@ export class UIManager {
       setTimeout(() => { m.style.opacity = '0'; setTimeout(() => { if(m.parentNode) m.parentNode.removeChild(m); }, 300); }, 2500);
   }
 
+  // --- HUD UPDATES ---
   updateLevelInfo(level, xp, maxXp) {
       const lvlVal = document.getElementById('level-value');
       const lvlText = document.getElementById('level-text');
@@ -167,6 +173,7 @@ export class UIManager {
       }
   }
 
+  // --- PLAYER & ADMIN ---
   updatePlayerName(name) { 
       const nameDisplay = document.getElementById('player-name-display'); 
       if (nameDisplay) nameDisplay.textContent = name;
@@ -310,13 +317,16 @@ export class UIManager {
       }
   }
 
+  // --- GLOBAL CHAT (HUD) ---
   setupChatSystem() { this.setupChatInput(); }
   addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
 
+  // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
+    // Zamknięcie paneli (w tym nowego profilu)
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
             const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
@@ -326,6 +336,7 @@ export class UIManager {
         };
     });
     
+    // Kliknięcie w tło zamyka panel "Więcej"
     const moreOptions = document.getElementById('more-options-panel');
     if (moreOptions) {
         moreOptions.addEventListener('click', (e) => {
@@ -334,20 +345,36 @@ export class UIManager {
             }
         });
     }
+
+    // FIX: Kliknięcie w tło zamyka "Profil Gracza"
+    const profilePanel = document.getElementById('player-profile-panel');
+    if (profilePanel) {
+        profilePanel.addEventListener('click', (e) => {
+            // Zamknij tylko jeśli kliknięto w ciemne tło, a nie w samą kartę profilu
+            if (e.target.id === 'player-profile-panel') {
+                profilePanel.style.display = 'none';
+                if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+            }
+        });
+    }
     
+    // Główne przyciski gry
     document.querySelectorAll('.game-btn').forEach(button => {
       const type = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(type, button));
     });
 
+    // Avatar -> Nowy Profil
     const pBtn = document.getElementById('player-avatar-button'); 
     if (pBtn) pBtn.onclick = () => { 
         this.openPlayerProfile(); 
     };
     
+    // Przyjaciele
     const friendsBtn = document.getElementById('btn-friends-open'); 
     if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
     
+    // Poczta
     const topBarItems = document.querySelectorAll('.top-bar-item'); 
     topBarItems.forEach(item => { 
         if (item.textContent.includes('Poczta')) { 
@@ -429,6 +456,7 @@ export class UIManager {
     });
   }
 
+  // --- HELPERS ---
   getButtonType(button) { 
       if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
       if (button.classList.contains('btn-buduj')) return 'buduj'; 
@@ -449,11 +477,12 @@ export class UIManager {
     if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; }
   }
 
+  // --- DELEGACJA ---
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
   refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
 
+  // --- PARKOUR & REWARDS ---
   hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
-  
   showRewardPanel(customData = null) { 
       const panel = document.getElementById('reward-panel'); 
       const data = customData || this.pendingRewardData; 
@@ -482,6 +511,7 @@ export class UIManager {
       panel.style.display = 'flex'; 
   }
 
+  // --- DISCOVER / SHOP / SKINS ---
   openPanel(id) { 
       const p = document.getElementById(id); 
       if(p) {
