@@ -212,22 +212,18 @@ export class WallManager {
     }
 
     setupEventListeners() {
-        // Zamknięcie
         const closeBtn = document.getElementById('btn-wall-close');
         if (closeBtn) closeBtn.onclick = () => this.close();
 
-        // Zakładki
         const tabs = document.querySelectorAll('.wall-tab');
         tabs.forEach(tab => {
             tab.onclick = () => {
-                // Deaktywuj wszystkie
                 tabs.forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('#wall-panel .wall-content').forEach(c => {
                     c.style.display = 'none';
                     c.classList.remove('active');
                 });
 
-                // Aktywuj klikniętą
                 tab.classList.add('active');
                 const targetId = tab.getAttribute('data-tab');
                 const targetContent = document.getElementById(targetId);
@@ -249,7 +245,6 @@ export class WallManager {
         this.currentUserId = userId;
         document.getElementById('wall-header-title').textContent = `Ściana użytkownika ${username || 'Gracz'}`;
         
-        // Reset widoku do pierwszej zakładki
         document.querySelector('.wall-tab[data-tab="wall-creations"]').click();
 
         this.loadWallData(userId);
@@ -261,7 +256,6 @@ export class WallManager {
     }
 
     async loadWallData(userId) {
-        // Wyczyść listy i pokaż loading (opcjonalnie)
         ['skins', 'worlds', 'prefabs', 'parts'].forEach(type => {
             document.getElementById(`wall-list-${type}`).innerHTML = '<p style="color:white; padding:10px;">Ładowanie...</p>';
         });
@@ -310,10 +304,7 @@ export class WallManager {
         const div = document.createElement('div');
         div.className = 'wall-card';
 
-        // Thumb
         let thumbUrl = item.thumbnail || 'icons/avatar_placeholder.png';
-        
-        // Likes & Comments (domyślnie 0 jeśli brak w danych)
         const likes = item.likes || 0;
         const comments = item.comments || 0;
 
@@ -338,21 +329,17 @@ export class WallManager {
     }
 
     handleItemClick(item, type) {
-        // Wykorzystujemy istniejącą metodę z UIManager, która otwiera szczegóły i podgląd 3D
         if (type === 'world') {
-            // Dla światów logika jest inna (od razu wejście lub modal wyboru)
-            // Na razie możemy wywołać onWorldSelect z ui.js jeśli dostępny, lub alert
             if (this.ui.onWorldSelect) {
-                // Potrzebujemy potwierdzenia, bo to wyjście z obecnego świata
                 if (confirm(`Chcesz wejść do świata "${item.name}"?`)) {
                     this.ui.closeAllPanels();
                     this.ui.onWorldSelect(item);
                 }
             }
         } else {
-            // Skin, Prefab, Part -> Szczegóły 3D
+            // FIX: Dodano true, aby nie zamykać innych paneli (czyli Ściany)
             if (this.ui.showItemDetails) {
-                this.ui.showItemDetails(item, type);
+                this.ui.showItemDetails(item, type, true); 
             }
         }
     }
