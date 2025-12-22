@@ -78,7 +78,6 @@ export const BUILD_UI_HTML = `
 export const SKIN_DETAILS_HTML = `
     <div id="skin-details-modal" class="panel-modal" style="display:none;">
         <div class="panel-close-button" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: #e74c3c; width: 40px; height: 40px; display:flex; justify-content:center; align-items:center; font-weight:bold;">X</div>
-        
         <div class="skin-col-left">
             <div class="skin-creator-box">
                 <div class="skin-creator-avatar"></div>
@@ -92,31 +91,16 @@ export const SKIN_DETAILS_HTML = `
                 <div class="skin-likes-count text-outline">0</div>
             </div>
         </div>
-
         <div class="skin-col-center">
             <div class="skin-name-header text-outline">Nazwa Skina</div>
             <div id="skin-preview-canvas"></div>
         </div>
-
         <div class="skin-col-right">
-            <!-- PRZYCISKI AKCJI Z IKONAMI -->
-            <div id="skin-btn-share" class="skin-action-btn">
-                <div class="skin-btn-icon" style="background-image: url('icons/icon-share.png');"></div>
-                <div class="skin-btn-label text-outline">Udostępnij</div>
-            </div>
-            
-            <div id="skin-btn-like" class="skin-action-btn">
-                <div class="skin-btn-icon" style="background-image: url('icons/icon-like.png');"></div>
-                <div class="skin-btn-label text-outline">Polub</div>
-            </div>
-            
-            <div id="skin-btn-comment" class="skin-action-btn">
-                <div class="skin-btn-icon" style="background-image: url('icons/icon-chat.png');"></div>
-                <div class="skin-btn-label text-outline">0</div>
-            </div>
-            
+            <div id="skin-btn-share" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Udostępnij</div></div>
+            <div id="skin-btn-like" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">Polub</div></div>
+            <div id="skin-btn-comment" class="skin-action-btn"><div class="skin-btn-icon"></div><div class="skin-btn-label text-outline">0</div></div>
             <div id="skin-btn-use" class="skin-action-btn" style="display:none;">
-                <div class="skin-btn-icon" style="background-image: url('icons/icon-play.png');"></div>
+                <div class="skin-btn-icon"></div>
                 <div class="skin-btn-label text-outline">Użyj</div>
             </div>
         </div>
@@ -488,6 +472,7 @@ export const FRIENDS_MODAL_HTML = `
     </div>
 `;
 
+// NOWY MODAL DLA PLAYER PROFILE (1:1 z BSP)
 export const PLAYER_PROFILE_HTML = `
     <style>
         #player-profile-panel .panel-content {
@@ -578,7 +563,7 @@ export const PLAYER_PROFILE_HTML = `
         /* Pasek boczny (Przyciski) */
         .profile-sidebar {
             position: absolute;
-            top: 15px; right: -15px; /* Wystaje poza kontener */
+            top: 15px; right: -70px; /* PRZESUNIĘTO NA PRAWO */
             display: flex; flex-direction: column; gap: 10px;
             z-index: 5;
         }
@@ -599,27 +584,30 @@ export const PLAYER_PROFILE_HTML = `
         .sidebar-icon { width: 40px; height: 40px; background-size: contain; background-repeat: no-repeat; background-position: center; margin-bottom: 2px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
         .sidebar-label { color: white; font-size: 12px; text-shadow: 1px 1px 0 #000; }
 
-        /* Strzałki nawigacji na dole */
+        /* Strzałki nawigacji na dole - POPRAWIONE */
         .nav-arrow {
             position: absolute; bottom: 20px;
             width: 60px; height: 60px;
-            background-color: #8accff;
-            border: 3px solid white; border-radius: 10px;
+            background-color: transparent; /* BRAK TŁA */
+            border: none; /* BRAK OBRAMOWANIA */
+            box-shadow: none; /* BRAK CIENIA */
             cursor: pointer;
-            box-shadow: 0 4px 0 #54a0ff;
             background-repeat: no-repeat;
             background-position: center;
-            background-size: 50%;
+            background-size: contain; /* IKONA WYPEŁNIA */
+            filter: drop-shadow(2px 4px 2px rgba(0,0,0,0.4)); /* CIEŃ NA IKONIE */
+            transition: transform 0.1s;
         }
+        .nav-arrow:active { transform: scale(0.9); }
         .nav-arrow.left { left: 20px; background-image: url('icons/arrow-left.png'); }
-        .nav-arrow.right { right: 100px; background-image: url('icons/arrow-right.png'); } /* Zostawiamy miejsce bo sidebar wystaje */
+        .nav-arrow.right { right: 100px; background-image: url('icons/arrow-right.png'); } 
         
-        .nav-arrow:active { transform: translateY(3px); box-shadow: none; }
 
         /* Responsywność dla mobile */
         @media (max-width: 600px) {
             .profile-container { width: 90vw; height: 80vw; max-height: 400px; }
-            .sidebar-btn { width: 60px; height: 60px; right: -5px; }
+            .sidebar-btn { width: 60px; height: 60px; }
+            .profile-sidebar { right: -55px; } /* Mobile adjustment */
             .sidebar-icon { width: 30px; height: 30px; }
             .sidebar-label { font-size: 10px; }
             .level-star-large { width: 70px; height: 70px; font-size: 24px; }
@@ -656,7 +644,7 @@ export const PLAYER_PROFILE_HTML = `
                     </div>
                 </div>
 
-                <!-- Strzałki nawigacji (Zaktualizowane na obrazki) -->
+                <!-- Strzałki nawigacji (Zaktualizowane na obrazki bez tła) -->
                 <div class="nav-arrow left"></div>
                 <div class="nav-arrow right"></div>
             </div>
@@ -686,7 +674,6 @@ export const MODALS_HTML = `
         }
         .nav-item:active { transform: scale(0.95); }
         
-        /* FIX: Użycie NavigationButton.png jako tła */
         .nav-btn-box {
             width: 110px; height: 110px;
             background-image: url('icons/NavigationButton.png');
