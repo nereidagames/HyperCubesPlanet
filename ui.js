@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -61,6 +62,7 @@ export class UIManager {
     this.pendingRewardData = null;
     this.pendingNewsCount = 0;
 
+    // Zmienne do podglądu 3D (Renderery)
     this.skinPreviewRenderer = null;
     this.skinPreviewScene = null;
     this.skinPreviewCamera = null;
@@ -132,6 +134,47 @@ export class UIManager {
       document.body.appendChild(m);
       setTimeout(() => { m.style.opacity = '1'; m.style.transform = 'translate(-50%, -50%) translateY(-10px)'; }, 10);
       setTimeout(() => { m.style.opacity = '0'; setTimeout(() => { if(m.parentNode) m.parentNode.removeChild(m); }, 300); }, 2500);
+  }
+
+  // --- METODA CZYSZCZĄCA RENDERER (FIX WYCIEKU PAMIĘCI) ---
+  disposeCurrentPreview() {
+      // 1. Zatrzymaj animację
+      if (this.skinPreviewAnimId) {
+          cancelAnimationFrame(this.skinPreviewAnimId);
+          this.skinPreviewAnimId = null;
+      }
+
+      // 2. Wyczyść scenę (geometrie i materiały)
+      if (this.skinPreviewScene) {
+          this.skinPreviewScene.traverse((object) => {
+              if (object.isMesh) {
+                  if (object.geometry) object.geometry.dispose();
+                  if (object.material) {
+                      if (Array.isArray(object.material)) {
+                          object.material.forEach(material => material.dispose());
+                      } else {
+                          object.material.dispose();
+                      }
+                  }
+              }
+          });
+          this.skinPreviewScene = null;
+      }
+
+      // 3. Wyczyść renderer i kontekst WebGL
+      if (this.skinPreviewRenderer) {
+          this.skinPreviewRenderer.dispose();
+          this.skinPreviewRenderer.forceContextLoss(); // Wymusza utratę kontekstu
+          
+          if (this.skinPreviewRenderer.domElement && this.skinPreviewRenderer.domElement.parentNode) {
+              this.skinPreviewRenderer.domElement.parentNode.removeChild(this.skinPreviewRenderer.domElement);
+          }
+          
+          this.skinPreviewRenderer = null;
+      }
+
+      this.skinPreviewCamera = null;
+      this.skinPreviewCharacter = null;
   }
 
   // --- HUD UPDATES ---
@@ -245,31 +288,34 @@ export class UIManager {
 
   async init3DPreviewForProfile(container) {
       if (!container) return;
-      if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+      
+      // FIX: Czyścimy poprzedni renderer przed utworzeniem nowego
+      this.disposeCurrentPreview();
+      
       container.innerHTML = '';
       
       const width = container.clientWidth;
       const height = container.clientHeight;
 
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-      camera.position.set(0, 1, 5);
-      camera.lookAt(0, 0, 0);
+      this.skinPreviewScene = new THREE.Scene();
+      this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      this.skinPreviewCamera.position.set(0, 1, 5);
+      this.skinPreviewCamera.lookAt(0, 0, 0);
 
-      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-      renderer.setSize(width, height);
-      container.appendChild(renderer.domElement);
+      this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      this.skinPreviewRenderer.setSize(width, height);
+      container.appendChild(this.skinPreviewRenderer.domElement);
 
       const amb = new THREE.AmbientLight(0xffffff, 0.9);
-      scene.add(amb);
+      this.skinPreviewScene.add(amb);
       const dir = new THREE.DirectionalLight(0xffffff, 0.5);
       dir.position.set(2, 5, 3);
-      scene.add(dir);
+      this.skinPreviewScene.add(dir);
 
-      const character = new THREE.Group();
-      createBaseCharacter(character);
-      character.position.y = -1; 
-      scene.add(character);
+      this.skinPreviewCharacter = new THREE.Group();
+      createBaseCharacter(this.skinPreviewCharacter);
+      this.skinPreviewCharacter.position.y = -1; 
+      this.skinPreviewScene.add(this.skinPreviewCharacter);
 
       const skinId = SkinStorage.getLastUsedSkinId();
       if (skinId) {
@@ -287,14 +333,16 @@ export class UIManager {
                  mesh.position.set(b.x, b.y, b.z);
                  blockGroup.add(mesh);
              });
-             character.add(blockGroup);
+             this.skinPreviewCharacter.add(blockGroup);
           }
       }
       
       const animate = () => {
           this.skinPreviewAnimId = requestAnimationFrame(animate);
-          character.rotation.y += 0.01;
-          renderer.render(scene, camera);
+          if (this.skinPreviewCharacter) this.skinPreviewCharacter.rotation.y += 0.01;
+          if (this.skinPreviewRenderer && this.skinPreviewScene && this.skinPreviewCamera) {
+              this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera);
+          }
       };
       animate();
   }
@@ -336,8 +384,11 @@ export class UIManager {
         btn.onclick = () => { 
             const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
             if(p) p.style.display = 'none'; 
-            if(p && p.id === 'skin-details-modal' && this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
-            if(p && p.id === 'player-profile-panel' && this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+            
+            // FIX: Czyścimy podgląd przy zamykaniu konkretnych okien
+            if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel')) {
+                this.disposeCurrentPreview();
+            }
         };
     });
     
@@ -357,7 +408,8 @@ export class UIManager {
         profilePanel.addEventListener('click', (e) => {
             if (e.target.id === 'player-profile-panel') {
                 profilePanel.style.display = 'none';
-                if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+                // FIX: Czyścimy podgląd
+                this.disposeCurrentPreview();
             }
         });
     }
@@ -380,7 +432,9 @@ export class UIManager {
         btnWall.onclick = () => {
             const profile = document.getElementById('player-profile-panel');
             if(profile) profile.style.display = 'none';
-            if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId);
+            
+            // FIX: Czyścimy podgląd z profilu przed otwarciem ściany
+            this.disposeCurrentPreview();
 
             const userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
             const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
@@ -543,10 +597,9 @@ export class UIManager {
   
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
   closeAllPanels() {
-      if (this.skinPreviewAnimId) {
-          cancelAnimationFrame(this.skinPreviewAnimId);
-          this.skinPreviewAnimId = null;
-      }
+      // FIX: Globalne czyszczenie podglądu przy zamykaniu wszystkich paneli
+      this.disposeCurrentPreview();
+      
       document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none');
       this.newsManager.close();
       this.mailManager.close();
@@ -624,7 +677,6 @@ export class UIManager {
           else if (type === 'prefab') { items = mode === 'mine' ? await PrefabStorage.getSavedPrefabsList() : await PrefabStorage.getAllPrefabs(); } 
           else if (type === 'part') { items = mode === 'mine' ? await HyperCubePartStorage.getSavedPartsList() : await HyperCubePartStorage.getAllParts(); }
           this.populateDiscoverPanel(type, items, (item) => { 
-              // FIX: Przekazujemy true, aby nie zamykać ściany/odkrywania
               this.showItemDetails(item, type, true); 
           });
       } catch(e) { console.error(e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Błąd połączenia.</p>'; }
@@ -632,7 +684,6 @@ export class UIManager {
 
   populateDiscoverPanel(type, items, onSelect) { const list=document.getElementById('discover-list'); if(!list) return; list.innerHTML=''; if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } items.forEach(item => { const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; const thumbContainer=document.createElement('div'); thumbContainer.style.width='64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; let thumbSrc = item.thumbnail; let label = item.name; if (type === 'worlds' && typeof item === 'object') { if(item.creator) label += ` (od ${item.creator})`; } else if (item.creator) { label += ` (od ${item.creator})`; } if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent='?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; } const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; div.appendChild(thumbContainer); div.appendChild(nameSpan); div.onclick=()=>{ if (type === 'worlds') { this.closeAllPanels(); onSelect(item); } else { onSelect(item); } }; list.appendChild(div); }); }
 
-  // FIX: Dodano parametr keepOpen do showItemDetails
   async showItemDetails(item, type, keepOpen = false) { 
       const modal = document.getElementById('skin-details-modal'); 
       if (!modal) return; 
@@ -642,7 +693,6 @@ export class UIManager {
       
       this.bringToFront(modal); 
       
-      // Jeśli nie mamy keepOpen, to zamykamy inne
       if (!keepOpen) {
           this.closeAllPanels();
       }
@@ -717,5 +767,72 @@ export class UIManager {
 
   async openItemComments(itemId, type) { const panel = document.getElementById('skin-comments-panel'); if (!panel) return; this.bringToFront(panel); panel.style.display = 'flex'; const closeBtn = document.getElementById('close-comments-btn'); if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; }; this.loadItemComments(itemId, type); const submitBtn = document.getElementById('comment-submit-btn'); const input = document.getElementById('comment-input'); if(submitBtn) { submitBtn.onclick = null; submitBtn.onclick = async () => { const text = input.value.trim(); if(!text) return; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` }, body: JSON.stringify({ text }) }); if(r.ok) { input.value = ''; this.loadItemComments(itemId, type); } } catch(e) { console.error(e); } }; } }
   async loadItemComments(itemId, type) { const container = document.querySelector('.comments-list-container'); if(!container) return; container.innerHTML = '<p style="text-align:center; padding:10px;">Ładowanie...</p>'; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); const likeEndpoint = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { headers: { 'Authorization': `Bearer ${t}` } }); const comments = await r.json(); container.innerHTML = ''; if(comments.length === 0) { container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy.</p>'; return; } comments.forEach(c => { const div = document.createElement('div'); div.className = 'comment-item'; const date = new Date(c.created_at); const now = new Date(); const diffHours = Math.floor((now - date) / (1000 * 60 * 60)); const timeStr = diffHours < 24 ? (diffHours === 0 ? "teraz" : `${diffHours}h temu`) : `${Math.floor(diffHours/24)}d temu`; div.innerHTML = `<div class="comment-avatar" style="background-image: url('${c.current_skin_thumbnail || ''}')"></div><div class="comment-content"><div class="comment-author">${c.username}</div><div class="comment-text">${c.text}</div><div class="comment-time">${timeStr}</div></div><div class="comment-actions"><div class="comment-like-count">${c.likes || 0}</div><div class="comment-like-btn">❤</div></div>`; const likeBtn = div.querySelector('.comment-like-btn'); likeBtn.onclick = async () => { try { const lr = await fetch(`${API_BASE_URL}/api/${likeEndpoint}/comments/${c.id}/like`, { method: 'POST', headers: { 'Authorization': `Bearer ${t}` } }); const ld = await lr.json(); if(ld.success) { div.querySelector('.comment-like-count').textContent = ld.likes; } } catch(e) {} }; container.appendChild(div); }); } catch(e) { container.innerHTML = '<p style="text-align:center;">Błąd.</p>'; } }
-  async init3DPreview(itemId, type) { const container = document.getElementById('skin-preview-canvas'); if (!container) return; if (this.skinPreviewAnimId) cancelAnimationFrame(this.skinPreviewAnimId); container.innerHTML = ''; const width = container.clientWidth || 300; const height = container.clientHeight || 300; this.skinPreviewScene = new THREE.Scene(); this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); this.skinPreviewCamera.position.set(0, 2, 6); this.skinPreviewCamera.lookAt(0, 0.5, 0); this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); this.skinPreviewRenderer.setSize(width, height); container.appendChild(this.skinPreviewRenderer.domElement); const amb = new THREE.AmbientLight(0xffffff, 0.8); this.skinPreviewScene.add(amb); const dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(5, 10, 7); this.skinPreviewScene.add(dir); this.skinPreviewCharacter = new THREE.Group(); if (type === 'skin' && typeof createBaseCharacter !== 'undefined') { createBaseCharacter(this.skinPreviewCharacter); this.skinPreviewCharacter.position.y = -0.8; } else { this.skinPreviewCharacter.position.y = 0; } this.skinPreviewScene.add(this.skinPreviewCharacter); let blocksData = null; if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId); else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId); else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId); if (blocksData) { const loader = new THREE.TextureLoader(); const blockGroup = new THREE.Group(); if (type === 'skin') { blockGroup.scale.setScalar(0.125); blockGroup.position.y = 0.5; } else { blockGroup.scale.setScalar(0.125); } blocksData.forEach(b => { const geo = new THREE.BoxGeometry(1, 1, 1); const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) }); const mesh = new THREE.Mesh(geo, mat); mesh.position.set(b.x, b.y, b.z); blockGroup.add(mesh); }); this.skinPreviewCharacter.add(blockGroup); } this.skinPreviewCharacter.scale.setScalar(1.5); const animate = () => { this.skinPreviewAnimId = requestAnimationFrame(animate); if (this.skinPreviewCharacter) { this.skinPreviewCharacter.rotation.y += 0.01; } this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera); }; animate(); }
+  
+  async init3DPreview(itemId, type) { 
+      const container = document.getElementById('skin-preview-canvas'); 
+      if (!container) return; 
+      
+      // FIX: Czyścimy poprzedni renderer
+      this.disposeCurrentPreview();
+      
+      container.innerHTML = ''; 
+      const width = container.clientWidth || 300; 
+      const height = container.clientHeight || 300; 
+      
+      this.skinPreviewScene = new THREE.Scene(); 
+      this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); 
+      this.skinPreviewCamera.position.set(0, 2, 6); 
+      this.skinPreviewCamera.lookAt(0, 0.5, 0); 
+      
+      this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); 
+      this.skinPreviewRenderer.setSize(width, height); 
+      container.appendChild(this.skinPreviewRenderer.domElement); 
+      
+      const amb = new THREE.AmbientLight(0xffffff, 0.8); 
+      this.skinPreviewScene.add(amb); 
+      const dir = new THREE.DirectionalLight(0xffffff, 0.6); 
+      dir.position.set(5, 10, 7); 
+      this.skinPreviewScene.add(dir); 
+      
+      this.skinPreviewCharacter = new THREE.Group(); 
+      if (type === 'skin' && typeof createBaseCharacter !== 'undefined') { 
+          createBaseCharacter(this.skinPreviewCharacter); 
+          this.skinPreviewCharacter.position.y = -0.8; 
+      } else { 
+          this.skinPreviewCharacter.position.y = 0; 
+      } 
+      this.skinPreviewScene.add(this.skinPreviewCharacter); 
+      
+      let blocksData = null; 
+      if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId); 
+      else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId); 
+      else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId); 
+      
+      if (blocksData) { 
+          const loader = new THREE.TextureLoader(); 
+          const blockGroup = new THREE.Group(); 
+          if (type === 'skin') { blockGroup.scale.setScalar(0.125); blockGroup.position.y = 0.5; } 
+          else { blockGroup.scale.setScalar(0.125); } 
+          
+          blocksData.forEach(b => { 
+              const geo = new THREE.BoxGeometry(1, 1, 1); 
+              const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) }); 
+              const mesh = new THREE.Mesh(geo, mat); 
+              mesh.position.set(b.x, b.y, b.z); 
+              blockGroup.add(mesh); 
+          }); 
+          this.skinPreviewCharacter.add(blockGroup); 
+      } 
+      this.skinPreviewCharacter.scale.setScalar(1.5); 
+      
+      const animate = () => { 
+          this.skinPreviewAnimId = requestAnimationFrame(animate); 
+          if (this.skinPreviewCharacter) { this.skinPreviewCharacter.rotation.y += 0.01; } 
+          
+          if(this.skinPreviewRenderer && this.skinPreviewScene && this.skinPreviewCamera) {
+              this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera); 
+          }
+      }; 
+      animate(); 
+  }
 }
