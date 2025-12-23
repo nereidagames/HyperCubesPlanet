@@ -1,3 +1,4 @@
+/* PLIK: HighScoresManager.js */
 import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 
 const TEMPLATE = `
@@ -13,12 +14,12 @@ const TEMPLATE = `
             display: flex;
             flex-direction: column;
             pointer-events: auto;
-            position: relative; /* Ważne dla pozycjonowania przycisku */
+            position: relative;
         }
 
         .hs-container {
             width: 100%; height: 100%;
-            background-color: #3498db; /* Główny niebieski */
+            background-color: #3498db;
             border: 4px solid white;
             border-radius: 15px;
             display: flex; flex-direction: column;
@@ -28,33 +29,29 @@ const TEMPLATE = `
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* PRZYCISK ZAMKNIĘCIA (NAPRAWIONY) */
+        /* PRZYCISK ZAMKNIĘCIA */
         .hs-btn-close-fixed {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 10px; left: 10px;
             width: 45px; height: 45px;
             background: #e74c3c url('icons/icon-back.png') center/60% no-repeat;
             border: 3px solid white;
             border-radius: 10px;
             cursor: pointer;
-            z-index: 100; /* Zawsze na wierzchu */
+            z-index: 100;
             box-shadow: 0 4px 0 #c0392b;
             transition: transform 0.1s;
         }
-        .hs-btn-close-fixed:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 0 #c0392b;
-        }
+        .hs-btn-close-fixed:active { transform: scale(0.95); box-shadow: 0 2px 0 #c0392b; }
 
-        /* GÓRNE ZAKŁADKI */
+        /* ZAKŁADKI */
         .hs-tabs {
             height: 65px;
             background: linear-gradient(to bottom, #2980b9, #3498db);
             display: flex; justify-content: center; align-items: flex-end;
             gap: 10px; padding-bottom: 5px;
             border-bottom: 4px solid #fff;
-            padding-left: 60px; /* Miejsce na przycisk wyjścia */
+            padding-left: 60px;
         }
 
         .hs-tab {
@@ -63,12 +60,7 @@ const TEMPLATE = `
             transition: transform 0.1s;
             position: relative;
         }
-        .hs-tab.active { 
-            opacity: 1.0; 
-            transform: scale(1.1); 
-            z-index: 2;
-        }
-        /* Biały trójkącik pod aktywną zakładką */
+        .hs-tab.active { opacity: 1.0; transform: scale(1.1); z-index: 2; }
         .hs-tab.active::after {
             content: ''; position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
             border-left: 8px solid transparent; border-right: 8px solid transparent;
@@ -80,7 +72,7 @@ const TEMPLATE = `
 
         /* NAGŁÓWEK TABELI */
         .hs-header-bar {
-            background-color: #f1c40f; /* Złoty pasek */
+            background-color: #f1c40f;
             color: white; text-align: center; font-size: 18px; padding: 8px;
             text-shadow: 1.5px 1.5px 0 #000;
             border-bottom: 2px solid white;
@@ -90,7 +82,7 @@ const TEMPLATE = `
         }
         .hs-star-deco { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; background: url('icons/icon-level.png') center/contain no-repeat; }
 
-        /* LISTA WYNIKÓW */
+        /* LISTA */
         .hs-list-area {
             flex: 1; overflow-y: auto;
             background-color: #3498db;
@@ -98,42 +90,39 @@ const TEMPLATE = `
             display: flex; flex-direction: column;
         }
 
-        /* POJEDYNCZY WIERSZ */
+        /* WIERSZ */
         .hs-row {
             display: flex; align-items: center; height: 55px;
             background-color: #2980b9; 
             border-bottom: 2px solid #5dade2;
             color: white; font-size: 16px;
             padding: 0 10px;
+            cursor: pointer;
+            transition: background-color 0.1s;
         }
+        .hs-row:hover { background-color: #4facfe; }
         .hs-row:nth-child(even) { background-color: #3498db; }
+        .hs-row:nth-child(even):hover { background-color: #4facfe; }
         .hs-row.me { background-color: #2ecc71 !important; border: 2px solid #fff; position: relative; z-index: 1; }
 
         .hs-col-rank { width: 45px; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 0 #000; text-align: center; color: #f1c40f; }
-        
-        .hs-col-level { 
-            width: 45px; display: flex; align-items: center; justify-content: center; 
-        }
+        .hs-col-level { width: 45px; display: flex; align-items: center; justify-content: center; }
         .hs-level-star { 
             width: 32px; height: 32px; 
             background: url('icons/icon-level.png') center/contain no-repeat; 
             display: flex; justify-content: center; align-items: center;
             font-size: 11px; font-weight: bold; text-shadow: 1px 1px 0 #000; padding-top: 2px;
         }
-
         .hs-col-avatar { width: 50px; display: flex; justify-content: center; align-items: center; }
         .hs-avatar-img { width: 40px; height: 40px; background-color: #000; border: 2px solid white; border-radius: 6px; background-size: cover; background-position: center; }
-
         .hs-col-name { flex: 1; padding-left: 10px; font-size: 16px; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px; }
-        .vip-badge-small { width: 30px; height: 15px; background: url('icons/vip.png') center/contain no-repeat; display: inline-block; }
-
         .hs-col-score { width: 110px; text-align: right; font-size: 16px; text-shadow: 1px 1px 0 #000; font-family: monospace; font-weight: bold; padding-right: 5px; }
 
-        /* BOCZNE PRZYCISKI (Teraz wewnątrz kontenera po prawej, na wierzchu) */
+        /* BOCZNE PRZYCISKI */
         .hs-right-buttons {
             position: absolute; 
             top: 50%; transform: translateY(-50%);
-            right: 10px; /* Wewnątrz okna po prawej */
+            right: 10px; 
             display: flex; flex-direction: column; gap: 10px;
             z-index: 50;
         }
@@ -169,16 +158,13 @@ const TEMPLATE = `
         <div class="panel-content">
             
             <div class="hs-container">
-                <!-- PRZYCISK ZAMKNIĘCIA (Teraz wewnątrz, w lewym górnym rogu) -->
                 <div id="btn-hs-close" class="hs-btn-close-fixed"></div>
 
-                <!-- ZAKŁADKI -->
                 <div class="hs-tabs">
                     <div class="hs-tab active">
                         <div class="hs-tab-icon" style="background-image: url('icons/icon-level.png');"></div>
                         <div class="hs-tab-label">BlockStars</div>
                     </div>
-                    <!-- Placeholdery (wyszarzone) -->
                     <div class="hs-tab" style="filter: grayscale(1); opacity: 0.5;">
                         <div class="hs-tab-icon" style="background-image: url('icons/icon-build.png');"></div>
                         <div class="hs-tab-label">Budownicz.</div>
@@ -193,19 +179,14 @@ const TEMPLATE = `
                     </div>
                 </div>
 
-                <!-- TYTUŁ -->
                 <div class="hs-header-bar">
                     <span id="hs-title-text">Najlepsze BlockStars wszech czasów</span>
                     <div class="hs-star-deco"></div>
                 </div>
 
-                <!-- LISTA -->
-                <div id="hs-list" class="hs-list-area">
-                    <!-- Wiersze generowane przez JS -->
-                </div>
+                <div id="hs-list" class="hs-list-area"></div>
             </div>
 
-            <!-- PRZYCISKI PO PRAWEJ (Przełącznik i Info) -->
             <div class="hs-right-buttons">
                 <div id="btn-hs-toggle" class="hs-btn-toggle">
                     <div id="hs-arrow-icon" class="hs-arrow-icon">➤</div>
@@ -213,7 +194,6 @@ const TEMPLATE = `
                 <div id="btn-hs-info" class="hs-btn-info">?</div>
             </div>
 
-            <!-- MODAL POMOCY (UKRYTY) -->
             <div id="hs-info-modal">
                 <h3 style="color: #f1c40f; margin-bottom: 15px; text-shadow: 2px 2px 0 #000;">Jak to działa?</h3>
                 <p style="color: white; margin: 10px 0; font-size: 14px; line-height: 1.5;">
@@ -231,7 +211,7 @@ const TEMPLATE = `
 export class HighScoresManager {
     constructor(uiManager) {
         this.ui = uiManager;
-        this.mode = 'global'; // 'global' lub 'friends'
+        this.mode = 'global'; 
         this.page = 1;
         this.isLoading = false;
         this.hasMore = true;
@@ -239,6 +219,7 @@ export class HighScoresManager {
     }
 
     init() {
+        // Wstrzyknięcie szablonu
         const modalsLayer = document.getElementById('modals-layer');
         if (modalsLayer) {
             modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
@@ -247,11 +228,9 @@ export class HighScoresManager {
     }
 
     setupEventListeners() {
-        // Zamknięcie
         const closeBtn = document.getElementById('btn-hs-close');
         if (closeBtn) closeBtn.onclick = () => this.close();
 
-        // Zamknięcie przez tło
         const panel = document.getElementById('highscores-panel');
         if (panel) {
             panel.addEventListener('click', (e) => {
@@ -259,11 +238,9 @@ export class HighScoresManager {
             });
         }
 
-        // Przełącznik trybu (Strzałka)
         const toggleBtn = document.getElementById('btn-hs-toggle');
         if (toggleBtn) toggleBtn.onclick = () => this.toggleMode();
 
-        // Info (?)
         const infoBtn = document.getElementById('btn-hs-info');
         const infoModal = document.getElementById('hs-info-modal');
         const infoClose = document.getElementById('btn-hs-info-close');
@@ -271,7 +248,6 @@ export class HighScoresManager {
         if (infoBtn) infoBtn.onclick = () => { if(infoModal) infoModal.style.display = 'block'; };
         if (infoClose) infoClose.onclick = () => { if(infoModal) infoModal.style.display = 'none'; };
 
-        // Infinite Scroll
         const list = document.getElementById('hs-list');
         if (list) {
             list.addEventListener('scroll', () => {
@@ -294,8 +270,6 @@ export class HighScoresManager {
     close() {
         const panel = document.getElementById('highscores-panel');
         if (panel) panel.style.display = 'none';
-        
-        // Ukryj info jeśli otwarte
         const info = document.getElementById('hs-info-modal');
         if(info) info.style.display = 'none';
     }
@@ -307,14 +281,14 @@ export class HighScoresManager {
         if (this.mode === 'global') {
             this.mode = 'friends';
             if (arrow) {
-                arrow.textContent = '◀'; // Strzałka w lewo
+                arrow.textContent = '◀'; 
                 arrow.style.transform = 'scaleX(1)';
             }
             if (title) title.textContent = "Ja i Przyjaciele";
         } else {
             this.mode = 'global';
             if (arrow) {
-                arrow.textContent = '➤'; // Strzałka w prawo
+                arrow.textContent = '➤'; 
                 arrow.style.transform = 'scaleX(1)';
             }
             if (title) title.textContent = "Najlepsze BlockStars wszech czasów";
@@ -334,7 +308,7 @@ export class HighScoresManager {
     }
 
     async loadMore() {
-        if (this.isLoading || !this.hasMore || this.mode === 'friends') return; // Friends usually fetches all at once
+        if (this.isLoading || !this.hasMore || this.mode === 'friends') return; 
         this.page++;
         await this.fetchData();
     }
@@ -344,7 +318,6 @@ export class HighScoresManager {
         this.isLoading = true;
 
         const list = document.getElementById('hs-list');
-        // Jeśli lista pusta, pokaż ładowanie
         if (this.page === 1 && list.children.length === 0) {
             list.innerHTML = '<p style="text-align:center; color: white; margin-top: 50px;">Ładowanie...</p>';
         }
@@ -367,14 +340,13 @@ export class HighScoresManager {
             
             const data = await r.json();
             
-            if (this.page === 1) list.innerHTML = ''; // Wyczyść loading text
+            if (this.page === 1) list.innerHTML = ''; 
 
             if (data.length === 0) {
                 this.hasMore = false;
                 if (this.page === 1) list.innerHTML = '<p style="text-align:center; color: white; margin-top: 50px;">Brak wyników.</p>';
             } else {
                 this.renderRows(data);
-                // Jeśli dostaliśmy mniej niż limit (np. 50), to koniec danych
                 if (data.length < 50) this.hasMore = false;
             }
 
@@ -393,17 +365,10 @@ export class HighScoresManager {
         users.forEach((user, index) => {
             const rank = startRank + index;
             const isMe = user.id === this.myId;
-            
-            // Formatowanie liczb (np. 30,993,456)
             const score = parseInt(user.total_xp || 0).toLocaleString();
-            
-            // Avatar fallback
             const avatarUrl = user.current_skin_thumbnail ? `url('${user.current_skin_thumbnail}')` : "url('icons/avatar_placeholder.png')";
-
-            // Level (gwiazdka)
             const level = user.level || 1;
 
-            // HTML Wiersza
             const row = document.createElement('div');
             row.className = `hs-row ${isMe ? 'me' : ''}`;
             
@@ -422,10 +387,14 @@ export class HighScoresManager {
                 <div class="hs-col-score">${score}</div>
             `;
             
-            // Kliknięcie w wiersz -> Podgląd skina (jeśli istnieje)
+            // OBSŁUGA KLIKNIĘCIA - Otwiera profil
             row.onclick = () => {
-                if(this.ui && this.ui.showSkinPreviewFromUrl && user.current_skin_thumbnail) {
-                    this.ui.showSkinPreviewFromUrl(user.current_skin_thumbnail);
+                if (isMe) {
+                    this.ui.openPlayerProfile();
+                } else {
+                    if(this.ui.openOtherPlayerProfile) {
+                        this.ui.openOtherPlayerProfile(user.username);
+                    }
                 }
             };
 
