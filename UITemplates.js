@@ -1,3 +1,5 @@
+/* PLIK: UITemplates.js */
+
 export const AUTH_HTML = `
     <div id="auth-screen">
         <div class="auth-container">
@@ -667,6 +669,275 @@ export const PLAYER_PROFILE_HTML = `
     </div>
 `;
 
+export const OTHER_PLAYER_PROFILE_HTML = `
+<style>
+    /* Kontener modala */
+    #other-player-profile-panel .panel-content {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        width: auto !important;
+        height: auto !important;
+        pointer-events: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .bsp-profile-wrapper {
+        display: flex;
+        gap: 10px;
+        font-family: 'Titan One', cursive;
+        position: relative;
+    }
+
+    /* Główna karta (niebieska) */
+    .bsp-main-card {
+        width: 380px;
+        height: 450px;
+        background: radial-gradient(circle at center, #7ed6df 0%, #22a6b3 100%);
+        border-radius: 20px;
+        border: 4px solid rgba(0,0,0,0.2);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* Nagłówek */
+    .bsp-header {
+        width: 100%;
+        height: 60px;
+        background: linear-gradient(to bottom, #4facfe, #00f2fe);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        text-shadow: 1.5px 1.5px 0 #000;
+        box-shadow: 0 4px 5px rgba(0,0,0,0.2);
+        z-index: 2;
+        border-bottom: 2px solid rgba(255,255,255,0.3);
+    }
+    .bsp-username { font-size: 22px; margin-bottom: 2px; }
+    .bsp-joined { font-size: 11px; opacity: 0.9; }
+
+    /* Gwiazda Levelu */
+    .bsp-level-star {
+        position: absolute;
+        top: -10px; left: -10px;
+        width: 90px; height: 90px;
+        background: url('icons/icon-level.png') center/contain no-repeat;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 32px; color: white;
+        text-shadow: 2px 2px 0 #000;
+        z-index: 10;
+        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.4));
+        transform: rotate(-10deg);
+    }
+
+    /* Kropka statusu */
+    .bsp-status-dot {
+        position: absolute;
+        top: 15px; right: 15px;
+        width: 25px; height: 25px;
+        background: radial-gradient(circle at 30% 30%, #2ecc71, #27ae60);
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        z-index: 10;
+    }
+    .bsp-status-dot.offline { background: radial-gradient(circle at 30% 30%, #e74c3c, #c0392b); }
+
+    /* Flaga */
+    .bsp-flag {
+        position: absolute;
+        top: 75px; left: 20px;
+        width: 45px; height: 30px;
+        background-color: #fff; /* Placeholder dla Polski */
+        background-image: linear-gradient(to bottom, #fff 50%, #dc143c 50%);
+        border: 2px solid white;
+        border-radius: 6px;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+        z-index: 5;
+    }
+
+    /* Canvas 3D */
+    #other-player-preview-canvas {
+        position: absolute;
+        top: 60px; left: 0; width: 100%; height: 100%;
+        z-index: 1;
+    }
+
+    /* Dolne przyciski (Report, Friend) */
+    .bsp-corner-btn {
+        position: absolute;
+        bottom: 15px;
+        width: 60px; height: 60px;
+        border-radius: 12px;
+        border: 3px solid white;
+        cursor: pointer;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        box-shadow: 0 5px 0 rgba(0,0,0,0.3);
+        transition: transform 0.1s;
+        z-index: 10;
+    }
+    .bsp-corner-btn:active { transform: translateY(4px); box-shadow: none; }
+
+    .btn-report {
+        left: 15px;
+        background: #535c68; /* Szary */
+        background-image: url('icons/alert.png'); /* Placeholder */
+        background-size: 60%; background-repeat: no-repeat; background-position: center;
+    }
+    /* Fallback icon for report */
+    .btn-report::after { content: '⚠️'; font-size: 30px; }
+
+    .btn-friend-action {
+        right: 15px;
+        background: linear-gradient(to bottom, #e74c3c, #c0392b); /* Czerwony - usuń/anuluj */
+    }
+    .friend-icon-placeholder { font-size: 30px; filter: drop-shadow(1px 1px 0 #000); }
+
+    /* Pasek boczny (Sidebar) */
+    .bsp-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-top: 10px;
+    }
+
+    .bsp-side-btn {
+        width: 100px; height: 75px;
+        background: linear-gradient(to bottom, #4facfe, #00f2fe);
+        border: 3px solid white;
+        border-radius: 15px;
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        box-shadow: 0 5px 0 #2980b9, 0 8px 10px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.1s;
+        position: relative;
+    }
+    .bsp-side-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #2980b9; }
+    
+    .bsp-side-btn.green {
+        background: linear-gradient(to bottom, #2ecc71, #27ae60);
+        box-shadow: 0 5px 0 #1e8449, 0 8px 10px rgba(0,0,0,0.3);
+    }
+    .bsp-side-btn.green:active { transform: translateY(4px); box-shadow: 0 1px 0 #1e8449; }
+
+    .bsp-btn-icon {
+        width: 35px; height: 35px;
+        background-size: contain; background-repeat: no-repeat; background-position: center;
+        filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2));
+        margin-bottom: 2px;
+    }
+    .bsp-btn-label {
+        font-size: 13px; color: white; text-shadow: 1.5px 1.5px 0 #000;
+        font-weight: bold;
+    }
+
+    /* Zamknięcie */
+    .bsp-close-x {
+        position: absolute;
+        top: -15px; right: -15px;
+        width: 40px; height: 40px;
+        background: #e74c3c;
+        border: 3px solid white;
+        border-radius: 50%;
+        color: white; font-size: 20px; font-weight: bold;
+        display: flex; justify-content: center; align-items: center;
+        cursor: pointer; z-index: 20;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+    }
+
+    /* Responsive mobile */
+    @media (max-width: 600px) {
+        .bsp-profile-wrapper { flex-direction: column; align-items: center; gap: 5px; transform: scale(0.9); }
+        .bsp-sidebar { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 380px; }
+        .bsp-side-btn { width: 70px; height: 60px; }
+        .bsp-btn-label { font-size: 10px; }
+        .bsp-btn-icon { width: 25px; height: 25px; }
+    }
+</style>
+
+<div id="other-player-profile-panel" class="panel-modal" style="display:none;">
+    <div class="panel-content">
+        <div class="bsp-profile-wrapper">
+            
+            <!-- Główna karta -->
+            <div class="bsp-main-card">
+                <div class="bsp-close-x" id="btn-other-profile-close">X</div>
+
+                <!-- Level -->
+                <div class="bsp-level-star">
+                    <span id="other-profile-level" style="transform: rotate(10deg); margin-top:5px;">100</span>
+                </div>
+
+                <!-- Status -->
+                <div id="other-profile-status" class="bsp-status-dot"></div>
+
+                <!-- Header -->
+                <div class="bsp-header">
+                    <div id="other-profile-username" class="bsp-username">cybervamp</div>
+                    <div id="other-profile-date" class="bsp-joined">Członek od maj, 2024</div>
+                </div>
+
+                <!-- Flaga -->
+                <div class="bsp-flag"></div>
+
+                <!-- Postać -->
+                <div id="other-player-preview-canvas"></div>
+
+                <!-- Dolne przyciski -->
+                <div class="bsp-corner-btn btn-report"></div>
+                <div id="btn-other-friend-action" class="bsp-corner-btn btn-friend-action">
+                    <div class="friend-icon-placeholder">👤🗑️</div>
+                </div>
+            </div>
+
+            <!-- Boczny pasek -->
+            <div class="bsp-sidebar">
+                <!-- 1. Ściana -->
+                <div id="btn-other-wall" class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-like.png');"></div>
+                    <div class="bsp-btn-label">Ściana</div>
+                </div>
+                
+                <!-- 2. Czat -->
+                <div id="btn-other-chat" class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-chat.png');"></div>
+                    <div class="bsp-btn-label">Czat</div>
+                </div>
+
+                <!-- 3. Uśmiech (Placeholder) -->
+                <div class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/usmiech.png');">🎉</div> 
+                    <div class="bsp-btn-label">Uśmiech</div>
+                </div>
+
+                <!-- 4. Zaproś -->
+                <div class="bsp-side-btn green">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/gamepad.png');">🎮</div>
+                    <div class="bsp-btn-label">Zaproś</div>
+                </div>
+
+                <!-- 5. Dom (Placeholder) -->
+                <div class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-home.png');"></div>
+                    <div class="bsp-btn-label">Dom</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+`;
+
 export const MODALS_HTML = `
     <style>
         .nav-grid-container {
@@ -811,12 +1082,6 @@ export const MODALS_HTML = `
             <button class="panel-close-button">Anuluj</button>
         </div>
     </div>
-
-    ${FRIENDS_MODAL_HTML}
-    ${DISCOVER_CHOICE_HTML} 
-    ${NEWS_MODAL_HTML}
-    ${MAIL_MODAL_HTML}
-    ${PLAYER_PROFILE_HTML}
 
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
     <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span class="build-choice-label text-outline">Nowa HyperCube</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span class="build-choice-label text-outline">Nowy Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span class="build-choice-label text-outline">Nowy Prefabrykat</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span class="build-choice-label text-outline">Nowa Część HyperCube</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
