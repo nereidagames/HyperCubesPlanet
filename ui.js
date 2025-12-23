@@ -99,7 +99,7 @@ export class UIManager {
     }
   }
 
-  // --- NAPRAWA: Metoda bringToFront ---
+  // --- ZARZĄDZANIE WARSTWAMI (POPRAWIONE) ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -208,7 +208,7 @@ export class UIManager {
   }
 
   disposeCurrentPreview() {
-      // Singleton - nic nie niszczymy
+      // Singleton - nic nie niszczymy, renderer zostaje w pamięci
   }
 
   // --- HUD METHODS ---
@@ -571,7 +571,7 @@ export class UIManager {
     const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
     const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
     
-    // --- POPRAWIONE OBSŁUGA GŁÓWNYCH PRZYCISKÓW ---
+    // --- GŁÓWNE PRZYCISKI ---
     document.querySelectorAll('.game-btn').forEach(button => { 
         const type = this.getButtonType(button); 
         button.addEventListener('click', () => this.handleButtonClick(type, button)); 
@@ -586,7 +586,6 @@ export class UIManager {
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
     const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
     
-    // --- OBSŁUGA PRZYCISKÓW MODALI ---
     const btnPlayParkour = document.getElementById('play-choice-parkour'); 
     const btnPlayChat = document.getElementById('play-choice-chat'); 
     if (btnPlayParkour) btnPlayParkour.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'parkour'); }; 
@@ -632,7 +631,7 @@ export class UIManager {
     setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
-  // --- HELPERS (ROZWINIĘTE) ---
+  // --- HELPERS (POPRAWIONE) ---
   getButtonType(button) { 
       if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
       if (button.classList.contains('btn-buduj')) return 'buduj'; 
@@ -656,6 +655,15 @@ export class UIManager {
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
   refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
   
+  openPanel(id) { 
+      const p = document.getElementById(id); 
+      if(p) { 
+          this.bringToFront(p); 
+          p.style.display = 'flex'; 
+          if(id === 'friends-panel') this.friendsManager.loadFriendsData(); 
+      } 
+  }
+
   closePanel(id) { 
       const p = document.getElementById(id); 
       if(p) p.style.display = 'none'; 
@@ -669,15 +677,6 @@ export class UIManager {
       this.friendsManager.close(); 
       this.highScoresManager.close(); 
       this.wallManager.close(); 
-  }
-  
-  openPanel(id) { 
-      const p = document.getElementById(id); 
-      if(p) { 
-          this.bringToFront(p); 
-          p.style.display = 'flex'; 
-          if(id === 'friends-panel') this.friendsManager.loadFriendsData(); 
-      } 
   }
 
   populateShop(allBlocks, isOwnedCallback) { 
