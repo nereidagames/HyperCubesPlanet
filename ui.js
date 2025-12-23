@@ -1,4 +1,4 @@
-
+/* PLIK: ui.js */
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -138,13 +138,10 @@ export class UIManager {
 
   // --- METODA CZYSZCZĄCA RENDERER (FIX WYCIEKU PAMIĘCI) ---
   disposeCurrentPreview() {
-      // 1. Zatrzymaj animację
       if (this.skinPreviewAnimId) {
           cancelAnimationFrame(this.skinPreviewAnimId);
           this.skinPreviewAnimId = null;
       }
-
-      // 2. Wyczyść scenę (geometrie i materiały)
       if (this.skinPreviewScene) {
           this.skinPreviewScene.traverse((object) => {
               if (object.isMesh) {
@@ -160,21 +157,45 @@ export class UIManager {
           });
           this.skinPreviewScene = null;
       }
-
-      // 3. Wyczyść renderer i kontekst WebGL
       if (this.skinPreviewRenderer) {
           this.skinPreviewRenderer.dispose();
-          this.skinPreviewRenderer.forceContextLoss(); // Wymusza utratę kontekstu
-          
+          this.skinPreviewRenderer.forceContextLoss();
           if (this.skinPreviewRenderer.domElement && this.skinPreviewRenderer.domElement.parentNode) {
               this.skinPreviewRenderer.domElement.parentNode.removeChild(this.skinPreviewRenderer.domElement);
           }
-          
           this.skinPreviewRenderer = null;
       }
-
       this.skinPreviewCamera = null;
       this.skinPreviewCharacter = null;
+  }
+
+  // --- NOWE METODY PARKOUR (FIX BŁĘDU UI) ---
+  setParkourTimerVisible(visible) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) {
+          timer.style.display = visible ? 'block' : 'none';
+      }
+  }
+
+  updateParkourTimer(timeString) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) {
+          timer.textContent = timeString;
+      }
+  }
+
+  handleParkourCompletion(timeStr, rewardData) {
+      const victoryPanel = document.getElementById('victory-panel');
+      const timeDisplay = document.getElementById('victory-time-display');
+      
+      if (victoryPanel) {
+          this.bringToFront(victoryPanel);
+          victoryPanel.style.display = 'flex';
+      }
+      if (timeDisplay) timeDisplay.textContent = timeStr;
+      
+      // Zapisujemy dane nagrody, aby odebrać je przyciskiem "Super!"
+      this.pendingRewardData = rewardData;
   }
 
   // --- HUD UPDATES ---
@@ -289,7 +310,6 @@ export class UIManager {
   async init3DPreviewForProfile(container) {
       if (!container) return;
       
-      // FIX: Czyścimy poprzedni renderer przed utworzeniem nowego
       this.disposeCurrentPreview();
       
       container.innerHTML = '';
@@ -379,20 +399,17 @@ export class UIManager {
 
   // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
-    // Zamknięcie paneli (w tym nowego profilu)
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
             const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
             if(p) p.style.display = 'none'; 
             
-            // FIX: Czyścimy podgląd przy zamykaniu konkretnych okien
             if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel')) {
                 this.disposeCurrentPreview();
             }
         };
     });
     
-    // Kliknięcie w tło zamyka panel "Więcej"
     const moreOptions = document.getElementById('more-options-panel');
     if (moreOptions) {
         moreOptions.addEventListener('click', (e) => {
@@ -402,38 +419,31 @@ export class UIManager {
         });
     }
 
-    // Kliknięcie w tło zamyka "Profil Gracza"
     const profilePanel = document.getElementById('player-profile-panel');
     if (profilePanel) {
         profilePanel.addEventListener('click', (e) => {
             if (e.target.id === 'player-profile-panel') {
                 profilePanel.style.display = 'none';
-                // FIX: Czyścimy podgląd
                 this.disposeCurrentPreview();
             }
         });
     }
     
-    // Główne przyciski gry
     document.querySelectorAll('.game-btn').forEach(button => {
       const type = this.getButtonType(button);
       button.addEventListener('click', () => this.handleButtonClick(type, button));
     });
 
-    // Avatar -> Nowy Profil
     const pBtn = document.getElementById('player-avatar-button'); 
     if (pBtn) pBtn.onclick = () => { 
         this.openPlayerProfile(); 
     };
 
-    // Obsługa przycisku "Ściana" w profilu
     const btnWall = document.getElementById('btn-profile-wall');
     if (btnWall) {
         btnWall.onclick = () => {
             const profile = document.getElementById('player-profile-panel');
             if(profile) profile.style.display = 'none';
-            
-            // FIX: Czyścimy podgląd z profilu przed otwarciem ściany
             this.disposeCurrentPreview();
 
             const userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
@@ -442,11 +452,9 @@ export class UIManager {
         };
     }
     
-    // Przyjaciele
     const friendsBtn = document.getElementById('btn-friends-open'); 
     if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
     
-    // Poczta
     const topBarItems = document.querySelectorAll('.top-bar-item'); 
     topBarItems.forEach(item => { 
         if (item.textContent.includes('Poczta')) { 
@@ -597,9 +605,7 @@ export class UIManager {
   
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
   closeAllPanels() {
-      // FIX: Globalne czyszczenie podglądu przy zamykaniu wszystkich paneli
       this.disposeCurrentPreview();
-      
       document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none');
       this.newsManager.close();
       this.mailManager.close();
@@ -767,72 +773,5 @@ export class UIManager {
 
   async openItemComments(itemId, type) { const panel = document.getElementById('skin-comments-panel'); if (!panel) return; this.bringToFront(panel); panel.style.display = 'flex'; const closeBtn = document.getElementById('close-comments-btn'); if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; }; this.loadItemComments(itemId, type); const submitBtn = document.getElementById('comment-submit-btn'); const input = document.getElementById('comment-input'); if(submitBtn) { submitBtn.onclick = null; submitBtn.onclick = async () => { const text = input.value.trim(); if(!text) return; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` }, body: JSON.stringify({ text }) }); if(r.ok) { input.value = ''; this.loadItemComments(itemId, type); } } catch(e) { console.error(e); } }; } }
   async loadItemComments(itemId, type) { const container = document.querySelector('.comments-list-container'); if(!container) return; container.innerHTML = '<p style="text-align:center; padding:10px;">Ładowanie...</p>'; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); const likeEndpoint = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { headers: { 'Authorization': `Bearer ${t}` } }); const comments = await r.json(); container.innerHTML = ''; if(comments.length === 0) { container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy.</p>'; return; } comments.forEach(c => { const div = document.createElement('div'); div.className = 'comment-item'; const date = new Date(c.created_at); const now = new Date(); const diffHours = Math.floor((now - date) / (1000 * 60 * 60)); const timeStr = diffHours < 24 ? (diffHours === 0 ? "teraz" : `${diffHours}h temu`) : `${Math.floor(diffHours/24)}d temu`; div.innerHTML = `<div class="comment-avatar" style="background-image: url('${c.current_skin_thumbnail || ''}')"></div><div class="comment-content"><div class="comment-author">${c.username}</div><div class="comment-text">${c.text}</div><div class="comment-time">${timeStr}</div></div><div class="comment-actions"><div class="comment-like-count">${c.likes || 0}</div><div class="comment-like-btn">❤</div></div>`; const likeBtn = div.querySelector('.comment-like-btn'); likeBtn.onclick = async () => { try { const lr = await fetch(`${API_BASE_URL}/api/${likeEndpoint}/comments/${c.id}/like`, { method: 'POST', headers: { 'Authorization': `Bearer ${t}` } }); const ld = await lr.json(); if(ld.success) { div.querySelector('.comment-like-count').textContent = ld.likes; } } catch(e) {} }; container.appendChild(div); }); } catch(e) { container.innerHTML = '<p style="text-align:center;">Błąd.</p>'; } }
-  
-  async init3DPreview(itemId, type) { 
-      const container = document.getElementById('skin-preview-canvas'); 
-      if (!container) return; 
-      
-      // FIX: Czyścimy poprzedni renderer
-      this.disposeCurrentPreview();
-      
-      container.innerHTML = ''; 
-      const width = container.clientWidth || 300; 
-      const height = container.clientHeight || 300; 
-      
-      this.skinPreviewScene = new THREE.Scene(); 
-      this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); 
-      this.skinPreviewCamera.position.set(0, 2, 6); 
-      this.skinPreviewCamera.lookAt(0, 0.5, 0); 
-      
-      this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); 
-      this.skinPreviewRenderer.setSize(width, height); 
-      container.appendChild(this.skinPreviewRenderer.domElement); 
-      
-      const amb = new THREE.AmbientLight(0xffffff, 0.8); 
-      this.skinPreviewScene.add(amb); 
-      const dir = new THREE.DirectionalLight(0xffffff, 0.6); 
-      dir.position.set(5, 10, 7); 
-      this.skinPreviewScene.add(dir); 
-      
-      this.skinPreviewCharacter = new THREE.Group(); 
-      if (type === 'skin' && typeof createBaseCharacter !== 'undefined') { 
-          createBaseCharacter(this.skinPreviewCharacter); 
-          this.skinPreviewCharacter.position.y = -0.8; 
-      } else { 
-          this.skinPreviewCharacter.position.y = 0; 
-      } 
-      this.skinPreviewScene.add(this.skinPreviewCharacter); 
-      
-      let blocksData = null; 
-      if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId); 
-      else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId); 
-      else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId); 
-      
-      if (blocksData) { 
-          const loader = new THREE.TextureLoader(); 
-          const blockGroup = new THREE.Group(); 
-          if (type === 'skin') { blockGroup.scale.setScalar(0.125); blockGroup.position.y = 0.5; } 
-          else { blockGroup.scale.setScalar(0.125); } 
-          
-          blocksData.forEach(b => { 
-              const geo = new THREE.BoxGeometry(1, 1, 1); 
-              const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) }); 
-              const mesh = new THREE.Mesh(geo, mat); 
-              mesh.position.set(b.x, b.y, b.z); 
-              blockGroup.add(mesh); 
-          }); 
-          this.skinPreviewCharacter.add(blockGroup); 
-      } 
-      this.skinPreviewCharacter.scale.setScalar(1.5); 
-      
-      const animate = () => { 
-          this.skinPreviewAnimId = requestAnimationFrame(animate); 
-          if (this.skinPreviewCharacter) { this.skinPreviewCharacter.rotation.y += 0.01; } 
-          
-          if(this.skinPreviewRenderer && this.skinPreviewScene && this.skinPreviewCamera) {
-              this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera); 
-          }
-      }; 
-      animate(); 
-  }
+  async init3DPreview(itemId, type) { const container = document.getElementById('skin-preview-canvas'); if (!container) return; this.disposeCurrentPreview(); container.innerHTML = ''; const width = container.clientWidth || 300; const height = container.clientHeight || 300; this.skinPreviewScene = new THREE.Scene(); this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); this.skinPreviewCamera.position.set(0, 2, 6); this.skinPreviewCamera.lookAt(0, 0.5, 0); this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); this.skinPreviewRenderer.setSize(width, height); container.appendChild(this.skinPreviewRenderer.domElement); const amb = new THREE.AmbientLight(0xffffff, 0.8); this.skinPreviewScene.add(amb); const dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(5, 10, 7); this.skinPreviewScene.add(dir); this.skinPreviewCharacter = new THREE.Group(); if (type === 'skin' && typeof createBaseCharacter !== 'undefined') { createBaseCharacter(this.skinPreviewCharacter); this.skinPreviewCharacter.position.y = -0.8; } else { this.skinPreviewCharacter.position.y = 0; } this.skinPreviewScene.add(this.skinPreviewCharacter); let blocksData = null; if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId); else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId); else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId); if (blocksData) { const loader = new THREE.TextureLoader(); const blockGroup = new THREE.Group(); if (type === 'skin') { blockGroup.scale.setScalar(0.125); blockGroup.position.y = 0.5; } else { blockGroup.scale.setScalar(0.125); } blocksData.forEach(b => { const geo = new THREE.BoxGeometry(1, 1, 1); const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) }); const mesh = new THREE.Mesh(geo, mat); mesh.position.set(b.x, b.y, b.z); blockGroup.add(mesh); }); this.skinPreviewCharacter.add(blockGroup); } this.skinPreviewCharacter.scale.setScalar(1.5); const animate = () => { this.skinPreviewAnimId = requestAnimationFrame(animate); if (this.skinPreviewCharacter) { this.skinPreviewCharacter.rotation.y += 0.01; } this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera); }; animate(); }
 }
