@@ -90,13 +90,77 @@ export class UIManager {
         if (this.wallManager.initialize) this.wallManager.initialize(); 
 
         this.setupButtonHandlers();
+        
+        // Wywołanie konfiguracji czatu
         this.setupChatSystem(); 
+        
         this.loadFriendsData(); 
         
         console.log('UI Manager gotowy.');
     } catch (error) {
         console.error("Błąd UI:", error);
     }
+  }
+
+  // --- CZAT I SYSTEM WIADOMOŚCI (Przeniesione tutaj dla pewności) ---
+  setupChatSystem() {
+      this.setupChatInput();
+  }
+
+  setupChatInput() {
+      const form = document.getElementById('chat-form');
+      if (!form) return;
+      form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const input = document.getElementById('chat-input-field');
+          const value = input.value.trim();
+          if (value && this.onSendMessage) {
+              this.onSendMessage(value);
+          }
+          input.value = '';
+          form.style.display = 'none';
+      });
+  }
+
+  handleChatClick() {
+      const form = document.getElementById('chat-form');
+      if (form) form.style.display = 'flex';
+      const input = document.getElementById('chat-input-field');
+      if (input) input.focus();
+  }
+
+  clearChat() {
+      const area = document.querySelector('.chat-area');
+      if (area) area.innerHTML = '';
+  }
+
+  addChatMessage(message, senderName = null) { 
+      const chatArea = document.querySelector('.chat-area'); 
+      if(chatArea) { 
+          const el = document.createElement('div'); 
+          el.className = 'chat-message text-outline'; 
+          
+          if (senderName && message.startsWith(senderName)) {
+               const parts = message.split(':');
+               const nick = parts[0];
+               const rest = parts.slice(1).join(':');
+               
+               const nickSpan = document.createElement('span');
+               nickSpan.textContent = nick;
+               nickSpan.style.cursor = 'pointer';
+               nickSpan.style.color = '#f1c40f'; 
+               nickSpan.style.textDecoration = 'underline';
+               nickSpan.onclick = () => this.openOtherPlayerProfile(nick);
+               
+               el.appendChild(nickSpan);
+               el.appendChild(document.createTextNode(':' + rest));
+          } else {
+               el.textContent = message; 
+          }
+          
+          chatArea.appendChild(el); 
+          chatArea.scrollTop = chatArea.scrollHeight; 
+      } 
   }
 
   renderUI() {
@@ -114,14 +178,12 @@ export class UIManager {
       }
   }
 
-  // --- FIX: JEDEN RENDERER DO WSZYSTKICH PODGLĄDÓW (Zapobiega Context Lost) ---
+  // --- RENDERER (SINGLETON) ---
   initSharedRenderer() {
-      // Tworzymy renderer tylko raz
       this.sharedPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
       this.sharedPreviewRenderer.setSize(300, 300);
       this.sharedPreviewRenderer.setPixelRatio(window.devicePixelRatio);
 
-      // Tworzymy scenę tylko raz
       this.previewScene = new THREE.Scene();
       this.previewCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
       this.previewCamera.position.set(0, 1, 6);
@@ -139,10 +201,8 @@ export class UIManager {
       }
       this.previewScene.add(this.previewCharacter);
 
-      // Globalna pętla animacji podglądu
       const animate = () => {
           this.previewAnimId = requestAnimationFrame(animate);
-          // Renderuj tylko jeśli canvas jest podpięty do DOM
           if (this.previewCharacter && this.sharedPreviewRenderer.domElement.parentNode) {
               this.previewCharacter.rotation.y += 0.01;
               this.sharedPreviewRenderer.render(this.previewScene, this.previewCamera);
@@ -151,31 +211,24 @@ export class UIManager {
       animate();
   }
 
-  // Funkcja "przepina" istniejący renderer do wskazanego diva
   attachRendererTo(containerId, characterYOffset = 0, scale = 1) {
       const container = document.getElementById(containerId);
       if (!container || !this.sharedPreviewRenderer) return;
 
-      // Czyścimy kontener (na wypadek śmieci)
       container.innerHTML = '';
       
-      // Dopasuj rozmiar renderera do nowego kontenera
       const width = container.clientWidth || 300;
       const height = container.clientHeight || 300;
       this.sharedPreviewRenderer.setSize(width, height);
       this.previewCamera.aspect = width / height;
       this.previewCamera.updateProjectionMatrix();
 
-      // Fizycznie przenosimy element <canvas> do nowego diva
       container.appendChild(this.sharedPreviewRenderer.domElement);
 
-      // Reset postaci
       this.previewCharacter.position.y = characterYOffset;
       this.previewCharacter.scale.setScalar(scale);
       this.previewCharacter.rotation.y = 0;
       
-      // Czyścimy stare skiny (usuwamy grupy bloków, zostawiamy bazę postaci)
-      // Base character ma zazwyczaj meshe, skiny to Group
       const children = this.previewCharacter.children;
       for (let i = children.length - 1; i >= 0; i--) {
           const child = children[i];
@@ -185,9 +238,7 @@ export class UIManager {
       }
   }
 
-  // Metoda pomocnicza do nakładania skina na podgląd
   applySkinToPreview(blocksData) {
-      // (Czyszczenie jest już robione w attachRendererTo, ale dla pewności przy zmianie skina w locie)
       for (let i = this.previewCharacter.children.length - 1; i >= 0; i--) {
           const child = this.previewCharacter.children[i];
           if (child.type === 'Group') {
@@ -212,11 +263,8 @@ export class UIManager {
       this.previewCharacter.add(blockGroup);
   }
 
-  // Zatrzymuje pętlę animacji (opcjonalnie, teraz renderer jest trwały)
   disposeCurrentPreview() {
-      // W wersji Singleton nie niszczymy renderera, tylko odpinamy go od DOM
-      // (co dzieje się automatycznie przy zamknięciu okna lub nadpisaniu innerHTML)
-      // Możemy ewentualnie zapauzować logikę w animate(), ale nie jest to krytyczne.
+      // W trybie singleton nie niszczymy, tylko czyścimy
   }
 
   // --- OTWIERANIE PROFILU INNEGO GRACZA ---
@@ -235,17 +283,14 @@ export class UIManager {
       this.bringToFront(panel);
       panel.style.display = 'flex';
 
-      // Przepnij renderer do tego okna
       this.attachRendererTo('other-player-preview-canvas', -1.2, 1.5);
 
-      // Placeholdery
       document.getElementById('other-profile-username').textContent = username;
       document.getElementById('other-profile-level').textContent = "...";
       document.getElementById('other-profile-date').textContent = "Ładowanie...";
       const statusDot = document.getElementById('other-profile-status');
       if(statusDot) statusDot.classList.remove('offline'); 
 
-      // Pobieranie danych
       const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
       try {
           const r = await fetch(`${API_BASE_URL}/api/friends/search`, {
@@ -258,7 +303,6 @@ export class UIManager {
 
           if (user) {
               const userId = user.id;
-              // Fake level (brak w API search, losujemy dla efektu - w przyszłości dodać do API)
               document.getElementById('other-profile-level').textContent = user.level || Math.floor(Math.random() * 50) + 1; 
               document.getElementById('other-profile-date').textContent = "Członek BlockStarPlanet"; 
 
@@ -424,33 +468,6 @@ export class UIManager {
   // --- HELPERS ---
   bringToFront(element) { if (element) { this.activeZIndex++; element.style.zIndex = this.activeZIndex; } }
   
-  // Zaktualizowany ChatMessage (Klikalne nicki)
-  addChatMessage(m, senderName = null) { 
-      const c = document.querySelector('.chat-area'); 
-      if(c) { 
-          const el = document.createElement('div'); 
-          el.className = 'chat-message text-outline'; 
-          if (senderName && m.startsWith(senderName)) {
-               const parts = m.split(':');
-               const nick = parts[0];
-               const rest = parts.slice(1).join(':');
-               const nickSpan = document.createElement('span');
-               nickSpan.textContent = nick;
-               nickSpan.style.cursor = 'pointer';
-               nickSpan.style.color = '#f1c40f'; 
-               nickSpan.style.textDecoration = 'underline';
-               nickSpan.onclick = () => this.openOtherPlayerProfile(nick);
-               el.appendChild(nickSpan);
-               el.appendChild(document.createTextNode(':' + rest));
-          } else { el.textContent = m; }
-          c.appendChild(el); c.scrollTop = c.scrollHeight; 
-      } 
-  }
-
-  clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
-  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
-  setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
-  
   // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
@@ -485,8 +502,6 @@ export class UIManager {
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
   refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
   hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
-  showRewardPanel(customData = null) { const panel = document.getElementById('reward-panel'); const data = customData || this.pendingRewardData; if (!panel) return; this.bringToFront(panel); if (data) { const title = document.getElementById('reward-title-text'); if(title) title.textContent = data.message || (customData ? "Odebrano Nagrody!" : "Ukończono!"); const xpVal = document.getElementById('reward-xp-val'); const coinVal = document.getElementById('reward-coins-val'); const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100; if (xpVal) xpVal.textContent = `+${gainedXp}`; if (coinVal) coinVal.textContent = `+${gainedCoins}`; document.getElementById('reward-lvl-cur').textContent = data.newLevel; document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; const fill = document.getElementById('reward-bar-fill'); const text = document.getElementById('reward-bar-text'); if (fill && text) { const max = data.maxXp || 100; const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); fill.style.width = `${percent}%`; text.textContent = `${data.newXp}/${max}`; } } panel.style.display = 'flex'; }
-  openPanel(id) { const p = document.getElementById(id); if(p) { this.bringToFront(p); p.style.display = 'flex'; if(id === 'friends-panel') this.friendsManager.loadFriendsData(); } }
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
   closeAllPanels() { document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none'); this.newsManager.close(); this.mailManager.close(); this.friendsManager.close(); this.highScoresManager.close(); this.wallManager.close(); }
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
