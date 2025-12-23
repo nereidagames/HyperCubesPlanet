@@ -81,7 +81,7 @@ export class UIManager {
     console.log("Inicjalizacja UI...");
     try {
         this.renderUI();
-        this.initSharedRenderer();
+        this.initSharedRenderer(); // Inicjalizacja współdzielonego renderera
 
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
@@ -97,6 +97,15 @@ export class UIManager {
     } catch (error) {
         console.error("Błąd UI:", error);
     }
+  }
+
+  // --- NAPRAWA BŁĘDU: METODA BRING TO FRONT ---
+  // Musi być tutaj, aby była widoczna dla wszystkich
+  bringToFront(element) {
+      if (element) {
+          this.activeZIndex++;
+          element.style.zIndex = this.activeZIndex;
+      }
   }
 
   renderUI() {
@@ -203,8 +212,7 @@ export class UIManager {
       // Singleton - nic nie niszczymy, ewentualnie odpinamy od DOM
   }
 
-  // --- HUD METHODS (Te, których brakowało) ---
-  
+  // --- HUD METHODS ---
   updatePlayerName(name) { 
       const nameDisplay = document.getElementById('player-name-display'); 
       if (nameDisplay) nameDisplay.textContent = name;
@@ -581,13 +589,12 @@ export class UIManager {
     setClick('btn-open-news', () => { this.newsManager.open(); }); setClick('btn-open-highscores', () => { if (this.highScoresManager) this.highScoresManager.open(); }); setClick('btn-nav-options', () => { if(this.onToggleFPS) { this.onToggleFPS(); this.showMessage("Przełączono licznik FPS", "info"); } }); setClick('logout-btn', () => { localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN); localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME); localStorage.removeItem(STORAGE_KEYS.USER_ID); window.location.reload(); }); setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
+  // --- REST OF HELPERS (Standard) ---
   getButtonType(button) { if (button.classList.contains('btn-zagraj')) return 'zagraj'; if (button.classList.contains('btn-buduj')) return 'buduj'; if (button.classList.contains('btn-kup')) return 'kup'; if (button.classList.contains('btn-odkryj')) return 'odkryj'; if (button.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
   handleButtonClick(buttonType, buttonElement) { buttonElement.style.transform = 'translateY(-1px) scale(0.95)'; setTimeout(() => { buttonElement.style.transform = ''; }, 150); if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; } if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; } if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; } if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; } if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; } }
-  
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
   refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
-  showRewardPanel(customData = null) { const panel = document.getElementById('reward-panel'); const data = customData || this.pendingRewardData; if (!panel) return; this.bringToFront(panel); if (data) { const title = document.getElementById('reward-title-text'); if(title) title.textContent = data.message || (customData ? "Odebrano Nagrody!" : "Ukończono!"); const xpVal = document.getElementById('reward-xp-val'); const coinVal = document.getElementById('reward-coins-val'); const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100; if (xpVal) xpVal.textContent = `+${gainedXp}`; if (coinVal) coinVal.textContent = `+${gainedCoins}`; document.getElementById('reward-lvl-cur').textContent = data.newLevel; document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; const fill = document.getElementById('reward-bar-fill'); const text = document.getElementById('reward-bar-text'); if (fill && text) { const max = data.maxXp || 100; const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); fill.style.width = `${percent}%`; text.textContent = `${data.newXp}/${max}`; } } panel.style.display = 'flex'; }
-  openPanel(id) { const p = document.getElementById(id); if(p) { this.bringToFront(p); p.style.display = 'flex'; if(id === 'friends-panel') this.friendsManager.loadFriendsData(); } }
+  hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
   closeAllPanels() { this.disposeCurrentPreview(); document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none'); this.newsManager.close(); this.mailManager.close(); this.friendsManager.close(); this.highScoresManager.close(); this.wallManager.close(); }
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
