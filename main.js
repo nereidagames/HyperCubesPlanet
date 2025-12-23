@@ -126,18 +126,10 @@ class BlockStarPlanetGame {
       const safeY = this.sceneManager.getSafeY(0, 0);
       this.characterManager.character.position.set(0, safeY + 2.0, 0);
 
-      // --- FIX: Ładowanie skina z bazy (user.currentSkinId) ---
       if (user.currentSkinId) {
           SkinStorage.loadSkinData(user.currentSkinId).then(data => { 
               if(data) this.characterManager.applySkin(data); 
           });
-      } else {
-          // Fallback (opcjonalnie) - jeśli gracz nie ma skina w bazie, można sprawdzić localStorage
-          // ale docelowo chcemy tego unikać.
-          const lastSkinId = SkinStorage.getLastUsedSkinId();
-          if (lastSkinId) {
-             // SkinStorage.loadSkinData(lastSkinId).then(data => { if(data) this.characterManager.applySkin(data); });
-          }
       }
 
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
@@ -146,7 +138,8 @@ class BlockStarPlanetGame {
       this.multiplayer.initialize(token);
       this.setupMultiplayerCallbacks();
 
-      this.recreatePlayerController(this.sceneManager.collidableObjects);
+      // INICJALIZACJA KONTROLERA Z MAPĄ KOLIZJI NEXUSA (Grid Partitioning)
+      this.recreatePlayerController(this.sceneManager.collidableObjects, this.sceneManager.collisionMap);
       
       this.cameraController = new ThirdPersonCameraController(
           this.camera, this.characterManager.character, this.core.renderer.domElement, 
@@ -176,8 +169,12 @@ class BlockStarPlanetGame {
       });
 
       this.stateManager.onRecreateController = (collidables) => {
+          // Jeśli collidables nie podano, używamy Nexusa
           const targetCollidables = collidables || this.sceneManager.collidableObjects;
-          this.recreatePlayerController(targetCollidables);
+          // Jeśli wracamy do menu (null collidables), używamy mapy Nexusa
+          const targetMap = collidables ? null : this.sceneManager.collisionMap;
+          
+          this.recreatePlayerController(targetCollidables, targetMap);
           this.stateManager.setManagers({ playerController: this.playerController });
       };
 
@@ -297,7 +294,6 @@ class BlockStarPlanetGame {
           } 
       };
 
-      // --- FIX: ZAPIS SKINA NA SERWERZE (EQUIP) ---
       this.ui.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => { 
           const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); 
           if (ownerId && ownerId !== myId) { 
@@ -311,7 +307,6 @@ class BlockStarPlanetGame {
               this.multiplayer.sendMessage({ type: 'mySkin', skinData: data }); 
               this.ui.showMessage(`Założono: ${skinName}`, 'success'); 
 
-              // Wyślij request o zmianę skina do serwera
               try {
                   const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
                   await fetch(`${API_BASE_URL}/api/user/equip`, {
@@ -346,9 +341,18 @@ class BlockStarPlanetGame {
       this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
   }
 
-  recreatePlayerController(collidables) { 
+  // --- ZMIENIONA METODA: OBSŁUGA COLLISION MAP ---
+  recreatePlayerController(collidables, collisionMap = null) { 
       if(this.playerController) this.playerController.destroy(); 
-      this.playerController = new PlayerController(this.characterManager.character, collidables, { moveSpeed: 8, jumpForce: 18, gravity: 50, groundRestingY: this.sceneManager.FLOOR_TOP_Y }); 
+      
+      const map = collisionMap || this.sceneManager.collisionMap;
+
+      this.playerController = new PlayerController(
+          this.characterManager.character, 
+          collidables, 
+          map, 
+          { moveSpeed: 8, jumpForce: 18, gravity: 50, groundRestingY: this.sceneManager.FLOOR_TOP_Y }
+      ); 
       this.playerController.setIsMobile(this.isMobile); 
   }
 
@@ -375,7 +379,7 @@ class BlockStarPlanetGame {
       dirLight.position.set(20, 40, 20);
       exploreScene.add(dirLight);
 
-      const allCollidables = [];
+      const globalCollidables = [];
       const loader = this.loader.getTextureLoader();
       const materials = {};
 
@@ -384,17 +388,20 @@ class BlockStarPlanetGame {
       const floor = new THREE.Mesh(floorGeo, floorMat);
       floor.position.y = -0.5;
       exploreScene.add(floor);
-      allCollidables.push(floor);
+      globalCollidables.push(floor);
       
       const barrierHeight = 100;
       const half = worldSize / 2;
       const barrierMat = new THREE.MeshBasicMaterial({ visible: false });
-      const w1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMat); w1.position.set(0, 50, half); exploreScene.add(w1); allCollidables.push(w1);
-      const w2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMat); w2.position.set(0, 50, -half); exploreScene.add(w2); allCollidables.push(w2);
-      const w3 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w3.position.set(half, 50, 0); exploreScene.add(w3); allCollidables.push(w3);
-      const w4 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w4.position.set(-half, 50, 0); exploreScene.add(w4); allCollidables.push(w4);
+      const w1 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMat); w1.position.set(0, 50, half); exploreScene.add(w1); globalCollidables.push(w1);
+      const w2 = new THREE.Mesh(new THREE.BoxGeometry(worldSize, barrierHeight, 1), barrierMat); w2.position.set(0, 50, -half); exploreScene.add(w2); globalCollidables.push(w2);
+      const w3 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w3.position.set(half, 50, 0); exploreScene.add(w3); globalCollidables.push(w3);
+      const w4 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w4.position.set(-half, 50, 0); exploreScene.add(w4); globalCollidables.push(w4);
 
+      // --- GENEROWANIE MAPY KOLIZJI (Grid) DLA ŚWIATA UŻYTKOWNIKA ---
+      const tempCollisionMap = new Map();
       const geometry = new THREE.BoxGeometry(1, 1, 1); 
+
       worldBlocksData.forEach(data => {
           if(data.texturePath) {
               let mat = materials[data.texturePath];
@@ -407,7 +414,16 @@ class BlockStarPlanetGame {
               const mesh = new THREE.Mesh(geometry, mat);
               mesh.position.set(data.x, data.y, data.z);
               exploreScene.add(mesh);
-              allCollidables.push(mesh);
+              
+              // Wypełnianie mapy kolizji zamiast tablicy
+              const key = `${Math.floor(data.x)},${Math.floor(data.y)},${Math.floor(data.z)}`;
+              tempCollisionMap.set(key, {
+                  isBlock: true,
+                  boundingBox: new THREE.Box3().setFromCenterAndSize(
+                      new THREE.Vector3(data.x, data.y, data.z),
+                      new THREE.Vector3(1, 1, 1)
+                  )
+              });
           }
       });
 
@@ -432,7 +448,9 @@ class BlockStarPlanetGame {
           this.parkourManager.init(worldData);
       }
 
-      this.recreatePlayerController(allCollidables);
+      // Przekazanie tymczasowej mapy kolizji do kontrolera
+      this.recreatePlayerController(globalCollidables, tempCollisionMap);
+      
       this.stateManager.setManagers({ playerController: this.playerController });
       this.cameraController.enabled = true;
   }
