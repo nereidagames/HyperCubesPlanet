@@ -130,6 +130,9 @@ class BlockStarPlanetGame {
           SkinStorage.loadSkinData(user.currentSkinId).then(data => { 
               if(data) this.characterManager.applySkin(data); 
           });
+      } else {
+          const lastSkinId = SkinStorage.getLastUsedSkinId();
+          // Opcjonalne ładowanie lokalne
       }
 
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
@@ -169,9 +172,7 @@ class BlockStarPlanetGame {
       });
 
       this.stateManager.onRecreateController = (collidables) => {
-          // Jeśli collidables nie podano, używamy Nexusa
           const targetCollidables = collidables || this.sceneManager.collidableObjects;
-          // Jeśli wracamy do menu (null collidables), używamy mapy Nexusa
           const targetMap = collidables ? null : this.sceneManager.collisionMap;
           
           this.recreatePlayerController(targetCollidables, targetMap);
@@ -230,11 +231,26 @@ class BlockStarPlanetGame {
       window.addEventListener('touchend', onEnd); 
   }
 
+  // --- FIX: BŁĄD UI (ZABEZPIECZENIE PRZED BRAKIEM FUNKCJI) ---
   setupStats() { 
       const fpsPref = localStorage.getItem(STORAGE_KEYS.FPS_ENABLED) === 'true'; 
       if (fpsPref) { this.isFPSEnabled = true; this.stats.dom.style.display = 'block'; } 
-      this.ui.onToggleFPS = () => { this.isFPSEnabled = !this.isFPSEnabled; this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none'; this.ui.updateFPSToggleText(this.isFPSEnabled); localStorage.setItem(STORAGE_KEYS.FPS_ENABLED, this.isFPSEnabled.toString()); }; 
-      this.ui.updateFPSToggleText(this.isFPSEnabled); 
+      
+      this.ui.onToggleFPS = () => { 
+          this.isFPSEnabled = !this.isFPSEnabled; 
+          this.stats.dom.style.display = this.isFPSEnabled ? 'block' : 'none'; 
+          
+          // Sprawdzamy czy funkcja istnieje przed wywołaniem
+          if(this.ui.updateFPSToggleText) {
+              this.ui.updateFPSToggleText(this.isFPSEnabled); 
+          }
+          localStorage.setItem(STORAGE_KEYS.FPS_ENABLED, this.isFPSEnabled.toString()); 
+      }; 
+      
+      // Sprawdzamy czy funkcja istnieje przed wywołaniem
+      if(this.ui.updateFPSToggleText) {
+          this.ui.updateFPSToggleText(this.isFPSEnabled); 
+      }
   }
 
   setupMultiplayerCallbacks() { 
@@ -341,7 +357,6 @@ class BlockStarPlanetGame {
       this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
   }
 
-  // --- ZMIENIONA METODA: OBSŁUGA COLLISION MAP ---
   recreatePlayerController(collidables, collisionMap = null) { 
       if(this.playerController) this.playerController.destroy(); 
       
@@ -415,7 +430,6 @@ class BlockStarPlanetGame {
               mesh.position.set(data.x, data.y, data.z);
               exploreScene.add(mesh);
               
-              // Wypełnianie mapy kolizji zamiast tablicy
               const key = `${Math.floor(data.x)},${Math.floor(data.y)},${Math.floor(data.z)}`;
               tempCollisionMap.set(key, {
                   isBlock: true,
@@ -448,7 +462,6 @@ class BlockStarPlanetGame {
           this.parkourManager.init(worldData);
       }
 
-      // Przekazanie tymczasowej mapy kolizji do kontrolera
       this.recreatePlayerController(globalCollidables, tempCollisionMap);
       
       this.stateManager.setManagers({ playerController: this.playerController });
