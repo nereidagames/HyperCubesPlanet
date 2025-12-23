@@ -1,11 +1,18 @@
-
 import * as THREE from 'three';
 import nipplejs from 'nipplejs';
 
 export class PlayerController {
-  constructor(player, collidableObjects, options = {}) {
+  /**
+   * @param {THREE.Object3D} player - Model gracza
+   * @param {Array} collidableObjects - Tablica dużych/globalnych obiektów (podłoga, bariery)
+   * @param {Map} collisionMap - Mapa bloków (Grid Partitioning) dla szybkiego wyszukiwania
+   * @param {Object} options - Opcje fizyki
+   */
+  constructor(player, collidableObjects, collisionMap, options = {}) {
     this.player = player;
-    this.collidableObjects = collidableObjects;
+    this.collidableObjects = collidableObjects; // Tablica dla dużych obiektów
+    this.collisionMap = collisionMap;           // Mapa dla małych bloków (Grid)
+    
     this.moveSpeed = options.moveSpeed || 8;
     this.jumpForce = options.jumpForce || 18;
     this.gravity = options.gravity || 50;
@@ -26,7 +33,7 @@ export class PlayerController {
     this.joystickDirection = new THREE.Vector2();
     this.joystick = null;
 
-    // Cache dla obiektów fizycznych
+    // Cache dla obiektów fizycznych (aby nie tworzyć ich w pętli)
     this.playerBox = new THREE.Box3();
     this.objectBox = new THREE.Box3();
   }
@@ -91,8 +98,7 @@ export class PlayerController {
   }
   
   update(deltaTime, cameraRotation) {
-    // OPTYMALIZACJA: Ograniczenie kroku czasowego fizyki do max 50ms
-    // Zapobiega to przelatywaniu przez podłogę przy dużych lagach
+    // Ograniczenie kroku czasowego dla stabilności fizyki przy lagach
     const timeStep = Math.min(deltaTime, 0.05);
 
     // Grawitacja
@@ -125,59 +131,65 @@ export class PlayerController {
     this.applyMovementAndCollisions(timeStep);
   }
 
+  // --- GRID PARTITIONING COLLISION LOGIC ---
   applyMovementAndCollisions(deltaTime) {
     const halfHeight = this.playerDimensions.y / 2;
     const halfWidth = this.playerDimensions.x / 2;
     const halfDepth = this.playerDimensions.z / 2;
     const epsilon = 0.001;
 
-    // Spatial Partitioning (Proste filtrowanie kandydatów)
-    const playerPos = this.player.position;
+    // 1. Zbuduj listę kandydatów do kolizji (Broad Phase)
     const candidates = [];
-    const checkRange = 3.0; 
-    const verticalRange = 4.0;
 
+    // A. Dodaj obiekty globalne (podłoga, bariery) - są zawsze sprawdzane
     for (let i = 0; i < this.collidableObjects.length; i++) {
-        const obj = this.collidableObjects[i];
+        candidates.push(this.collidableObjects[i]);
+    }
 
-        let isLarge = false;
-        if (obj.geometry) {
-            if (obj.geometry.type === 'PlaneGeometry') {
-                isLarge = true;
-            } 
-            else if (obj.geometry.parameters) {
-                if (obj.geometry.parameters.width > 1.1 || 
-                    obj.geometry.parameters.height > 1.1 || 
-                    obj.geometry.parameters.depth > 1.1) {
-                    isLarge = true;
+    // B. Dodaj bloki z Grid Mapy (tylko te blisko gracza)
+    if (this.collisionMap && this.collisionMap.size > 0) {
+        const playerX = Math.floor(this.player.position.x);
+        const playerY = Math.floor(this.player.position.y);
+        const playerZ = Math.floor(this.player.position.z);
+
+        // Sprawdzamy grid 3x3x5 wokół gracza
+        const rangeH = 1;      // Promień poziomy (1 blok w każdą stronę)
+        const rangeV_Down = 1; // 1 blok w dół
+        const rangeV_Up = 3;   // 3 bloki w górę (żeby nie skoczyć w sufit)
+
+        for (let x = playerX - rangeH; x <= playerX + rangeH; x++) {
+            for (let z = playerZ - rangeH; z <= playerZ + rangeH; z++) {
+                for (let y = playerY - rangeV_Down; y <= playerY + rangeV_Up; y++) {
+                    const key = `${x},${y},${z}`;
+                    const block = this.collisionMap.get(key);
+                    if (block) {
+                        candidates.push(block);
+                    }
                 }
-            }
-        }
-
-        if (isLarge) {
-            candidates.push(obj);
-        } else {
-            const dx = Math.abs(obj.position.x - playerPos.x);
-            const dz = Math.abs(obj.position.z - playerPos.z);
-            const dy = Math.abs(obj.position.y - playerPos.y);
-
-            if (dx < checkRange && dz < checkRange && dy < verticalRange) {
-                candidates.push(obj);
             }
         }
     }
 
     let landedOnBlock = false;
 
-    // --- Kolizja pionowa (Y) ---
+    // --- Faza 2: Dokładna kolizja (Narrow Phase) ---
+
+    // === Kolizja pionowa (Y) ===
     const verticalMovement = this.velocity.y * deltaTime;
     this.player.position.y += verticalMovement;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of candidates) {
-        this.objectBox.setFromObject(object);
+        // Optymalizacja: Używamy scachowanego Box3 dla bloków z gridu
+        if (object.isBlock) {
+            this.objectBox.copy(object.boundingBox);
+        } else {
+            // Dla globalnych obiektów (np. podłoga, ściana) obliczamy dynamicznie
+            this.objectBox.setFromObject(object);
+        }
+
         if (this.playerBox.intersectsBox(this.objectBox)) {
-            if (verticalMovement < 0) { // Spadanie
+            if (verticalMovement < 0) { // Spadanie na blok
                 this.player.position.y = this.objectBox.max.y + halfHeight;
                 this.velocity.y = 0;
                 this.isOnGround = true;
@@ -191,15 +203,23 @@ export class PlayerController {
         }
     }
     
+    // Aktualizujemy Box gracza po korekcie Y
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
-    // --- Kolizja pozioma (X) ---
+    // === Kolizja pozioma (X) ===
     const horizontalMovementX = this.velocity.x * deltaTime;
     this.player.position.x += horizontalMovementX;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of candidates) {
-        this.objectBox.setFromObject(object);
+        if (object.isBlock) {
+            this.objectBox.copy(object.boundingBox);
+        } else {
+            this.objectBox.setFromObject(object);
+        }
+        
+        // Pomiń obiekty, na które gracz może wejść (schodki)
+        // (Uproszczenie: jeśli góra bloku jest niżej niż stopy gracza + margines)
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
@@ -213,13 +233,18 @@ export class PlayerController {
         }
     }
 
-    // --- Kolizja pozioma (Z) ---
+    // === Kolizja pozioma (Z) ===
     const horizontalMovementZ = this.velocity.z * deltaTime;
     this.player.position.z += horizontalMovementZ;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of candidates) {
-        this.objectBox.setFromObject(object);
+        if (object.isBlock) {
+            this.objectBox.copy(object.boundingBox);
+        } else {
+            this.objectBox.setFromObject(object);
+        }
+
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
@@ -233,6 +258,7 @@ export class PlayerController {
         }
     }
 
+    // Sprawdzenie "podłogi świata" (zabezpieczenie przed spadnięciem w nieskończoność)
     if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY + halfHeight;
