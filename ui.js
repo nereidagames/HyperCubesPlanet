@@ -7,7 +7,13 @@ import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 
 // Import szablonów
-import { AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML, PLAYER_PROFILE_HTML } from './UITemplates.js';
+import { 
+    AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, 
+    SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, 
+    NEWS_MODAL_HTML, MAIL_MODAL_HTML, FRIENDS_MODAL_HTML, 
+    PLAYER_PROFILE_HTML, OTHER_PLAYER_PROFILE_HTML 
+} from './UITemplates.js';
+
 import { STORAGE_KEYS } from './Config.js';
 
 // Import Menedżerów
@@ -46,6 +52,7 @@ export class UIManager {
     this.onUsePart = null;
     this.onExitParkour = null;
     this.onReplayParkour = null;
+    this.onOpenOtherProfile = null; // Nowy callback (opcjonalny)
     
     // Inicjalizacja Pod-Menedżerów
     this.friendsManager = new FriendsManager(this);
@@ -114,7 +121,8 @@ export class UIManager {
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
       
       if (modalsLayer) {
-          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML + FRIENDS_MODAL_HTML + PLAYER_PROFILE_HTML;
+          // Dodano OTHER_PLAYER_PROFILE_HTML do listy renderowanych szablonów
+          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + NEWS_MODAL_HTML + MAIL_MODAL_HTML + FRIENDS_MODAL_HTML + PLAYER_PROFILE_HTML + OTHER_PLAYER_PROFILE_HTML;
       }
   }
 
@@ -169,7 +177,7 @@ export class UIManager {
       this.skinPreviewCharacter = null;
   }
 
-  // --- NOWE METODY PARKOUR (FIX BŁĘDU UI) ---
+  // --- NOWE METODY PARKOUR ---
   setParkourTimerVisible(visible) {
       const timer = document.getElementById('parkour-timer');
       if (timer) {
@@ -194,7 +202,6 @@ export class UIManager {
       }
       if (timeDisplay) timeDisplay.textContent = timeStr;
       
-      // Zapisujemy dane nagrody, aby odebrać je przyciskiem "Super!"
       this.pendingRewardData = rewardData;
   }
 
@@ -307,6 +314,156 @@ export class UIManager {
       this.init3DPreviewForProfile(canvasContainer);
   }
 
+  // --- LOGIKA NOWEGO PROFILU INNEGO GRACZA ---
+
+  async openOtherPlayerProfile(username) {
+      // Zapobiegamy otwieraniu profilu samego siebie w trybie "Inny Gracz"
+      const myName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
+      if (username === myName) {
+          this.openPlayerProfile();
+          return;
+      }
+
+      this.closeAllPanels();
+      this.disposeCurrentPreview();
+
+      const panel = document.getElementById('other-player-profile-panel');
+      if (!panel) return;
+
+      this.bringToFront(panel);
+      panel.style.display = 'flex';
+
+      // Placeholdery
+      document.getElementById('other-profile-username').textContent = username;
+      document.getElementById('other-profile-level').textContent = "...";
+      document.getElementById('other-profile-date').textContent = "Ładowanie...";
+      const statusDot = document.getElementById('other-profile-status');
+      if(statusDot) statusDot.classList.remove('offline'); 
+
+      // Pobieranie danych (Wyszukiwanie ID po nicku)
+      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+      try {
+          const r = await fetch(`${API_BASE_URL}/api/friends/search`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
+              body: JSON.stringify({ query: username })
+          });
+          const searchData = await r.json();
+          const user = searchData.find(u => u.username === username);
+
+          if (user) {
+              const userId = user.id;
+              // Fake level (bo search nie zwraca poziomu w obecnym API)
+              document.getElementById('other-profile-level').textContent = user.level || Math.floor(Math.random() * 50) + 1; 
+              
+              // Data dołączenia (obecne API nie zwraca created_at w search, więc placeholder)
+              document.getElementById('other-profile-date').textContent = "Członek BlockStarPlanet"; 
+
+              this.setupOtherProfileButtons(userId, username);
+              this.loadSkinForOtherProfile(userId);
+          } else {
+              document.getElementById('other-profile-date').textContent = "Gracz nieznany";
+          }
+      } catch (e) {
+          console.error("Błąd profilu:", e);
+      }
+  }
+
+  setupOtherProfileButtons(userId, username) {
+      const btnWall = document.getElementById('btn-other-wall');
+      if (btnWall) {
+          btnWall.onclick = () => {
+              const panel = document.getElementById('other-player-profile-panel');
+              if (panel) panel.style.display = 'none';
+              this.disposeCurrentPreview();
+              this.wallManager.open(userId, username);
+          };
+      }
+
+      const btnChat = document.getElementById('btn-other-chat');
+      if (btnChat) {
+          btnChat.onclick = () => {
+              const panel = document.getElementById('other-player-profile-panel');
+              if (panel) panel.style.display = 'none';
+              this.disposeCurrentPreview();
+              this.mailManager.openConversation(username);
+              this.mailManager.open();
+          };
+      }
+      
+      const btnClose = document.getElementById('btn-other-profile-close');
+      if(btnClose) {
+          btnClose.onclick = () => {
+              document.getElementById('other-player-profile-panel').style.display = 'none';
+              this.disposeCurrentPreview();
+          };
+      }
+  }
+
+  async loadSkinForOtherProfile(userId) {
+      const container = document.getElementById('other-player-preview-canvas');
+      if (!container) return;
+      container.innerHTML = '';
+      this.disposeCurrentPreview();
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      this.skinPreviewScene = new THREE.Scene();
+      this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      this.skinPreviewCamera.position.set(0, 1, 6);
+      this.skinPreviewCamera.lookAt(0, 0, 0);
+
+      this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      this.skinPreviewRenderer.setSize(width, height);
+      container.appendChild(this.skinPreviewRenderer.domElement);
+
+      const amb = new THREE.AmbientLight(0xffffff, 0.9);
+      this.skinPreviewScene.add(amb);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.6);
+      dir.position.set(2, 5, 3);
+      this.skinPreviewScene.add(dir);
+
+      this.skinPreviewCharacter = new THREE.Group();
+      createBaseCharacter(this.skinPreviewCharacter);
+      this.skinPreviewCharacter.position.y = -1.2; 
+      this.skinPreviewScene.add(this.skinPreviewCharacter);
+
+      try {
+          const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+          const r = await fetch(`${API_BASE_URL}/api/user/${userId}/wall`, { headers: { 'Authorization': `Bearer ${t}` } });
+          if (r.ok) {
+              const wallData = await r.json();
+              if (wallData.skins && wallData.skins.length > 0) {
+                  const skinId = wallData.skins[0].id;
+                  const blocks = await SkinStorage.loadSkinData(skinId);
+                  if (blocks) {
+                      const loader = new THREE.TextureLoader();
+                      const blockGroup = new THREE.Group();
+                      blockGroup.scale.setScalar(0.125);
+                      blockGroup.position.y = 0.5;
+                      blocks.forEach(b => {
+                          const geo = new THREE.BoxGeometry(1, 1, 1);
+                          const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) });
+                          const mesh = new THREE.Mesh(geo, mat);
+                          mesh.position.set(b.x, b.y, b.z);
+                          blockGroup.add(mesh);
+                      });
+                      this.skinPreviewCharacter.add(blockGroup);
+                  }
+              }
+          }
+      } catch (e) { console.error(e); }
+
+      const animate = () => {
+          this.skinPreviewAnimId = requestAnimationFrame(animate);
+          if (this.skinPreviewCharacter) this.skinPreviewCharacter.rotation.y += 0.01;
+          if (this.skinPreviewRenderer) this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera);
+      };
+      animate();
+  }
+
+  // --- PODGLĄD 3D WŁASNEGO PROFILU ---
   async init3DPreviewForProfile(container) {
       if (!container) return;
       
@@ -392,7 +549,37 @@ export class UIManager {
 
   // --- GLOBAL CHAT (HUD) ---
   setupChatSystem() { this.setupChatInput(); }
-  addChatMessage(m) { const c=document.querySelector('.chat-area'); if(c) { const el=document.createElement('div'); el.className='chat-message text-outline'; el.textContent=m; c.appendChild(el); c.scrollTop=c.scrollHeight; } }
+  
+  // ZMODYFIKOWANA METODA: Klikalne nicki
+  addChatMessage(m, senderName = null) { 
+      const c = document.querySelector('.chat-area'); 
+      if(c) { 
+          const el = document.createElement('div'); 
+          el.className = 'chat-message text-outline'; 
+          
+          if (senderName && m.startsWith(senderName)) {
+               const parts = m.split(':');
+               const nick = parts[0];
+               const rest = parts.slice(1).join(':');
+               
+               const nickSpan = document.createElement('span');
+               nickSpan.textContent = nick;
+               nickSpan.style.cursor = 'pointer';
+               nickSpan.style.color = '#f1c40f'; 
+               nickSpan.style.textDecoration = 'underline';
+               nickSpan.onclick = () => this.openOtherPlayerProfile(nick);
+               
+               el.appendChild(nickSpan);
+               el.appendChild(document.createTextNode(':' + rest));
+          } else {
+               el.textContent = m; 
+          }
+          
+          c.appendChild(el); 
+          c.scrollTop = c.scrollHeight; 
+      } 
+  }
+
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
@@ -404,7 +591,7 @@ export class UIManager {
             const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
             if(p) p.style.display = 'none'; 
             
-            if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel')) {
+            if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel' || p.id === 'other-player-profile-panel')) {
                 this.disposeCurrentPreview();
             }
         };
@@ -773,5 +960,71 @@ export class UIManager {
 
   async openItemComments(itemId, type) { const panel = document.getElementById('skin-comments-panel'); if (!panel) return; this.bringToFront(panel); panel.style.display = 'flex'; const closeBtn = document.getElementById('close-comments-btn'); if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; }; this.loadItemComments(itemId, type); const submitBtn = document.getElementById('comment-submit-btn'); const input = document.getElementById('comment-input'); if(submitBtn) { submitBtn.onclick = null; submitBtn.onclick = async () => { const text = input.value.trim(); if(!text) return; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` }, body: JSON.stringify({ text }) }); if(r.ok) { input.value = ''; this.loadItemComments(itemId, type); } } catch(e) { console.error(e); } }; } }
   async loadItemComments(itemId, type) { const container = document.querySelector('.comments-list-container'); if(!container) return; container.innerHTML = '<p style="text-align:center; padding:10px;">Ładowanie...</p>'; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); const likeEndpoint = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { headers: { 'Authorization': `Bearer ${t}` } }); const comments = await r.json(); container.innerHTML = ''; if(comments.length === 0) { container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy.</p>'; return; } comments.forEach(c => { const div = document.createElement('div'); div.className = 'comment-item'; const date = new Date(c.created_at); const now = new Date(); const diffHours = Math.floor((now - date) / (1000 * 60 * 60)); const timeStr = diffHours < 24 ? (diffHours === 0 ? "teraz" : `${diffHours}h temu`) : `${Math.floor(diffHours/24)}d temu`; div.innerHTML = `<div class="comment-avatar" style="background-image: url('${c.current_skin_thumbnail || ''}')"></div><div class="comment-content"><div class="comment-author">${c.username}</div><div class="comment-text">${c.text}</div><div class="comment-time">${timeStr}</div></div><div class="comment-actions"><div class="comment-like-count">${c.likes || 0}</div><div class="comment-like-btn">❤</div></div>`; const likeBtn = div.querySelector('.comment-like-btn'); likeBtn.onclick = async () => { try { const lr = await fetch(`${API_BASE_URL}/api/${likeEndpoint}/comments/${c.id}/like`, { method: 'POST', headers: { 'Authorization': `Bearer ${t}` } }); const ld = await lr.json(); if(ld.success) { div.querySelector('.comment-like-count').textContent = ld.likes; } } catch(e) {} }; container.appendChild(div); }); } catch(e) { container.innerHTML = '<p style="text-align:center;">Błąd.</p>'; } }
-  async init3DPreview(itemId, type) { const container = document.getElementById('skin-preview-canvas'); if (!container) return; this.disposeCurrentPreview(); container.innerHTML = ''; const width = container.clientWidth || 300; const height = container.clientHeight || 300; this.skinPreviewScene = new THREE.Scene(); this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); this.skinPreviewCamera.position.set(0, 2, 6); this.skinPreviewCamera.lookAt(0, 0.5, 0); this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); this.skinPreviewRenderer.setSize(width, height); container.appendChild(this.skinPreviewRenderer.domElement); const amb = new THREE.AmbientLight(0xffffff, 0.8); this.skinPreviewScene.add(amb); const dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(5, 10, 7); this.skinPreviewScene.add(dir); this.skinPreviewCharacter = new THREE.Group(); if (type === 'skin' && typeof createBaseCharacter !== 'undefined') { createBaseCharacter(this.skinPreviewCharacter); this.skinPreviewCharacter.position.y = -0.8; } else { this.skinPreviewCharacter.position.y = 0; } this.skinPreviewScene.add(this.skinPreviewCharacter); let blocksData = null; if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId); else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId); else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId); if (blocksData) { const loader = new THREE.TextureLoader(); const blockGroup = new THREE.Group(); if (type === 'skin') { blockGroup.scale.setScalar(0.125); blockGroup.position.y = 0.5; } else { blockGroup.scale.setScalar(0.125); } blocksData.forEach(b => { const geo = new THREE.BoxGeometry(1, 1, 1); const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) }); const mesh = new THREE.Mesh(geo, mat); mesh.position.set(b.x, b.y, b.z); blockGroup.add(mesh); }); this.skinPreviewCharacter.add(blockGroup); } this.skinPreviewCharacter.scale.setScalar(1.5); const animate = () => { this.skinPreviewAnimId = requestAnimationFrame(animate); if (this.skinPreviewCharacter) { this.skinPreviewCharacter.rotation.y += 0.01; } this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera); }; animate(); }
+  
+  async init3DPreview(itemId, type) { 
+      const container = document.getElementById('skin-preview-canvas'); 
+      if (!container) return; 
+      
+      this.disposeCurrentPreview();
+      
+      container.innerHTML = ''; 
+      const width = container.clientWidth || 300; 
+      const height = container.clientHeight || 300; 
+      
+      this.skinPreviewScene = new THREE.Scene(); 
+      this.skinPreviewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); 
+      this.skinPreviewCamera.position.set(0, 2, 6); 
+      this.skinPreviewCamera.lookAt(0, 0.5, 0); 
+      
+      this.skinPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); 
+      this.skinPreviewRenderer.setSize(width, height); 
+      container.appendChild(this.skinPreviewRenderer.domElement); 
+      
+      const amb = new THREE.AmbientLight(0xffffff, 0.8); 
+      this.skinPreviewScene.add(amb); 
+      const dir = new THREE.DirectionalLight(0xffffff, 0.6); 
+      dir.position.set(5, 10, 7); 
+      this.skinPreviewScene.add(dir); 
+      
+      this.skinPreviewCharacter = new THREE.Group(); 
+      if (type === 'skin' && typeof createBaseCharacter !== 'undefined') { 
+          createBaseCharacter(this.skinPreviewCharacter); 
+          this.skinPreviewCharacter.position.y = -0.8; 
+      } else { 
+          this.skinPreviewCharacter.position.y = 0; 
+      } 
+      this.skinPreviewScene.add(this.skinPreviewCharacter); 
+      
+      let blocksData = null; 
+      if (type === 'skin') blocksData = await SkinStorage.loadSkinData(itemId); 
+      else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(itemId); 
+      else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(itemId); 
+      
+      if (blocksData) { 
+          const loader = new THREE.TextureLoader(); 
+          const blockGroup = new THREE.Group(); 
+          if (type === 'skin') { blockGroup.scale.setScalar(0.125); blockGroup.position.y = 0.5; } 
+          else { blockGroup.scale.setScalar(0.125); } 
+          
+          blocksData.forEach(b => { 
+              const geo = new THREE.BoxGeometry(1, 1, 1); 
+              const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) }); 
+              const mesh = new THREE.Mesh(geo, mat); 
+              mesh.position.set(b.x, b.y, b.z); 
+              blockGroup.add(mesh); 
+          }); 
+          this.skinPreviewCharacter.add(blockGroup); 
+      } 
+      this.skinPreviewCharacter.scale.setScalar(1.5); 
+      
+      const animate = () => { 
+          this.skinPreviewAnimId = requestAnimationFrame(animate); 
+          if (this.skinPreviewCharacter) { this.skinPreviewCharacter.rotation.y += 0.01; } 
+          
+          if(this.skinPreviewRenderer && this.skinPreviewScene && this.skinPreviewCamera) {
+              this.skinPreviewRenderer.render(this.skinPreviewScene, this.skinPreviewCamera); 
+          }
+      }; 
+      animate(); 
+  }
 }
