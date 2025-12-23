@@ -81,7 +81,7 @@ export class UIManager {
     console.log("Inicjalizacja UI...");
     try {
         this.renderUI();
-        this.initSharedRenderer(); // Inicjalizacja współdzielonego renderera
+        this.initSharedRenderer();
 
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
@@ -90,77 +90,13 @@ export class UIManager {
         if (this.wallManager.initialize) this.wallManager.initialize(); 
 
         this.setupButtonHandlers();
-        
-        // Wywołanie konfiguracji czatu
         this.setupChatSystem(); 
-        
         this.loadFriendsData(); 
         
         console.log('UI Manager gotowy.');
     } catch (error) {
         console.error("Błąd UI:", error);
     }
-  }
-
-  // --- CZAT I SYSTEM WIADOMOŚCI (Przeniesione tutaj dla pewności) ---
-  setupChatSystem() {
-      this.setupChatInput();
-  }
-
-  setupChatInput() {
-      const form = document.getElementById('chat-form');
-      if (!form) return;
-      form.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const input = document.getElementById('chat-input-field');
-          const value = input.value.trim();
-          if (value && this.onSendMessage) {
-              this.onSendMessage(value);
-          }
-          input.value = '';
-          form.style.display = 'none';
-      });
-  }
-
-  handleChatClick() {
-      const form = document.getElementById('chat-form');
-      if (form) form.style.display = 'flex';
-      const input = document.getElementById('chat-input-field');
-      if (input) input.focus();
-  }
-
-  clearChat() {
-      const area = document.querySelector('.chat-area');
-      if (area) area.innerHTML = '';
-  }
-
-  addChatMessage(message, senderName = null) { 
-      const chatArea = document.querySelector('.chat-area'); 
-      if(chatArea) { 
-          const el = document.createElement('div'); 
-          el.className = 'chat-message text-outline'; 
-          
-          if (senderName && message.startsWith(senderName)) {
-               const parts = message.split(':');
-               const nick = parts[0];
-               const rest = parts.slice(1).join(':');
-               
-               const nickSpan = document.createElement('span');
-               nickSpan.textContent = nick;
-               nickSpan.style.cursor = 'pointer';
-               nickSpan.style.color = '#f1c40f'; 
-               nickSpan.style.textDecoration = 'underline';
-               nickSpan.onclick = () => this.openOtherPlayerProfile(nick);
-               
-               el.appendChild(nickSpan);
-               el.appendChild(document.createTextNode(':' + rest));
-          } else {
-               el.textContent = message; 
-          }
-          
-          chatArea.appendChild(el); 
-          chatArea.scrollTop = chatArea.scrollHeight; 
-      } 
   }
 
   renderUI() {
@@ -178,7 +114,7 @@ export class UIManager {
       }
   }
 
-  // --- RENDERER (SINGLETON) ---
+  // --- RENDERER 3D (SINGLETON) ---
   initSharedRenderer() {
       this.sharedPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
       this.sharedPreviewRenderer.setSize(300, 300);
@@ -264,10 +200,108 @@ export class UIManager {
   }
 
   disposeCurrentPreview() {
-      // W trybie singleton nie niszczymy, tylko czyścimy
+      // Singleton - nic nie niszczymy, ewentualnie odpinamy od DOM
   }
 
-  // --- OTWIERANIE PROFILU INNEGO GRACZA ---
+  // --- HUD METHODS (Te, których brakowało) ---
+  
+  updatePlayerName(name) { 
+      const nameDisplay = document.getElementById('player-name-display'); 
+      if (nameDisplay) nameDisplay.textContent = name;
+      
+      if (!this.myProfileData) this.myProfileData = {};
+      this.myProfileData.username = name;
+  }
+  
+  updatePlayerAvatar(thumbnail) { 
+      const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); 
+      if (!avatarEl) return; 
+      
+      if (!this.myProfileData) this.myProfileData = {};
+      this.myProfileData.thumbnail = thumbnail;
+
+      if (thumbnail) { 
+          avatarEl.textContent = ''; 
+          avatarEl.style.backgroundImage = `url(${thumbnail})`; 
+          avatarEl.style.backgroundSize = 'cover'; 
+          avatarEl.style.backgroundPosition = 'center'; 
+          avatarEl.style.backgroundColor = '#4a90e2'; 
+      } else { 
+          avatarEl.style.backgroundImage = 'none'; 
+          avatarEl.textContent = '👤'; 
+      } 
+  }
+
+  updateLevelInfo(level, xp, maxXp) {
+      const lvlVal = document.getElementById('level-value');
+      const lvlText = document.getElementById('level-text');
+      const lvlFill = document.getElementById('level-bar-fill');
+      
+      if (!this.myProfileData) this.myProfileData = {};
+      this.myProfileData.level = level;
+      
+      if (lvlVal) lvlVal.textContent = level;
+      if (lvlText) lvlText.textContent = `${xp}/${maxXp}`;
+      if (lvlFill) { 
+          const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100)); 
+          lvlFill.style.width = `${percent}%`; 
+      }
+  }
+
+  updateCoinCounter(val) { 
+      const e = document.getElementById('coin-value'); 
+      if(e) e.textContent = val; 
+  }
+  
+  updateFPSToggleText(e) { 
+      const f = document.getElementById('fps-status'); 
+      if(f) f.textContent = e ? 'Włączony' : 'Wyłączony'; 
+  }
+
+  toggleMobileControls(s) { 
+      const m = document.getElementById('mobile-game-controls'); 
+      if(m) m.style.display = s ? 'block' : 'none'; 
+  }
+
+  updatePendingRewards(count) {
+      if (this.newsManager) {
+          this.pendingNewsCount = parseInt(count) || 0;
+          const badge = document.getElementById('rewards-badge');
+          if (badge) {
+              if (this.pendingNewsCount > 0) {
+                  badge.textContent = this.pendingNewsCount;
+                  badge.style.display = 'flex'; 
+              } else {
+                  badge.style.display = 'none';
+              }
+          }
+      }
+  }
+
+  checkAdminPermissions(username) {
+      const admins = ['nixox2', 'admin'];
+      if (admins.includes(username)) {
+          const grid = document.querySelector('#more-options-panel .nav-grid-container');
+          if (grid && !document.getElementById('admin-edit-nexus-btn')) {
+               const adminDiv = document.createElement('div');
+               adminDiv.className = 'nav-item';
+               adminDiv.id = 'admin-edit-nexus-btn';
+               adminDiv.innerHTML = `
+                  <div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
+                      <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                      <span class="nav-label">Admin</span>
+                  </div>
+               `;
+               adminDiv.onclick = () => {
+                   this.closePanel('more-options-panel');
+                   if (this.onEditNexusClick) this.onEditNexusClick();
+               };
+               grid.insertBefore(adminDiv, grid.firstChild);
+          }
+      }
+  }
+
+  // --- PROFIL INNEGO GRACZA ---
   async openOtherPlayerProfile(username) {
       const myName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
       if (username === myName) {
@@ -355,7 +389,7 @@ export class UIManager {
       }
   }
 
-  // --- PODGLĄD WŁASNEGO PROFILU ---
+  // --- WŁASNY PROFIL ---
   async openPlayerProfile() {
       const panel = document.getElementById('player-profile-panel');
       if (!panel) return;
@@ -392,7 +426,7 @@ export class UIManager {
       }
   }
 
-  // --- PODGLĄD W OKNIE SZCZEGÓŁÓW (SKIN DETAILS) ---
+  // --- SKIN DETAILS ---
   async showItemDetails(item, type, keepOpen = false) { 
       const modal = document.getElementById('skin-details-modal'); 
       if (!modal) return; 
@@ -465,23 +499,74 @@ export class UIManager {
       this.applySkinToPreview(blocksData);
   }
 
-  // --- HELPERS ---
-  bringToFront(element) { if (element) { this.activeZIndex++; element.style.zIndex = this.activeZIndex; } }
+  // --- CZAT ---
+  setupChatSystem() { this.setupChatInput(); }
   
-  // --- BUTTON HANDLERS ---
+  addChatMessage(m, senderName = null) { 
+      const c = document.querySelector('.chat-area'); 
+      if(c) { 
+          const el = document.createElement('div'); 
+          el.className = 'chat-message text-outline'; 
+          if (senderName && m.startsWith(senderName)) {
+               const parts = m.split(':');
+               const nick = parts[0];
+               const rest = parts.slice(1).join(':');
+               const nickSpan = document.createElement('span');
+               nickSpan.textContent = nick;
+               nickSpan.style.cursor = 'pointer';
+               nickSpan.style.color = '#f1c40f'; 
+               nickSpan.style.textDecoration = 'underline';
+               nickSpan.onclick = () => this.openOtherPlayerProfile(nick);
+               el.appendChild(nickSpan);
+               el.appendChild(document.createTextNode(':' + rest));
+          } else { el.textContent = m; }
+          c.appendChild(el); c.scrollTop = c.scrollHeight; 
+      } 
+  }
+
+  clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
+  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
+  setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
+
+  // --- PARKOUR ---
+  setParkourTimerVisible(visible) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) timer.style.display = visible ? 'block' : 'none';
+  }
+  updateParkourTimer(timeString) {
+      const timer = document.getElementById('parkour-timer');
+      if (timer) timer.textContent = timeString;
+  }
+  handleParkourCompletion(timeStr, rewardData) {
+      const victoryPanel = document.getElementById('victory-panel');
+      const timeDisplay = document.getElementById('victory-time-display');
+      if (victoryPanel) {
+          this.bringToFront(victoryPanel);
+          victoryPanel.style.display = 'flex';
+      }
+      if (timeDisplay) timeDisplay.textContent = timeStr;
+      this.pendingRewardData = rewardData;
+  }
+  hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
+
+  // --- BUTTONS & PANELS ---
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
             const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
             if(p) p.style.display = 'none'; 
+            if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel' || p.id === 'other-player-profile-panel')) {
+                this.disposeCurrentPreview();
+            }
         };
     });
     
     const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
-    const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') profilePanel.style.display = 'none'; }); }
+    const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
     document.querySelectorAll('.game-btn').forEach(button => { const type = this.getButtonType(button); button.addEventListener('click', () => this.handleButtonClick(type, button)); });
+    
     const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPlayerProfile(); };
-    const btnWall = document.getElementById('btn-profile-wall'); if (btnWall) { btnWall.onclick = () => { document.getElementById('player-profile-panel').style.display = 'none'; const userId = localStorage.getItem(STORAGE_KEYS.USER_ID); const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME); this.wallManager.open(userId, username); }; }
+    const btnWall = document.getElementById('btn-profile-wall'); if (btnWall) { btnWall.onclick = () => { document.getElementById('player-profile-panel').style.display = 'none'; this.disposeCurrentPreview(); const userId = localStorage.getItem(STORAGE_KEYS.USER_ID); const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME); this.wallManager.open(userId, username); }; }
     const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
     const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
     const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
@@ -496,14 +581,15 @@ export class UIManager {
     setClick('btn-open-news', () => { this.newsManager.open(); }); setClick('btn-open-highscores', () => { if (this.highScoresManager) this.highScoresManager.open(); }); setClick('btn-nav-options', () => { if(this.onToggleFPS) { this.onToggleFPS(); this.showMessage("Przełączono licznik FPS", "info"); } }); setClick('logout-btn', () => { localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN); localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME); localStorage.removeItem(STORAGE_KEYS.USER_ID); window.location.reload(); }); setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
-  // --- REST OF HELPERS (Standard) ---
   getButtonType(button) { if (button.classList.contains('btn-zagraj')) return 'zagraj'; if (button.classList.contains('btn-buduj')) return 'buduj'; if (button.classList.contains('btn-kup')) return 'kup'; if (button.classList.contains('btn-odkryj')) return 'odkryj'; if (button.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
   handleButtonClick(buttonType, buttonElement) { buttonElement.style.transform = 'translateY(-1px) scale(0.95)'; setTimeout(() => { buttonElement.style.transform = ''; }, 150); if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; } if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; } if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; } if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; } if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; } }
+  
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
   refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
-  hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
+  showRewardPanel(customData = null) { const panel = document.getElementById('reward-panel'); const data = customData || this.pendingRewardData; if (!panel) return; this.bringToFront(panel); if (data) { const title = document.getElementById('reward-title-text'); if(title) title.textContent = data.message || (customData ? "Odebrano Nagrody!" : "Ukończono!"); const xpVal = document.getElementById('reward-xp-val'); const coinVal = document.getElementById('reward-coins-val'); const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100; if (xpVal) xpVal.textContent = `+${gainedXp}`; if (coinVal) coinVal.textContent = `+${gainedCoins}`; document.getElementById('reward-lvl-cur').textContent = data.newLevel; document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; const fill = document.getElementById('reward-bar-fill'); const text = document.getElementById('reward-bar-text'); if (fill && text) { const max = data.maxXp || 100; const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); fill.style.width = `${percent}%`; text.textContent = `${data.newXp}/${max}`; } } panel.style.display = 'flex'; }
+  openPanel(id) { const p = document.getElementById(id); if(p) { this.bringToFront(p); p.style.display = 'flex'; if(id === 'friends-panel') this.friendsManager.loadFriendsData(); } }
   closePanel(id) { const p = document.getElementById(id); if(p) p.style.display = 'none'; }
-  closeAllPanels() { document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none'); this.newsManager.close(); this.mailManager.close(); this.friendsManager.close(); this.highScoresManager.close(); this.wallManager.close(); }
+  closeAllPanels() { this.disposeCurrentPreview(); document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none'); this.newsManager.close(); this.mailManager.close(); this.friendsManager.close(); this.highScoresManager.close(); this.wallManager.close(); }
   populateShop(allBlocks, isOwnedCallback) { this.allShopItems = allBlocks; this.shopIsOwnedCallback = isOwnedCallback; this.refreshShopList(); }
   refreshShopList() { const list = document.getElementById('shop-list'); if (!list) return; list.innerHTML = ''; const filteredItems = this.allShopItems.filter(item => { const cat = item.category || 'block'; return cat === this.shopCurrentCategory; }); if (filteredItems.length === 0) { list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; return; } filteredItems.forEach(b => { const i = document.createElement('div'); i.className = 'shop-item'; const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; list.appendChild(i); }); list.querySelectorAll('.buy-btn').forEach(btn => { btn.onclick = () => { const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); if (b && this.onBuyBlock) this.onBuyBlock(b); }; }); }
   async showDiscoverPanel(type, category = null) { const title=document.getElementById('discover-panel-title'); const tabs=document.getElementById('discover-tabs'); const list=document.getElementById('discover-list'); if(!list) return; this.openPanel('discover-panel'); list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; if(type === 'worlds') { if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; if(tabs) tabs.style.display='none'; try { const allWorlds = await WorldStorage.getAllWorlds(); let filteredWorlds = allWorlds; if (category) { filteredWorlds = allWorlds.filter(w => { const wType = w.type || 'creative'; return wType === category; }); } this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } } else if (type === 'discovery') { const labels = { skin: 'Skiny', part: 'Części', prefab: 'Prefabrykaty' }; if(title) title.textContent = `Wybierz ${labels[category] || 'Element'}`; if(tabs) { tabs.style.display = 'flex'; const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); if(tabMine) tabMine.classList.remove('active'); if(tabAll) { tabAll.classList.add('active'); tabAll.onclick = () => { tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshDiscoveryList(category, 'all'); }; } if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshDiscoveryList(category, 'mine'); }; } } this.refreshDiscoveryList(category, 'all'); } }
