@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
@@ -7,21 +6,29 @@ export class SceneManager {
   constructor(scene, loadingManager) {
     this.scene = scene;
     this.loadingManager = loadingManager;
-    this.collidableObjects = []; // Tablica obiektów, z którymi gracz się zderza
+    
+    // Tablica dla obiektów "globalnych" (podłoga, bariery, ściany mapy)
+    // Tych obiektów jest mało, więc trzymamy je w tablicy.
+    this.collidableObjects = []; 
+    
+    // NOWOŚĆ: MAPA KOLIZJI DLA BLOKÓW (Grid Partitioning / Spatial Hashing)
+    // Zamiast sprawdzać tysiące bloków w pętli, sprawdzamy konkretny klucz w mapie.
+    // Klucz: "x,y,z" (np. "10,5,-3"), Wartość: Obiekt z danymi kolizji
+    this.collisionMap = new Map();
     
     // Ustawienia mapy
     this.MAP_SIZE = 64;
     this.BLOCK_SIZE = 1;
     this.BARRIER_HEIGHT = 100; 
     this.BARRIER_THICKNESS = 1;
-    this.FLOOR_TOP_Y = 0.1; // Ważne dla fizyki
+    this.FLOOR_TOP_Y = 0.1; // Poziom podłogi (ważne dla fizyki)
     
     this.isInitialized = false;
     
     this.textureLoader = new THREE.TextureLoader(this.loadingManager);
     this.materials = {};
     
-    // Współdzielona geometria (Optymalizacja RAM)
+    // Współdzielona geometria (Optymalizacja RAM - jedna geometria dla wszystkich bloków kolizji)
     this.sharedCollisionGeometry = new THREE.BoxGeometry(1, 1, 1);
     
     this.maxAnisotropy = 4; 
@@ -30,7 +37,7 @@ export class SceneManager {
   async initialize() {
     if (this.isInitialized) return;
 
-    this.maxAnisotropy = 16;
+    this.maxAnisotropy = 16; // Poprawa jakości tekstur pod kątem
 
     this.setupLighting();
     this.setupFog();
@@ -38,15 +45,17 @@ export class SceneManager {
     // Próba załadowania Nexusa z bazy danych
     const nexusLoaded = await this.loadNexusFromDB();
 
+    // Jeśli baza jest pusta lub błąd, generuj domyślną szachownicę
     if (!nexusLoaded) {
         console.log("Brak mapy Nexusa w bazie, generowanie domyślnej...");
         this.createCheckerboardFloor();
     }
 
+    // Zawsze dodajemy niewidzialne ściany dookoła mapy
     this.createBarrierBlocks();
 
     this.isInitialized = true;
-    console.log("SceneManager zainicjalizowany (Tryb: Instanced Rendering + Anisotropy).");
+    console.log("SceneManager zainicjalizowany (Tryb: Instanced Rendering + Spatial Hashing).");
   }
   
   setupLighting() {
@@ -57,6 +66,7 @@ export class SceneManager {
     directionalLight.position.set(30, 60, 40); 
     directionalLight.castShadow = true;
     
+    // Konfiguracja cieni dla dużej mapy
     directionalLight.shadow.mapSize.width = 1024;
     directionalLight.shadow.mapSize.height = 1024;
     directionalLight.shadow.camera.near = 0.5;
@@ -73,7 +83,16 @@ export class SceneManager {
   }
   
   setupFog() {
+    // Mgła ukrywająca koniec świata
     this.scene.fog = new THREE.Fog(0x87CEEB, 15, 90);
+  }
+
+  // --- KLUCZOWA FUNKCJA DLA GRID PARTITIONING ---
+  // Zamienia koordynaty świata na unikalny klucz stringowy
+  getMapKey(x, y, z) {
+      // Math.floor jest ważny, bo bloki mogą być na pozycjach np. 10.5, 5.5
+      // Chcemy jednoznaczny identyfikator kratki gridu
+      return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
   }
 
   async loadNexusFromDB() {
@@ -86,7 +105,11 @@ export class SceneManager {
 
           console.log(`Wczytywanie Nexusa: ${blocksData.length} bloków.`);
 
+          // Grupowanie bloków po teksturze (dla InstancedMesh)
           const blocksByTexture = {};
+          
+          // Czyścimy mapę kolizji przed załadowaniem nowej
+          this.collisionMap.clear(); 
 
           blocksData.forEach(block => {
               if (!blocksByTexture[block.texturePath]) {
@@ -97,8 +120,10 @@ export class SceneManager {
 
           const dummy = new THREE.Object3D();
 
+          // Iterujemy po grupach tekstur
           for (const [texturePath, blocks] of Object.entries(blocksByTexture)) {
               
+              // Tworzenie lub pobranie materiału
               let material = this.materials[texturePath];
               if (!material) {
                   const texture = this.textureLoader.load(texturePath);
@@ -112,27 +137,40 @@ export class SceneManager {
                   this.materials[texturePath] = material;
               }
 
+              // Tworzenie InstancedMesh (Wydajne renderowanie GPU)
               const instancedMesh = new THREE.InstancedMesh(this.sharedCollisionGeometry, material, blocks.length);
               instancedMesh.castShadow = true;
               instancedMesh.receiveShadow = true;
 
               blocks.forEach((block, index) => {
+                  // 1. Ustawienie macierzy dla renderowania
                   dummy.position.set(block.x, block.y, block.z);
                   dummy.updateMatrix();
                   instancedMesh.setMatrixAt(index, dummy.matrix);
 
-                  const collisionMesh = new THREE.Mesh(this.sharedCollisionGeometry, new THREE.MeshBasicMaterial());
-                  collisionMesh.position.set(block.x, block.y, block.z);
-                  collisionMesh.visible = false;
+                  // 2. WYPEŁNIANIE MAPY KOLIZJI (Grid Partitioning)
+                  // Zamiast tworzyć fizyczny Mesh dla każdego bloku, tworzymy lekki obiekt danych.
+                  // PlayerController pobierze go błyskawicznie używając klucza.
+                  const key = this.getMapKey(block.x, block.y, block.z);
                   
-                  this.scene.add(collisionMesh);
-                  this.collidableObjects.push(collisionMesh);
+                  const collisionData = {
+                      isBlock: true, // Flaga dla kontrolera
+                      position: new THREE.Vector3(block.x, block.y, block.z),
+                      // Cache'ujemy BoundingBox, żeby nie liczyć go w kółko w update()
+                      boundingBox: new THREE.Box3().setFromCenterAndSize(
+                          new THREE.Vector3(block.x, block.y, block.z), 
+                          new THREE.Vector3(1, 1, 1)
+                      )
+                  };
+                  
+                  this.collisionMap.set(key, collisionData);
               });
 
               instancedMesh.instanceMatrix.needsUpdate = true;
               this.scene.add(instancedMesh);
           }
 
+          // Dodanie niewidzialnej podłogi (zabezpieczenie przed spadnięciem)
           const floorGeo = new THREE.PlaneGeometry(300, 300);
           floorGeo.rotateX(-Math.PI / 2);
           const floorMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -179,6 +217,7 @@ export class SceneManager {
     this.scene.add(floorMesh);
     this.collidableObjects.push(floorMesh);
 
+    // Krawędzie mapy (fioletowe linie)
     const borderGeometry = new THREE.BoxGeometry(this.MAP_SIZE, 1, this.MAP_SIZE);
     const edges = new THREE.EdgesGeometry(borderGeometry);
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 });
@@ -193,6 +232,7 @@ export class SceneManager {
     const barrierMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
     const thickness = this.BARRIER_THICKNESS;
 
+    // Tworzenie 4 ścian niewidzialnych barier
     const wallZ1 = new THREE.Mesh(new THREE.BoxGeometry(this.MAP_SIZE, this.BARRIER_HEIGHT, thickness), barrierMaterial);
     wallZ1.position.set(0, barrierY, halfMapSize);
     this.scene.add(wallZ1);
@@ -214,27 +254,21 @@ export class SceneManager {
     this.collidableObjects.push(wallX2);
   }
 
+  // Funkcja obliczająca bezpieczną wysokość dla spawnu (używana przy teleportacji)
+  // Zaktualizowana o użycie collisionMap dla wydajności
   getSafeY(targetX, targetZ) {
-      let highestY = -100;
-      const checkRadius = 0.8; 
+      const startY = 32; // Maksymalna wysokość budowania w Nexusie
+      const keyX = Math.floor(targetX);
+      const keyZ = Math.floor(targetZ);
 
-      for (const obj of this.collidableObjects) {
-          if (obj.geometry && obj.geometry.type === 'BoxGeometry') {
-              if (obj.visible === false) { 
-                  const dx = Math.abs(obj.position.x - targetX);
-                  const dz = Math.abs(obj.position.z - targetZ);
-                  
-                  if (dx < checkRadius && dz < checkRadius) {
-                      if (obj.position.y > highestY) {
-                          highestY = obj.position.y;
-                      }
-                  }
-              }
+      // Sprawdzamy w dół, czy jest jakiś blok w tym miejscu gridu
+      for (let y = startY; y >= 0; y--) {
+          const key = this.getMapKey(keyX, y, keyZ);
+          if (this.collisionMap.has(key)) {
+              return y + 1.5; // Blok znaleziony, zwróć pozycję bezpiecznie nad nim
           }
       }
 
-      if (highestY === -100) return 1.0;
-      
-      return highestY + 0.5;
+      return 1.0; // Domyślnie poziom podłogi, jeśli brak bloków
   }
 }
