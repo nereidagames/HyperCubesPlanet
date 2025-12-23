@@ -139,20 +139,20 @@ export class FriendsManager {
         
         // Konfiguracja przycisku akcji (prawy dolny róg karty)
         if (actionType === 'add') {
-            // Dodaj do znajomych
+            // Dodaj do znajomych (Plus)
             actionBtn.onclick = (e) => {
-                e.stopPropagation(); // Zapobiega otwarciu profilu przy kliknięciu w plusa
+                e.stopPropagation(); 
                 this.sendFriendRequest(user.id);
             };
         } else if (actionType === 'accept') {
-            // Akceptuj zaproszenie
+            // Akceptuj zaproszenie (Ptaszke)
             actionBtn.style.backgroundImage = "url('icons/icon-check.png')"; 
             actionBtn.onclick = (e) => {
                 e.stopPropagation();
                 this.acceptFriendRequest(user.request_id);
             };
         } else if (actionType === 'chat' || actionType === 'mail') {
-            // Czat / Wiadomość
+            // Czat / Wiadomość (Dymek)
             actionBtn.style.backgroundImage = "url('icons/icon-chat.png')";
             actionBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -166,7 +166,7 @@ export class FriendsManager {
         // Kliknięcie w całą kartę otwiera PROFIL GRACZA
         const body = div.querySelector('.friend-card-body');
         body.onclick = (e) => {
-            // Ignorujemy kliknięcie, jeśli trafiono w przycisk akcji (choć stopPropagation wyżej powinno to załatwić)
+            // Ignorujemy kliknięcie, jeśli trafiono w przycisk akcji
             if (e.target !== actionBtn) {
                 if (this.ui.openOtherPlayerProfile) {
                     this.ui.openOtherPlayerProfile(user.username);
