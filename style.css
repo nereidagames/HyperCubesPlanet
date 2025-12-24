@@ -53,7 +53,7 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; display: none; }
 .ui-element { pointer-events: auto; }
 
-/* Top Bar - PRZYWRÓCONE ORYGINALNE STYLE */
+/* Top Bar */
 .top-bar { 
     position: absolute; top: 0; left: 0; right: 0; height: 60px; 
     background-image: url('icons/icon-bar.png');
@@ -99,8 +99,8 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 /* Right UI (Coins, Level, Buttons) */
 .right-ui { position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
 
-/* PRZYWRÓCONY UKŁAD POZIOMY PRZYCISKÓW */
-.game-buttons { display: flex; gap: 15px; align-items: center; margin-bottom: 5px; } 
+/* FIX: PRZYWRÓCONO UKŁAD POZIOMY (ROW) */
+.game-buttons { display: flex; gap: 15px; align-items: center; margin-bottom: 5px; }
 
 .game-btn { width: 75px; height: 75px; cursor: pointer; transition: transform 0.2s ease; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; }
 .game-btn:active { transform: scale(0.95); }
@@ -186,13 +186,20 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
 }
 .rotate-icon { font-size: 50px; color: white; filter: drop-shadow(2px 2px 0 #000); }
 
-/* --- MODALS --- */
+/* --- MODALS (GENERIC) --- */
 .panel-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 20px; }
 .panel-content { background: #000c; border: 3px solid white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px #0008; color: white; display: flex; flex-direction: column; align-items: center; width: auto; max-width: 90vw; }
 .panel-list { width: 100%; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .panel-item { background: #2c75ff; padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: normal; transition: background-color 0.2s ease; color: white; }
 .panel-item:hover { background: #4c8cff; } 
-.panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; color: white; }
+.panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; color: white; font-family: var(--font-main); }
+
+/* Play Choice */
+#play-choice-panel .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; justify-content: center; }
+.play-choice-item, .build-choice-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
+.play-choice-item:active, .build-choice-item:active { transform: scale(0.95); }
+.play-choice-icon, .build-choice-icon { width: 100px; height: 100px; border-radius: 20px; border: 3px solid white; display: flex; justify-content: center; align-items: center; font-size: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+.play-choice-label, .build-choice-label { margin-top: 10px; font-size: 18px; color: white; }
 
 /* Explore Exit */
 #explore-exit-button { position: absolute; top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; z-index: 2000; cursor: pointer; pointer-events: auto; display: none; }
@@ -524,13 +531,6 @@ canvas { display: block; cursor: grab; } canvas:active { cursor: grabbing; }
         top: 10px; left: 10px;
     }
 }
-
-/* Play Choice */
-#play-choice-panel .build-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; justify-content: center; }
-.play-choice-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
-.play-choice-item:active { transform: scale(0.95); }
-.play-choice-icon { width: 100px; height: 100px; border-radius: 20px; border: 3px solid white; display: flex; justify-content: center; align-items: center; font-size: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-.play-choice-label { margin-top: 10px; font-size: 18px; color: white; }
 
 /* Friends Tabs (Universal) */
 .friends-tabs { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
