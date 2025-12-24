@@ -4,7 +4,7 @@ import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 export class FriendsManager {
     constructor(uiManager) {
         this.ui = uiManager;
-        this.friendsList = []; // Przechowuje listę obiektów { id, username, isOnline, ... }
+        this.friendsList = [];
     }
 
     initialize() {
@@ -61,7 +61,6 @@ export class FriendsManager {
         if (panel) panel.style.display = 'none';
     }
 
-    // Sprawdza status znajomego (czy jest znajomym i czy online)
     getFriendStatus(userId) {
         const friend = this.friendsList.find(f => f.id === userId);
         if (friend) {
@@ -78,7 +77,7 @@ export class FriendsManager {
             const r = await fetch(`${API_BASE_URL}/api/friends`, { headers: { 'Authorization': `Bearer ${t}` } });
             if (r.ok) {
                 const d = await r.json();
-                this.friendsList = d.friends; // Aktualizacja lokalnej listy
+                this.friendsList = d.friends; 
                 this.renderFriendsUI(d.friends, d.requests);
             }
         } catch (e) {
@@ -99,7 +98,7 @@ export class FriendsManager {
             
             if (r.ok) {
                 this.ui.showMessage('Usunięto ze znajomych.', 'info');
-                await this.loadFriendsData(); // Odśwież listę
+                await this.loadFriendsData(); 
                 return true;
             } else {
                 this.ui.showMessage(d.message || 'Błąd usuwania.', 'error');
@@ -178,9 +177,10 @@ export class FriendsManager {
             actionBtn.style.backgroundImage = "url('icons/icon-chat.png')";
             actionBtn.onclick = (e) => {
                 e.stopPropagation();
+                // FIX: Otwieranie czatu zamiast tylko skrzynki
                 if(this.ui.mailManager) {
+                    this.ui.mailManager.open(); 
                     this.ui.mailManager.openConversation(user.username);
-                    this.ui.mailManager.open();
                 }
             };
         }
