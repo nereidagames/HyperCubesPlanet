@@ -307,7 +307,7 @@ export class UIManager {
       }
   }
 
-  // --- PROFIL INNEGO GRACZA (AKTUALIZACJA: KROPKA, KOSZ, DATA) ---
+  // --- PROFIL INNEGO GRACZA ---
   async openOtherPlayerProfile(username) {
       const myName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
       if (username === myName) {
@@ -325,15 +325,14 @@ export class UIManager {
 
       this.attachRendererTo('other-player-preview-canvas', -1.2, 1.5);
 
-      // Placeholdery
       document.getElementById('other-profile-username').textContent = username;
       document.getElementById('other-profile-level').textContent = "...";
       document.getElementById('other-profile-date').textContent = "Ładowanie...";
-      
+      const statusDot = document.getElementById('other-profile-status');
+      if(statusDot) statusDot.classList.remove('offline'); 
+
       const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-      
       try {
-          // Pobierz pełne dane profilu z nowego endpointu
           const r = await fetch(`${API_BASE_URL}/api/user/profile/${username}`, {
               headers: { 'Authorization': `Bearer ${t}` }
           });
@@ -342,18 +341,16 @@ export class UIManager {
               const user = await r.json();
               const userId = user.id;
 
-              // Ustawienie danych
               document.getElementById('other-profile-level').textContent = user.level || 1;
               document.getElementById('other-profile-date').textContent = this.formatMemberSince(user.created_at);
 
-              // LOGIKA STATUSU ZNAJOMEGO I KROPKI
+              // Status znajomego (kropka/kosz)
               this.updateFriendStatusUI(userId);
 
               this.setupOtherProfileButtons(userId, username);
               this.loadSkinForPreview(userId);
           } else {
               document.getElementById('other-profile-date').textContent = "Nie znaleziono gracza";
-              // Ukryj kropkę i przycisk jeśli gracz nie istnieje
               document.getElementById('other-profile-status').style.display = 'none';
           }
       } catch (e) {
@@ -363,30 +360,25 @@ export class UIManager {
   }
 
   updateFriendStatusUI(userId) {
-      // Pobieramy status znajomości z FriendsManagera (lokalna lista, aktualizowana websocketem)
       const { isFriend, isOnline } = this.friendsManager.getFriendStatus(userId);
       const statusDot = document.getElementById('other-profile-status');
       const actionBtn = document.getElementById('btn-other-friend-action');
 
       if (isFriend) {
-          // JEST ZNAJOMYM
           statusDot.style.display = 'block';
           if (isOnline) {
-              statusDot.classList.remove('offline'); // Zielony
+              statusDot.classList.remove('offline'); 
           } else {
-              statusDot.classList.add('offline'); // Czerwony
+              statusDot.classList.add('offline'); 
           }
           
-          // Ustaw przycisk na KOSZ (Usuń)
           actionBtn.style.background = 'linear-gradient(to bottom, #e74c3c, #c0392b)';
           actionBtn.innerHTML = '<div style="font-size:30px;">🗑️</div>';
           
-          // Logika usuwania z potwierdzeniem
           actionBtn.onclick = () => {
               if (confirm("Czy na pewno chcesz usunąć tego gracza ze znajomych?")) {
                   this.friendsManager.removeFriend(userId).then(success => {
                       if (success) {
-                          // Po usunięciu odśwież UI (kropka zniknie, przycisk zmieni się na plus)
                           this.updateFriendStatusUI(userId);
                       }
                   });
@@ -394,17 +386,13 @@ export class UIManager {
           };
 
       } else {
-          // NIE JEST ZNAJOMYM
-          statusDot.style.display = 'none'; // Ukryj kropkę
+          statusDot.style.display = 'none'; 
           
-          // Ustaw przycisk na PLUS (Dodaj)
-          actionBtn.style.background = 'linear-gradient(to bottom, #2ecc71, #27ae60)'; // Zielony
+          actionBtn.style.background = 'linear-gradient(to bottom, #2ecc71, #27ae60)'; 
           actionBtn.innerHTML = '<div style="font-size:30px; font-weight:bold; color:white;">+</div>';
           
-          // Logika dodawania
           actionBtn.onclick = () => {
               this.friendsManager.sendFriendRequest(userId);
-              // Opcjonalnie: zmień ikonę na "oczekiwanie"
               actionBtn.style.opacity = '0.5';
           };
       }
@@ -430,17 +418,26 @@ export class UIManager {
       if (btnWall) {
           btnWall.onclick = () => {
               document.getElementById('other-player-profile-panel').style.display = 'none';
+              this.disposeCurrentPreview();
               this.wallManager.open(userId, username);
           };
       }
+
       const btnChat = document.getElementById('btn-other-chat');
       if (btnChat) {
           btnChat.onclick = () => {
+              // 1. Zamknij profil
               document.getElementById('other-player-profile-panel').style.display = 'none';
-              this.mailManager.openConversation(username);
+              this.disposeCurrentPreview();
+              
+              // 2. Otwórz panel poczty (aby był widoczny)
               this.mailManager.open();
+
+              // 3. Przełącz na konkretną konwersację (to nadpisze widok Inbox)
+              this.mailManager.openConversation(username);
           };
       }
+      
       const btnClose = document.getElementById('btn-other-profile-close');
       if(btnClose) {
           btnClose.onclick = () => {
