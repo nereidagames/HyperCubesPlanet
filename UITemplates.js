@@ -1,30 +1,292 @@
 /* PLIK: UITemplates.js */
 
 export const AUTH_HTML = `
-    <div id="auth-screen">
-        <div class="auth-container">
-            <div id="welcome-view">
-                <button id="show-login-btn" class="btn-secondary text-outline">Zaloguj się</button>
-                <button id="show-register-btn" class="btn-primary text-outline">Nowy Użytkownik</button>
+<style>
+    /* --- BSP LOGIN STYLE --- */
+    #auth-screen {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: transparent; /* Przeźroczyste, by widać było 3D */
+        z-index: 99998;
+        display: flex; flex-direction: column; justify-content: space-between;
+        font-family: 'Titan One', cursive;
+        pointer-events: none; /* Klikanie przepuszczane do sceny 3D */
+    }
+
+    /* Elementy interaktywne muszą mieć pointer-events: auto */
+    .bsp-interactive { pointer-events: auto; }
+
+    /* GŁÓWNY EKRAN POWITALNY */
+    #bsp-welcome-screen {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 20px;
+    }
+
+    /* Logo / Nagłówek */
+    .bsp-top-header {
+        text-align: center; margin-top: 10px;
+        text-shadow: 2px 2px 0 #000; color: white; font-size: 24px;
+    }
+
+    /* Prawy panel z wielkimi przyciskami */
+    .bsp-right-buttons {
+        position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+        display: flex; flex-direction: column; gap: 20px;
+        align-items: flex-end;
+    }
+
+    .bsp-big-btn {
+        width: 280px; height: 160px;
+        border: 4px solid white; border-radius: 20px;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        cursor: pointer; transition: transform 0.1s;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        color: white; text-shadow: 2px 2px 0 #000;
+        font-size: 32px; text-align: center; line-height: 1.1;
+    }
+    .bsp-big-btn:active { transform: scale(0.95); }
+
+    .btn-new-user {
+        background: linear-gradient(to bottom, #8ede13 0%, #5ba806 100%);
+    }
+    .btn-login-big {
+        background: linear-gradient(to bottom, #4facfe 0%, #0072ff 100%);
+    }
+
+    /* Dolne elementy */
+    .bsp-bottom-bar {
+        display: flex; justify-content: space-between; align-items: flex-end;
+        width: 100%; padding-bottom: 10px;
+    }
+
+    .bsp-tip-box {
+        background-color: #3498db;
+        border: 3px solid white; border-radius: 15px;
+        padding: 10px 20px; color: white;
+        max-width: 350px; position: relative;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+    }
+    .bsp-tip-box::after { /* Strzałka dymku */
+        content: ''; position: absolute; bottom: -15px; left: 20px;
+        border-width: 15px 15px 0; border-style: solid;
+        border-color: white transparent transparent transparent;
+    }
+
+    .btn-privacy {
+        background: linear-gradient(to bottom, #f39c12, #d35400);
+        border: 3px solid white; border-radius: 10px;
+        padding: 10px 20px; color: white; font-size: 16px;
+        cursor: pointer; box-shadow: 0 5px 0 #a04000;
+    }
+
+    /* --- MODAL LOGOWANIA (Prawy dolny róg / Środek) --- */
+    #bsp-login-modal {
+        position: absolute; right: 50px; top: 50%; transform: translateY(-50%);
+        width: 350px;
+        background: #3498db; /* Niebieski BSP */
+        border: 4px solid white; border-radius: 20px;
+        padding: 20px; display: none; /* Domyślnie ukryty */
+        flex-direction: column; gap: 15px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    
+    .bsp-modal-title { font-size: 28px; color: white; text-align: center; text-shadow: 2px 2px 0 #000; margin-bottom: 10px; }
+    
+    .bsp-input {
+        width: 100%; height: 50px;
+        border-radius: 10px; border: none;
+        padding: 0 15px; font-family: 'Titan One', cursive; font-size: 18px;
+        box-shadow: inset 0 3px 5px rgba(0,0,0,0.2);
+    }
+    
+    .bsp-checkbox-row {
+        display: flex; align-items: center; gap: 10px; color: white; text-shadow: 1px 1px 0 #000; font-size: 14px;
+    }
+    .bsp-checkbox { width: 25px; height: 25px; cursor: pointer; }
+
+    .bsp-btn-row { display: flex; gap: 10px; margin-top: 10px; }
+    .bsp-btn-small {
+        flex: 1; height: 50px;
+        border: 3px solid white; border-radius: 10px;
+        font-size: 20px; color: white; cursor: pointer;
+        display: flex; justify-content: center; align-items: center;
+        box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    }
+    .btn-red { background: #e74c3c; box-shadow: 0 4px 0 #c0392b; }
+    .btn-green { background: #2ecc71; box-shadow: 0 4px 0 #27ae60; }
+    .btn-red:active, .btn-green:active { transform: translateY(3px); box-shadow: none; }
+
+    /* --- EKRAN REJESTRACJI (KREATOR) --- */
+    #bsp-register-screen {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: none; /* Domyślnie ukryty */
+        pointer-events: none;
+    }
+
+    /* Panel boczny z formularzem (Prawa strona) */
+    .bsp-register-panel {
+        position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+        width: 320px;
+        background: #8ede13; /* Jasny zielony */
+        border: 4px solid white; border-radius: 20px;
+        padding: 15px; display: flex; flex-direction: column; gap: 10px;
+        pointer-events: auto;
+    }
+
+    .bsp-register-header { text-align: center; margin-bottom: 5px; }
+    .bsp-register-header img { width: 150px; }
+
+    /* Strzałki wyboru skina (Lewa strona) */
+    .bsp-skin-selector {
+        position: absolute; left: 50px; top: 50%; transform: translateY(-50%);
+        display: flex; flex-direction: column; gap: 20px;
+        pointer-events: auto;
+    }
+
+    .selector-row { display: flex; align-items: center; gap: 10px; }
+    .selector-icon {
+        width: 60px; height: 60px;
+        background: #34495e; border: 3px solid white; border-radius: 10px;
+        display: flex; justify-content: center; align-items: center;
+    }
+    .selector-icon img { width: 80%; }
+    
+    .selector-arrow {
+        width: 50px; height: 50px;
+        background: linear-gradient(to bottom, #fff, #eee);
+        border: 3px solid #3498db; border-radius: 10px;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 30px; color: #3498db; cursor: pointer;
+        box-shadow: 0 4px 0 #2980b9;
+    }
+    .selector-arrow:active { transform: translateY(3px); box-shadow: none; }
+
+</style>
+
+<div id="auth-screen">
+    
+    <!-- 1. EKRAN POWITALNY (Start) -->
+    <div id="bsp-welcome-screen" class="bsp-interactive">
+        <div class="bsp-top-header">
+            Witaj na <span style="color:#f1c40f; text-shadow: 2px 2px 0 #000;">HyperCubesPlanet</span>
+        </div>
+
+        <div class="bsp-right-buttons">
+            <div id="btn-show-register" class="bsp-big-btn btn-new-user">
+                Nowy<br>Użytkownik
             </div>
-            <form id="login-form" class="auth-form">
-                <h2 class="text-outline">Zaloguj</h2>
-                <input type="text" id="login-username" placeholder="Wprowadź nick" required autocomplete="username">
-                <input type="password" id="login-password" placeholder="Wprowadź hasło" required autocomplete="current-password">
-                <button type="submit" class="btn-primary text-outline">Ok</button>
-                <button type="button" class="btn-back text-outline">Anuluj</button>
-            </form>
-            <form id="register-form" class="auth-form">
-                <h2 class="text-outline">Nowy Użytkownik</h2>
-                <input type="text" id="register-username" placeholder="Wprowadź nick" required minlength="3" maxlength="15">
-                <input type="password" id="register-password" placeholder="Wprowadź hasło" required minlength="6">
-                <input type="password" id="register-password-confirm" placeholder="Powtórz hasło" required>
-                <button type="submit" class="btn-primary text-outline">Ok</button>
-                <button type="button" class="btn-back text-outline">Anuluj</button>
-            </form>
-            <div id="auth-message" class="text-outline"></div>
+            <div id="btn-show-login" class="bsp-big-btn btn-login-big">
+                Zaloguj
+            </div>
+        </div>
+
+        <div class="bsp-bottom-bar">
+            <div class="bsp-tip-box text-outline">
+                WSKAZÓWKA: Możesz się zalogować jako użytkownik: BlockStarPlanet, MovieStarPlanet.
+            </div>
+            <div class="btn-privacy text-outline">
+                Polityka Prywatności
+            </div>
         </div>
     </div>
+
+    <!-- 2. MODAL LOGOWANIA (Po kliknięciu Zaloguj) -->
+    <div id="bsp-login-modal" class="bsp-interactive">
+        <div class="bsp-modal-title">Zaloguj tutaj</div>
+        
+        <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
+            <input id="login-username" class="bsp-input" type="text" placeholder="Nazwa użytkownika" required>
+            <input id="login-password" class="bsp-input" type="password" placeholder="Wprowadź hasło" required>
+            
+            <div class="bsp-checkbox-row">
+                <input type="checkbox" class="bsp-checkbox" id="login-remember">
+                <label for="login-remember">Zapisz moje hasło</label>
+            </div>
+            
+            <div style="display:flex; justify-content:center; margin: 5px 0;">
+                <div style="width:40px; height:25px; background:linear-gradient(to bottom, #fff 50%, #e74c3c 50%); border:1px solid #ddd;"></div>
+                <span style="margin-left:5px;">Polska</span>
+            </div>
+
+            <div class="bsp-btn-row">
+                <div id="btn-login-cancel" class="bsp-btn-small btn-red">Anuluj</div>
+                <button type="submit" class="bsp-btn-small btn-green">Ok</button>
+            </div>
+            
+            <div style="text-align:center; font-size:12px; color:white; margin-top:5px; cursor:pointer; text-decoration:underline;">
+                Nie pamiętasz hasła?
+            </div>
+        </form>
+        <div id="auth-message" style="color:yellow; text-align:center; text-shadow:1px 1px 0 #000;"></div>
+    </div>
+
+    <!-- 3. EKRAN REJESTRACJI (KREATOR) -->
+    <div id="bsp-register-screen">
+        
+        <!-- Lewy panel wyboru (Dla efektu wizualnego) -->
+        <div class="bsp-skin-selector">
+            <div class="selector-row">
+                <div id="skin-prev" class="selector-arrow bsp-interactive">⬅</div>
+                <div class="selector-icon">
+                    <img src="icons/icon-newhypercube.png" onerror="this.src='icons/icon-build.png'">
+                </div>
+                <div id="skin-next" class="selector-arrow bsp-interactive">➡</div>
+            </div>
+            <!-- Placeholder na nogi (nieaktywny w logice, ale wizualny) -->
+            <div class="selector-row" style="opacity:0.5; filter:grayscale(1);">
+                <div class="selector-arrow">⬅</div>
+                <div class="selector-icon">
+                    <img src="icons/icon-jump.png">
+                </div>
+                <div class="selector-arrow">➡</div>
+            </div>
+            <div class="selector-row" style="opacity:0.5; filter:grayscale(1);">
+                <div class="selector-icon" style="margin-left:70px;">🎲</div>
+            </div>
+        </div>
+
+        <!-- Prawy panel formularza -->
+        <div class="bsp-register-panel">
+            <div class="bsp-register-header">
+                <div class="text-outline" style="font-size:24px; color:white;">Nowy</div>
+                <img src="icons/favicon.png" style="height:40px; object-fit:contain;">
+            </div>
+
+            <form id="register-form" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="position:relative;">
+                    <input id="register-username" class="bsp-input" type="text" placeholder="Wprowadź nick" required minlength="3" maxlength="15">
+                    <div style="position:absolute; right:5px; top:5px; width:40px; height:40px; background:white; border:1px solid #ccc; border-radius:5px; display:flex; justify-content:center; align-items:center; cursor:pointer;">🎲</div>
+                </div>
+                
+                <input id="register-password" class="bsp-input" type="password" placeholder="Wprowadź hasło" required minlength="6">
+                <input id="register-password-confirm" class="bsp-input" type="password" placeholder="Powtórz hasło" required>
+                
+                <div class="bsp-checkbox-row">
+                    <input type="checkbox" class="bsp-checkbox" id="reg-hide-pass">
+                    <label for="reg-hide-pass">Ukryć hasło?</label>
+                </div>
+
+                <div style="display:flex; justify-content:center;">
+                    <div style="width:40px; height:25px; background:linear-gradient(to bottom, #fff 50%, #e74c3c 50%); border:1px solid #ddd;"></div>
+                    <span style="margin-left:5px; font-size:12px; color:white;">Polska</span>
+                </div>
+
+                <div class="bsp-btn-row">
+                    <div id="btn-register-cancel" class="bsp-btn-small btn-red">Anuluj</div>
+                    <button type="submit" class="bsp-btn-small btn-green">Ok</button>
+                </div>
+            </form>
+            
+            <div style="background:#3498db; color:white; font-size:10px; text-align:center; padding:5px; border-radius:5px; margin-top:5px; border:2px solid white;">
+                Warunki Korzystania z Serwisu
+            </div>
+             <div class="btn-privacy text-outline" style="font-size:10px; padding:5px; text-align:center;">
+                Polityka Prywatności
+            </div>
+        </div>
+    </div>
+
+</div>
 `;
 
 export const HUD_HTML = `
@@ -749,6 +1011,7 @@ export const OTHER_PLAYER_PROFILE_HTML = `
         border-radius: 50%;
         box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         z-index: 10;
+        display: none; /* Domyślnie ukryta */
     }
     .bsp-status-dot.offline { background: radial-gradient(circle at 30% 30%, #e74c3c, #c0392b); }
 
