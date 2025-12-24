@@ -4,7 +4,7 @@ import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 export class FriendsManager {
     constructor(uiManager) {
         this.ui = uiManager;
-        this.friendsList = [];
+        this.friendsList = []; // Przechowuje listę obiektów { id, username, isOnline, ... }
     }
 
     initialize() {
@@ -12,7 +12,6 @@ export class FriendsManager {
     }
 
     setupEventListeners() {
-        // Obsługa zakładek (Moi przyjaciele, W tym świecie, Szukaj...)
         const tabs = document.querySelectorAll('.friend-nav-tab');
         tabs.forEach(tab => {
             tab.onclick = () => {
@@ -26,11 +25,9 @@ export class FriendsManager {
             };
         });
 
-        // Przycisk zamknij
         const closeBtn = document.getElementById('btn-friends-close-main');
         if (closeBtn) closeBtn.onclick = () => this.close();
 
-        // Obsługa wyszukiwania
         const searchBtn = document.getElementById('friends-search-btn-new');
         const clearBtn = document.getElementById('friends-search-clear');
         
@@ -42,7 +39,6 @@ export class FriendsManager {
             document.getElementById('search-results-grid-new').innerHTML = '';
         };
         
-        // Obsługa Enter w polu wyszukiwania
         const searchInput = document.getElementById('friends-search-input-new');
         if (searchInput) {
             searchInput.addEventListener('keypress', (e) => {
@@ -65,6 +61,15 @@ export class FriendsManager {
         if (panel) panel.style.display = 'none';
     }
 
+    // Sprawdza status znajomego (czy jest znajomym i czy online)
+    getFriendStatus(userId) {
+        const friend = this.friendsList.find(f => f.id === userId);
+        if (friend) {
+            return { isFriend: true, isOnline: friend.isOnline };
+        }
+        return { isFriend: false, isOnline: false };
+    }
+
     async loadFriendsData() {
         const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
         if (!t) return;
@@ -73,7 +78,7 @@ export class FriendsManager {
             const r = await fetch(`${API_BASE_URL}/api/friends`, { headers: { 'Authorization': `Bearer ${t}` } });
             if (r.ok) {
                 const d = await r.json();
-                this.friendsList = d.friends;
+                this.friendsList = d.friends; // Aktualizacja lokalnej listy
                 this.renderFriendsUI(d.friends, d.requests);
             }
         } catch (e) {
@@ -81,8 +86,32 @@ export class FriendsManager {
         }
     }
 
+    async removeFriend(friendId) {
+        const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+        if (!t) return;
+
+        try {
+            const r = await fetch(`${API_BASE_URL}/api/friends/${friendId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${t}` }
+            });
+            const d = await r.json();
+            
+            if (r.ok) {
+                this.ui.showMessage('Usunięto ze znajomych.', 'info');
+                await this.loadFriendsData(); // Odśwież listę
+                return true;
+            } else {
+                this.ui.showMessage(d.message || 'Błąd usuwania.', 'error');
+                return false;
+            }
+        } catch (e) {
+            this.ui.showMessage('Błąd sieci.', 'error');
+            return false;
+        }
+    }
+
     renderFriendsUI(friends, requests) {
-        // 1. Sekcja Zaproszeń
         const requestsSection = document.getElementById('section-requests');
         const requestsGrid = document.getElementById('requests-grid');
         
@@ -96,11 +125,9 @@ export class FriendsManager {
             requestsSection.style.display = 'none';
         }
 
-        // 2. Podział na Online / Offline
         const online = friends.filter(f => f.isOnline);
         const offline = friends.filter(f => !f.isOnline);
 
-        // 3. Renderowanie Online
         const onlineCount = document.getElementById('online-count');
         if(onlineCount) onlineCount.textContent = online.length;
         
@@ -110,7 +137,6 @@ export class FriendsManager {
             online.forEach(f => onlineGrid.appendChild(this.createFriendCard(f, 'chat')));
         }
 
-        // 4. Renderowanie Offline
         const offlineCount = document.getElementById('offline-count');
         if(offlineCount) offlineCount.textContent = offline.length;
         
@@ -137,22 +163,18 @@ export class FriendsManager {
         const actionBtn = document.createElement('div');
         actionBtn.className = 'add-friend-btn';
         
-        // Konfiguracja przycisku akcji (prawy dolny róg karty)
         if (actionType === 'add') {
-            // Dodaj do znajomych (Plus)
             actionBtn.onclick = (e) => {
                 e.stopPropagation(); 
                 this.sendFriendRequest(user.id);
             };
         } else if (actionType === 'accept') {
-            // Akceptuj zaproszenie (Ptaszke)
             actionBtn.style.backgroundImage = "url('icons/icon-check.png')"; 
             actionBtn.onclick = (e) => {
                 e.stopPropagation();
                 this.acceptFriendRequest(user.request_id);
             };
         } else if (actionType === 'chat' || actionType === 'mail') {
-            // Czat / Wiadomość (Dymek)
             actionBtn.style.backgroundImage = "url('icons/icon-chat.png')";
             actionBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -163,10 +185,8 @@ export class FriendsManager {
             };
         }
         
-        // Kliknięcie w całą kartę otwiera PROFIL GRACZA
         const body = div.querySelector('.friend-card-body');
         body.onclick = (e) => {
-            // Ignorujemy kliknięcie, jeśli trafiono w przycisk akcji
             if (e.target !== actionBtn) {
                 if (this.ui.openOtherPlayerProfile) {
                     this.ui.openOtherPlayerProfile(user.username);
