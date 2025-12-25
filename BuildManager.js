@@ -1,3 +1,4 @@
+/* PLIK: BuildManager.js */
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
@@ -35,7 +36,10 @@ export class BuildManager {
     this.platformSize = 64;
     this.cameraController = null;
     
+    // FLAGI TRYBÓW
     this.isNexusMode = false;
+    this.isLoginMapMode = false; // Nowa flaga
+
     this.blockTypes = []; 
     this.selectedBlockType = null;
     
@@ -67,9 +71,12 @@ export class BuildManager {
     });
   }
 
-  async enterBuildMode(size = 64, isNexusMode = false) {
+  // --- GŁÓWNA METODA WEJŚCIA ---
+  async enterBuildMode(size = 64, isNexusMode = false, isLoginMapMode = false) {
     this.platformSize = size;
     this.isNexusMode = isNexusMode;
+    this.isLoginMapMode = isLoginMapMode;
+    
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
     this.currentBuildMode = 'block';
@@ -78,8 +85,13 @@ export class BuildManager {
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
+    // Aktualizacja tekstu przycisku Zapisz
     const saveBtn = document.getElementById('build-save-button');
-    if(saveBtn) saveBtn.textContent = isNexusMode ? "Zapisz Nexus" : "Zapisz";
+    if(saveBtn) {
+        if (isNexusMode) saveBtn.textContent = "Zapisz Nexus";
+        else if (isLoginMapMode) saveBtn.textContent = "Zapisz Login Map";
+        else saveBtn.textContent = "Zapisz";
+    }
 
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
@@ -125,8 +137,11 @@ export class BuildManager {
     this.cameraController.setIsMobile(this.game.isMobile);
     this.setupBuildEventListeners();
 
+    // Ładowanie istniejącej mapy (Nexus lub LoginMap)
     if (this.isNexusMode) {
-        await this.loadExistingNexus();
+        await this.loadExistingMap('/api/nexus');
+    } else if (this.isLoginMapMode) {
+        await this.loadExistingMap('/api/login-map');
     }
     
     this.isActive = true;
@@ -223,9 +238,10 @@ export class BuildManager {
       this.lastLineTargetPos = null;
   }
 
-  async loadExistingNexus() { 
+  // --- UNIWERSALNE ŁADOWANIE MAPY (Nexus / Login) ---
+  async loadExistingMap(endpoint) { 
       try{ 
-          const response=await fetch(`${API_BASE_URL}/api/nexus`); 
+          const response=await fetch(`${API_BASE_URL}${endpoint}`); 
           if(response.ok){ 
               const blocksData=await response.json(); 
               if(Array.isArray(blocksData)){ 
@@ -257,7 +273,7 @@ export class BuildManager {
                   this.updateSaveButton(); 
               } 
           } 
-      }catch(e){ console.warn("Błąd pobierania Nexusa:",e); } 
+      }catch(e){ console.warn("Błąd pobierania mapy:",e); } 
   }
 
   createBuildPlatform() { 
@@ -301,10 +317,14 @@ export class BuildManager {
         document.getElementById('add-choice-parts').style.display = 'none';
         document.getElementById('add-choice-prefabs').style.display = 'block';
     };
+
+    // ZAPISYWANIE (Obsługa różnych trybów)
     document.getElementById('build-save-button').onclick = () => {
         if (this.isNexusMode) this.saveNexus();
+        else if (this.isLoginMapMode) this.saveLoginMap();
         else this.saveWorld();
     };
+
     document.getElementById('add-choice-blocks').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
         document.getElementById('block-selection-panel').style.display = 'flex';
@@ -414,9 +434,41 @@ export class BuildManager {
   placeBlock() { if(!this.selectedBlockType) return; const g=this.sharedBoxGeometry; const m=this.materials[this.selectedBlockType.texturePath]; const b=new THREE.Mesh(g,m); b.userData.name=this.selectedBlockType.name; b.userData.texturePath=this.selectedBlockType.texturePath; b.position.copy(this.previewBlock.position); b.castShadow=false; b.receiveShadow=false; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); this.updateSaveButton(); }
   placePrefab() { if(!this.selectedPrefabData) return; const l=this.platformSize/2; this.selectedPrefabData.forEach(d=>{ const p=new THREE.Vector3(d.x,d.y,d.z).add(this.previewPrefab.position); if(Math.abs(p.x)<l&&Math.abs(p.z)<l&&p.y>=0){ const g=this.sharedBoxGeometry; const m=this.materials[d.texturePath]; const b=new THREE.Mesh(g,m); b.userData.texturePath=d.texturePath; b.position.copy(p); b.castShadow=false; b.receiveShadow=false; this.scene.add(b); this.placedBlocks.push(b); this.collidableBuildObjects.push(b); } }); this.updateSaveButton(); }
   removeBlock() { this.raycaster.setFromCamera(this.mouse,this.game.camera); const i=this.raycaster.intersectObjects(this.placedBlocks); if(i.length>0){ const o=i[0].object; this.scene.remove(o); this.placedBlocks=this.placedBlocks.filter(b=>b!==o); this.collidableBuildObjects=this.collidableBuildObjects.filter(b=>b!==o); this.updateSaveButton(); } }
-  updateSaveButton() { const b=document.getElementById('build-save-button'); if(this.placedBlocks.length>0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { if(this.isNexusMode&&this.placedBlocks.length===0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { b.style.opacity='0.5'; b.style.cursor='not-allowed'; } } }
+  updateSaveButton() { const b=document.getElementById('build-save-button'); if(this.placedBlocks.length>0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { if((this.isNexusMode || this.isLoginMapMode) && this.placedBlocks.length===0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { b.style.opacity='0.5'; b.style.cursor='not-allowed'; } } }
   generateThumbnail() { const width=200; const height=150; const thumbnailRenderer=new THREE.WebGLRenderer({alpha:false,antialias:true}); thumbnailRenderer.setSize(width,height); thumbnailRenderer.setClearColor(0x87CEEB); const thumbnailScene=new THREE.Scene(); const ambLight=new THREE.AmbientLight(0xffffff,0.8); thumbnailScene.add(ambLight); const dirLight=new THREE.DirectionalLight(0xffffff,0.5); dirLight.position.set(50,50,50); thumbnailScene.add(dirLight); const floorGeo=new THREE.BoxGeometry(this.platformSize,1,this.platformSize); const floorMat=new THREE.MeshLambertMaterial({color:0x559022}); const floor=new THREE.Mesh(floorGeo,floorMat); floor.position.y=-0.5; thumbnailScene.add(floor); if(this.placedBlocks.length>0){ this.placedBlocks.forEach(block=>{ const clone=block.clone(); thumbnailScene.add(clone); }); } const thumbnailCamera=new THREE.PerspectiveCamera(45,width/height,0.1,1000); const distance=this.platformSize*1.5; thumbnailCamera.position.set(distance,distance*0.8,distance); thumbnailCamera.lookAt(0,0,0); thumbnailRenderer.render(thumbnailScene,thumbnailCamera); const dataURL=thumbnailRenderer.domElement.toDataURL('image/jpeg',0.8); thumbnailRenderer.dispose(); return dataURL; }
+  
   async saveNexus() { const token=localStorage.getItem(JWT_TOKEN_KEY); if(!token){ alert("Błąd autoryzacji!"); return; } const blocksData=this.placedBlocks.map(block=>({ x:block.position.x, y:block.position.y, z:block.position.z, texturePath:block.userData.texturePath })); const saveBtn=document.getElementById('build-save-button'); saveBtn.textContent="Zapisywanie..."; saveBtn.style.cursor='wait'; try{ const response=await fetch(`${API_BASE_URL}/api/nexus`,{ method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, body:JSON.stringify({blocks:blocksData}) }); const result=await response.json(); if(response.ok){ alert("Nexus zaktualizowany!"); this.game.stateManager.switchToMainMenu(); } else { alert(`Błąd: ${result.message}`); } } catch(e){ alert("Błąd sieci."); console.error(e); } finally{ saveBtn.textContent="Zapisz Nexus"; saveBtn.style.cursor='pointer'; } }
+
+  // --- NOWOŚĆ: Zapisywanie mapy logowania ---
+  async saveLoginMap() { 
+      const token=localStorage.getItem(JWT_TOKEN_KEY); 
+      if(!token){ alert("Błąd autoryzacji!"); return; } 
+      const blocksData=this.placedBlocks.map(block=>({ x:block.position.x, y:block.position.y, z:block.position.z, texturePath:block.userData.texturePath })); 
+      const saveBtn=document.getElementById('build-save-button'); 
+      saveBtn.textContent="Zapisywanie..."; 
+      saveBtn.style.cursor='wait'; 
+      try{ 
+          const response=await fetch(`${API_BASE_URL}/api/login-map`,{ 
+              method:'POST', 
+              headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, 
+              body:JSON.stringify({blocks:blocksData}) 
+          }); 
+          const result=await response.json(); 
+          if(response.ok){ 
+              alert("Mapa logowania zaktualizowana!"); 
+              this.game.stateManager.switchToMainMenu(); 
+          } else { 
+              alert(`Błąd: ${result.message}`); 
+          } 
+      } catch(e){ 
+          alert("Błąd sieci."); 
+          console.error(e); 
+      } finally{ 
+          saveBtn.textContent="Zapisz Login Map"; 
+          saveBtn.style.cursor='pointer'; 
+      } 
+  }
+
   async saveWorld() {
     if (this.placedBlocks.length === 0) return;
     const starts = this.placedBlocks.filter(b => b.userData.name === 'Parkour Start');
@@ -436,6 +488,7 @@ export class BuildManager {
   exitBuildMode() {
     this.isActive = false;
     this.isNexusMode = false;
+    this.isLoginMapMode = false; // Reset flagi
     this.removeBuildEventListeners();
     this.collidableBuildObjects = [];
     this.placedBlocks = [];
