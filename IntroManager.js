@@ -26,13 +26,17 @@ export class IntroManager {
         this.scene.add(this.mapGroup);
         
         this.textureLoader = new THREE.TextureLoader();
+        
+        // Cache materiałów dla optymalizacji
+        this.materials = {};
+        this.sharedGeometry = new THREE.BoxGeometry(1, 1, 1);
 
         // --- ZMIENNE DO ANIMACJI KAMERY ---
-        this.defaultCamPos = new THREE.Vector3(0, 3.0, 6.5);
-        this.defaultLookAt = new THREE.Vector3(0, 1.5, 0); 
+        this.defaultCamPos = new THREE.Vector3(0, 5.0, 10.0); // Wyżej i dalej, żeby objąć dużą mapę
+        this.defaultLookAt = new THREE.Vector3(0, 2.0, 0); 
 
-        this.zoomedCamPos = new THREE.Vector3(0, 1.6, 3.2);
-        this.zoomedLookAt = new THREE.Vector3(0, 1.2, 0); 
+        this.zoomedCamPos = new THREE.Vector3(0, 2.0, 3.5);
+        this.zoomedLookAt = new THREE.Vector3(0, 1.5, 0); 
 
         this.targetCamPos = this.defaultCamPos.clone();
         this.currentLookAt = this.defaultLookAt.clone();
@@ -67,39 +71,47 @@ export class IntroManager {
         this.currentLookAt.copy(this.defaultLookAt);
         this.targetLookAt.copy(this.defaultLookAt);
 
-        // Czyścimy scenę (światła itp)
+        // Czyścimy scenę ze starych obiektów (ale nie mapGroup)
         while(this.scene.children.length > 0){ 
             const child = this.scene.children[0];
             if (child !== this.mapGroup) {
                 this.scene.remove(child);
             } else {
+                // Hack na usuwanie wszystkiego oprócz mapy (dla bezpieczeństwa)
                 this.scene.remove(child);
             }
         }
-
-        // Dodajemy grupę mapy z powrotem do sceny
         this.scene.add(this.mapGroup);
 
-        const amb = new THREE.AmbientLight(0xffffff, 0.8);
-        const dir = new THREE.DirectionalLight(0xffffff, 0.6);
-        dir.position.set(5, 10, 7);
+        // Oświetlenie
+        const amb = new THREE.AmbientLight(0xffffff, 0.7);
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(10, 20, 10);
+        dir.castShadow = true;
+        // Optymalizacja cieni na mobile
+        dir.shadow.mapSize.width = 1024;
+        dir.shadow.mapSize.height = 1024;
         this.scene.add(amb);
         this.scene.add(dir);
 
+        // Postać (Dummy)
         this.previewCharacter = new THREE.Group();
         this.scene.add(this.previewCharacter);
         
         createBaseCharacter(this.previewCharacter);
-        this.previewCharacter.position.y = 1; 
+        this.previewCharacter.position.y = 1; // Domyślnie, zmieni się po załadowaniu mapy
 
-        // ŁADUJEMY MAPĘ TŁA
+        // ŁADUJEMY MAPĘ TŁA (Z OPTYMALIZACJĄ)
         this.loadLoginMap();
     }
 
+    // --- OPTYMALIZACJA: INSTANCED MESH ---
     async loadLoginMap() {
+        // 1. Wyczyść starą mapę
         while(this.mapGroup.children.length > 0) {
             const child = this.mapGroup.children[0];
-            if(child.geometry) child.geometry.dispose();
+            // Dispose dla pamięci
+            if(child.geometry && child.geometry !== this.sharedGeometry) child.geometry.dispose();
             this.mapGroup.remove(child);
         }
 
@@ -108,25 +120,79 @@ export class IntroManager {
             if (!res.ok) return;
 
             const blocksData = await res.json();
-            if (!Array.isArray(blocksData)) return;
+            if (!Array.isArray(blocksData) || blocksData.length === 0) return;
 
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            // 2. Grupowanie bloków po teksturze (Batching)
+            const blocksByTexture = {};
+            let highestYAtCenter = -100;
 
-            blocksData.forEach(data => {
-                const tex = this.textureLoader.load(data.texturePath);
-                tex.magFilter = THREE.NearestFilter;
-                const mat = new THREE.MeshLambertMaterial({ map: tex });
-                
-                const mesh = new THREE.Mesh(geometry, mat);
-                mesh.position.set(data.x, data.y, data.z);
-                this.mapGroup.add(mesh);
+            blocksData.forEach(block => {
+                if (!blocksByTexture[block.texturePath]) {
+                    blocksByTexture[block.texturePath] = [];
+                }
+                blocksByTexture[block.texturePath].push(block);
+
+                // Szukamy najwyższego bloku w centrum (x=0, z=0) dla postaci
+                if (Math.abs(block.x) < 0.6 && Math.abs(block.z) < 0.6) {
+                    if (block.y > highestYAtCenter) {
+                        highestYAtCenter = block.y;
+                    }
+                }
             });
+
+            // 3. Ustawienie postaci NA blokach, a nie W blokach
+            if (highestYAtCenter > -100) {
+                // Postać stoi na bloku (+1 to wysokość bloku, +0.5 to pivot postaci)
+                // Zakładamy że pivot postaci jest na dole nóg? W createBaseCharacter y=-0.5?
+                // Dostosowanie: +1.0 od środka bloku = stanie na bloku.
+                // Ponieważ bloki mają Y w środku (0.5), to góra jest na Y+0.5.
+                this.previewCharacter.position.y = highestYAtCenter + 1.0; 
+                
+                // Aktualizujemy też punkt patrzenia kamery, żeby patrzyła na postać
+                this.defaultLookAt.y = this.previewCharacter.position.y + 1.0;
+                this.zoomedLookAt.y = this.previewCharacter.position.y + 0.8;
+                this.targetLookAt.copy(this.defaultLookAt);
+                
+                // Kamera też musi iść w górę
+                this.defaultCamPos.y = this.previewCharacter.position.y + 2.5;
+                this.zoomedCamPos.y = this.previewCharacter.position.y + 1.0;
+                this.targetCamPos.copy(this.defaultCamPos);
+            }
+
+            // 4. Tworzenie InstancedMesh (To rozwiązuje crash!)
+            const dummy = new THREE.Object3D();
+
+            for (const [texturePath, blocks] of Object.entries(blocksByTexture)) {
+                let material = this.materials[texturePath];
+                if (!material) {
+                    const tex = this.textureLoader.load(texturePath);
+                    tex.magFilter = THREE.NearestFilter;
+                    tex.minFilter = THREE.NearestFilter; // Lepsze dla wydajności
+                    material = new THREE.MeshLambertMaterial({ map: tex });
+                    this.materials[texturePath] = material;
+                }
+
+                // Jeden Mesh na setki bloków!
+                const instancedMesh = new THREE.InstancedMesh(this.sharedGeometry, material, blocks.length);
+                instancedMesh.castShadow = true;
+                instancedMesh.receiveShadow = true;
+
+                blocks.forEach((block, index) => {
+                    dummy.position.set(block.x, block.y, block.z);
+                    dummy.updateMatrix();
+                    instancedMesh.setMatrixAt(index, dummy.matrix);
+                });
+
+                instancedMesh.instanceMatrix.needsUpdate = true;
+                this.mapGroup.add(instancedMesh);
+            }
 
         } catch (e) {
             console.warn("Nie udało się załadować mapy logowania", e);
         }
     }
 
+    // --- FUNKCJE ANIMACJI ---
     zoomIn() {
         this.targetCamPos.copy(this.zoomedCamPos);
         this.targetLookAt.copy(this.zoomedLookAt);
@@ -218,6 +284,7 @@ export class IntroManager {
 
         const skinGroup = new THREE.Group();
         skinGroup.scale.setScalar(0.125); 
+        // Dopasowanie skina do nóg (zakładamy że nogi kończą się na pewnej wysokości)
         skinGroup.position.y = 0.5;
 
         const loader = new THREE.TextureLoader();
@@ -318,33 +385,32 @@ export class IntroManager {
         }
     }
 
-    // --- KLUCZOWA POPRAWKA ---
     dispose() {
         this.isIntroActive = false;
         if (this.introAnimId) cancelAnimationFrame(this.introAnimId);
         
-        // Zamiast polegać na this.screens, pobieramy element bezpośrednio
-        // To rozwiązuje problem przy autologowaniu, gdzie this.screens może być puste
-        const authScreen = document.getElementById('auth-screen');
-        if (authScreen) authScreen.style.display = 'none';
+        // Ukryj UI logowania
+        if (this.screens.main) this.screens.main.style.display = 'none';
 
-        // Wyczyść postać z intro
+        // Wyczyść postać
         if (this.previewCharacter) {
             this.scene.remove(this.previewCharacter);
             this.previewCharacter = null;
         }
 
-        // Wyczyść mapę logowania
+        // Wyczyść mapę logowania (WAŻNE DLA PAMIĘCI)
         if (this.mapGroup) {
             this.scene.remove(this.mapGroup);
             while(this.mapGroup.children.length > 0) {
                 const child = this.mapGroup.children[0];
-                if(child.geometry) child.geometry.dispose();
+                // Wyczyść geometrię i materiały
+                if (child.geometry) child.geometry.dispose();
+                // InstancedMesh nie ma własnego materiału w taki sposób jak Mesh, 
+                // ale materiały są w cache `this.materials`, nie usuwamy ich bo mogą się przydać w grze.
                 this.mapGroup.remove(child);
             }
         }
         
-        // Usuń eventy
         const ids = ['btn-show-login', 'btn-show-register', 'btn-login-cancel', 'btn-register-cancel', 'skin-prev', 'skin-next'];
         ids.forEach(id => {
             const el = document.getElementById(id);
