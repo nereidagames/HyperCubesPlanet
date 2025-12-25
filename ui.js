@@ -48,10 +48,12 @@ export class UIManager {
     this.onMessageSent = null;
     this.onMessageReceived = null;
     this.onEditNexusClick = null;
+    this.onEditLoginMapClick = null; // NOWOŚĆ: Callback do edycji mapy logowania
     this.onUsePrefab = null;
     this.onUsePart = null;
     this.onExitParkour = null;
     this.onReplayParkour = null;
+    this.onOpenOtherProfile = null;
     
     // Menedżery
     this.friendsManager = new FriendsManager(this);
@@ -99,6 +101,7 @@ export class UIManager {
     }
   }
 
+  // --- ZARZĄDZANIE WARSTWAMI ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -284,10 +287,13 @@ export class UIManager {
       }
   }
 
+  // --- ADMIN UPDATE: DODANIE PRZYCISKU LOGIN MAP ---
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
           const grid = document.querySelector('#more-options-panel .nav-grid-container');
+          
+          // Edytuj Nexus
           if (grid && !document.getElementById('admin-edit-nexus-btn')) {
                const adminDiv = document.createElement('div');
                adminDiv.className = 'nav-item';
@@ -295,7 +301,7 @@ export class UIManager {
                adminDiv.innerHTML = `
                   <div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
                       <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                      <span class="nav-label">Admin</span>
+                      <span class="nav-label">Edytuj Nexus</span>
                   </div>
                `;
                adminDiv.onclick = () => {
@@ -304,6 +310,24 @@ export class UIManager {
                };
                grid.insertBefore(adminDiv, grid.firstChild);
           }
+
+          // NOWOŚĆ: Edytuj Ekran Logowania
+          if (grid && !document.getElementById('admin-edit-login-map-btn')) {
+              const loginEditDiv = document.createElement('div');
+              loginEditDiv.className = 'nav-item';
+              loginEditDiv.id = 'admin-edit-login-map-btn';
+              loginEditDiv.innerHTML = `
+                 <div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
+                     <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                     <span class="nav-label">Login Map</span>
+                 </div>
+              `;
+              loginEditDiv.onclick = () => {
+                  this.closePanel('more-options-panel');
+                  if (this.onEditLoginMapClick) this.onEditLoginMapClick();
+              };
+              grid.insertBefore(loginEditDiv, grid.firstChild);
+         }
       }
   }
 
@@ -344,9 +368,7 @@ export class UIManager {
               document.getElementById('other-profile-level').textContent = user.level || 1;
               document.getElementById('other-profile-date').textContent = this.formatMemberSince(user.created_at);
 
-              // Status znajomego (kropka/kosz)
               this.updateFriendStatusUI(userId);
-
               this.setupOtherProfileButtons(userId, username);
               this.loadSkinForPreview(userId);
           } else {
@@ -387,7 +409,6 @@ export class UIManager {
 
       } else {
           statusDot.style.display = 'none'; 
-          
           actionBtn.style.background = 'linear-gradient(to bottom, #2ecc71, #27ae60)'; 
           actionBtn.innerHTML = '<div style="font-size:30px; font-weight:bold; color:white;">+</div>';
           
@@ -426,14 +447,9 @@ export class UIManager {
       const btnChat = document.getElementById('btn-other-chat');
       if (btnChat) {
           btnChat.onclick = () => {
-              // 1. Zamknij profil
               document.getElementById('other-player-profile-panel').style.display = 'none';
               this.disposeCurrentPreview();
-              
-              // 2. Otwórz panel poczty (aby był widoczny)
               this.mailManager.open();
-
-              // 3. Przełącz na konkretną konwersację (to nadpisze widok Inbox)
               this.mailManager.openConversation(username);
           };
       }
@@ -622,7 +638,6 @@ export class UIManager {
     const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
     const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
     
-    // ZAMYKANIE NOWEGO PROFILU KLIKNIĘCIEM W TŁO
     const otherProfilePanel = document.getElementById('other-player-profile-panel');
     if (otherProfilePanel) {
         otherProfilePanel.addEventListener('click', (e) => {
