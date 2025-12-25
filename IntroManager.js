@@ -21,19 +21,19 @@ export class IntroManager {
 
         this.screens = {};
 
-        // --- ZMIENNE DO ANIMACJI KAMERY (POPRAWIONE ZBLIŻENIA) ---
+        // Grupa na bloki mapy logowania
+        this.mapGroup = new THREE.Group();
+        this.scene.add(this.mapGroup);
         
-        // 1. Pozycja startowa (Teraz znacznie bliżej niż wcześniej)
-        // Było: (0, 4, 9) -> Jest: (0, 3.0, 6.5)
+        this.textureLoader = new THREE.TextureLoader();
+
+        // --- ZMIENNE DO ANIMACJI KAMERY ---
         this.defaultCamPos = new THREE.Vector3(0, 3.0, 6.5);
-        this.defaultLookAt = new THREE.Vector3(0, 1.5, 0); // Patrzy na środek postaci
+        this.defaultLookAt = new THREE.Vector3(0, 1.5, 0); 
 
-        // 2. Pozycja przybliżona (Kreator - BARDZO BLISKO)
-        // Było: (0, 2.2, 5.5) -> Jest: (0, 1.6, 3.2)
         this.zoomedCamPos = new THREE.Vector3(0, 1.6, 3.2);
-        this.zoomedLookAt = new THREE.Vector3(0, 1.2, 0); // Patrzy na klatkę piersiową
+        this.zoomedLookAt = new THREE.Vector3(0, 1.2, 0); 
 
-        // Aktualne cele (do których dążymy w animate)
         this.targetCamPos = this.defaultCamPos.clone();
         this.currentLookAt = this.defaultLookAt.clone();
         this.targetLookAt = this.defaultLookAt.clone();
@@ -59,19 +59,30 @@ export class IntroManager {
     }
 
     setupScene() {
-        // Reset pozycji kamery na start (do nowych wartości default)
+        // Reset kamery
         this.camera.position.copy(this.defaultCamPos);
         this.camera.lookAt(this.defaultLookAt);
         
-        // Reset celów animacji
         this.targetCamPos.copy(this.defaultCamPos);
         this.currentLookAt.copy(this.defaultLookAt);
         this.targetLookAt.copy(this.defaultLookAt);
 
-        // Usuń stare światła/obiekty
+        // Czyścimy scenę (światła itp), ale mapGroup czyścimy osobno
         while(this.scene.children.length > 0){ 
-            this.scene.remove(this.scene.children[0]); 
+            const child = this.scene.children[0];
+            // Nie usuwamy mapGroup, jeśli już tam jest
+            if (child !== this.mapGroup) {
+                this.scene.remove(child);
+            } else {
+                // Jeśli to mapGroup, zostawiamy go w tablicy children, ale...
+                // (Hack: Three.js remove modifies array, so simple while loop is tricky if we skip one)
+                // Lepiej wyczyścić wszystko i dodać mapGroup na nowo.
+                this.scene.remove(child);
+            }
         }
+
+        // Dodajemy grupę mapy z powrotem do sceny
+        this.scene.add(this.mapGroup);
 
         const amb = new THREE.AmbientLight(0xffffff, 0.8);
         const dir = new THREE.DirectionalLight(0xffffff, 0.6);
@@ -84,6 +95,42 @@ export class IntroManager {
         
         createBaseCharacter(this.previewCharacter);
         this.previewCharacter.position.y = 1; 
+
+        // ŁADUJEMY MAPĘ TŁA
+        this.loadLoginMap();
+    }
+
+    // --- NOWA METODA: ŁADOWANIE MAPY TŁA ---
+    async loadLoginMap() {
+        // Wyczyść starą mapę
+        while(this.mapGroup.children.length > 0) {
+            const child = this.mapGroup.children[0];
+            if(child.geometry) child.geometry.dispose();
+            this.mapGroup.remove(child);
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/login-map`);
+            if (!res.ok) return;
+
+            const blocksData = await res.json();
+            if (!Array.isArray(blocksData)) return;
+
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+            blocksData.forEach(data => {
+                const tex = this.textureLoader.load(data.texturePath);
+                tex.magFilter = THREE.NearestFilter;
+                const mat = new THREE.MeshLambertMaterial({ map: tex });
+                
+                const mesh = new THREE.Mesh(geometry, mat);
+                mesh.position.set(data.x, data.y, data.z);
+                this.mapGroup.add(mesh);
+            });
+
+        } catch (e) {
+            console.warn("Nie udało się załadować mapy logowania (może jest pusta?)", e);
+        }
     }
 
     // --- FUNKCJE ANIMACJI ---
@@ -103,17 +150,14 @@ export class IntroManager {
 
         if(btnShowLogin) btnShowLogin.onclick = () => { 
             this.showScreen('login');
-            // Przy logowaniu nie przybliżamy, bo modal zasłoni postać
             this.zoomOut(); 
         };
         
         if(btnShowRegister) btnShowRegister.onclick = () => { 
             this.showScreen('register');
-            // Przy rejestracji PRZYBLIŻAMY
             this.zoomIn();
         };
 
-        // Powrót z logowania
         const btnLoginCancel = document.getElementById('btn-login-cancel');
         if(btnLoginCancel) btnLoginCancel.onclick = () => {
             this.showScreen('welcome');
@@ -128,11 +172,9 @@ export class IntroManager {
             };
         }
 
-        // Powrót z rejestracji
         const btnRegCancel = document.getElementById('btn-register-cancel');
         if(btnRegCancel) btnRegCancel.onclick = () => {
             this.showScreen('welcome');
-            // ODDALAMY
             this.zoomOut();
         };
 
@@ -205,15 +247,11 @@ export class IntroManager {
 
         this.introAnimId = requestAnimationFrame(() => this.animate());
 
-        // 1. Obrót postaci
         if (this.previewCharacter) {
             this.previewCharacter.rotation.y += 0.005;
         }
 
-        // 2. Animacja kamery (Lerp - płynne dążenie do celu)
-        // 0.05 = prędkość dążenia (im mniejsza, tym płynniej)
         const speed = 0.05;
-
         this.camera.position.lerp(this.targetCamPos, speed);
         this.currentLookAt.lerp(this.targetLookAt, speed);
         this.camera.lookAt(this.currentLookAt);
@@ -277,7 +315,6 @@ export class IntroManager {
             const data = await res.json();
             if (res.ok) {
                 alert("Konto utworzone! Możesz się zalogować.");
-                // Po rejestracji wracamy do logowania i oddalamy kamerę
                 this.showScreen('login');
                 this.zoomOut();
             } else {
@@ -297,6 +334,16 @@ export class IntroManager {
         if (this.previewCharacter) {
             this.scene.remove(this.previewCharacter);
             this.previewCharacter = null;
+        }
+
+        // Wyczyść mapę logowania przy wejściu do gry
+        if (this.mapGroup) {
+            this.scene.remove(this.mapGroup);
+            while(this.mapGroup.children.length > 0) {
+                const child = this.mapGroup.children[0];
+                if(child.geometry) child.geometry.dispose();
+                this.mapGroup.remove(child);
+            }
         }
         
         const ids = ['btn-show-login', 'btn-show-register', 'btn-login-cancel', 'btn-register-cancel', 'skin-prev', 'skin-next'];
