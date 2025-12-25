@@ -21,14 +21,17 @@ export class IntroManager {
 
         this.screens = {};
 
-        // --- ZMIENNE DO ANIMACJI KAMERY ---
-        // Pozycja startowa (oddalona)
-        this.defaultCamPos = new THREE.Vector3(0, 4, 9);
-        this.defaultLookAt = new THREE.Vector3(0, 2, 0);
+        // --- ZMIENNE DO ANIMACJI KAMERY (POPRAWIONE ZBLIŻENIA) ---
+        
+        // 1. Pozycja startowa (Teraz znacznie bliżej niż wcześniej)
+        // Było: (0, 4, 9) -> Jest: (0, 3.0, 6.5)
+        this.defaultCamPos = new THREE.Vector3(0, 3.0, 6.5);
+        this.defaultLookAt = new THREE.Vector3(0, 1.5, 0); // Patrzy na środek postaci
 
-        // Pozycja przybliżona (Kreator)
-        this.zoomedCamPos = new THREE.Vector3(0, 2.2, 5.5);
-        this.zoomedLookAt = new THREE.Vector3(0, 1.4, 0);
+        // 2. Pozycja przybliżona (Kreator - BARDZO BLISKO)
+        // Było: (0, 2.2, 5.5) -> Jest: (0, 1.6, 3.2)
+        this.zoomedCamPos = new THREE.Vector3(0, 1.6, 3.2);
+        this.zoomedLookAt = new THREE.Vector3(0, 1.2, 0); // Patrzy na klatkę piersiową
 
         // Aktualne cele (do których dążymy w animate)
         this.targetCamPos = this.defaultCamPos.clone();
@@ -56,7 +59,7 @@ export class IntroManager {
     }
 
     setupScene() {
-        // Reset pozycji kamery na start
+        // Reset pozycji kamery na start (do nowych wartości default)
         this.camera.position.copy(this.defaultCamPos);
         this.camera.lookAt(this.defaultLookAt);
         
@@ -208,13 +211,10 @@ export class IntroManager {
         }
 
         // 2. Animacja kamery (Lerp - płynne dążenie do celu)
-        // Im mniejsza liczba (0.05), tym wolniejsza i płynniejsza animacja
+        // 0.05 = prędkość dążenia (im mniejsza, tym płynniej)
         const speed = 0.05;
 
-        // Interpolacja pozycji
         this.camera.position.lerp(this.targetCamPos, speed);
-
-        // Interpolacja punktu patrzenia (LookAt)
         this.currentLookAt.lerp(this.targetLookAt, speed);
         this.camera.lookAt(this.currentLookAt);
 
