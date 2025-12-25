@@ -1,3 +1,4 @@
+/* PLIK: CoinManager.js */
 import * as THREE from 'three';
 
 export class CoinManager {
@@ -10,7 +11,10 @@ export class CoinManager {
     this.spawnedCoin = null;
     this.onCollect = null; 
 
-    this.uiManager.updateCoinCounter(this.coins);
+    // Bezpieczna inicjalizacja licznika
+    if (this.uiManager && typeof this.uiManager.updateCoinCounter === 'function') {
+        this.uiManager.updateCoinCounter(this.coins);
+    }
   }
 
   createCoinMesh() {
@@ -36,9 +40,7 @@ export class CoinManager {
 
     this.scene.add(coin);
     this.spawnedCoin = coin;
-    // Anuluj ewentualne ukrycie z poprzedniej monety
     this.spawnedCoin.visible = true; 
-    console.log(`Moneta w: x=${position.x.toFixed(1)}, z=${position.z.toFixed(1)}`);
   }
   
   removeCoinGlobally() {
@@ -48,10 +50,24 @@ export class CoinManager {
       }
   }
 
+  // --- NAPRAWIONA METODA AKTUALIZACJI SALDA ---
   updateBalance(newBalance) {
+      const oldBalance = this.coins;
       this.coins = newBalance;
-      this.uiManager.updateCoinCounter(this.coins);
-      this.uiManager.showMessage('+200 monet!', 'success');
+      
+      // 1. Aktualizuj licznik w UI (bezpiecznie)
+      if (this.uiManager && typeof this.uiManager.updateCoinCounter === 'function') {
+          this.uiManager.updateCoinCounter(this.coins);
+      }
+
+      // 2. Pokaż powiadomienie TYLKO jeśli przybyło monet (np. zebrano monetę lub nagrodę)
+      // Dzięki temu przy kupowaniu (gdy monety ubywają) nie wywali błędu ani dziwnego komunikatu.
+      const diff = newBalance - oldBalance;
+      if (diff > 0) {
+          if (this.uiManager && typeof this.uiManager.showMessage === 'function') {
+              this.uiManager.showMessage(`+${diff} monet!`, 'success');
+          }
+      }
   }
 
   update(deltaTime) {
@@ -61,48 +77,17 @@ export class CoinManager {
       if (this.player && this.onCollect) {
           const distance = this.player.position.distanceTo(this.spawnedCoin.position);
           
-          // Próg 2.0 jednostek (nieco większy dla pewności)
           if (distance < 2.0) {
-            // 1. Ukryj natychmiast wizualnie (dla gracza)
             this.spawnedCoin.visible = false;
-            
-            // 2. Wyślij info do serwera
             this.onCollect(); 
           }
       }
     }
   }
 
+  // Metoda pomocnicza (nieużywana w nowym systemie server-side, ale zostawiona dla kompatybilności)
   async spendCoins(amount) {
-    if (this.coins < amount) {
-        this.uiManager.showMessage('Masz za mało monet!', 'error');
-        return false;
-    }
-    
-    const token = localStorage.getItem('bsp_clone_jwt_token');
-    if (!token) return false;
-
-    try {
-        const response = await fetch('https://hypercubes-nexus-server.onrender.com/api/coins/update', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ amount: -amount })
-        });
-        if (!response.ok) {
-            const data = await response.json();
-            this.uiManager.showMessage(data.message || "Błąd zakupu", "error");
-            return false;
-        }
-        const data = await response.json();
-        this.coins = data.newBalance;
-        this.uiManager.updateCoinCounter(this.coins);
-        return true;
-    } catch (error) {
-        console.error("Błąd sieci:", error);
-        return false;
-    }
+      // Logika przeniesiona do BlockManager/Server
+      return true;
   }
 }
