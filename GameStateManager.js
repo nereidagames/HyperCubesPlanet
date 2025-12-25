@@ -1,3 +1,4 @@
+/* PLIK: GameStateManager.js */
 import * as THREE from 'three';
 
 export class GameStateManager {
@@ -79,12 +80,15 @@ export class GameStateManager {
         if(joystickZone) joystickZone.style.display = 'block'; 
     }
 
-    // FIX: Dodano parametr isNexusMode i przekazano go dalej
-    switchToBuildMode(size, isNexusMode = false) {
+    // --- POPRAWKA: Przekazywanie isLoginMapMode ---
+    switchToBuildMode(size, isNexusMode = false, isLoginMapMode = false) {
         if (this.currentState !== 'MainMenu') return;
         this.currentState = 'BuildMode';
         this.toggleGameControls(false);
-        if (this.managers.build) this.managers.build.enterBuildMode(size, isNexusMode);
+        if (this.managers.build) {
+            // Przekazujemy wszystkie 3 parametry do BuildManagera
+            this.managers.build.enterBuildMode(size, isNexusMode, isLoginMapMode);
+        }
     }
 
     switchToSkinBuilder() { if (this.currentState !== 'MainMenu') return; this.currentState = 'SkinBuilderMode'; this.toggleGameControls(false); if (this.managers.skinBuild) this.managers.skinBuild.enterBuildMode(); }
