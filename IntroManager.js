@@ -67,16 +67,12 @@ export class IntroManager {
         this.currentLookAt.copy(this.defaultLookAt);
         this.targetLookAt.copy(this.defaultLookAt);
 
-        // Czyścimy scenę (światła itp), ale mapGroup czyścimy osobno
+        // Czyścimy scenę (światła itp)
         while(this.scene.children.length > 0){ 
             const child = this.scene.children[0];
-            // Nie usuwamy mapGroup, jeśli już tam jest
             if (child !== this.mapGroup) {
                 this.scene.remove(child);
             } else {
-                // Jeśli to mapGroup, zostawiamy go w tablicy children, ale...
-                // (Hack: Three.js remove modifies array, so simple while loop is tricky if we skip one)
-                // Lepiej wyczyścić wszystko i dodać mapGroup na nowo.
                 this.scene.remove(child);
             }
         }
@@ -100,9 +96,7 @@ export class IntroManager {
         this.loadLoginMap();
     }
 
-    // --- NOWA METODA: ŁADOWANIE MAPY TŁA ---
     async loadLoginMap() {
-        // Wyczyść starą mapę
         while(this.mapGroup.children.length > 0) {
             const child = this.mapGroup.children[0];
             if(child.geometry) child.geometry.dispose();
@@ -129,11 +123,10 @@ export class IntroManager {
             });
 
         } catch (e) {
-            console.warn("Nie udało się załadować mapy logowania (może jest pusta?)", e);
+            console.warn("Nie udało się załadować mapy logowania", e);
         }
     }
 
-    // --- FUNKCJE ANIMACJI ---
     zoomIn() {
         this.targetCamPos.copy(this.zoomedCamPos);
         this.targetLookAt.copy(this.zoomedLookAt);
@@ -325,18 +318,23 @@ export class IntroManager {
         }
     }
 
+    // --- KLUCZOWA POPRAWKA ---
     dispose() {
         this.isIntroActive = false;
         if (this.introAnimId) cancelAnimationFrame(this.introAnimId);
         
-        if (this.screens.main) this.screens.main.style.display = 'none';
+        // Zamiast polegać na this.screens, pobieramy element bezpośrednio
+        // To rozwiązuje problem przy autologowaniu, gdzie this.screens może być puste
+        const authScreen = document.getElementById('auth-screen');
+        if (authScreen) authScreen.style.display = 'none';
 
+        // Wyczyść postać z intro
         if (this.previewCharacter) {
             this.scene.remove(this.previewCharacter);
             this.previewCharacter = null;
         }
 
-        // Wyczyść mapę logowania przy wejściu do gry
+        // Wyczyść mapę logowania
         if (this.mapGroup) {
             this.scene.remove(this.mapGroup);
             while(this.mapGroup.children.length > 0) {
@@ -346,6 +344,7 @@ export class IntroManager {
             }
         }
         
+        // Usuń eventy
         const ids = ['btn-show-login', 'btn-show-register', 'btn-login-cancel', 'btn-register-cancel', 'skin-prev', 'skin-next'];
         ids.forEach(id => {
             const el = document.getElementById(id);
