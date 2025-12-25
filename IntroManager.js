@@ -20,10 +20,22 @@ export class IntroManager {
         this.isIntroActive = false;
 
         this.screens = {};
+
+        // --- ZMIENNE DO ANIMACJI KAMERY ---
+        // Pozycja startowa (oddalona)
+        this.defaultCamPos = new THREE.Vector3(0, 4, 9);
+        this.defaultLookAt = new THREE.Vector3(0, 2, 0);
+
+        // Pozycja przybliżona (Kreator)
+        this.zoomedCamPos = new THREE.Vector3(0, 2.2, 5.5);
+        this.zoomedLookAt = new THREE.Vector3(0, 1.4, 0);
+
+        // Aktualne cele (do których dążymy w animate)
+        this.targetCamPos = this.defaultCamPos.clone();
+        this.currentLookAt = this.defaultLookAt.clone();
+        this.targetLookAt = this.defaultLookAt.clone();
     }
 
-    // WAŻNE: Pobieramy elementy DOM dopiero w momencie startu,
-    // aby mieć pewność, że UITemplates zostały już wstrzyknięte do HTML.
     refreshElements() {
         this.screens = {
             main: document.getElementById('auth-screen'),
@@ -35,21 +47,25 @@ export class IntroManager {
 
     start() {
         this.isIntroActive = true;
-        this.refreshElements(); // Pobierz uchwyty do elementów
+        this.refreshElements();
         this.setupScene();
-        this.setupEvents(); // Podepnij zdarzenia
+        this.setupEvents();
         this.showScreen('welcome');
         this.updateSkinPreview();
         this.animate();
     }
 
     setupScene() {
-        // Statyczna kamera patrząca na postać
-        this.camera.position.set(0, 4, 9);
-        this.camera.lookAt(0, 2, 0);
+        // Reset pozycji kamery na start
+        this.camera.position.copy(this.defaultCamPos);
+        this.camera.lookAt(this.defaultLookAt);
+        
+        // Reset celów animacji
+        this.targetCamPos.copy(this.defaultCamPos);
+        this.currentLookAt.copy(this.defaultLookAt);
+        this.targetLookAt.copy(this.defaultLookAt);
 
-        // Usuń stare światła/obiekty żeby nie dublować przy restarcie
-        // (Zachowaj ostrożność, w main.js czyścimy scenę przed grą, tu czyścimy przed intro)
+        // Usuń stare światła/obiekty
         while(this.scene.children.length > 0){ 
             this.scene.remove(this.scene.children[0]); 
         }
@@ -63,24 +79,45 @@ export class IntroManager {
         this.previewCharacter = new THREE.Group();
         this.scene.add(this.previewCharacter);
         
-        // Dodaj bazę (nogi)
         createBaseCharacter(this.previewCharacter);
         this.previewCharacter.position.y = 1; 
     }
 
+    // --- FUNKCJE ANIMACJI ---
+    zoomIn() {
+        this.targetCamPos.copy(this.zoomedCamPos);
+        this.targetLookAt.copy(this.zoomedLookAt);
+    }
+
+    zoomOut() {
+        this.targetCamPos.copy(this.defaultCamPos);
+        this.targetLookAt.copy(this.defaultLookAt);
+    }
+
     setupEvents() {
-        // Przyciski Główne
         const btnShowLogin = document.getElementById('btn-show-login');
         const btnShowRegister = document.getElementById('btn-show-register');
 
-        if(btnShowLogin) btnShowLogin.onclick = () => this.showScreen('login');
-        if(btnShowRegister) btnShowRegister.onclick = () => this.showScreen('register');
-
-        // Logowanie
-        const btnLoginCancel = document.getElementById('btn-login-cancel');
-        const formLogin = document.getElementById('login-form');
+        if(btnShowLogin) btnShowLogin.onclick = () => { 
+            this.showScreen('login');
+            // Przy logowaniu nie przybliżamy, bo modal zasłoni postać
+            this.zoomOut(); 
+        };
         
-        if(btnLoginCancel) btnLoginCancel.onclick = () => this.showScreen('welcome');
+        if(btnShowRegister) btnShowRegister.onclick = () => { 
+            this.showScreen('register');
+            // Przy rejestracji PRZYBLIŻAMY
+            this.zoomIn();
+        };
+
+        // Powrót z logowania
+        const btnLoginCancel = document.getElementById('btn-login-cancel');
+        if(btnLoginCancel) btnLoginCancel.onclick = () => {
+            this.showScreen('welcome');
+            this.zoomOut();
+        };
+
+        const formLogin = document.getElementById('login-form');
         if(formLogin) {
             formLogin.onsubmit = (e) => {
                 e.preventDefault();
@@ -88,13 +125,18 @@ export class IntroManager {
             };
         }
 
-        // Rejestracja i Wybór Skina
+        // Powrót z rejestracji
         const btnRegCancel = document.getElementById('btn-register-cancel');
+        if(btnRegCancel) btnRegCancel.onclick = () => {
+            this.showScreen('welcome');
+            // ODDALAMY
+            this.zoomOut();
+        };
+
         const formReg = document.getElementById('register-form');
         const arrowLeft = document.getElementById('skin-prev');
         const arrowRight = document.getElementById('skin-next');
 
-        if(btnRegCancel) btnRegCancel.onclick = () => this.showScreen('welcome');
         if(arrowLeft) arrowLeft.onclick = () => this.cycleSkin(-1);
         if(arrowRight) arrowRight.onclick = () => this.cycleSkin(1);
 
@@ -107,12 +149,10 @@ export class IntroManager {
     }
 
     showScreen(screenName) {
-        // Ukrywamy wszystkie ekrany
         if(this.screens.welcome) this.screens.welcome.style.display = 'none';
         if(this.screens.login) this.screens.login.style.display = 'none';
         if(this.screens.register) this.screens.register.style.display = 'none';
 
-        // Pokazujemy wybrany
         if (screenName === 'welcome' && this.screens.welcome) this.screens.welcome.style.display = 'flex';
         if (screenName === 'login' && this.screens.login) this.screens.login.style.display = 'flex';
         if (screenName === 'register' && this.screens.register) this.screens.register.style.display = 'block';
@@ -128,7 +168,6 @@ export class IntroManager {
     updateSkinPreview() {
         if (!this.previewCharacter) return;
 
-        // Usuń stary skin (wszystkie grupy bloków)
         for (let i = this.previewCharacter.children.length - 1; i >= 0; i--) {
             const child = this.previewCharacter.children[i];
             if (child.type === 'Group') {
@@ -141,13 +180,12 @@ export class IntroManager {
 
         const skinGroup = new THREE.Group();
         skinGroup.scale.setScalar(0.125); 
-        skinGroup.position.y = 0.5; // Dopasowanie do nóg
+        skinGroup.position.y = 0.5;
 
         const loader = new THREE.TextureLoader();
 
         skinData.blocks.forEach(b => {
             const geo = new THREE.BoxGeometry(1, 1, 1);
-            // W intro nie używamy managera ładowania dla prostoty i szybkości
             const tex = loader.load(b.texturePath);
             tex.magFilter = THREE.NearestFilter;
             const mat = new THREE.MeshLambertMaterial({ map: tex });
@@ -164,10 +202,21 @@ export class IntroManager {
 
         this.introAnimId = requestAnimationFrame(() => this.animate());
 
-        // Delikatny obrót postaci
+        // 1. Obrót postaci
         if (this.previewCharacter) {
             this.previewCharacter.rotation.y += 0.005;
         }
+
+        // 2. Animacja kamery (Lerp - płynne dążenie do celu)
+        // Im mniejsza liczba (0.05), tym wolniejsza i płynniejsza animacja
+        const speed = 0.05;
+
+        // Interpolacja pozycji
+        this.camera.position.lerp(this.targetCamPos, speed);
+
+        // Interpolacja punktu patrzenia (LookAt)
+        this.currentLookAt.lerp(this.targetLookAt, speed);
+        this.camera.lookAt(this.currentLookAt);
 
         this.core.render(this.scene);
     }
@@ -221,14 +270,16 @@ export class IntroManager {
                 body: JSON.stringify({
                     username: uInput.value,
                     password: pInput.value,
-                    starterSkin: selectedSkinData // Wysyłamy wybrany preset
+                    starterSkin: selectedSkinData
                 })
             });
 
             const data = await res.json();
             if (res.ok) {
                 alert("Konto utworzone! Możesz się zalogować.");
+                // Po rejestracji wracamy do logowania i oddalamy kamerę
                 this.showScreen('login');
+                this.zoomOut();
             } else {
                 alert("Błąd: " + data.message);
             }
@@ -241,16 +292,13 @@ export class IntroManager {
         this.isIntroActive = false;
         if (this.introAnimId) cancelAnimationFrame(this.introAnimId);
         
-        // Ukryj UI logowania
         if (this.screens.main) this.screens.main.style.display = 'none';
 
-        // Wyczyść scenę z elementów intro
         if (this.previewCharacter) {
             this.scene.remove(this.previewCharacter);
             this.previewCharacter = null;
         }
         
-        // Usuń eventy (aby nie dublować przy ponownym wczytaniu)
         const ids = ['btn-show-login', 'btn-show-register', 'btn-login-cancel', 'btn-register-cancel', 'skin-prev', 'skin-next'];
         ids.forEach(id => {
             const el = document.getElementById(id);
