@@ -5,44 +5,49 @@ export const AUTH_HTML = `
     /* --- BSP LOGIN STYLE --- */
     #auth-screen {
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: transparent; /* Przeźroczyste, by widać było 3D */
+        background: transparent;
         z-index: 99998;
         display: flex; flex-direction: column; justify-content: space-between;
         font-family: 'Titan One', cursive;
-        pointer-events: none; /* Klikanie przepuszczane do sceny 3D */
+        pointer-events: none; /* Tło przepuszcza kliki do 3D */
     }
 
-    /* Elementy interaktywne muszą mieć pointer-events: auto */
-    .bsp-interactive { pointer-events: auto; }
+    /* Elementy interaktywne muszą reagować na kliknięcia */
+    .bsp-interactive { pointer-events: auto !important; }
 
     /* GŁÓWNY EKRAN POWITALNY */
     #bsp-welcome-screen {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         display: flex; flex-direction: column; justify-content: space-between;
-        padding: 20px;
+        padding: 10px;
+        pointer-events: none;
     }
 
     /* Logo / Nagłówek */
     .bsp-top-header {
         text-align: center; margin-top: 10px;
         text-shadow: 2px 2px 0 #000; color: white; font-size: 24px;
+        pointer-events: auto;
     }
 
-    /* Prawy panel z wielkimi przyciskami */
+    /* Prawy panel z przyciskami (ZMNIEJSZONE!) */
     .bsp-right-buttons {
-        position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
-        display: flex; flex-direction: column; gap: 20px;
+        position: absolute; right: 20px; top: 50%; transform: translateY(-60%);
+        display: flex; flex-direction: column; gap: 15px;
         align-items: flex-end;
+        z-index: 100;
+        pointer-events: none; /* Kontener nie blokuje, dzieci tak */
     }
 
     .bsp-big-btn {
-        width: 280px; height: 160px;
-        border: 4px solid white; border-radius: 20px;
+        width: 180px; height: 90px; /* Zmniejszony rozmiar */
+        border: 3px solid white; border-radius: 15px;
         display: flex; flex-direction: column; justify-content: center; align-items: center;
         cursor: pointer; transition: transform 0.1s;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        color: white; text-shadow: 2px 2px 0 #000;
-        font-size: 32px; text-align: center; line-height: 1.1;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+        color: white; text-shadow: 1.5px 1.5px 0 #000;
+        font-size: 18px; text-align: center; line-height: 1.1;
+        pointer-events: auto; /* WAŻNE: To sprawia że przycisk działa */
     }
     .bsp-big-btn:active { transform: scale(0.95); }
 
@@ -57,58 +62,63 @@ export const AUTH_HTML = `
     .bsp-bottom-bar {
         display: flex; justify-content: space-between; align-items: flex-end;
         width: 100%; padding-bottom: 10px;
+        pointer-events: none;
     }
 
     .bsp-tip-box {
         background-color: #3498db;
-        border: 3px solid white; border-radius: 15px;
-        padding: 10px 20px; color: white;
-        max-width: 350px; position: relative;
-        box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+        border: 2px solid white; border-radius: 10px;
+        padding: 5px 10px; color: white; font-size: 11px;
+        max-width: 250px; position: relative;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+        pointer-events: auto;
     }
-    .bsp-tip-box::after { /* Strzałka dymku */
-        content: ''; position: absolute; bottom: -15px; left: 20px;
-        border-width: 15px 15px 0; border-style: solid;
+    .bsp-tip-box::after {
+        content: ''; position: absolute; bottom: -10px; left: 20px;
+        border-width: 10px 10px 0; border-style: solid;
         border-color: white transparent transparent transparent;
     }
 
     .btn-privacy {
         background: linear-gradient(to bottom, #f39c12, #d35400);
-        border: 3px solid white; border-radius: 10px;
-        padding: 10px 20px; color: white; font-size: 16px;
-        cursor: pointer; box-shadow: 0 5px 0 #a04000;
+        border: 2px solid white; border-radius: 8px;
+        padding: 8px 15px; color: white; font-size: 12px;
+        cursor: pointer; box-shadow: 0 3px 0 #a04000;
+        pointer-events: auto;
     }
 
-    /* --- MODAL LOGOWANIA (Prawy dolny róg / Środek) --- */
+    /* --- MODAL LOGOWANIA --- */
     #bsp-login-modal {
         position: absolute; right: 50px; top: 50%; transform: translateY(-50%);
-        width: 350px;
-        background: #3498db; /* Niebieski BSP */
+        width: 320px;
+        background: #3498db;
         border: 4px solid white; border-radius: 20px;
-        padding: 20px; display: none; /* Domyślnie ukryty */
-        flex-direction: column; gap: 15px;
+        padding: 20px; display: none;
+        flex-direction: column; gap: 10px;
         box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+        pointer-events: auto;
+        z-index: 101;
     }
     
-    .bsp-modal-title { font-size: 28px; color: white; text-align: center; text-shadow: 2px 2px 0 #000; margin-bottom: 10px; }
+    .bsp-modal-title { font-size: 24px; color: white; text-align: center; text-shadow: 2px 2px 0 #000; margin-bottom: 5px; }
     
     .bsp-input {
-        width: 100%; height: 50px;
+        width: 100%; height: 45px;
         border-radius: 10px; border: none;
-        padding: 0 15px; font-family: 'Titan One', cursive; font-size: 18px;
+        padding: 0 15px; font-family: 'Titan One', cursive; font-size: 16px;
         box-shadow: inset 0 3px 5px rgba(0,0,0,0.2);
     }
     
     .bsp-checkbox-row {
         display: flex; align-items: center; gap: 10px; color: white; text-shadow: 1px 1px 0 #000; font-size: 14px;
     }
-    .bsp-checkbox { width: 25px; height: 25px; cursor: pointer; }
+    .bsp-checkbox { width: 20px; height: 20px; cursor: pointer; }
 
     .bsp-btn-row { display: flex; gap: 10px; margin-top: 10px; }
     .bsp-btn-small {
-        flex: 1; height: 50px;
+        flex: 1; height: 45px;
         border: 3px solid white; border-radius: 10px;
-        font-size: 20px; color: white; cursor: pointer;
+        font-size: 18px; color: white; cursor: pointer;
         display: flex; justify-content: center; align-items: center;
         box-shadow: 0 4px 0 rgba(0,0,0,0.3);
     }
@@ -116,30 +126,29 @@ export const AUTH_HTML = `
     .btn-green { background: #2ecc71; box-shadow: 0 4px 0 #27ae60; }
     .btn-red:active, .btn-green:active { transform: translateY(3px); box-shadow: none; }
 
-    /* --- EKRAN REJESTRACJI (KREATOR) --- */
+    /* --- EKRAN REJESTRACJI --- */
     #bsp-register-screen {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        display: none; /* Domyślnie ukryty */
+        display: none;
         pointer-events: none;
     }
 
-    /* Panel boczny z formularzem (Prawa strona) */
     .bsp-register-panel {
         position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
-        width: 320px;
-        background: #8ede13; /* Jasny zielony */
+        width: 300px;
+        background: #8ede13;
         border: 4px solid white; border-radius: 20px;
-        padding: 15px; display: flex; flex-direction: column; gap: 10px;
+        padding: 15px; display: flex; flex-direction: column; gap: 8px;
         pointer-events: auto;
+        z-index: 101;
     }
 
     .bsp-register-header { text-align: center; margin-bottom: 5px; }
-    .bsp-register-header img { width: 150px; }
+    .bsp-register-header img { width: 120px; }
 
-    /* Strzałki wyboru skina (Lewa strona) */
     .bsp-skin-selector {
-        position: absolute; left: 50px; top: 50%; transform: translateY(-50%);
-        display: flex; flex-direction: column; gap: 20px;
+        position: absolute; left: 40px; top: 50%; transform: translateY(-50%);
+        display: flex; flex-direction: column; gap: 15px;
         pointer-events: auto;
     }
 
@@ -152,22 +161,29 @@ export const AUTH_HTML = `
     .selector-icon img { width: 80%; }
     
     .selector-arrow {
-        width: 50px; height: 50px;
+        width: 45px; height: 45px;
         background: linear-gradient(to bottom, #fff, #eee);
         border: 3px solid #3498db; border-radius: 10px;
         display: flex; justify-content: center; align-items: center;
-        font-size: 30px; color: #3498db; cursor: pointer;
+        font-size: 28px; color: #3498db; cursor: pointer;
         box-shadow: 0 4px 0 #2980b9;
     }
     .selector-arrow:active { transform: translateY(3px); box-shadow: none; }
+    
+    @media (max-width: 600px) {
+        .bsp-big-btn { width: 150px; height: 80px; font-size: 16px; }
+        .bsp-right-buttons { right: 10px; transform: translateY(-55%); }
+        #bsp-login-modal, .bsp-register-panel { width: 90%; right: 5%; }
+        .bsp-skin-selector { left: 10px; transform: scale(0.8) translateY(-50%); }
+    }
 
 </style>
 
 <div id="auth-screen">
     
     <!-- 1. EKRAN POWITALNY (Start) -->
-    <div id="bsp-welcome-screen" class="bsp-interactive">
-        <div class="bsp-top-header">
+    <div id="bsp-welcome-screen">
+        <div class="bsp-top-header bsp-interactive">
             Witaj na <span style="color:#f1c40f; text-shadow: 2px 2px 0 #000;">HyperCubesPlanet</span>
         </div>
 
@@ -190,8 +206,8 @@ export const AUTH_HTML = `
         </div>
     </div>
 
-    <!-- 2. MODAL LOGOWANIA (Po kliknięciu Zaloguj) -->
-    <div id="bsp-login-modal" class="bsp-interactive">
+    <!-- 2. MODAL LOGOWANIA -->
+    <div id="bsp-login-modal">
         <div class="bsp-modal-title">Zaloguj tutaj</div>
         
         <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
@@ -204,8 +220,8 @@ export const AUTH_HTML = `
             </div>
             
             <div style="display:flex; justify-content:center; margin: 5px 0;">
-                <div style="width:40px; height:25px; background:linear-gradient(to bottom, #fff 50%, #e74c3c 50%); border:1px solid #ddd;"></div>
-                <span style="margin-left:5px;">Polska</span>
+                <div style="width:35px; height:22px; background:linear-gradient(to bottom, #fff 50%, #e74c3c 50%); border:1px solid #ddd;"></div>
+                <span style="margin-left:5px; font-size:12px; color:white;">Polska</span>
             </div>
 
             <div class="bsp-btn-row">
@@ -217,13 +233,13 @@ export const AUTH_HTML = `
                 Nie pamiętasz hasła?
             </div>
         </form>
-        <div id="auth-message" style="color:yellow; text-align:center; text-shadow:1px 1px 0 #000;"></div>
+        <div id="auth-message" style="color:yellow; text-align:center; text-shadow:1px 1px 0 #000; font-size:12px; margin-top:5px;"></div>
     </div>
 
-    <!-- 3. EKRAN REJESTRACJI (KREATOR) -->
+    <!-- 3. EKRAN REJESTRACJI -->
     <div id="bsp-register-screen">
         
-        <!-- Lewy panel wyboru (Dla efektu wizualnego) -->
+        <!-- Lewy panel wyboru -->
         <div class="bsp-skin-selector">
             <div class="selector-row">
                 <div id="skin-prev" class="selector-arrow bsp-interactive">⬅</div>
@@ -232,7 +248,6 @@ export const AUTH_HTML = `
                 </div>
                 <div id="skin-next" class="selector-arrow bsp-interactive">➡</div>
             </div>
-            <!-- Placeholder na nogi (nieaktywny w logice, ale wizualny) -->
             <div class="selector-row" style="opacity:0.5; filter:grayscale(1);">
                 <div class="selector-arrow">⬅</div>
                 <div class="selector-icon">
@@ -240,24 +255,17 @@ export const AUTH_HTML = `
                 </div>
                 <div class="selector-arrow">➡</div>
             </div>
-            <div class="selector-row" style="opacity:0.5; filter:grayscale(1);">
-                <div class="selector-icon" style="margin-left:70px;">🎲</div>
-            </div>
         </div>
 
         <!-- Prawy panel formularza -->
         <div class="bsp-register-panel">
             <div class="bsp-register-header">
-                <div class="text-outline" style="font-size:24px; color:white;">Nowy</div>
-                <img src="icons/favicon.png" style="height:40px; object-fit:contain;">
+                <div class="text-outline" style="font-size:22px; color:white;">Nowy</div>
+                <img src="icons/favicon.png" style="height:35px; object-fit:contain;">
             </div>
 
             <form id="register-form" style="display:flex; flex-direction:column; gap:8px;">
-                <div style="position:relative;">
-                    <input id="register-username" class="bsp-input" type="text" placeholder="Wprowadź nick" required minlength="3" maxlength="15">
-                    <div style="position:absolute; right:5px; top:5px; width:40px; height:40px; background:white; border:1px solid #ccc; border-radius:5px; display:flex; justify-content:center; align-items:center; cursor:pointer;">🎲</div>
-                </div>
-                
+                <input id="register-username" class="bsp-input" type="text" placeholder="Wprowadź nick" required minlength="3" maxlength="15">
                 <input id="register-password" class="bsp-input" type="password" placeholder="Wprowadź hasło" required minlength="6">
                 <input id="register-password-confirm" class="bsp-input" type="password" placeholder="Powtórz hasło" required>
                 
@@ -267,7 +275,7 @@ export const AUTH_HTML = `
                 </div>
 
                 <div style="display:flex; justify-content:center;">
-                    <div style="width:40px; height:25px; background:linear-gradient(to bottom, #fff 50%, #e74c3c 50%); border:1px solid #ddd;"></div>
+                    <div style="width:35px; height:22px; background:linear-gradient(to bottom, #fff 50%, #e74c3c 50%); border:1px solid #ddd;"></div>
                     <span style="margin-left:5px; font-size:12px; color:white;">Polska</span>
                 </div>
 
@@ -277,15 +285,259 @@ export const AUTH_HTML = `
                 </div>
             </form>
             
-            <div style="background:#3498db; color:white; font-size:10px; text-align:center; padding:5px; border-radius:5px; margin-top:5px; border:2px solid white;">
-                Warunki Korzystania z Serwisu
+            <div style="background:#3498db; color:white; font-size:10px; text-align:center; padding:4px; border-radius:5px; margin-top:2px; border:2px solid white;">
+                Warunki Korzystania
             </div>
-             <div class="btn-privacy text-outline" style="font-size:10px; padding:5px; text-align:center;">
+             <div class="btn-privacy text-outline" style="font-size:10px; padding:4px; text-align:center;">
                 Polityka Prywatności
             </div>
         </div>
     </div>
 
+</div>
+`;
+
+export const OTHER_PLAYER_PROFILE_HTML = `
+<style>
+    #other-player-profile-panel .panel-content {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        width: auto !important;
+        height: auto !important;
+        pointer-events: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .bsp-profile-wrapper {
+        display: flex;
+        gap: 10px;
+        font-family: 'Titan One', cursive;
+        position: relative;
+    }
+
+    .bsp-main-card {
+        width: 380px;
+        height: 450px;
+        background: radial-gradient(circle at center, #7ed6df 0%, #22a6b3 100%);
+        border-radius: 20px;
+        border: 4px solid rgba(0,0,0,0.2);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .bsp-header {
+        width: 100%;
+        height: 60px;
+        background: linear-gradient(to bottom, #4facfe, #00f2fe);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        text-shadow: 1.5px 1.5px 0 #000;
+        box-shadow: 0 4px 5px rgba(0,0,0,0.2);
+        z-index: 2;
+        border-bottom: 2px solid rgba(255,255,255,0.3);
+    }
+    .bsp-username { font-size: 22px; margin-bottom: 2px; }
+    .bsp-joined { font-size: 11px; opacity: 0.9; }
+
+    .bsp-level-star {
+        position: absolute;
+        top: -10px; left: -10px;
+        width: 90px; height: 90px;
+        background: url('icons/icon-level.png') center/contain no-repeat;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 32px; color: white;
+        text-shadow: 2px 2px 0 #000;
+        z-index: 10;
+        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.4));
+        transform: rotate(-10deg);
+    }
+
+    .bsp-status-dot {
+        position: absolute;
+        top: 15px; right: 15px;
+        width: 25px; height: 25px;
+        background: radial-gradient(circle at 30% 30%, #2ecc71, #27ae60);
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        z-index: 10;
+        display: none;
+    }
+    .bsp-status-dot.offline { background: radial-gradient(circle at 30% 30%, #e74c3c, #c0392b); }
+
+    .bsp-flag {
+        position: absolute;
+        top: 75px; left: 20px;
+        width: 45px; height: 30px;
+        background-color: #fff;
+        background-image: linear-gradient(to bottom, #fff 50%, #dc143c 50%);
+        border: 2px solid white;
+        border-radius: 6px;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+        z-index: 5;
+    }
+
+    #other-player-preview-canvas {
+        position: absolute;
+        top: 60px; left: 0; width: 100%; height: 100%;
+        z-index: 1;
+    }
+
+    .bsp-corner-btn {
+        position: absolute;
+        bottom: 15px;
+        width: 60px; height: 60px;
+        border-radius: 12px;
+        border: 3px solid white;
+        cursor: pointer;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        box-shadow: 0 5px 0 rgba(0,0,0,0.3);
+        transition: transform 0.1s;
+        z-index: 10;
+    }
+    .bsp-corner-btn:active { transform: translateY(4px); box-shadow: none; }
+
+    .btn-report {
+        left: 15px;
+        background: #535c68;
+        background-image: url('icons/alert.png');
+        background-size: 60%; background-repeat: no-repeat; background-position: center;
+    }
+    .btn-report::after { content: '⚠️'; font-size: 30px; }
+
+    .btn-friend-action {
+        right: 15px;
+        background: linear-gradient(to bottom, #e74c3c, #c0392b);
+    }
+    .friend-icon-placeholder { font-size: 30px; filter: drop-shadow(1px 1px 0 #000); }
+
+    .bsp-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-top: 10px;
+    }
+
+    .bsp-side-btn {
+        width: 100px; height: 75px;
+        background: linear-gradient(to bottom, #4facfe, #00f2fe);
+        border: 3px solid white;
+        border-radius: 15px;
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        box-shadow: 0 5px 0 #2980b9, 0 8px 10px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.1s;
+        position: relative;
+    }
+    .bsp-side-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #2980b9; }
+    
+    .bsp-side-btn.green {
+        background: linear-gradient(to bottom, #2ecc71, #27ae60);
+        box-shadow: 0 5px 0 #1e8449, 0 8px 10px rgba(0,0,0,0.3);
+    }
+    .bsp-side-btn.green:active { transform: translateY(4px); box-shadow: 0 1px 0 #1e8449; }
+
+    .bsp-btn-icon {
+        width: 35px; height: 35px;
+        background-size: contain; background-repeat: no-repeat; background-position: center;
+        filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2));
+        margin-bottom: 2px;
+    }
+    .bsp-btn-label {
+        font-size: 13px; color: white; text-shadow: 1.5px 1.5px 0 #000;
+        font-weight: bold;
+    }
+
+    .bsp-close-x {
+        position: absolute;
+        top: -15px; right: -15px;
+        width: 40px; height: 40px;
+        background: #e74c3c;
+        border: 3px solid white;
+        border-radius: 50%;
+        color: white; font-size: 20px; font-weight: bold;
+        display: flex; justify-content: center; align-items: center;
+        cursor: pointer; z-index: 20;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+    }
+
+    @media (max-width: 600px) {
+        .bsp-profile-wrapper { flex-direction: column; align-items: center; gap: 5px; transform: scale(0.9); }
+        .bsp-sidebar { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 380px; }
+        .bsp-side-btn { width: 70px; height: 60px; }
+        .bsp-btn-label { font-size: 10px; }
+        .bsp-btn-icon { width: 25px; height: 25px; }
+    }
+</style>
+
+<div id="other-player-profile-panel" class="panel-modal" style="display:none;">
+    <div class="panel-content">
+        <div class="bsp-profile-wrapper">
+            
+            <div class="bsp-main-card">
+                <div class="bsp-close-x" id="btn-other-profile-close">X</div>
+
+                <div class="bsp-level-star">
+                    <span id="other-profile-level" style="transform: rotate(10deg); margin-top:5px;">100</span>
+                </div>
+
+                <div id="other-profile-status" class="bsp-status-dot"></div>
+
+                <div class="bsp-header">
+                    <div id="other-profile-username" class="bsp-username">cybervamp</div>
+                    <div id="other-profile-date" class="bsp-joined">Członek od maj, 2024</div>
+                </div>
+
+                <div class="bsp-flag"></div>
+                <div id="other-player-preview-canvas"></div>
+
+                <div class="bsp-corner-btn btn-report"></div>
+                <div id="btn-other-friend-action" class="bsp-corner-btn btn-friend-action">
+                    <div class="friend-icon-placeholder">👤🗑️</div>
+                </div>
+            </div>
+
+            <div class="bsp-sidebar">
+                <div id="btn-other-wall" class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-like.png');"></div>
+                    <div class="bsp-btn-label">Ściana</div>
+                </div>
+                
+                <div id="btn-other-chat" class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-chat.png');"></div>
+                    <div class="bsp-btn-label">Czat</div>
+                </div>
+
+                <div class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/usmiech.png');">🎉</div> 
+                    <div class="bsp-btn-label">Uśmiech</div>
+                </div>
+
+                <div class="bsp-side-btn green">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/gamepad.png');">🎮</div>
+                    <div class="bsp-btn-label">Zaproś</div>
+                </div>
+
+                <div class="bsp-side-btn">
+                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-home.png');"></div>
+                    <div class="bsp-btn-label">Dom</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>
 `;
 
@@ -929,276 +1181,6 @@ export const PLAYER_PROFILE_HTML = `
             </div>
         </div>
     </div>
-`;
-
-export const OTHER_PLAYER_PROFILE_HTML = `
-<style>
-    /* Kontener modala */
-    #other-player-profile-panel .panel-content {
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        padding: 0 !important;
-        width: auto !important;
-        height: auto !important;
-        pointer-events: auto;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .bsp-profile-wrapper {
-        display: flex;
-        gap: 10px;
-        font-family: 'Titan One', cursive;
-        position: relative;
-    }
-
-    /* Główna karta (niebieska) */
-    .bsp-main-card {
-        width: 380px;
-        height: 450px;
-        background: radial-gradient(circle at center, #7ed6df 0%, #22a6b3 100%);
-        border-radius: 20px;
-        border: 4px solid rgba(0,0,0,0.2);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    /* Nagłówek */
-    .bsp-header {
-        width: 100%;
-        height: 60px;
-        background: linear-gradient(to bottom, #4facfe, #00f2fe);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        text-shadow: 1.5px 1.5px 0 #000;
-        box-shadow: 0 4px 5px rgba(0,0,0,0.2);
-        z-index: 2;
-        border-bottom: 2px solid rgba(255,255,255,0.3);
-    }
-    .bsp-username { font-size: 22px; margin-bottom: 2px; }
-    .bsp-joined { font-size: 11px; opacity: 0.9; }
-
-    /* Gwiazda Levelu */
-    .bsp-level-star {
-        position: absolute;
-        top: -10px; left: -10px;
-        width: 90px; height: 90px;
-        background: url('icons/icon-level.png') center/contain no-repeat;
-        display: flex; justify-content: center; align-items: center;
-        font-size: 32px; color: white;
-        text-shadow: 2px 2px 0 #000;
-        z-index: 10;
-        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.4));
-        transform: rotate(-10deg);
-    }
-
-    /* Kropka statusu */
-    .bsp-status-dot {
-        position: absolute;
-        top: 15px; right: 15px;
-        width: 25px; height: 25px;
-        background: radial-gradient(circle at 30% 30%, #2ecc71, #27ae60);
-        border: 2px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        z-index: 10;
-        display: none; /* Domyślnie ukryta */
-    }
-    .bsp-status-dot.offline { background: radial-gradient(circle at 30% 30%, #e74c3c, #c0392b); }
-
-    /* Flaga */
-    .bsp-flag {
-        position: absolute;
-        top: 75px; left: 20px;
-        width: 45px; height: 30px;
-        background-color: #fff; /* Placeholder dla Polski */
-        background-image: linear-gradient(to bottom, #fff 50%, #dc143c 50%);
-        border: 2px solid white;
-        border-radius: 6px;
-        box-shadow: 0 3px 5px rgba(0,0,0,0.2);
-        z-index: 5;
-    }
-
-    /* Canvas 3D */
-    #other-player-preview-canvas {
-        position: absolute;
-        top: 60px; left: 0; width: 100%; height: 100%;
-        z-index: 1;
-    }
-
-    /* Dolne przyciski (Report, Friend) */
-    .bsp-corner-btn {
-        position: absolute;
-        bottom: 15px;
-        width: 60px; height: 60px;
-        border-radius: 12px;
-        border: 3px solid white;
-        cursor: pointer;
-        display: flex; flex-direction: column; justify-content: center; align-items: center;
-        box-shadow: 0 5px 0 rgba(0,0,0,0.3);
-        transition: transform 0.1s;
-        z-index: 10;
-    }
-    .bsp-corner-btn:active { transform: translateY(4px); box-shadow: none; }
-
-    .btn-report {
-        left: 15px;
-        background: #535c68; /* Szary */
-        background-image: url('icons/alert.png'); /* Placeholder */
-        background-size: 60%; background-repeat: no-repeat; background-position: center;
-    }
-    /* Fallback icon for report */
-    .btn-report::after { content: '⚠️'; font-size: 30px; }
-
-    .btn-friend-action {
-        right: 15px;
-        background: linear-gradient(to bottom, #e74c3c, #c0392b); /* Czerwony - usuń/anuluj */
-    }
-    .friend-icon-placeholder { font-size: 30px; filter: drop-shadow(1px 1px 0 #000); }
-
-    /* Pasek boczny (Sidebar) */
-    .bsp-sidebar {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding-top: 10px;
-    }
-
-    .bsp-side-btn {
-        width: 100px; height: 75px;
-        background: linear-gradient(to bottom, #4facfe, #00f2fe);
-        border: 3px solid white;
-        border-radius: 15px;
-        display: flex; flex-direction: column;
-        justify-content: center; align-items: center;
-        box-shadow: 0 5px 0 #2980b9, 0 8px 10px rgba(0,0,0,0.3);
-        cursor: pointer;
-        transition: transform 0.1s;
-        position: relative;
-    }
-    .bsp-side-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #2980b9; }
-    
-    .bsp-side-btn.green {
-        background: linear-gradient(to bottom, #2ecc71, #27ae60);
-        box-shadow: 0 5px 0 #1e8449, 0 8px 10px rgba(0,0,0,0.3);
-    }
-    .bsp-side-btn.green:active { transform: translateY(4px); box-shadow: 0 1px 0 #1e8449; }
-
-    .bsp-btn-icon {
-        width: 35px; height: 35px;
-        background-size: contain; background-repeat: no-repeat; background-position: center;
-        filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2));
-        margin-bottom: 2px;
-    }
-    .bsp-btn-label {
-        font-size: 13px; color: white; text-shadow: 1.5px 1.5px 0 #000;
-        font-weight: bold;
-    }
-
-    /* Zamknięcie */
-    .bsp-close-x {
-        position: absolute;
-        top: -15px; right: -15px;
-        width: 40px; height: 40px;
-        background: #e74c3c;
-        border: 3px solid white;
-        border-radius: 50%;
-        color: white; font-size: 20px; font-weight: bold;
-        display: flex; justify-content: center; align-items: center;
-        cursor: pointer; z-index: 20;
-        box-shadow: 0 3px 5px rgba(0,0,0,0.3);
-    }
-
-    /* Responsive mobile */
-    @media (max-width: 600px) {
-        .bsp-profile-wrapper { flex-direction: column; align-items: center; gap: 5px; transform: scale(0.9); }
-        .bsp-sidebar { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 380px; }
-        .bsp-side-btn { width: 70px; height: 60px; }
-        .bsp-btn-label { font-size: 10px; }
-        .bsp-btn-icon { width: 25px; height: 25px; }
-    }
-</style>
-
-<div id="other-player-profile-panel" class="panel-modal" style="display:none;">
-    <div class="panel-content">
-        <div class="bsp-profile-wrapper">
-            
-            <!-- Główna karta -->
-            <div class="bsp-main-card">
-                <div class="bsp-close-x" id="btn-other-profile-close">X</div>
-
-                <!-- Level -->
-                <div class="bsp-level-star">
-                    <span id="other-profile-level" style="transform: rotate(10deg); margin-top:5px;">100</span>
-                </div>
-
-                <!-- Status -->
-                <div id="other-profile-status" class="bsp-status-dot"></div>
-
-                <!-- Header -->
-                <div class="bsp-header">
-                    <div id="other-profile-username" class="bsp-username">cybervamp</div>
-                    <div id="other-profile-date" class="bsp-joined">Członek od maj, 2024</div>
-                </div>
-
-                <!-- Flaga -->
-                <div class="bsp-flag"></div>
-
-                <!-- Postać -->
-                <div id="other-player-preview-canvas"></div>
-
-                <!-- Dolne przyciski -->
-                <div class="bsp-corner-btn btn-report"></div>
-                <div id="btn-other-friend-action" class="bsp-corner-btn btn-friend-action">
-                    <div class="friend-icon-placeholder">👤🗑️</div>
-                </div>
-            </div>
-
-            <!-- Boczny pasek -->
-            <div class="bsp-sidebar">
-                <!-- 1. Ściana -->
-                <div id="btn-other-wall" class="bsp-side-btn">
-                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-like.png');"></div>
-                    <div class="bsp-btn-label">Ściana</div>
-                </div>
-                
-                <!-- 2. Czat -->
-                <div id="btn-other-chat" class="bsp-side-btn">
-                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-chat.png');"></div>
-                    <div class="bsp-btn-label">Czat</div>
-                </div>
-
-                <!-- 3. Uśmiech (Placeholder) -->
-                <div class="bsp-side-btn">
-                    <div class="bsp-btn-icon" style="background-image: url('icons/usmiech.png');">🎉</div> 
-                    <div class="bsp-btn-label">Uśmiech</div>
-                </div>
-
-                <!-- 4. Zaproś -->
-                <div class="bsp-side-btn green">
-                    <div class="bsp-btn-icon" style="background-image: url('icons/gamepad.png');">🎮</div>
-                    <div class="bsp-btn-label">Zaproś</div>
-                </div>
-
-                <!-- 5. Dom (Placeholder) -->
-                <div class="bsp-side-btn">
-                    <div class="bsp-btn-icon" style="background-image: url('icons/icon-home.png');"></div>
-                    <div class="bsp-btn-label">Dom</div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</div>
 `;
 
 export const MODALS_HTML = `
