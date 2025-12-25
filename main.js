@@ -7,7 +7,7 @@ import { GameCore } from './GameCore.js';
 import { AuthManager } from './AuthManager.js';
 import { AssetLoader } from './AssetLoader.js';
 import { GameStateManager } from './GameStateManager.js';
-import { IntroManager } from './IntroManager.js'; // NOWOŚĆ
+import { IntroManager } from './IntroManager.js';
 
 import { BlockManager } from './BlockManager.js';
 import { UIManager } from './ui.js';
@@ -41,17 +41,16 @@ class BlockStarPlanetGame {
 
     this.blockManager = new BlockManager();
     
-    // UI Manager
     this.ui = new UIManager((msg) => {
         if (this.multiplayer) this.multiplayer.sendMessage({ type: 'chatMessage', text: msg });
     });
 
     this.stateManager = new GameStateManager(this.core, this.ui);
     
-    // AuthManager do sprawdzania sesji (IntroManager obsługuje ręczne logowanie)
+    // AuthManager do weryfikacji sesji
     this.auth = new AuthManager(this.startGame.bind(this));
     
-    // IntroManager (Ekran logowania 3D)
+    // IntroManager do obsługi ekranu logowania 3D
     this.intro = new IntroManager(this.core, this.ui, this.startGame.bind(this));
 
     this.loader = new AssetLoader(this.blockManager, this.onAssetsLoaded.bind(this));
@@ -65,7 +64,6 @@ class BlockStarPlanetGame {
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     this.clock = new THREE.Clock();
 
-    // Podgląd postaci (Menu)
     this.previewScene = null;
     this.previewCamera = null;
     this.previewRenderer = null;
@@ -95,23 +93,25 @@ class BlockStarPlanetGame {
       try {
         this.ui.initialize(this.isMobile);
 
-        // LOGIKA STARTOWA: Sprawdź sesję lub pokaż Intro 3D
+        // LOGIKA STARTOWA:
+        // Sprawdzamy, czy mamy token. Jeśli tak -> próbujemy autologowania.
+        // Jeśli nie lub błąd -> uruchamiamy Intro 3D.
         const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
         if (token) {
-            // Nadpisujemy zachowanie AuthManager w przypadku błędu sesji -> idź do Intro
+            // Nadpisujemy domyślne zachowanie AuthManager w razie błędu (zamiast starego formularza, pokaż Intro)
             this.auth.showAuthScreen = () => {
-                console.log("Sesja nieważna, uruchamianie Intro.");
+                console.log("Sesja wygasła, uruchamianie Intro.");
                 this.intro.start();
             };
             this.auth.checkSession(this.ui);
         } else {
-            console.log("Brak tokenu, uruchamianie Intro.");
+            console.log("Brak sesji, uruchamianie Intro.");
             this.intro.start();
         }
 
       } catch (e) {
           console.error("Błąd inicjalizacji UI:", e);
-          // Fallback
+          // W razie krytycznego błędu spróbuj uruchomić Intro jako fallback
           this.intro.start();
       }
   }
@@ -119,19 +119,23 @@ class BlockStarPlanetGame {
   async startGame(user, token, thumbnail) {
       console.log("Start gry dla:", user.username);
       
-      // Zatrzymaj intro i wyczyść scenę z elementów logowania (światła, dummy character)
-      if (this.intro) this.intro.dispose();
+      // 1. Sprzątanie Intro
+      if (this.intro) {
+          this.intro.dispose();
+      }
       
-      // Ważne: Czyścimy scenę całkowicie przed załadowaniem Nexusa, 
-      // aby światła z Intro nie dublowały się ze światłami gry
+      // 2. Czyścimy scenę całkowicie (światła intro, postać intro itp.)
+      // Zanim SceneManager załaduje właściwą mapę.
       while(this.scene.children.length > 0){ 
           this.scene.remove(this.scene.children[0]); 
       }
       
+      // 3. Zapis danych sesji
       localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, user.username);
       localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, token);
       localStorage.setItem(STORAGE_KEYS.USER_ID, user.id);
 
+      // 4. Aktualizacja HUD
       this.ui.updatePlayerName(user.username);
       if (thumbnail) this.ui.updatePlayerAvatar(thumbnail);
       this.ui.checkAdminPermissions(user.username);
@@ -151,27 +155,22 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
+      // 5. Inicjalizacja Świata Gry
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
       try { await this.sceneManager.initialize(); } catch(e) { console.error(e); }
 
       this.characterManager = new CharacterManager(this.scene);
       this.characterManager.loadCharacter();
       
-      // Bezpieczna pozycja (korzystając z mapy kolizji)
+      // Bezpieczna pozycja na mapie
       const safeY = this.sceneManager.getSafeY(0, 0);
       this.characterManager.character.position.set(0, safeY + 2.0, 0);
 
-      // Ładowanie skina z bazy (currentSkinId z odpowiedzi logowania)
+      // Ładowanie skina
       if (user.currentSkinId) {
           SkinStorage.loadSkinData(user.currentSkinId).then(data => { 
               if(data) this.characterManager.applySkin(data); 
           });
-      } else {
-          // Fallback lokalny (opcjonalny)
-          const lastSkinId = SkinStorage.getLastUsedSkinId();
-          if (lastSkinId) {
-             // SkinStorage.loadSkinData...
-          }
       }
 
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
@@ -180,7 +179,7 @@ class BlockStarPlanetGame {
       this.multiplayer.initialize(token);
       this.setupMultiplayerCallbacks();
 
-      // INICJALIZACJA KONTROLERA Z GRID PARTITIONING (SceneManager.collisionMap)
+      // 6. Kontroler z optymalizacją (Grid Partitioning)
       this.recreatePlayerController(this.sceneManager.collidableObjects, this.sceneManager.collisionMap);
       
       this.cameraController = new ThirdPersonCameraController(
@@ -211,8 +210,8 @@ class BlockStarPlanetGame {
       });
 
       this.stateManager.onRecreateController = (collidables) => {
-          // Jeśli collidables są podane (świat użytkownika), używamy ich + generujemy tymczasową mapę wewnątrz metody loadWorld
-          // Jeśli null (powrót do Nexusa), używamy domyślnych ze sceneManager
+          // Jeśli wchodzimy do świata użytkownika (collidables != null), tworzymy tymczasową mapę wewnątrz loadAndExploreWorld
+          // Jeśli wracamy do Nexusa (collidables == null), używamy mapy ze sceneManagera
           const targetCollidables = collidables || this.sceneManager.collidableObjects;
           const targetMap = collidables ? null : this.sceneManager.collisionMap;
           
@@ -396,17 +395,16 @@ class BlockStarPlanetGame {
       this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
   }
 
-  // --- RECREATE PLAYER CONTROLLER (Z Collision Map) ---
+  // --- KONTROLER Z GRID PARTITIONING ---
   recreatePlayerController(collidables, collisionMap = null) { 
       if(this.playerController) this.playerController.destroy(); 
       
-      // Jeśli mapa nie podana, użyj domyślnej ze SceneManager (Nexus)
       const map = collisionMap || this.sceneManager.collisionMap;
 
       this.playerController = new PlayerController(
           this.characterManager.character, 
           collidables, 
-          map, // Przekazanie mapy kolizji (ważne dla optymalizacji)
+          map, // Przekazanie mapy kolizji (dla wydajności)
           { moveSpeed: 8, jumpForce: 18, gravity: 50, groundRestingY: this.sceneManager.FLOOR_TOP_Y }
       ); 
       this.playerController.setIsMobile(this.isMobile); 
@@ -439,7 +437,6 @@ class BlockStarPlanetGame {
       const loader = this.loader.getTextureLoader();
       const materials = {};
 
-      // Podłoga
       const floorGeo = new THREE.BoxGeometry(worldSize, 1, worldSize);
       const floorMat = new THREE.MeshLambertMaterial({ color: 0x559022 });
       const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -447,7 +444,6 @@ class BlockStarPlanetGame {
       exploreScene.add(floor);
       globalCollidables.push(floor);
       
-      // Bariery
       const barrierHeight = 100;
       const half = worldSize / 2;
       const barrierMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -456,7 +452,7 @@ class BlockStarPlanetGame {
       const w3 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w3.position.set(half, 50, 0); exploreScene.add(w3); globalCollidables.push(w3);
       const w4 = new THREE.Mesh(new THREE.BoxGeometry(1, barrierHeight, worldSize), barrierMat); w4.position.set(-half, 50, 0); exploreScene.add(w4); globalCollidables.push(w4);
 
-      // Generowanie mapy kolizji dla świata gracza (Grid Partitioning)
+      // Generowanie tymczasowej mapy kolizji dla świata użytkownika
       const tempCollisionMap = new Map();
       const geometry = new THREE.BoxGeometry(1, 1, 1); 
 
@@ -473,7 +469,6 @@ class BlockStarPlanetGame {
               mesh.position.set(data.x, data.y, data.z);
               exploreScene.add(mesh);
               
-              // Wypełniamy mapę, nie tablicę
               const key = `${Math.floor(data.x)},${Math.floor(data.y)},${Math.floor(data.z)}`;
               tempCollisionMap.set(key, {
                   isBlock: true,
@@ -506,7 +501,7 @@ class BlockStarPlanetGame {
           this.parkourManager.init(worldData);
       }
 
-      // Recreate controller with local map
+      // Użycie mapy kolizji dla świata gracza
       this.recreatePlayerController(globalCollidables, tempCollisionMap);
       this.stateManager.setManagers({ playerController: this.playerController });
       this.cameraController.enabled = true;
