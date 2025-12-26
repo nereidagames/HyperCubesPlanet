@@ -1,3 +1,5 @@
+/* PLIK: scene.js */
+
 import * as THREE from 'three';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
@@ -7,13 +9,9 @@ export class SceneManager {
     this.scene = scene;
     this.loadingManager = loadingManager;
     
-    // Tablica dla obiektów "globalnych" (podłoga, bariery, ściany mapy)
     this.collidableObjects = []; 
-    
-    // MAPA KOLIZJI (Grid Partitioning) - kluczowe dla wydajności
     this.collisionMap = new Map();
     
-    // Ustawienia mapy
     this.MAP_SIZE = 64;
     this.BLOCK_SIZE = 1;
     this.BARRIER_HEIGHT = 100; 
@@ -22,33 +20,33 @@ export class SceneManager {
     
     this.isInitialized = false;
     
-    // Cache materiałów i loader
     this.textureLoader = new THREE.TextureLoader(this.loadingManager);
     this.materials = {};
     
-    // Współdzielona geometria
     this.sharedCollisionGeometry = new THREE.BoxGeometry(1, 1, 1);
     
-    this.maxAnisotropy = 4;
+    // Zmniejszamy anizotropię dla wydajności (było 16, dajemy 4 lub 2 na słabych PC)
+    this.maxAnisotropy = 4; 
     
-    // Przechowujemy referencje do obiektów środowiska, aby móc je usunąć przy wylogowaniu
     this.environmentObjects = [];
   }
   
-  // Ta metoda ładuje "Tło" - zarówno dla gry, jak i dla ekranu logowania
   async initialize() {
     if (this.isInitialized) return;
 
-    this.maxAnisotropy = 16; 
+    // Sprawdzamy możliwości GPU
+    const renderer = new THREE.WebGLRenderer();
+    const maxAnisotropyCap = renderer.capabilities.getMaxAnisotropy();
+    this.maxAnisotropy = Math.min(4, maxAnisotropyCap); // Limit do 4x
+    renderer.dispose();
 
     this.setupLighting();
     this.setupFog();
 
-    // Próba załadowania mapy (Nexusa) jako tła
     const nexusLoaded = await this.loadNexusFromDB();
 
     if (!nexusLoaded) {
-        console.log("Brak mapy Nexusa, generowanie domyślnej podłogi...");
+        console.log("Generowanie domyślnej podłogi...");
         this.createCheckerboardFloor();
     }
 
@@ -58,18 +56,15 @@ export class SceneManager {
     console.log("SceneManager zainicjalizowany.");
   }
 
-  // Metoda do czyszczenia mapy (np. przy wylogowaniu lub zmianie świata)
   clearEnvironment() {
       this.environmentObjects.forEach(obj => {
           this.scene.remove(obj);
-          // Opcjonalne: dispose geometrii i materiałów
           if (obj.geometry) obj.geometry.dispose();
       });
       this.environmentObjects = [];
       this.collidableObjects = [];
       this.collisionMap.clear();
       this.isInitialized = false;
-      console.log("Środowisko wyczyszczone.");
   }
   
   setupLighting() {
@@ -81,12 +76,15 @@ export class SceneManager {
     directionalLight.position.set(30, 60, 40); 
     directionalLight.castShadow = true;
     
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
+    // OPTYMALIZACJA CIENI
+    // Zmniejszamy mapę cieni. Dla Celerona 512 to max bezpieczna wartość.
+    directionalLight.shadow.mapSize.width = 512; 
+    directionalLight.shadow.mapSize.height = 512;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 100;
     
-    const shadowSize = 40;
+    // Zmniejszamy zasięg kamery cieni, żeby były ostrzejsze przy małej mapie
+    const shadowSize = 35;
     directionalLight.shadow.camera.left = -shadowSize;
     directionalLight.shadow.camera.right = shadowSize;
     directionalLight.shadow.camera.top = shadowSize;
@@ -98,7 +96,7 @@ export class SceneManager {
   }
   
   setupFog() {
-    this.scene.fog = new THREE.Fog(0x87CEEB, 15, 90);
+    this.scene.fog = new THREE.Fog(0x87CEEB, 15, 80); // Nieco bliższa mgła
   }
 
   getMapKey(x, y, z) {
@@ -112,8 +110,6 @@ export class SceneManager {
 
           const blocksData = await response.json();
           if (!Array.isArray(blocksData) || blocksData.length === 0) return false;
-
-          console.log(`Wczytywanie Nexusa: ${blocksData.length} bloków.`);
 
           const blocksByTexture = {};
           this.collisionMap.clear(); 
@@ -133,11 +129,7 @@ export class SceneManager {
               if (!material) {
                   const texture = this.textureLoader.load(texturePath);
                   texture.magFilter = THREE.NearestFilter;
-                  texture.minFilter = THREE.NearestMipmapLinearFilter;
-                  texture.anisotropy = this.maxAnisotropy;
-                  texture.wrapS = THREE.RepeatWrapping;
-                  texture.wrapT = THREE.RepeatWrapping;
-
+                  texture.minFilter = THREE.NearestFilter; // Szybsze filtrowanie
                   material = new THREE.MeshLambertMaterial({ map: texture });
                   this.materials[texturePath] = material;
               }
@@ -201,8 +193,7 @@ export class SceneManager {
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestMipmapLinearFilter;
-    texture.anisotropy = this.maxAnisotropy;
+    texture.minFilter = THREE.NearestFilter; // Szybsze
     texture.repeat.set(floorSize / 2, floorSize / 2);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
