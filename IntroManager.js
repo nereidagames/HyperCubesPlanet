@@ -32,15 +32,12 @@ export class IntroManager {
         this.sharedGeometry = new THREE.BoxGeometry(1, 1, 1);
 
         // --- ZMIENNE DO ANIMACJI KAMERY ---
-        // Domyślna (oddalona, widok na mapę)
         this.defaultCamPos = new THREE.Vector3(0, 5.0, 10.0); 
         this.defaultLookAt = new THREE.Vector3(0, 2.0, 0); 
 
-        // Zbliżenie (Kreator postaci)
         this.zoomedCamPos = new THREE.Vector3(0, 2.0, 3.5);
         this.zoomedLookAt = new THREE.Vector3(0, 1.5, 0); 
 
-        // Aktualne cele (do których dążymy w animate - lerp)
         this.targetCamPos = this.defaultCamPos.clone();
         this.currentLookAt = this.defaultLookAt.clone();
         this.targetLookAt = this.defaultLookAt.clone();
@@ -80,56 +77,44 @@ export class IntroManager {
             if (child !== this.mapGroup) {
                 this.scene.remove(child);
             } else {
-                // Usuwamy z listy dzieci, żeby while się nie zapętlił, dodamy ponownie za chwilę
                 this.scene.remove(child);
             }
         }
         this.scene.add(this.mapGroup);
 
-        // Oświetlenie
         const amb = new THREE.AmbientLight(0xffffff, 0.7);
         const dir = new THREE.DirectionalLight(0xffffff, 0.8);
         dir.position.set(10, 20, 10);
         dir.castShadow = true;
         
-        // Optymalizacja cieni na mobile
         dir.shadow.mapSize.width = 1024;
         dir.shadow.mapSize.height = 1024;
         
         this.scene.add(amb);
         this.scene.add(dir);
 
-        // Postać (Dummy)
         this.previewCharacter = new THREE.Group();
         this.scene.add(this.previewCharacter);
         
         createBaseCharacter(this.previewCharacter);
-        this.previewCharacter.position.y = 1; // Domyślnie 1, zmieni się jak załaduje mapę
+        this.previewCharacter.position.y = 1; 
 
         // Ładujemy mapę tła
         this.loadLoginMap();
         
-        // Pobieramy skiny startowe z serwera (jeśli są)
+        // Pobieramy skiny startowe
         this.fetchStarterSkins();
     }
 
-    // --- POBIERANIE LISTY SKINÓW ---
     async fetchStarterSkins() {
         try {
             const res = await fetch(`${API_BASE_URL}/api/starter-skins`);
             if(res.ok) {
                 const data = await res.json();
                 if(Array.isArray(data) && data.length > 0) {
-                    // Nadpisz lokalną listę danymi z serwera
-                    // Musimy zmapować strukturę z bazy na format loadera
-                    // Baza: blocks_data (JSON), StarterSkins.js: blocks (Array)
-                    // Ale w server.js zapisujemy jako blocks_data
-                    
-                    // Tu proste nadpisanie globalnej tablicy byłoby ryzykowne, 
-                    // więc zaktualizujemy logikę w updateSkinPreview by korzystała z bufora
                     this.serverStarterSkins = data.map(s => ({
                         name: s.name,
-                        blocks: s.blocks_data // Postgres zwraca JSON automatycznie sparsowany przez 'pg'
+                        blocks: s.blocks_data 
                     }));
                 }
             }
@@ -138,9 +123,7 @@ export class IntroManager {
         }
     }
 
-    // --- ŁADOWANIE MAPY TŁA (INSTANCED MESH - OPTYMALIZACJA) ---
     async loadLoginMap() {
-        // 1. Wyczyść starą mapę
         while(this.mapGroup.children.length > 0) {
             const child = this.mapGroup.children[0];
             if(child.geometry && child.geometry !== this.sharedGeometry) child.geometry.dispose();
@@ -154,7 +137,6 @@ export class IntroManager {
             const blocksData = await res.json();
             if (!Array.isArray(blocksData) || blocksData.length === 0) return;
 
-            // 2. Grupowanie bloków po teksturze
             const blocksByTexture = {};
             let highestYAtCenter = -100;
 
@@ -164,7 +146,6 @@ export class IntroManager {
                 }
                 blocksByTexture[block.texturePath].push(block);
 
-                // Szukamy wysokości pod nogami postaci (x=0, z=0)
                 if (Math.abs(block.x) < 0.6 && Math.abs(block.z) < 0.6) {
                     if (block.y > highestYAtCenter) {
                         highestYAtCenter = block.y;
@@ -172,27 +153,20 @@ export class IntroManager {
                 }
             });
 
-            // 3. Ustawienie postaci NA blokach
             if (highestYAtCenter > -100) {
-                // Y bloku to jego środek. Góra to Y + 0.5.
-                // Pivot postaci (dół nóg) to Y = -0.5 względem środka grupy.
-                // Więc środek grupy musi być na Y_bloku + 0.5 + 0.5 = Y_bloku + 1.0
                 const charY = highestYAtCenter + 1.0;
                 this.previewCharacter.position.y = charY;
                 
-                // Dostosuj kamerę do nowej wysokości postaci
                 this.defaultLookAt.y = charY + 1.0;
                 this.zoomedLookAt.y = charY + 0.8;
                 
                 this.defaultCamPos.y = charY + 2.5;
                 this.zoomedCamPos.y = charY + 1.0;
                 
-                // Natychmiastowa aktualizacja celu kamery
                 this.targetCamPos.copy(this.defaultCamPos);
                 this.targetLookAt.copy(this.defaultLookAt);
             }
 
-            // 4. Tworzenie InstancedMesh
             const dummy = new THREE.Object3D();
 
             for (const [texturePath, blocks] of Object.entries(blocksByTexture)) {
@@ -224,7 +198,6 @@ export class IntroManager {
         }
     }
 
-    // --- FUNKCJE ANIMACJI ---
     zoomIn() {
         this.targetCamPos.copy(this.zoomedCamPos);
         this.targetLookAt.copy(this.zoomedLookAt);
@@ -295,7 +268,6 @@ export class IntroManager {
     }
 
     cycleSkin(dir) {
-        // Używamy listy z serwera lub domyślnej
         const skinsList = this.serverStarterSkins || STARTER_SKINS;
         
         this.currentSkinIndex += dir;
@@ -307,7 +279,6 @@ export class IntroManager {
     updateSkinPreview() {
         if (!this.previewCharacter) return;
 
-        // Usuń stary skin
         for (let i = this.previewCharacter.children.length - 1; i >= 0; i--) {
             const child = this.previewCharacter.children[i];
             if (child.type === 'Group') {
@@ -422,18 +393,23 @@ export class IntroManager {
         }
     }
 
+    // --- KLUCZOWA POPRAWKA DLA AUTOLOGOWANIA ---
     dispose() {
         this.isIntroActive = false;
         if (this.introAnimId) cancelAnimationFrame(this.introAnimId);
         
-        if (this.screens.main) this.screens.main.style.display = 'none';
+        // Zamiast polegać na this.screens (które mogą być puste przy autologowaniu),
+        // pobieramy element bezpośrednio z DOM.
+        const authScreen = document.getElementById('auth-screen');
+        if (authScreen) {
+            authScreen.style.display = 'none';
+        }
 
         if (this.previewCharacter) {
             this.scene.remove(this.previewCharacter);
             this.previewCharacter = null;
         }
 
-        // Wyczyść mapę logowania
         if (this.mapGroup) {
             this.scene.remove(this.mapGroup);
             while(this.mapGroup.children.length > 0) {
