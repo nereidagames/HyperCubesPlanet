@@ -21,23 +21,17 @@ export class IntroManager {
 
         this.screens = {};
 
-        // Grupa na bloki mapy logowania
         this.mapGroup = new THREE.Group();
         this.scene.add(this.mapGroup);
         
         this.textureLoader = new THREE.TextureLoader();
-        
-        // Cache dla optymalizacji
         this.materials = {};
         this.sharedGeometry = new THREE.BoxGeometry(1, 1, 1);
 
-        // --- ZMIENNE DO ANIMACJI KAMERY ---
         this.defaultCamPos = new THREE.Vector3(0, 5.0, 10.0); 
         this.defaultLookAt = new THREE.Vector3(0, 2.0, 0); 
-
         this.zoomedCamPos = new THREE.Vector3(0, 2.0, 3.5);
         this.zoomedLookAt = new THREE.Vector3(0, 1.5, 0); 
-
         this.targetCamPos = this.defaultCamPos.clone();
         this.currentLookAt = this.defaultLookAt.clone();
         this.targetLookAt = this.defaultLookAt.clone();
@@ -54,7 +48,7 @@ export class IntroManager {
 
     start() {
         this.isIntroActive = true;
-        this.refreshElements(); // Pobranie uchwytów do HTML
+        this.refreshElements();
         this.setupScene();
         this.setupEvents();
         this.showScreen('welcome');
@@ -63,15 +57,12 @@ export class IntroManager {
     }
 
     setupScene() {
-        // Reset kamery
         this.camera.position.copy(this.defaultCamPos);
         this.camera.lookAt(this.defaultLookAt);
-        
         this.targetCamPos.copy(this.defaultCamPos);
         this.currentLookAt.copy(this.defaultLookAt);
         this.targetLookAt.copy(this.defaultLookAt);
 
-        // Czyścimy scenę ze śmieci, ale mapGroup zostawiamy (obsłużone niżej)
         while(this.scene.children.length > 0){ 
             const child = this.scene.children[0];
             if (child !== this.mapGroup) {
@@ -87,8 +78,9 @@ export class IntroManager {
         dir.position.set(10, 20, 10);
         dir.castShadow = true;
         
-        dir.shadow.mapSize.width = 1024;
-        dir.shadow.mapSize.height = 1024;
+        // Optymalizacja cieni dla menu
+        dir.shadow.mapSize.width = 512;
+        dir.shadow.mapSize.height = 512;
         
         this.scene.add(amb);
         this.scene.add(dir);
@@ -99,10 +91,7 @@ export class IntroManager {
         createBaseCharacter(this.previewCharacter);
         this.previewCharacter.position.y = 1; 
 
-        // Ładujemy mapę tła
         this.loadLoginMap();
-        
-        // Pobieramy skiny startowe
         this.fetchStarterSkins();
     }
 
@@ -118,9 +107,7 @@ export class IntroManager {
                     }));
                 }
             }
-        } catch(e) {
-            console.warn("Brak skinów startowych na serwerze, używam domyślnych.");
-        }
+        } catch(e) {}
     }
 
     async loadLoginMap() {
@@ -156,13 +143,10 @@ export class IntroManager {
             if (highestYAtCenter > -100) {
                 const charY = highestYAtCenter + 1.0;
                 this.previewCharacter.position.y = charY;
-                
                 this.defaultLookAt.y = charY + 1.0;
                 this.zoomedLookAt.y = charY + 0.8;
-                
                 this.defaultCamPos.y = charY + 2.5;
                 this.zoomedCamPos.y = charY + 1.0;
-                
                 this.targetCamPos.copy(this.defaultCamPos);
                 this.targetLookAt.copy(this.defaultLookAt);
             }
@@ -393,13 +377,10 @@ export class IntroManager {
         }
     }
 
-    // --- KLUCZOWA POPRAWKA DLA AUTOLOGOWANIA ---
     dispose() {
         this.isIntroActive = false;
         if (this.introAnimId) cancelAnimationFrame(this.introAnimId);
         
-        // Zamiast polegać na this.screens (które mogą być puste przy autologowaniu),
-        // pobieramy element bezpośrednio z DOM.
         const authScreen = document.getElementById('auth-screen');
         if (authScreen) {
             authScreen.style.display = 'none';
