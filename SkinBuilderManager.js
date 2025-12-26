@@ -1,8 +1,12 @@
+/* PLIK: SkinBuilderManager.js */
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { SkinStorage } from './SkinStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 import { createBaseCharacter } from './character.js';
+
+const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
+const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
 
 export class SkinBuilderManager {
   constructor(game, loadingManager, blockManager) {
@@ -12,6 +16,7 @@ export class SkinBuilderManager {
     this.isActive = false;
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
+    
     this.previewBlock = null;
     this.previewPart = null;
     this.currentBuildMode = 'block';
@@ -27,15 +32,15 @@ export class SkinBuilderManager {
     this.blockTypes = [];
     this.selectedBlockType = null;
     
+    // Nowa flaga: Czy budujemy oficjalny skin startowy?
+    this.isStarterMode = false;
+
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
+    
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
-
-    this.longPressTimer = null;
-    this.isLongPress = false;
-    this.touchStartPosition = { x: 0, y: 0 };
     this.onTouchStart = this.onTouchStart.bind(this);
     this.onTouchEnd = this.onTouchEnd.bind(this);
     this.onTouchMove = this.onTouchMove.bind(this);
@@ -55,14 +60,24 @@ export class SkinBuilderManager {
     });
   }
 
-  enterBuildMode() {
+  // Zaktualizowana metoda wejścia
+  enterBuildMode(isStarterMode = false) {
     this.isActive = true;
+    this.isStarterMode = isStarterMode;
+    
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     this.selectedBlockType = this.blockTypes[0] || null;
     this.currentBuildMode = 'block';
 
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
+    
+    // Aktualizacja tekstu przycisku
+    const saveBtn = document.getElementById('build-save-button');
+    if (saveBtn) {
+        saveBtn.textContent = this.isStarterMode ? "Zapisz Starter" : "Zapisz Skin";
+    }
+
     this.updateSaveButton();
     this.populateBlockSelectionPanel();
     
@@ -77,10 +92,13 @@ export class SkinBuilderManager {
     
     this.createBuildPlatform();
     
+    // Baza postaci (Nogi)
     this.baseCharacterVisuals = new THREE.Group();
     createBaseCharacter(this.baseCharacterVisuals);
+    // Skalujemy nogi tak, żeby pasowały do bloków 1x1 w edytorze
+    // W grze skin jest skalowany w dół (0.125), tutaj nogi w górę (8x)
     this.baseCharacterVisuals.scale.setScalar(8);
-    this.baseCharacterVisuals.position.set(0, -4.0, 0);
+    this.baseCharacterVisuals.position.set(0, -4.0, 0); // Odpowiednie przesunięcie
     this.scene.add(this.baseCharacterVisuals);
 
     this.createPreviewBlock();
@@ -89,13 +107,12 @@ export class SkinBuilderManager {
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
     
-    // FIX: KOLEJNOŚĆ UI NA MOBILE
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'none';
         const joy = document.getElementById('joystick-zone');
         if(joy) { 
             joy.style.display = 'block'; 
-            joy.innerHTML = ''; // Czyść stary joystick
+            joy.innerHTML = ''; 
         }
     }
     
@@ -112,9 +129,11 @@ export class SkinBuilderManager {
     this.platform.position.y = -0.5; 
     this.scene.add(this.platform);
     this.collidableBuildObjects.push(this.platform);
+    
     const gridHelper = new THREE.GridHelper(this.platformSize, this.platformSize);
     gridHelper.position.y = 0.01;
     this.scene.add(gridHelper);
+    
     const edges = new THREE.EdgesGeometry(geometry);
     const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8A2BE2, linewidth: 2 }));
     line.position.y = -0.5;
@@ -140,15 +159,17 @@ export class SkinBuilderManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    // FIX: Wywołanie StateManager
     document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
     
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
+    
     document.getElementById('build-add-button').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'flex';
+        // W skin builderze pokazujemy tylko parts i bloki
         document.getElementById('add-choice-prefabs').style.display = 'none';
         document.getElementById('add-choice-parts').style.display = 'block';
     };
+    
     document.getElementById('build-save-button').onclick = () => this.saveSkin();
 
     document.getElementById('add-choice-blocks').onclick = () => {
@@ -298,6 +319,7 @@ export class SkinBuilderManager {
     if (!this.selectedPartData) return;
     this.selectedPartData.forEach(blockData => {
         const finalPosition = new THREE.Vector3(blockData.x, blockData.y, blockData.z).add(this.previewPart.position);
+        // Ograniczenia budowania
         const buildAreaLimit = this.platformSize / 2;
         const buildHeightLimit = 20;
         if (Math.abs(finalPosition.x) < buildAreaLimit && Math.abs(finalPosition.z) < buildAreaLimit && finalPosition.y >= 0 && finalPosition.y < buildHeightLimit) {
@@ -348,6 +370,7 @@ export class SkinBuilderManager {
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(5, 10, 7);
     thumbnailScene.add(dirLight);
+    
     const box = new THREE.Box3();
     const thumbLegs = new THREE.Group();
     createBaseCharacter(thumbLegs);
@@ -355,6 +378,7 @@ export class SkinBuilderManager {
     thumbLegs.position.set(0, -4.0, 0);
     thumbnailScene.add(thumbLegs);
     box.expandByObject(thumbLegs);
+    
     if (this.placedBlocks.length > 0) {
         this.placedBlocks.forEach(block => {
             const clone = block.clone();
@@ -362,40 +386,68 @@ export class SkinBuilderManager {
             box.expandByObject(clone);
         });
     }
+    
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
+    
     const thumbnailCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
     const distance = maxDim * 2.0; 
     thumbnailCamera.position.set(center.x + distance * 0.8, center.y + distance * 0.2, center.z + distance);
     thumbnailCamera.lookAt(center);
+    
     thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
     const dataURL = thumbnailRenderer.domElement.toDataURL('image/png');
     thumbnailRenderer.dispose();
     return dataURL;
   }
 
+  // --- ZAPISYWANIE (OBSŁUGA DWÓCH TRYBÓW) ---
   async saveSkin() {
     if (this.placedBlocks.length === 0) return;
-    const skinName = prompt("Podaj nazwę dla swojego skina:", "Mój Nowy Skin");
-    if (skinName) {
-      const blocksData = this.placedBlocks.map(block => ({
+    
+    const skinName = prompt(this.isStarterMode ? "Nazwa startera:" : "Podaj nazwę dla swojego skina:", "Mój Skin");
+    if (!skinName) return;
+
+    const blocksData = this.placedBlocks.map(block => ({
         x: block.position.x,
         y: block.position.y,
         z: block.position.z,
         texturePath: block.userData.texturePath
-      }));
-      const thumbnail = this.generateThumbnail();
-      const success = await SkinStorage.saveSkin(skinName, blocksData, thumbnail);
-      if (success) {
-        alert(`Skin "${skinName}" został pomyślnie zapisany!`);
-        this.game.stateManager.switchToMainMenu();
-      }
+    }));
+    
+    const thumbnail = this.generateThumbnail();
+    
+    if (this.isStarterMode) {
+        // Zapisz jako Starter Skin (Admin)
+        const token = localStorage.getItem(JWT_TOKEN_KEY);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/starter-skins`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ name: skinName, blocks: blocksData, thumbnail })
+            });
+            const d = await res.json();
+            if (res.ok) {
+                alert("Starter Skin zapisany!");
+                this.game.stateManager.switchToMainMenu();
+            } else {
+                alert("Błąd: " + d.message);
+            }
+        } catch(e) { console.error(e); alert("Błąd sieci"); }
+    } else {
+        // Zapisz jako zwykły skin gracza
+        const success = await SkinStorage.saveSkin(skinName, blocksData, thumbnail);
+        if (success) {
+            alert(`Skin "${skinName}" został pomyślnie zapisany!`);
+            this.game.stateManager.switchToMainMenu();
+        }
     }
   }
 
   exitBuildMode() {
     this.isActive = false;
+    this.isStarterMode = false;
     this.removeBuildEventListeners();
     this.collidableBuildObjects = [];
     this.placedBlocks = [];
@@ -413,19 +465,23 @@ export class SkinBuilderManager {
     this.cameraController.update(deltaTime);
     this.raycaster.setFromCamera(this.mouse, this.game.camera);
     const intersects = this.raycaster.intersectObjects(this.collidableBuildObjects);
+    
     if (intersects.length > 0) {
       const intersect = intersects[0];
       const normal = intersect.face.normal.clone();
       const snappedPosition = new THREE.Vector3().copy(intersect.point)
         .add(normal.multiplyScalar(0.5)).floor().addScalar(0.5);
+      
       const buildAreaLimit = this.platformSize / 2;
       const buildHeightLimit = 20;
       let isVisible = false;
+      
       if (Math.abs(snappedPosition.x) < buildAreaLimit && Math.abs(snappedPosition.z) < buildAreaLimit && snappedPosition.y >= 0 && snappedPosition.y < buildHeightLimit) {
           isVisible = true;
           if (this.currentBuildMode === 'block') { if (this.previewBlock) this.previewBlock.position.copy(snappedPosition); } 
           else { if (this.previewPart) this.previewPart.position.copy(snappedPosition); }
       }
+      
       if (this.previewBlock) this.previewBlock.visible = isVisible && this.currentBuildMode === 'block';
       if (this.previewPart) this.previewPart.visible = isVisible && this.currentBuildMode === 'part';
     } else {
