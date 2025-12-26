@@ -1,3 +1,4 @@
+/* PLIK: main.js */
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 import { createBaseCharacter } from './character.js';
@@ -7,7 +8,7 @@ import { GameCore } from './GameCore.js';
 import { AuthManager } from './AuthManager.js';
 import { AssetLoader } from './AssetLoader.js';
 import { GameStateManager } from './GameStateManager.js';
-import { IntroManager } from './IntroManager.js';
+import { IntroManager } from './IntroManager.js'; // NOWOŚĆ
 
 import { BlockManager } from './BlockManager.js';
 import { UIManager } from './ui.js';
@@ -41,14 +42,17 @@ class BlockStarPlanetGame {
 
     this.blockManager = new BlockManager();
     
+    // UI Manager
     this.ui = new UIManager((msg) => {
         if (this.multiplayer) this.multiplayer.sendMessage({ type: 'chatMessage', text: msg });
     });
 
     this.stateManager = new GameStateManager(this.core, this.ui);
     
+    // AuthManager (używany tylko do weryfikacji tokenu w tle)
     this.auth = new AuthManager(this.startGame.bind(this));
     
+    // IntroManager (Odpowiada za ekran logowania 3D)
     this.intro = new IntroManager(this.core, this.ui, this.startGame.bind(this));
 
     this.loader = new AssetLoader(this.blockManager, this.onAssetsLoaded.bind(this));
@@ -62,6 +66,7 @@ class BlockStarPlanetGame {
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     this.clock = new THREE.Clock();
 
+    // Stary podgląd w menu (teraz rzadziej używany, bo jest profil gracza)
     this.previewScene = null;
     this.previewCamera = null;
     this.previewRenderer = null;
@@ -91,13 +96,21 @@ class BlockStarPlanetGame {
       try {
         this.ui.initialize(this.isMobile);
 
+        // LOGIKA STARTOWA: Czy mamy token?
         const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+        
         if (token) {
+            // Próba autologowania
+            // Nadpisujemy funkcję showAuthScreen, aby w razie błędu tokenu włączyła Intro 3D
+            // zamiast starego formularza.
             this.auth.showAuthScreen = () => {
-                console.log("Sesja nieważna, uruchamianie Intro.");
+                console.log("Sesja wygasła, uruchamianie Intro.");
                 this.intro.start();
             };
-            this.auth.checkSession(this.ui);
+            
+            this.auth.checkSession(this.ui).catch(() => {
+                 this.intro.start();
+            });
         } else {
             console.log("Brak tokenu, uruchamianie Intro.");
             this.intro.start();
@@ -109,21 +122,26 @@ class BlockStarPlanetGame {
       }
   }
 
+  // Funkcja wywoływana po udanym logowaniu (przez Intro lub AuthManager)
   async startGame(user, token, thumbnail) {
       console.log("Start gry dla:", user.username);
       
+      // 1. Zamykamy Intro (jeśli działało)
       if (this.intro) {
           this.intro.dispose();
       }
       
+      // 2. Czyścimy scenę ze śmieci z Intro (światła, dummy postać)
       while(this.scene.children.length > 0){ 
           this.scene.remove(this.scene.children[0]); 
       }
       
+      // 3. Zapisujemy dane sesji
       localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, user.username);
       localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, token);
       localStorage.setItem(STORAGE_KEYS.USER_ID, user.id);
 
+      // 4. Aktualizujemy HUD
       this.ui.updatePlayerName(user.username);
       if (thumbnail) this.ui.updatePlayerAvatar(thumbnail);
       this.ui.checkAdminPermissions(user.username);
@@ -143,20 +161,24 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
+      // 5. Inicjalizacja Świata Gry (Nexus)
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
       try { await this.sceneManager.initialize(); } catch(e) { console.error(e); }
 
       this.characterManager = new CharacterManager(this.scene);
       this.characterManager.loadCharacter();
       
+      // Bezpieczna pozycja startowa (korzystając z mapy kolizji)
       const safeY = this.sceneManager.getSafeY(0, 0);
       this.characterManager.character.position.set(0, safeY + 2.0, 0);
 
+      // Ładowanie skina
       if (user.currentSkinId) {
           SkinStorage.loadSkinData(user.currentSkinId).then(data => { 
               if(data) this.characterManager.applySkin(data); 
           });
       } else {
+          // Fallback lokalny
           const lastSkinId = SkinStorage.getLastUsedSkinId();
           if (lastSkinId) {
              SkinStorage.loadSkinData(lastSkinId).then(data => { 
@@ -171,6 +193,7 @@ class BlockStarPlanetGame {
       this.multiplayer.initialize(token);
       this.setupMultiplayerCallbacks();
 
+      // 6. Fizyka z Grid Partitioning (ważne dla wydajności)
       this.recreatePlayerController(this.sceneManager.collidableObjects, this.sceneManager.collisionMap);
       
       this.cameraController = new ThirdPersonCameraController(
@@ -179,6 +202,7 @@ class BlockStarPlanetGame {
       );
       this.cameraController.setIsMobile(this.isMobile);
 
+      // Menedżery Budowania
       const loadingManager = this.loader.getLoadingManager();
       this.buildManager = new BuildManager(this, loadingManager, this.blockManager);
       this.skinBuilderManager = new SkinBuilderManager(this, loadingManager, this.blockManager);
@@ -200,6 +224,7 @@ class BlockStarPlanetGame {
           parkour: this.parkourManager
       });
 
+      // Callback do przeładowania kontrolera przy zmianie świata
       this.stateManager.onRecreateController = (collidables) => {
           const targetCollidables = collidables || this.sceneManager.collidableObjects;
           const targetMap = collidables ? null : this.sceneManager.collisionMap;
@@ -210,7 +235,10 @@ class BlockStarPlanetGame {
 
       this.setupCharacterPreview();
       this.setupUIActions();
+      
+      // Przełączenie na grę
       this.stateManager.switchToMainMenu();
+      
       this.animate();
       this.setupPositionUpdateLoop();
   }
@@ -321,13 +349,11 @@ class BlockStarPlanetGame {
           } 
       };
 
-      // --- NAPRAWIONE KUPOWANIE BLOKÓW ---
       this.ui.onBuyBlock = async (block) => { 
           const result = await this.blockManager.buyBlock(block.name, block.cost); 
           if(result.success) { 
               if(this.ui.showMessage) this.ui.showMessage(`Kupiono: ${block.name}!`, 'success'); 
               this.coinManager.updateBalance(result.newBalance); 
-              // WAŻNE: Używamy refreshShopList, a nie populateShopUI
               if(this.ui.refreshShopList) this.ui.refreshShopList(); 
           } else { 
               if(this.ui.showMessage) this.ui.showMessage(result.message, 'error'); 
@@ -377,12 +403,21 @@ class BlockStarPlanetGame {
           }, 100);
       };
 
+      // Tryby budowania
       this.ui.onEditNexusClick = () => {
            this.stateManager.switchToBuildMode(64, true, false);
       };
       
       this.ui.onEditLoginMapClick = () => {
            this.stateManager.switchToBuildMode(64, false, true);
+      };
+
+      // NOWOŚĆ: Callback dla startera
+      this.ui.onAddStarterSkinClick = () => {
+          // true = isStarterMode
+          this.stateManager.managers.skinBuild.enterBuildMode(true);
+          this.stateManager.currentState = 'SkinBuilderMode';
+          this.stateManager.toggleGameControls(false);
       };
 
       this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
