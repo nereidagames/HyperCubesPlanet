@@ -48,7 +48,8 @@ export class UIManager {
     this.onMessageSent = null;
     this.onMessageReceived = null;
     this.onEditNexusClick = null;
-    this.onEditLoginMapClick = null; // NOWOŚĆ: Callback do edycji mapy logowania
+    this.onEditLoginMapClick = null;
+    this.onAddStarterSkinClick = null; // NOWOŚĆ: Callback dla Admina
     this.onUsePrefab = null;
     this.onUsePart = null;
     this.onExitParkour = null;
@@ -287,23 +288,18 @@ export class UIManager {
       }
   }
 
-  // --- ADMIN UPDATE: DODANIE PRZYCISKU LOGIN MAP ---
+  // --- ADMIN UPDATE ---
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
           const grid = document.querySelector('#more-options-panel .nav-grid-container');
           
-          // Edytuj Nexus
+          // 1. Edytuj Nexus (Turkus)
           if (grid && !document.getElementById('admin-edit-nexus-btn')) {
                const adminDiv = document.createElement('div');
                adminDiv.className = 'nav-item';
                adminDiv.id = 'admin-edit-nexus-btn';
-               adminDiv.innerHTML = `
-                  <div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
-                      <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                      <span class="nav-label">Edytuj Nexus</span>
-                  </div>
-               `;
+               adminDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Edytuj Nexus</span></div>`;
                adminDiv.onclick = () => {
                    this.closePanel('more-options-panel');
                    if (this.onEditNexusClick) this.onEditNexusClick();
@@ -311,23 +307,31 @@ export class UIManager {
                grid.insertBefore(adminDiv, grid.firstChild);
           }
 
-          // NOWOŚĆ: Edytuj Ekran Logowania
+          // 2. Login Map (Fiolet)
           if (grid && !document.getElementById('admin-edit-login-map-btn')) {
               const loginEditDiv = document.createElement('div');
               loginEditDiv.className = 'nav-item';
               loginEditDiv.id = 'admin-edit-login-map-btn';
-              loginEditDiv.innerHTML = `
-                 <div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
-                     <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                     <span class="nav-label">Login Map</span>
-                 </div>
-              `;
+              loginEditDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Login Map</span></div>`;
               loginEditDiv.onclick = () => {
                   this.closePanel('more-options-panel');
                   if (this.onEditLoginMapClick) this.onEditLoginMapClick();
               };
               grid.insertBefore(loginEditDiv, grid.firstChild);
          }
+
+         // 3. Starter Skin (Zielony) - NOWOŚĆ
+         if (grid && !document.getElementById('admin-add-starter-skin-btn')) {
+            const starterSkinDiv = document.createElement('div');
+            starterSkinDiv.className = 'nav-item';
+            starterSkinDiv.id = 'admin-add-starter-skin-btn';
+            starterSkinDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Starter Skin</span></div>`;
+            starterSkinDiv.onclick = () => {
+                this.closePanel('more-options-panel');
+                if (this.onAddStarterSkinClick) this.onAddStarterSkinClick();
+            };
+            grid.insertBefore(starterSkinDiv, grid.firstChild);
+        }
       }
   }
 
@@ -638,6 +642,7 @@ export class UIManager {
     const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
     const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
     
+    // ZAMYKANIE NOWEGO PROFILU KLIKNIĘCIEM W TŁO
     const otherProfilePanel = document.getElementById('other-player-profile-panel');
     if (otherProfilePanel) {
         otherProfilePanel.addEventListener('click', (e) => {
