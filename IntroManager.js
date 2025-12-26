@@ -27,17 +27,20 @@ export class IntroManager {
         
         this.textureLoader = new THREE.TextureLoader();
         
-        // Cache materiałów dla optymalizacji
+        // Cache dla optymalizacji
         this.materials = {};
         this.sharedGeometry = new THREE.BoxGeometry(1, 1, 1);
 
         // --- ZMIENNE DO ANIMACJI KAMERY ---
-        this.defaultCamPos = new THREE.Vector3(0, 5.0, 10.0); // Wyżej i dalej, żeby objąć dużą mapę
+        // Domyślna (oddalona, widok na mapę)
+        this.defaultCamPos = new THREE.Vector3(0, 5.0, 10.0); 
         this.defaultLookAt = new THREE.Vector3(0, 2.0, 0); 
 
+        // Zbliżenie (Kreator postaci)
         this.zoomedCamPos = new THREE.Vector3(0, 2.0, 3.5);
         this.zoomedLookAt = new THREE.Vector3(0, 1.5, 0); 
 
+        // Aktualne cele (do których dążymy w animate - lerp)
         this.targetCamPos = this.defaultCamPos.clone();
         this.currentLookAt = this.defaultLookAt.clone();
         this.targetLookAt = this.defaultLookAt.clone();
@@ -54,7 +57,7 @@ export class IntroManager {
 
     start() {
         this.isIntroActive = true;
-        this.refreshElements();
+        this.refreshElements(); // Pobranie uchwytów do HTML
         this.setupScene();
         this.setupEvents();
         this.showScreen('welcome');
@@ -71,13 +74,13 @@ export class IntroManager {
         this.currentLookAt.copy(this.defaultLookAt);
         this.targetLookAt.copy(this.defaultLookAt);
 
-        // Czyścimy scenę ze starych obiektów (ale nie mapGroup)
+        // Czyścimy scenę ze śmieci, ale mapGroup zostawiamy (obsłużone niżej)
         while(this.scene.children.length > 0){ 
             const child = this.scene.children[0];
             if (child !== this.mapGroup) {
                 this.scene.remove(child);
             } else {
-                // Hack na usuwanie wszystkiego oprócz mapy (dla bezpieczeństwa)
+                // Usuwamy z listy dzieci, żeby while się nie zapętlił, dodamy ponownie za chwilę
                 this.scene.remove(child);
             }
         }
@@ -88,9 +91,11 @@ export class IntroManager {
         const dir = new THREE.DirectionalLight(0xffffff, 0.8);
         dir.position.set(10, 20, 10);
         dir.castShadow = true;
+        
         // Optymalizacja cieni na mobile
         dir.shadow.mapSize.width = 1024;
         dir.shadow.mapSize.height = 1024;
+        
         this.scene.add(amb);
         this.scene.add(dir);
 
@@ -99,18 +104,45 @@ export class IntroManager {
         this.scene.add(this.previewCharacter);
         
         createBaseCharacter(this.previewCharacter);
-        this.previewCharacter.position.y = 1; // Domyślnie, zmieni się po załadowaniu mapy
+        this.previewCharacter.position.y = 1; // Domyślnie 1, zmieni się jak załaduje mapę
 
-        // ŁADUJEMY MAPĘ TŁA (Z OPTYMALIZACJĄ)
+        // Ładujemy mapę tła
         this.loadLoginMap();
+        
+        // Pobieramy skiny startowe z serwera (jeśli są)
+        this.fetchStarterSkins();
     }
 
-    // --- OPTYMALIZACJA: INSTANCED MESH ---
+    // --- POBIERANIE LISTY SKINÓW ---
+    async fetchStarterSkins() {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/starter-skins`);
+            if(res.ok) {
+                const data = await res.json();
+                if(Array.isArray(data) && data.length > 0) {
+                    // Nadpisz lokalną listę danymi z serwera
+                    // Musimy zmapować strukturę z bazy na format loadera
+                    // Baza: blocks_data (JSON), StarterSkins.js: blocks (Array)
+                    // Ale w server.js zapisujemy jako blocks_data
+                    
+                    // Tu proste nadpisanie globalnej tablicy byłoby ryzykowne, 
+                    // więc zaktualizujemy logikę w updateSkinPreview by korzystała z bufora
+                    this.serverStarterSkins = data.map(s => ({
+                        name: s.name,
+                        blocks: s.blocks_data // Postgres zwraca JSON automatycznie sparsowany przez 'pg'
+                    }));
+                }
+            }
+        } catch(e) {
+            console.warn("Brak skinów startowych na serwerze, używam domyślnych.");
+        }
+    }
+
+    // --- ŁADOWANIE MAPY TŁA (INSTANCED MESH - OPTYMALIZACJA) ---
     async loadLoginMap() {
         // 1. Wyczyść starą mapę
         while(this.mapGroup.children.length > 0) {
             const child = this.mapGroup.children[0];
-            // Dispose dla pamięci
             if(child.geometry && child.geometry !== this.sharedGeometry) child.geometry.dispose();
             this.mapGroup.remove(child);
         }
@@ -122,7 +154,7 @@ export class IntroManager {
             const blocksData = await res.json();
             if (!Array.isArray(blocksData) || blocksData.length === 0) return;
 
-            // 2. Grupowanie bloków po teksturze (Batching)
+            // 2. Grupowanie bloków po teksturze
             const blocksByTexture = {};
             let highestYAtCenter = -100;
 
@@ -132,7 +164,7 @@ export class IntroManager {
                 }
                 blocksByTexture[block.texturePath].push(block);
 
-                // Szukamy najwyższego bloku w centrum (x=0, z=0) dla postaci
+                // Szukamy wysokości pod nogami postaci (x=0, z=0)
                 if (Math.abs(block.x) < 0.6 && Math.abs(block.z) < 0.6) {
                     if (block.y > highestYAtCenter) {
                         highestYAtCenter = block.y;
@@ -140,26 +172,27 @@ export class IntroManager {
                 }
             });
 
-            // 3. Ustawienie postaci NA blokach, a nie W blokach
+            // 3. Ustawienie postaci NA blokach
             if (highestYAtCenter > -100) {
-                // Postać stoi na bloku (+1 to wysokość bloku, +0.5 to pivot postaci)
-                // Zakładamy że pivot postaci jest na dole nóg? W createBaseCharacter y=-0.5?
-                // Dostosowanie: +1.0 od środka bloku = stanie na bloku.
-                // Ponieważ bloki mają Y w środku (0.5), to góra jest na Y+0.5.
-                this.previewCharacter.position.y = highestYAtCenter + 1.0; 
+                // Y bloku to jego środek. Góra to Y + 0.5.
+                // Pivot postaci (dół nóg) to Y = -0.5 względem środka grupy.
+                // Więc środek grupy musi być na Y_bloku + 0.5 + 0.5 = Y_bloku + 1.0
+                const charY = highestYAtCenter + 1.0;
+                this.previewCharacter.position.y = charY;
                 
-                // Aktualizujemy też punkt patrzenia kamery, żeby patrzyła na postać
-                this.defaultLookAt.y = this.previewCharacter.position.y + 1.0;
-                this.zoomedLookAt.y = this.previewCharacter.position.y + 0.8;
-                this.targetLookAt.copy(this.defaultLookAt);
+                // Dostosuj kamerę do nowej wysokości postaci
+                this.defaultLookAt.y = charY + 1.0;
+                this.zoomedLookAt.y = charY + 0.8;
                 
-                // Kamera też musi iść w górę
-                this.defaultCamPos.y = this.previewCharacter.position.y + 2.5;
-                this.zoomedCamPos.y = this.previewCharacter.position.y + 1.0;
+                this.defaultCamPos.y = charY + 2.5;
+                this.zoomedCamPos.y = charY + 1.0;
+                
+                // Natychmiastowa aktualizacja celu kamery
                 this.targetCamPos.copy(this.defaultCamPos);
+                this.targetLookAt.copy(this.defaultLookAt);
             }
 
-            // 4. Tworzenie InstancedMesh (To rozwiązuje crash!)
+            // 4. Tworzenie InstancedMesh
             const dummy = new THREE.Object3D();
 
             for (const [texturePath, blocks] of Object.entries(blocksByTexture)) {
@@ -167,12 +200,11 @@ export class IntroManager {
                 if (!material) {
                     const tex = this.textureLoader.load(texturePath);
                     tex.magFilter = THREE.NearestFilter;
-                    tex.minFilter = THREE.NearestFilter; // Lepsze dla wydajności
+                    tex.minFilter = THREE.NearestFilter; 
                     material = new THREE.MeshLambertMaterial({ map: tex });
                     this.materials[texturePath] = material;
                 }
 
-                // Jeden Mesh na setki bloków!
                 const instancedMesh = new THREE.InstancedMesh(this.sharedGeometry, material, blocks.length);
                 instancedMesh.castShadow = true;
                 instancedMesh.receiveShadow = true;
@@ -188,7 +220,7 @@ export class IntroManager {
             }
 
         } catch (e) {
-            console.warn("Nie udało się załadować mapy logowania", e);
+            console.warn("Błąd mapy logowania:", e);
         }
     }
 
@@ -263,15 +295,19 @@ export class IntroManager {
     }
 
     cycleSkin(dir) {
+        // Używamy listy z serwera lub domyślnej
+        const skinsList = this.serverStarterSkins || STARTER_SKINS;
+        
         this.currentSkinIndex += dir;
-        if (this.currentSkinIndex < 0) this.currentSkinIndex = STARTER_SKINS.length - 1;
-        if (this.currentSkinIndex >= STARTER_SKINS.length) this.currentSkinIndex = 0;
+        if (this.currentSkinIndex < 0) this.currentSkinIndex = skinsList.length - 1;
+        if (this.currentSkinIndex >= skinsList.length) this.currentSkinIndex = 0;
         this.updateSkinPreview();
     }
 
     updateSkinPreview() {
         if (!this.previewCharacter) return;
 
+        // Usuń stary skin
         for (let i = this.previewCharacter.children.length - 1; i >= 0; i--) {
             const child = this.previewCharacter.children[i];
             if (child.type === 'Group') {
@@ -279,12 +315,12 @@ export class IntroManager {
             }
         }
 
-        const skinData = STARTER_SKINS[this.currentSkinIndex];
+        const skinsList = this.serverStarterSkins || STARTER_SKINS;
+        const skinData = skinsList[this.currentSkinIndex];
         if (!skinData) return;
 
         const skinGroup = new THREE.Group();
         skinGroup.scale.setScalar(0.125); 
-        // Dopasowanie skina do nóg (zakładamy że nogi kończą się na pewnej wysokości)
         skinGroup.position.y = 0.5;
 
         const loader = new THREE.TextureLoader();
@@ -359,7 +395,8 @@ export class IntroManager {
             return;
         }
 
-        const selectedSkinData = STARTER_SKINS[this.currentSkinIndex];
+        const skinsList = this.serverStarterSkins || STARTER_SKINS;
+        const selectedSkinData = skinsList[this.currentSkinIndex];
 
         try {
             const res = await fetch(`${API_BASE_URL}/api/register`, {
@@ -389,24 +426,19 @@ export class IntroManager {
         this.isIntroActive = false;
         if (this.introAnimId) cancelAnimationFrame(this.introAnimId);
         
-        // Ukryj UI logowania
         if (this.screens.main) this.screens.main.style.display = 'none';
 
-        // Wyczyść postać
         if (this.previewCharacter) {
             this.scene.remove(this.previewCharacter);
             this.previewCharacter = null;
         }
 
-        // Wyczyść mapę logowania (WAŻNE DLA PAMIĘCI)
+        // Wyczyść mapę logowania
         if (this.mapGroup) {
             this.scene.remove(this.mapGroup);
             while(this.mapGroup.children.length > 0) {
                 const child = this.mapGroup.children[0];
-                // Wyczyść geometrię i materiały
-                if (child.geometry) child.geometry.dispose();
-                // InstancedMesh nie ma własnego materiału w taki sposób jak Mesh, 
-                // ale materiały są w cache `this.materials`, nie usuwamy ich bo mogą się przydać w grze.
+                if(child.geometry) child.geometry.dispose();
                 this.mapGroup.remove(child);
             }
         }
