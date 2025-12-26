@@ -4,11 +4,12 @@ import Stats from 'three/addons/libs/stats.module.js';
 import { createBaseCharacter } from './character.js';
 
 import { STORAGE_KEYS } from './Config.js';
-import { GameCore } from './GameCore.js';
+// GameCore importujemy, ale poniżej nadpiszemy go wersją zoptymalizowaną
+import { GameCore } from './GameCore.js'; 
 import { AuthManager } from './AuthManager.js';
 import { AssetLoader } from './AssetLoader.js';
 import { GameStateManager } from './GameStateManager.js';
-import { IntroManager } from './IntroManager.js'; // NOWOŚĆ
+import { IntroManager } from './IntroManager.js';
 
 import { BlockManager } from './BlockManager.js';
 import { UIManager } from './ui.js';
@@ -29,30 +30,95 @@ import { WorldStorage } from './WorldStorage.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
+// --- ZOPTYMALIZOWANY SILNIK (ZAMIENNIK GameCore.js) ---
+// To zapewnia wysoką wydajność na słabych PC i telefonach
+class OptimizedGameCore {
+    constructor(containerId = 'gameContainer') {
+        this.container = document.getElementById(containerId);
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.clock = new THREE.Clock();
+        this.scene = new THREE.Scene();
+        // Kolor tła (niebo)
+        this.scene.background = new THREE.Color(0x87CEEB);
+        this.camera = new THREE.PerspectiveCamera(70, this.width / this.height, 0.1, 1000);
+
+        // CONFIG RENDERERA DLA WYDAJNOŚCI
+        this.renderer = new THREE.WebGLRenderer({ 
+            antialias: false, // WYŁĄCZONE WYGŁADZANIE (Duży zysk FPS)
+            powerPreference: "high-performance",
+            precision: "mediump", // Mniejsza precyzja (szybsze na integrach)
+            depth: true,
+            stencil: false 
+        });
+        
+        // SKALOWANIE ROZDZIELCZOŚCI (75% jakości)
+        const pixelRatio = Math.min(window.devicePixelRatio, 1.5); 
+        this.renderer.setPixelRatio(pixelRatio * 0.75); 
+        
+        this.renderer.setSize(this.width, this.height);
+        
+        // CIENIE (NAJSZYBSZY TYP)
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.BasicShadowMap; 
+        this.renderer.shadowMap.autoUpdate = true;
+
+        // CSS2D (Nicki) - Import dynamiczny lub z mapy
+        import('three/addons/renderers/CSS2DRenderer.js').then((module) => {
+             this.css2dRenderer = new module.CSS2DRenderer();
+             this.css2dRenderer.setSize(this.width, this.height);
+             this.css2dRenderer.domElement.style.position = 'absolute';
+             this.css2dRenderer.domElement.style.top = '0px';
+             this.css2dRenderer.domElement.style.pointerEvents = 'none';
+             if (this.container) this.container.appendChild(this.css2dRenderer.domElement);
+        });
+
+        if (this.container) {
+            this.container.appendChild(this.renderer.domElement);
+        }
+
+        window.addEventListener('resize', () => this.onWindowResize());
+    }
+
+    onWindowResize() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.camera.aspect = this.width / this.height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(this.width, this.height);
+        if(this.css2dRenderer) this.css2dRenderer.setSize(this.width, this.height);
+    }
+
+    render(activeScene) {
+        const sceneToRender = activeScene || this.scene;
+        this.renderer.render(sceneToRender, this.camera);
+        if(this.css2dRenderer) this.css2dRenderer.render(sceneToRender, this.camera);
+    }
+}
+
 class BlockStarPlanetGame {
   constructor() {
-    console.log("Uruchamianie silnika gry...");
+    console.log("Uruchamianie silnika gry (Performance Mode)...");
     this.isGameRunning = false; 
 
-    this.core = new GameCore('gameContainer');
+    // Używamy zoptymalizowanego rdzenia
+    this.core = new OptimizedGameCore('gameContainer');
     this.scene = this.core.scene;
     this.camera = this.core.camera;
     this.renderer = this.core.renderer;
-    this.css2dRenderer = this.core.css2dRenderer;
+    // css2dRenderer ładuje się asynchronicznie, UI to obsłuży
 
     this.blockManager = new BlockManager();
     
-    // UI Manager
     this.ui = new UIManager((msg) => {
         if (this.multiplayer) this.multiplayer.sendMessage({ type: 'chatMessage', text: msg });
     });
 
     this.stateManager = new GameStateManager(this.core, this.ui);
     
-    // AuthManager (używany tylko do weryfikacji tokenu w tle)
     this.auth = new AuthManager(this.startGame.bind(this));
     
-    // IntroManager (Odpowiada za ekran logowania 3D)
+    // IntroManager z obsługą logowania
     this.intro = new IntroManager(this.core, this.ui, this.startGame.bind(this));
 
     this.loader = new AssetLoader(this.blockManager, this.onAssetsLoaded.bind(this));
@@ -66,7 +132,6 @@ class BlockStarPlanetGame {
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     this.clock = new THREE.Clock();
 
-    // Stary podgląd w menu (teraz rzadziej używany, bo jest profil gracza)
     this.previewScene = null;
     this.previewCamera = null;
     this.previewRenderer = null;
@@ -80,7 +145,7 @@ class BlockStarPlanetGame {
     this.emergencyTimeout = setTimeout(() => {
         const loadingScreen = document.getElementById('loading-screen');
         if (!this.isGameRunning && loadingScreen && loadingScreen.style.display !== 'none' && loadingScreen.style.opacity !== '0') {
-            console.warn("Timeout ładowania - wymuszanie startu...");
+            console.warn("Timeout ładowania...");
             this.onAssetsLoaded();
         }
     }, 8000);
@@ -96,104 +161,74 @@ class BlockStarPlanetGame {
       try {
         this.ui.initialize(this.isMobile);
 
-        // LOGIKA STARTOWA: Czy mamy token?
         const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-        
         if (token) {
-            // Próba autologowania
-            // Nadpisujemy funkcję showAuthScreen, aby w razie błędu tokenu włączyła Intro 3D
-            // zamiast starego formularza.
+            // Nadpisujemy błąd sesji -> idź do Intro
             this.auth.showAuthScreen = () => {
-                console.log("Sesja wygasła, uruchamianie Intro.");
+                console.log("Sesja nieważna, uruchamianie Intro.");
                 this.intro.start();
             };
-            
-            this.auth.checkSession(this.ui).catch(() => {
-                 this.intro.start();
-            });
+            this.auth.checkSession(this.ui);
         } else {
             console.log("Brak tokenu, uruchamianie Intro.");
             this.intro.start();
         }
 
       } catch (e) {
-          console.error("Błąd inicjalizacji UI:", e);
+          console.error("Błąd init:", e);
           this.intro.start();
       }
   }
 
-  // Funkcja wywoływana po udanym logowaniu (przez Intro lub AuthManager)
   async startGame(user, token, thumbnail) {
       console.log("Start gry dla:", user.username);
       
-      // 1. Zamykamy Intro (jeśli działało)
+      // 1. Zamknij Intro i wyczyść jego śmieci
       if (this.intro) {
           this.intro.dispose();
       }
       
-      // 2. Czyścimy scenę ze śmieci z Intro (światła, dummy postać)
+      // 2. Wyczyść scenę CAŁKOWICIE przed wejściem do gry
       while(this.scene.children.length > 0){ 
           this.scene.remove(this.scene.children[0]); 
       }
       
-      // 3. Zapisujemy dane sesji
       localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, user.username);
       localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, token);
       localStorage.setItem(STORAGE_KEYS.USER_ID, user.id);
 
-      // 4. Aktualizujemy HUD
       this.ui.updatePlayerName(user.username);
       if (thumbnail) this.ui.updatePlayerAvatar(thumbnail);
       this.ui.checkAdminPermissions(user.username);
       this.ui.loadFriendsData();
 
-      if (user.level) {
-          this.ui.updateLevelInfo(user.level, user.xp, user.maxXp || 100);
-      }
-      
-      if (user.pendingXp) {
-          this.ui.updatePendingRewards(user.pendingXp);
-      }
-
-      if (user.ownedBlocks) {
-          this.blockManager.setOwnedBlocks(user.ownedBlocks);
-      }
+      if (user.level) this.ui.updateLevelInfo(user.level, user.xp, user.maxXp || 100);
+      if (user.pendingXp) this.ui.updatePendingRewards(user.pendingXp);
+      if (user.ownedBlocks) this.blockManager.setOwnedBlocks(user.ownedBlocks);
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      // 5. Inicjalizacja Świata Gry (Nexus)
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
-      try { await this.sceneManager.initialize(); } catch(e) { console.error(e); }
+      try { await this.sceneManager.initialize(); } catch(e) {}
 
       this.characterManager = new CharacterManager(this.scene);
       this.characterManager.loadCharacter();
       
-      // Bezpieczna pozycja startowa (korzystając z mapy kolizji)
       const safeY = this.sceneManager.getSafeY(0, 0);
       this.characterManager.character.position.set(0, safeY + 2.0, 0);
 
-      // Ładowanie skina
       if (user.currentSkinId) {
-          SkinStorage.loadSkinData(user.currentSkinId).then(data => { 
-              if(data) this.characterManager.applySkin(data); 
-          });
+          SkinStorage.loadSkinData(user.currentSkinId).then(data => { if(data) this.characterManager.applySkin(data); });
       } else {
-          // Fallback lokalny
           const lastSkinId = SkinStorage.getLastUsedSkinId();
-          if (lastSkinId) {
-             SkinStorage.loadSkinData(lastSkinId).then(data => { 
-                  if(data) this.characterManager.applySkin(data); 
-             });
-          }
+          if (lastSkinId) SkinStorage.loadSkinData(lastSkinId).then(data => { if(data) this.characterManager.applySkin(data); });
       }
 
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
-
       this.multiplayer = new MultiplayerManager(this.scene, this.ui, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
       this.multiplayer.initialize(token);
       this.setupMultiplayerCallbacks();
 
-      // 6. Fizyka z Grid Partitioning (ważne dla wydajności)
       this.recreatePlayerController(this.sceneManager.collidableObjects, this.sceneManager.collisionMap);
       
       this.cameraController = new ThirdPersonCameraController(
@@ -202,13 +237,11 @@ class BlockStarPlanetGame {
       );
       this.cameraController.setIsMobile(this.isMobile);
 
-      // Menedżery Budowania
       const loadingManager = this.loader.getLoadingManager();
       this.buildManager = new BuildManager(this, loadingManager, this.blockManager);
       this.skinBuilderManager = new SkinBuilderManager(this, loadingManager, this.blockManager);
       this.prefabBuilderManager = new PrefabBuilderManager(this, loadingManager, this.blockManager);
       this.partBuilderManager = new HyperCubePartBuilderManager(this, loadingManager, this.blockManager);
-      
       this.parkourManager = new ParkourManager(this, this.ui);
 
       this.stateManager.setManagers({
@@ -224,7 +257,6 @@ class BlockStarPlanetGame {
           parkour: this.parkourManager
       });
 
-      // Callback do przeładowania kontrolera przy zmianie świata
       this.stateManager.onRecreateController = (collidables) => {
           const targetCollidables = collidables || this.sceneManager.collidableObjects;
           const targetMap = collidables ? null : this.sceneManager.collisionMap;
@@ -235,46 +267,50 @@ class BlockStarPlanetGame {
 
       this.setupCharacterPreview();
       this.setupUIActions();
-      
-      // Przełączenie na grę
       this.stateManager.switchToMainMenu();
-      
       this.animate();
       this.setupPositionUpdateLoop();
   }
 
+  // --- PODGLĄD W MENU (ZOPTYMALIZOWANY) ---
   setupCharacterPreview() { 
       const container = document.getElementById('player-preview-renderer-container'); 
       if (!container) return; 
       
-      this.previewScene = new THREE.Scene(); 
-      this.previewScene.background = new THREE.Color(0x333333); 
-      this.previewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); 
-      this.previewCamera.position.set(0, 1, 4); 
-      this.previewCamera.lookAt(0, 0, 0); 
+      const previewScene = new THREE.Scene(); 
+      previewScene.background = new THREE.Color(0x333333); 
+      const previewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); 
+      previewCamera.position.set(0, 1, 4); 
+      previewCamera.lookAt(0, 0, 0); 
       
-      this.previewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); 
-      this.previewRenderer.setSize(300, 300); 
+      const previewRenderer = new THREE.WebGLRenderer({ 
+          alpha: true, 
+          antialias: false, // Performance
+          precision: "mediump"
+      }); 
+      previewRenderer.setSize(300, 300); 
+      previewRenderer.setPixelRatio(0.8); // Obniżona jakość podglądu
+      
       container.innerHTML = ''; 
-      container.appendChild(this.previewRenderer.domElement); 
+      container.appendChild(previewRenderer.domElement); 
       
       const rect = container.getBoundingClientRect(); 
       if(rect.width > 0) { 
-          this.previewRenderer.setSize(rect.width, rect.height); 
-          this.previewCamera.aspect = rect.width / rect.height; 
-          this.previewCamera.updateProjectionMatrix(); 
+          previewRenderer.setSize(rect.width, rect.height); 
+          previewCamera.aspect = rect.width / rect.height; 
+          previewCamera.updateProjectionMatrix(); 
       } 
       
       const ambLight = new THREE.AmbientLight(0xffffff, 0.8); 
-      this.previewScene.add(ambLight); 
+      previewScene.add(ambLight); 
       const dirLight = new THREE.DirectionalLight(0xffffff, 0.5); 
       dirLight.position.set(2, 5, 3); 
-      this.previewScene.add(dirLight); 
+      previewScene.add(dirLight); 
       
       this.previewCharacter = new THREE.Group(); 
       createBaseCharacter(this.previewCharacter); 
       this.previewCharacter.position.y = -1; 
-      this.previewScene.add(this.previewCharacter); 
+      previewScene.add(this.previewCharacter); 
       
       const onStart = (x) => { this.isPreviewDragging = true; this.previewMouseX = x; }; 
       const onMove = (x) => { if (this.isPreviewDragging && this.previewCharacter) { const delta = x - this.previewMouseX; this.previewCharacter.rotation.y += delta * 0.01; this.previewMouseX = x; } }; 
@@ -285,7 +321,11 @@ class BlockStarPlanetGame {
       window.addEventListener('mouseup', onEnd); 
       container.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), {passive: false}); 
       window.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), {passive: false}); 
-      window.addEventListener('touchend', onEnd); 
+      window.addEventListener('touchend', onEnd);
+
+      this.previewScene = previewScene;
+      this.previewCamera = previewCamera;
+      this.previewRenderer = previewRenderer;
   }
 
   setupStats() { 
@@ -403,7 +443,6 @@ class BlockStarPlanetGame {
           }, 100);
       };
 
-      // Tryby budowania
       this.ui.onEditNexusClick = () => {
            this.stateManager.switchToBuildMode(64, true, false);
       };
@@ -412,9 +451,7 @@ class BlockStarPlanetGame {
            this.stateManager.switchToBuildMode(64, false, true);
       };
 
-      // NOWOŚĆ: Callback dla startera
       this.ui.onAddStarterSkinClick = () => {
-          // true = isStarterMode
           this.stateManager.managers.skinBuild.enterBuildMode(true);
           this.stateManager.currentState = 'SkinBuilderMode';
           this.stateManager.toggleGameControls(false);
