@@ -4,8 +4,7 @@ import Stats from 'three/addons/libs/stats.module.js';
 import { createBaseCharacter } from './character.js';
 
 import { STORAGE_KEYS } from './Config.js';
-// GameCore importujemy, ale poniżej nadpiszemy go wersją zoptymalizowaną
-import { GameCore } from './GameCore.js'; 
+import { GameCore } from './GameCore.js';
 import { AuthManager } from './AuthManager.js';
 import { AssetLoader } from './AssetLoader.js';
 import { GameStateManager } from './GameStateManager.js';
@@ -31,7 +30,6 @@ import { WorldStorage } from './WorldStorage.js';
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 // --- ZOPTYMALIZOWANY SILNIK (ZAMIENNIK GameCore.js) ---
-// To zapewnia wysoką wydajność na słabych PC i telefonach
 class OptimizedGameCore {
     constructor(containerId = 'gameContainer') {
         this.container = document.getElementById(containerId);
@@ -39,31 +37,26 @@ class OptimizedGameCore {
         this.height = window.innerHeight;
         this.clock = new THREE.Clock();
         this.scene = new THREE.Scene();
-        // Kolor tła (niebo)
         this.scene.background = new THREE.Color(0x87CEEB);
         this.camera = new THREE.PerspectiveCamera(70, this.width / this.height, 0.1, 1000);
 
-        // CONFIG RENDERERA DLA WYDAJNOŚCI
         this.renderer = new THREE.WebGLRenderer({ 
-            antialias: false, // WYŁĄCZONE WYGŁADZANIE (Duży zysk FPS)
+            antialias: false,
             powerPreference: "high-performance",
-            precision: "mediump", // Mniejsza precyzja (szybsze na integrach)
+            precision: "mediump",
             depth: true,
             stencil: false 
         });
         
-        // SKALOWANIE ROZDZIELCZOŚCI (75% jakości)
         const pixelRatio = Math.min(window.devicePixelRatio, 1.5); 
         this.renderer.setPixelRatio(pixelRatio * 0.75); 
         
         this.renderer.setSize(this.width, this.height);
         
-        // CIENIE (NAJSZYBSZY TYP)
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.BasicShadowMap; 
         this.renderer.shadowMap.autoUpdate = true;
 
-        // CSS2D (Nicki) - Import dynamiczny lub z mapy
         import('three/addons/renderers/CSS2DRenderer.js').then((module) => {
              this.css2dRenderer = new module.CSS2DRenderer();
              this.css2dRenderer.setSize(this.width, this.height);
@@ -101,12 +94,10 @@ class BlockStarPlanetGame {
     console.log("Uruchamianie silnika gry (Performance Mode)...");
     this.isGameRunning = false; 
 
-    // Używamy zoptymalizowanego rdzenia
     this.core = new OptimizedGameCore('gameContainer');
     this.scene = this.core.scene;
     this.camera = this.core.camera;
     this.renderer = this.core.renderer;
-    // css2dRenderer ładuje się asynchronicznie, UI to obsłuży
 
     this.blockManager = new BlockManager();
     
@@ -115,12 +106,8 @@ class BlockStarPlanetGame {
     });
 
     this.stateManager = new GameStateManager(this.core, this.ui);
-    
     this.auth = new AuthManager(this.startGame.bind(this));
-    
-    // IntroManager z obsługą logowania
     this.intro = new IntroManager(this.core, this.ui, this.startGame.bind(this));
-
     this.loader = new AssetLoader(this.blockManager, this.onAssetsLoaded.bind(this));
 
     this.stats = new Stats();
@@ -163,7 +150,6 @@ class BlockStarPlanetGame {
 
         const token = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
         if (token) {
-            // Nadpisujemy błąd sesji -> idź do Intro
             this.auth.showAuthScreen = () => {
                 console.log("Sesja nieważna, uruchamianie Intro.");
                 this.intro.start();
@@ -183,12 +169,10 @@ class BlockStarPlanetGame {
   async startGame(user, token, thumbnail) {
       console.log("Start gry dla:", user.username);
       
-      // 1. Zamknij Intro i wyczyść jego śmieci
       if (this.intro) {
           this.intro.dispose();
       }
       
-      // 2. Wyczyść scenę CAŁKOWICIE przed wejściem do gry
       while(this.scene.children.length > 0){ 
           this.scene.remove(this.scene.children[0]); 
       }
@@ -231,9 +215,11 @@ class BlockStarPlanetGame {
 
       this.recreatePlayerController(this.sceneManager.collidableObjects, this.sceneManager.collisionMap);
       
+      // --- ZMIANA DYSTANSU KAMERY ---
+      // Było distance: 5, jest distance: 2.5 (2x bliżej)
       this.cameraController = new ThirdPersonCameraController(
           this.camera, this.characterManager.character, this.core.renderer.domElement, 
-          { distance: 5, height: 2, floorY: this.sceneManager.FLOOR_TOP_Y }
+          { distance: 2.5, height: 2, floorY: this.sceneManager.FLOOR_TOP_Y }
       );
       this.cameraController.setIsMobile(this.isMobile);
 
@@ -260,7 +246,6 @@ class BlockStarPlanetGame {
       this.stateManager.onRecreateController = (collidables) => {
           const targetCollidables = collidables || this.sceneManager.collidableObjects;
           const targetMap = collidables ? null : this.sceneManager.collisionMap;
-          
           this.recreatePlayerController(targetCollidables, targetMap);
           this.stateManager.setManagers({ playerController: this.playerController });
       };
@@ -272,7 +257,6 @@ class BlockStarPlanetGame {
       this.setupPositionUpdateLoop();
   }
 
-  // --- PODGLĄD W MENU (ZOPTYMALIZOWANY) ---
   setupCharacterPreview() { 
       const container = document.getElementById('player-preview-renderer-container'); 
       if (!container) return; 
@@ -283,13 +267,9 @@ class BlockStarPlanetGame {
       previewCamera.position.set(0, 1, 4); 
       previewCamera.lookAt(0, 0, 0); 
       
-      const previewRenderer = new THREE.WebGLRenderer({ 
-          alpha: true, 
-          antialias: false, // Performance
-          precision: "mediump"
-      }); 
+      const previewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, precision: "mediump" }); 
       previewRenderer.setSize(300, 300); 
-      previewRenderer.setPixelRatio(0.8); // Obniżona jakość podglądu
+      previewRenderer.setPixelRatio(0.8); 
       
       container.innerHTML = ''; 
       container.appendChild(previewRenderer.domElement); 
