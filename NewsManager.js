@@ -1,3 +1,4 @@
+/* PLIK: NewsManager.js */
 import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 
 const TEMPLATE = `
@@ -29,28 +30,49 @@ const TEMPLATE = `
             background-color: #bdc3c7; display: flex; flex-direction: column; gap: 12px;
         }
         .news-item {
-            background-color: #a3e635; border-radius: 12px;
+            background-color: #fff;
+            border-radius: 12px;
             display: flex; height: 90px;
-            box-shadow: 0 4px 0 #86bf2b; border: 2px solid white;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1); 
+            border: 2px solid white;
             position: relative; overflow: hidden;
         }
-        .news-icon-area { width: 70px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.2); }
-        .news-type-icon { font-size: 40px; color: white; filter: drop-shadow(2px 2px 0 #000); }
-        .news-content-area { flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center; color: white; text-shadow: 1px 1px 0 #000; }
-        .news-text-main { font-size: 14px; margin-bottom: 5px; line-height: 1.2; }
-        .news-sub-info { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-        .news-source-avatar { width: 24px; height: 24px; border-radius: 50%; background-color: #eee; background-size: cover; border: 1px solid white; }
-        .news-action-area { width: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; background: rgba(0,0,0,0.1); padding: 5px; }
-        .news-reward-val { color: #f1c40f; font-size: 16px; display: flex; align-items: center; gap: 4px; }
+        .news-icon-area { 
+            width: 70px; display: flex; justify-content: center; align-items: center; 
+            background: transparent; 
+        }
+        .news-type-icon { 
+            width: 50px; height: 50px; 
+            background-size: contain; background-repeat: no-repeat; background-position: center;
+            filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.2));
+        }
+        .news-content-area { 
+            flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center; 
+            color: #333;
+            text-shadow: none;
+        }
+        .news-title { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .news-desc { font-size: 12px; color: #666; display: flex; align-items: center; gap: 5px; }
+        .news-desc b { color: #e91e63; }
+        
+        .news-action-area { 
+            width: 110px; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; gap: 5px; 
+            padding: 5px; background: transparent; 
+        }
+        .news-reward-val { 
+            color: #333; font-size: 14px; font-weight:bold; display: flex; align-items: center; gap: 4px; 
+        }
         .btn-claim-one {
-            background: linear-gradient(to bottom, #2ecc71, #27ae60); border: 2px solid white; border-radius: 8px;
-            padding: 5px 12px; color: white; cursor: pointer; font-family: inherit; font-size: 12px;
-            box-shadow: 0 3px 0 #1e8449; text-shadow: 1px 1px 0 #000;
+            background: linear-gradient(to bottom, #8ede13, #5ba806);
+            border: 2px solid white; border-radius: 8px;
+            padding: 8px 15px; color: white; cursor: pointer; font-family: inherit; font-size: 14px;
+            box-shadow: 0 4px 0 #3e7504; text-shadow: 1px 1px 0 #000; font-weight: bold;
         }
         .btn-claim-one:active { transform: translateY(3px); box-shadow: none; }
+        
         .news-footer { height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9); color: white; display: flex; align-items: center; padding: 0 15px; gap: 15px; border-top: 3px solid white; }
         .footer-chest { width: 50px; height: 50px; background: url('icons/icon-shop.png') center/contain no-repeat; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
-        .thumb-icon { width: 40px; height: 40px; background: url('icons/icon-like.png') center/contain no-repeat; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); }
     </style>
 
     <div id="news-modal" class="panel-modal" style="display:none;">
@@ -62,7 +84,7 @@ const TEMPLATE = `
             <div id="news-list"></div>
             <div class="news-footer">
                 <div class="footer-chest"></div>
-                <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">Namów innych graczy do korzystania z Twoich prefabrykatów i skórek</span>
+                <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">Odbieraj nagrody i uśmiechy!</span>
                 <button id="btn-news-close-main" class="panel-close-button" style="margin: 0; padding: 8px 15px; background: #e74c3c; border: 2px solid white; box-shadow: 0 4px 0 #c0392b;">X</button>
             </div>
         </div>
@@ -97,12 +119,11 @@ export class NewsManager {
 
     open() {
         const panel = document.getElementById('news-modal');
-        const list = document.getElementById('news-list');
-        if (!panel || !list) return;
-
-        this.ui.bringToFront(panel);
-        panel.style.display = 'flex';
-        this.loadNewsData();
+        if (panel) {
+            this.ui.bringToFront(panel);
+            panel.style.display = 'flex';
+            this.loadNewsData();
+        }
     }
 
     close() {
@@ -126,7 +147,6 @@ export class NewsManager {
             const headerCount = document.getElementById('news-count-header');
             if (headerCount) headerCount.textContent = this.pendingNewsCount;
             
-            // Update main UI badge
             this.ui.updatePendingRewards(this.pendingNewsCount);
 
         } catch (e) {
@@ -148,36 +168,52 @@ export class NewsManager {
             const div = document.createElement('div');
             div.className = 'news-item';
 
-            let iconClass = 'thumb-icon';
-            let titleText = "System";
-            let userAvatar = item.source_user_skin || '';
+            let iconUrl = '';
+            let titleText = "";
+            let descHtml = "";
 
-            if (item.type.includes('like_skin') || item.type.includes('like_prefab') || item.type.includes('like_part')) {
-                titleText = "Inny gracz polubił Twojego BlockStar";
-            } else if (item.type.includes('like_comment')) {
-                titleText = "Inny gracz polubił Twój komentarz";
-            } else {
-                titleText = "Wiadomość systemowa";
+            if (item.type === 'smile') {
+                // --- UŚMIECH (NOWOŚĆ) ---
+                iconUrl = "url('icons/usmiech.png')"; 
+                titleText = "Uśmiech";
+                // source_user_skin pochodzi z JOIN-a w server.js
+                const senderAvatar = item.source_user_skin || 'icons/avatar_placeholder.png';
+                // source_username też pochodzi z server.js
+                const senderName = item.source_username || 'Ktoś';
+                
+                descHtml = `
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <div style="width:24px; height:24px; background-image:url('${senderAvatar}'); background-size:cover; border-radius:4px; border:1px solid #ccc;"></div>
+                        <span><b>${senderName}</b> wysyła Ci uśmiech</span>
+                    </div>
+                `;
+            } 
+            else if (item.type.includes('like')) {
+                iconUrl = "url('icons/icon-like.png')";
+                titleText = "Polubienie";
+                descHtml = `<span>Inny gracz polubił Twój element</span>`;
+            } 
+            else {
+                iconUrl = "url('icons/icon-shop.png')";
+                titleText = "Nagroda";
+                descHtml = `<span>Otrzymałeś nagrodę systemową</span>`;
             }
 
+            const rewardText = `+${item.reward_xp}`;
+
             div.innerHTML = `
-              <div class="news-item-left">
-                  <div class="${iconClass}"></div>
+              <div class="news-icon-area">
+                  <div class="news-type-icon" style="background-image: ${iconUrl};"></div>
               </div>
-              <div class="news-item-content">
-                  <div class="news-item-title">${titleText}</div>
-                  <div class="news-item-desc">
-                      ${userAvatar ? `<div class="news-user-avatar" style="background-image: url('${userAvatar}')"></div>` : ''}
-                      <span><b>${item.source_username || 'Gracz'}</b> i inni gracze</span>
-                  </div>
+              <div class="news-content-area">
+                  <div class="news-title">${titleText}</div>
+                  <div class="news-desc">${descHtml}</div>
               </div>
-              <div class="news-item-right">
-                  <div class="news-reward-info">
-                      <img src="icons/icon-level.png" width="16"> ${item.reward_xp}
-                  </div>
+              <div class="news-action-area">
+                  <div class="news-reward-val">${rewardText} <img src="icons/icon-level.png" width="16"></div>
                   <button class="btn-claim-one text-outline">Odbierz!</button>
               </div>
-          `;
+            `;
 
             const btn = div.querySelector('.btn-claim-one');
             btn.onclick = () => this.claimReward(item.id);
@@ -200,11 +236,9 @@ export class NewsManager {
                 this.ui.updateLevelInfo(d.newLevel, d.newXp, d.maxXp);
 
                 if (newsId) {
-                    // Single claim - refresh list
                     this.loadNewsData(); 
                     this.ui.showMessage("Odebrano nagrodę!", "success");
                 } else {
-                    // Claim all - close news, show big reward
                     this.pendingNewsCount = 0;
                     this.ui.updatePendingRewards(0);
                     this.close();
