@@ -1217,8 +1217,8 @@ export const OTHER_PLAYER_PROFILE_HTML = `
                     <div class="bsp-btn-label">Czat</div>
                 </div>
 
-                <!-- 3. Uśmiech (Placeholder) -->
-                <div class="bsp-side-btn">
+                <!-- 3. Uśmiech (Z NAPRAWIONYM ID) -->
+                <div id="btn-other-smile" class="bsp-side-btn">
                     <div class="bsp-btn-icon" style="background-image: url('icons/usmiech.png');">🎉</div> 
                     <div class="bsp-btn-label">Uśmiech</div>
                 </div>
