@@ -1,14 +1,15 @@
 /* PLIK: sw.js */
-const CACHE_NAME = 'hypercubesplanet-dev-v6'; // Podbita wersja cache
+const CACHE_NAME = 'hypercubesplanet-dev-v7'; // Zmieniamy wersję na v7
 
-// Lista plików, które mają być dostępne offline.
+// Lista plików statycznych do cache'owania
 const urlsToCache = [
   './',
   './index.html',
   './main.js',
   './manifest.json',
+  './style.css', // Dodano style.css
   
-  // Główne skrypty JS
+  // Skrypty
   './ui.js',
   './scene.js',
   './controls.js',
@@ -16,10 +17,8 @@ const urlsToCache = [
   './multiplayer.js',
   './CoinManager.js',
   './BlockManager.js',
-  './IntroManager.js', // Dodano IntroManager
-  './StarterSkins.js', // Dodano StarterSkins
-  
-  // Menedżery
+  './IntroManager.js',
+  './StarterSkins.js',
   './BuildManager.js',
   './SkinBuilderManager.js',
   './PrefabBuilderManager.js',
@@ -30,21 +29,17 @@ const urlsToCache = [
   './NewsManager.js',
   './HighScoresManager.js',
   './WallManager.js',
-
-  // Storage
   './WorldStorage.js',
   './SkinStorage.js',
   './PrefabStorage.js',
   './HyperCubePartStorage.js',
-
-  // Config & Templates
   './Config.js',
   './UITemplates.js',
   './GameCore.js',
   './GameStateManager.js',
   './AssetLoader.js',
 
-  // Ikony UI
+  // Grafiki
   'icons/favicon.png',
   'icons/icon-play.png',
   'icons/icon-build.png',
@@ -93,14 +88,12 @@ const urlsToCache = [
   'icons/opcje.png',
   'icons/wyloguj.png',
 
-  // Tekstury bloków (STARE)
+  // Tekstury
   'textures/ziemia.png',
   'textures/trawa.png',
   'textures/drewno.png',
   'textures/piasek.png',
   'textures/beton.png',
-
-  // Tekstury bloków (NOWE)
   'textures/dzins.png',
   'textures/karton.png',
   'textures/cegla.png',
@@ -115,57 +108,52 @@ const urlsToCache = [
   'textures/gladki.png'
 ];
 
-// Instalacja Service Workera
 self.addEventListener('install', event => {
-  console.log('Service Worker v6: Instalacja...');
+  self.skipWaiting(); // Wymuś natychmiastową aktywację nowego SW
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// Aktywacja i czyszczenie starych cache
 self.addEventListener('activate', event => {
-  console.log('Service Worker v6: Aktywacja...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: Usuwanie starego cache:', cacheName);
-            return caches.delete(cacheName);
+            return caches.delete(cacheName); // Usuń stare cache
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => self.clients.claim()) // Przejmij kontrolę nad stronami natychmiast
   );
 });
 
-// Strategia Network First dla kodu
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  if (url.pathname.endsWith('.html') || 
-      url.pathname.endsWith('.js') || 
-      url.pathname.endsWith('.json') ||
-      url.pathname.endsWith('/')) {
-      
-    event.respondWith(
-      fetch(event.request)
-        .then(networkResponse => {
-          const clonedResponse = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clonedResponse));
-          return networkResponse;
-        })
-        .catch(() => caches.match(event.request))
-    );
-  } else {
-    event.respondWith(
-      caches.match(event.request).then(cached => cached || fetch(event.request))
-    );
+  // 1. IGNORUJ API I WEBSOCKETY (Network Only)
+  // To naprawia błąd 404 0ms - SW nie będzie tykał zapytań do serwera
+  if (url.pathname.startsWith('/api/') || url.protocol === 'ws:' || url.protocol === 'wss:') {
+    return; 
+  }
+
+  // 2. Cache First dla plików gry (Network First dla HTML/JS dla bezpieczeństwa)
+  if (event.request.method === 'GET') {
+      if (url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.json')) {
+        // Network First (Spróbuj pobrać najnowsze, jak nie ma neta to cache)
+        event.respondWith(
+          fetch(event.request).then(response => {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+            return response;
+          }).catch(() => caches.match(event.request))
+        );
+      } else {
+        // Cache First (Dla tekstur i obrazków)
+        event.respondWith(
+          caches.match(event.request).then(cached => cached || fetch(event.request))
+        );
+      }
   }
 });
