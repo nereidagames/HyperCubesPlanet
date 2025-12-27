@@ -291,16 +291,12 @@ export class UIManager {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
           const grid = document.querySelector('#more-options-panel .nav-grid-container');
+          
           if (grid && !document.getElementById('admin-edit-nexus-btn')) {
                const adminDiv = document.createElement('div');
                adminDiv.className = 'nav-item';
                adminDiv.id = 'admin-edit-nexus-btn';
-               adminDiv.innerHTML = `
-                  <div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
-                      <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                      <span class="nav-label">Edytuj Nexus</span>
-                  </div>
-               `;
+               adminDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Edytuj Nexus</span></div>`;
                adminDiv.onclick = () => {
                    this.closePanel('more-options-panel');
                    if (this.onEditNexusClick) this.onEditNexusClick();
@@ -312,12 +308,7 @@ export class UIManager {
               const loginEditDiv = document.createElement('div');
               loginEditDiv.className = 'nav-item';
               loginEditDiv.id = 'admin-edit-login-map-btn';
-              loginEditDiv.innerHTML = `
-                 <div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
-                     <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                     <span class="nav-label">Login Map</span>
-                 </div>
-              `;
+              loginEditDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Login Map</span></div>`;
               loginEditDiv.onclick = () => {
                   this.closePanel('more-options-panel');
                   if (this.onEditLoginMapClick) this.onEditLoginMapClick();
@@ -329,12 +320,7 @@ export class UIManager {
             const starterSkinDiv = document.createElement('div');
             starterSkinDiv.className = 'nav-item';
             starterSkinDiv.id = 'admin-add-starter-skin-btn';
-            starterSkinDiv.innerHTML = `
-                <div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
-                    <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
-                    <span class="nav-label">Starter Skin</span>
-                </div>
-            `;
+            starterSkinDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Starter Skin</span></div>`;
             starterSkinDiv.onclick = () => {
                 this.closePanel('more-options-panel');
                 if (this.onAddStarterSkinClick) this.onAddStarterSkinClick();
@@ -475,6 +461,35 @@ export class UIManager {
               this.disposeCurrentPreview();
           };
       }
+
+      // --- NOWOŚĆ: OBSŁUGA UŚMIECHU ---
+      const btnSmile = document.getElementById('btn-other-smile');
+      if (btnSmile) {
+          btnSmile.onclick = async () => {
+              const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+              if (!t) return;
+              
+              // Animacja kliknięcia
+              btnSmile.style.transform = 'scale(0.95)';
+              setTimeout(() => btnSmile.style.transform = 'scale(1)', 100);
+
+              try {
+                  const r = await fetch(`${API_BASE_URL}/api/user/${userId}/smile`, {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${t}` }
+                  });
+                  const d = await r.json();
+                  
+                  if (r.ok) {
+                      this.showMessage("Wysłano uśmiech!", "success");
+                  } else {
+                      this.showMessage(d.message || "Błąd wysyłania.", "error");
+                  }
+              } catch (e) {
+                  this.showMessage("Błąd sieci.", "error");
+              }
+          };
+      }
   }
 
   // --- WŁASNY PROFIL ---
@@ -514,7 +529,7 @@ export class UIManager {
       }
   }
 
-  // --- SKIN DETAILS (Z NAPRAWIONYM SHOWREWARDPANEL) ---
+  // --- SKIN DETAILS ---
   async showItemDetails(item, type, keepOpen = false) { 
       const modal = document.getElementById('skin-details-modal'); 
       if (!modal) return; 
@@ -625,42 +640,6 @@ export class UIManager {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.textContent = timeString;
   }
-  
-  // --- NAPRAWIONA METODA POKAZYWANIA NAGRODY ---
-  showRewardPanel(customData = null) { 
-      const panel = document.getElementById('reward-panel'); 
-      const data = customData || this.pendingRewardData; 
-      if (!panel) return; 
-      this.bringToFront(panel); 
-      
-      if (data) { 
-          const title = document.getElementById('reward-title-text'); 
-          if(title) title.textContent = data.message || (customData ? "Odebrano Nagrody!" : "Ukończono!"); 
-          
-          const xpVal = document.getElementById('reward-xp-val'); 
-          const coinVal = document.getElementById('reward-coins-val'); 
-          
-          const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); 
-          const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100; 
-          
-          if (xpVal) xpVal.textContent = `+${gainedXp}`; 
-          if (coinVal) coinVal.textContent = `+${gainedCoins}`; 
-          
-          document.getElementById('reward-lvl-cur').textContent = data.newLevel; 
-          document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; 
-          
-          const fill = document.getElementById('reward-bar-fill'); 
-          const text = document.getElementById('reward-bar-text'); 
-          if (fill && text) { 
-              const max = data.maxXp || 100; 
-              const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); 
-              fill.style.width = `${percent}%`; 
-              text.textContent = `${data.newXp}/${max}`; 
-          } 
-      } 
-      panel.style.display = 'flex'; 
-  }
-
   handleParkourCompletion(timeStr, rewardData) {
       const victoryPanel = document.getElementById('victory-panel');
       const timeDisplay = document.getElementById('victory-time-display');
@@ -671,7 +650,6 @@ export class UIManager {
       if (timeDisplay) timeDisplay.textContent = timeStr;
       this.pendingRewardData = rewardData;
   }
-  
   hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
 
   // --- BUTTON HANDLERS ---
@@ -689,7 +667,6 @@ export class UIManager {
     const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
     const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
     
-    // ZAMYKANIE NOWEGO PROFILU KLIKNIĘCIEM W TŁO
     const otherProfilePanel = document.getElementById('other-player-profile-panel');
     if (otherProfilePanel) {
         otherProfilePanel.addEventListener('click', (e) => {
@@ -710,18 +687,7 @@ export class UIManager {
     const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
     const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
     const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
-    
-    // NAPRAWA BŁĘDU SHOWREWARDPANEL
-    const superBtn = document.getElementById('victory-super-btn'); 
-    if (superBtn) superBtn.onclick = () => { 
-        document.getElementById('victory-panel').style.display = 'none'; 
-        if (this.pendingRewardData) {
-            this.showRewardPanel(); // Teraz zadziała, bo jest poprawnie zdefiniowane
-        } else if (this.onExitParkour) {
-            this.onExitParkour(); 
-        }
-    };
-    
+    const superBtn = document.getElementById('victory-super-btn'); if (superBtn) superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); };
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
     const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
     
