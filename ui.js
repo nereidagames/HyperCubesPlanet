@@ -49,7 +49,7 @@ export class UIManager {
     this.onMessageReceived = null;
     this.onEditNexusClick = null;
     this.onEditLoginMapClick = null;
-    this.onAddStarterSkinClick = null; // NOWOŚĆ: Callback dla Admina
+    this.onAddStarterSkinClick = null;
     this.onUsePrefab = null;
     this.onUsePart = null;
     this.onExitParkour = null;
@@ -102,7 +102,6 @@ export class UIManager {
     }
   }
 
-  // --- ZARZĄDZANIE WARSTWAMI ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -288,18 +287,20 @@ export class UIManager {
       }
   }
 
-  // --- ADMIN UPDATE ---
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
           const grid = document.querySelector('#more-options-panel .nav-grid-container');
-          
-          // 1. Edytuj Nexus (Turkus)
           if (grid && !document.getElementById('admin-edit-nexus-btn')) {
                const adminDiv = document.createElement('div');
                adminDiv.className = 'nav-item';
                adminDiv.id = 'admin-edit-nexus-btn';
-               adminDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Edytuj Nexus</span></div>`;
+               adminDiv.innerHTML = `
+                  <div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
+                      <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                      <span class="nav-label">Edytuj Nexus</span>
+                  </div>
+               `;
                adminDiv.onclick = () => {
                    this.closePanel('more-options-panel');
                    if (this.onEditNexusClick) this.onEditNexusClick();
@@ -307,12 +308,16 @@ export class UIManager {
                grid.insertBefore(adminDiv, grid.firstChild);
           }
 
-          // 2. Login Map (Fiolet)
           if (grid && !document.getElementById('admin-edit-login-map-btn')) {
               const loginEditDiv = document.createElement('div');
               loginEditDiv.className = 'nav-item';
               loginEditDiv.id = 'admin-edit-login-map-btn';
-              loginEditDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Login Map</span></div>`;
+              loginEditDiv.innerHTML = `
+                 <div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
+                     <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                     <span class="nav-label">Login Map</span>
+                 </div>
+              `;
               loginEditDiv.onclick = () => {
                   this.closePanel('more-options-panel');
                   if (this.onEditLoginMapClick) this.onEditLoginMapClick();
@@ -320,12 +325,16 @@ export class UIManager {
               grid.insertBefore(loginEditDiv, grid.firstChild);
          }
 
-         // 3. Starter Skin (Zielony) - NOWOŚĆ
          if (grid && !document.getElementById('admin-add-starter-skin-btn')) {
             const starterSkinDiv = document.createElement('div');
             starterSkinDiv.className = 'nav-item';
             starterSkinDiv.id = 'admin-add-starter-skin-btn';
-            starterSkinDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Starter Skin</span></div>`;
+            starterSkinDiv.innerHTML = `
+                <div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));">
+                    <img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon">
+                    <span class="nav-label">Starter Skin</span>
+                </div>
+            `;
             starterSkinDiv.onclick = () => {
                 this.closePanel('more-options-panel');
                 if (this.onAddStarterSkinClick) this.onAddStarterSkinClick();
@@ -413,6 +422,7 @@ export class UIManager {
 
       } else {
           statusDot.style.display = 'none'; 
+          
           actionBtn.style.background = 'linear-gradient(to bottom, #2ecc71, #27ae60)'; 
           actionBtn.innerHTML = '<div style="font-size:30px; font-weight:bold; color:white;">+</div>';
           
@@ -504,7 +514,7 @@ export class UIManager {
       }
   }
 
-  // --- SKIN DETAILS ---
+  // --- SKIN DETAILS (Z NAPRAWIONYM SHOWREWARDPANEL) ---
   async showItemDetails(item, type, keepOpen = false) { 
       const modal = document.getElementById('skin-details-modal'); 
       if (!modal) return; 
@@ -615,6 +625,42 @@ export class UIManager {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.textContent = timeString;
   }
+  
+  // --- NAPRAWIONA METODA POKAZYWANIA NAGRODY ---
+  showRewardPanel(customData = null) { 
+      const panel = document.getElementById('reward-panel'); 
+      const data = customData || this.pendingRewardData; 
+      if (!panel) return; 
+      this.bringToFront(panel); 
+      
+      if (data) { 
+          const title = document.getElementById('reward-title-text'); 
+          if(title) title.textContent = data.message || (customData ? "Odebrano Nagrody!" : "Ukończono!"); 
+          
+          const xpVal = document.getElementById('reward-xp-val'); 
+          const coinVal = document.getElementById('reward-coins-val'); 
+          
+          const gainedXp = data.totalXp !== undefined ? data.totalXp : (data.newXp && data.oldXp ? data.newXp - data.oldXp : 500); 
+          const gainedCoins = data.totalCoins !== undefined ? data.totalCoins : 100; 
+          
+          if (xpVal) xpVal.textContent = `+${gainedXp}`; 
+          if (coinVal) coinVal.textContent = `+${gainedCoins}`; 
+          
+          document.getElementById('reward-lvl-cur').textContent = data.newLevel; 
+          document.getElementById('reward-lvl-next').textContent = data.newLevel + 1; 
+          
+          const fill = document.getElementById('reward-bar-fill'); 
+          const text = document.getElementById('reward-bar-text'); 
+          if (fill && text) { 
+              const max = data.maxXp || 100; 
+              const percent = Math.min(100, Math.max(0, (data.newXp / max) * 100)); 
+              fill.style.width = `${percent}%`; 
+              text.textContent = `${data.newXp}/${max}`; 
+          } 
+      } 
+      panel.style.display = 'flex'; 
+  }
+
   handleParkourCompletion(timeStr, rewardData) {
       const victoryPanel = document.getElementById('victory-panel');
       const timeDisplay = document.getElementById('victory-time-display');
@@ -625,6 +671,7 @@ export class UIManager {
       if (timeDisplay) timeDisplay.textContent = timeStr;
       this.pendingRewardData = rewardData;
   }
+  
   hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
 
   // --- BUTTON HANDLERS ---
@@ -663,7 +710,18 @@ export class UIManager {
     const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
     const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
     const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
-    const superBtn = document.getElementById('victory-super-btn'); if (superBtn) superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); };
+    
+    // NAPRAWA BŁĘDU SHOWREWARDPANEL
+    const superBtn = document.getElementById('victory-super-btn'); 
+    if (superBtn) superBtn.onclick = () => { 
+        document.getElementById('victory-panel').style.display = 'none'; 
+        if (this.pendingRewardData) {
+            this.showRewardPanel(); // Teraz zadziała, bo jest poprawnie zdefiniowane
+        } else if (this.onExitParkour) {
+            this.onExitParkour(); 
+        }
+    };
+    
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
     const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
     
@@ -850,28 +908,6 @@ export class UIManager {
           div.onclick=()=>{ if (type === 'worlds') { this.closeAllPanels(); onSelect(item); } else { onSelect(item); } }; 
           list.appendChild(div); 
       }); 
-  }
-
-  async openItemComments(itemId, type) { 
-      const panel = document.getElementById('skin-comments-panel'); 
-      if (!panel) return; 
-      this.bringToFront(panel); panel.style.display = 'flex'; 
-      const closeBtn = document.getElementById('close-comments-btn'); 
-      if(closeBtn) closeBtn.onclick = () => { panel.style.display = 'none'; }; 
-      this.loadItemComments(itemId, type); 
-      const submitBtn = document.getElementById('comment-submit-btn'); 
-      const input = document.getElementById('comment-input'); 
-      if(submitBtn) { submitBtn.onclick = null; submitBtn.onclick = async () => { const text = input.value.trim(); if(!text) return; const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` }, body: JSON.stringify({ text }) }); if(r.ok) { input.value = ''; this.loadItemComments(itemId, type); } } catch(e) { console.error(e); } }; } 
-  }
-
-  async loadItemComments(itemId, type) { 
-      const container = document.querySelector('.comments-list-container'); 
-      if(!container) return; 
-      container.innerHTML = '<p style="text-align:center; padding:10px;">Ładowanie...</p>'; 
-      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); 
-      const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); 
-      const likeEndpoint = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); 
-      try { const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${itemId}/comments`, { headers: { 'Authorization': `Bearer ${t}` } }); const comments = await r.json(); container.innerHTML = ''; if(comments.length === 0) { container.innerHTML = '<p style="text-align:center; padding:10px; color:#666;">Brak komentarzy.</p>'; return; } comments.forEach(c => { const div = document.createElement('div'); div.className = 'comment-item'; const date = new Date(c.created_at); const now = new Date(); const diffHours = Math.floor((now - date) / (1000 * 60 * 60)); const timeStr = diffHours < 24 ? (diffHours === 0 ? "teraz" : `${diffHours}h temu`) : `${Math.floor(diffHours/24)}d temu`; div.innerHTML = `<div class="comment-avatar" style="background-image: url('${c.current_skin_thumbnail || ''}')"></div><div class="comment-content"><div class="comment-author">${c.username}</div><div class="comment-text">${c.text}</div><div class="comment-time">${timeStr}</div></div><div class="comment-actions"><div class="comment-like-count">${c.likes || 0}</div><div class="comment-like-btn">❤</div></div>`; const likeBtn = div.querySelector('.comment-like-btn'); likeBtn.onclick = async () => { try { const lr = await fetch(`${API_BASE_URL}/api/${likeEndpoint}/comments/${c.id}/like`, { method: 'POST', headers: { 'Authorization': `Bearer ${t}` } }); const ld = await lr.json(); if(ld.success) { div.querySelector('.comment-like-count').textContent = ld.likes; } } catch(e) {} }; container.appendChild(div); }); } catch(e) { container.innerHTML = '<p style="text-align:center;">Błąd.</p>'; } 
   }
   
   formatMemberSince(dateString) { const date = dateString ? new Date(dateString) : new Date(); const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]; return `Członek od ${monthNames[date.getMonth()]}, ${date.getFullYear()}`; }
