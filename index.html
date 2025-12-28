@@ -21,11 +21,38 @@
     <!-- IMPORT STYLÓW -->
     <link rel="stylesheet" href="style.css">
 
+    <!-- Styl dla numeru wersji (możesz go przenieść do style.css) -->
+    <style>
+        #game-version {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-family: 'Titan One', cursive;
+            font-size: 20px;
+            color: #fff;
+            /* Styl BSP - gruby cień/obrys */
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            z-index: 100; /* Musi być nad chmurami */
+            opacity: 0.9;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        /* Responsywność dla telefonów - trochę mniejszy tekst */
+        @media (max-width: 600px) {
+            #game-version {
+                font-size: 14px;
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
 
-    <!-- FIX: NAPRAWIONA MAPA IMPORTÓW(Brak błędu multiple instances) -->
+    <!-- FIX: NAPRAWIONA MAPA IMPORTÓW -->
     <script type="importmap">
       {
         "imports": {
@@ -39,6 +66,9 @@
   <body>
     <!-- Loading Screen -->
     <div id="loading-screen">
+        <!-- NOWY ELEMENT: NUMER WERSJI -->
+        <div id="game-version">v.0.5.0 alpha</div>
+
         <div class="clouds-container">
             <div class="cloud cloud1"></div>
             <div class="cloud cloud2"></div>
