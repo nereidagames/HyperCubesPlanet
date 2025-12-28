@@ -6,7 +6,6 @@ import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 
-// Import szablonów
 import { 
     AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, 
     SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, 
@@ -16,7 +15,6 @@ import {
 
 import { STORAGE_KEYS } from './Config.js';
 
-// Import Menedżerów
 import { FriendsManager } from './FriendsManager.js';
 import { MailManager } from './MailManager.js';
 import { NewsManager } from './NewsManager.js';
@@ -77,6 +75,9 @@ export class UIManager {
     this.previewCamera = null;
     this.previewCharacter = null;
     this.previewAnimId = null;
+
+    // BINDING (Naprawa błędu "this.showMessage is not a function")
+    this.setupOtherProfileButtons = this.setupOtherProfileButtons.bind(this);
   }
   
   initialize(isMobile) {
@@ -102,6 +103,7 @@ export class UIManager {
     }
   }
 
+  // --- ZARZĄDZANIE WARSTWAMI ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -291,7 +293,6 @@ export class UIManager {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
           const grid = document.querySelector('#more-options-panel .nav-grid-container');
-          
           if (grid && !document.getElementById('admin-edit-nexus-btn')) {
                const adminDiv = document.createElement('div');
                adminDiv.className = 'nav-item';
@@ -434,6 +435,7 @@ export class UIManager {
       } catch (e) { console.error(e); }
   }
 
+  // --- PODPIĘCIE PRZYCISKÓW W PROFILU ---
   setupOtherProfileButtons(userId, username) {
       const btnWall = document.getElementById('btn-other-wall');
       if (btnWall) {
@@ -462,14 +464,15 @@ export class UIManager {
           };
       }
 
-      // --- NOWOŚĆ: OBSŁUGA UŚMIECHU ---
+      // --- UŚMIECH (NAPRAWIONY) ---
       const btnSmile = document.getElementById('btn-other-smile');
       if (btnSmile) {
+          // Używamy funkcji strzałkowej, więc `this` będzie instancją UIManager
           btnSmile.onclick = async () => {
               const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
               if (!t) return;
               
-              // Animacja kliknięcia
+              // Efekt kliknięcia
               btnSmile.style.transform = 'scale(0.95)';
               setTimeout(() => btnSmile.style.transform = 'scale(1)', 100);
 
