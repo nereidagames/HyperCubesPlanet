@@ -75,7 +75,7 @@ export class UIManager {
     this.previewCharacter = null;
     this.previewAnimId = null;
 
-    // BINDING (Naprawa błędu "this.showMessage is not a function")
+    // BINDING
     this.setupOtherProfileButtons = this.setupOtherProfileButtons.bind(this);
   }
   
@@ -463,14 +463,12 @@ export class UIManager {
           };
       }
 
-      // --- UŚMIECH (NAPRAWIONY) ---
       const btnSmile = document.getElementById('btn-other-smile');
       if (btnSmile) {
           btnSmile.onclick = async () => {
               const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
               if (!t) return;
               
-              // Efekt kliknięcia
               btnSmile.style.transform = 'scale(0.95)';
               setTimeout(() => btnSmile.style.transform = 'scale(1)', 100);
 
@@ -879,7 +877,7 @@ export class UIManager {
   
   formatMemberSince(dateString) { const date = dateString ? new Date(dateString) : new Date(); const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]; return `Członek od ${monthNames[date.getMonth()]}, ${date.getFullYear()}`; }
 
-  // --- BRAKUJĄCA METODA ---
+  // --- NAPRAWIONA METODA POWIADOMIEŃ ---
   showMessage(message, type = 'info') {
       const div = document.createElement('div');
       div.textContent = message;
@@ -929,5 +927,54 @@ export class UIManager {
               if (div.parentNode) div.parentNode.removeChild(div);
           }, 300);
       }, 2500);
+  }
+
+  // --- NAPRAWIONA METODA NAGRÓD (PARKOUR) ---
+  showRewardPanel(data = null) {
+      // Użyj przekazanych danych lub tych zapisanych w pamięci (z Parkoura)
+      const rewardData = data || this.pendingRewardData;
+      
+      // Jeśli nie ma danych, nie otwieraj panelu
+      if (!rewardData) return;
+
+      const panel = document.getElementById('reward-panel');
+      if (!panel) return;
+
+      this.bringToFront(panel);
+      panel.style.display = 'flex';
+
+      // 1. Ustawienie wartości nagrody (XP i Monety)
+      // NewsManager zwraca 'totalXp', Parkour domyślnie 500 XP i 100 Monet (chyba że serwer zwrócił inne)
+      const earnedXp = (rewardData.totalXp !== undefined) ? rewardData.totalXp : (rewardData.xp !== undefined ? 500 : 500); // Default Parkour XP
+      const earnedCoins = (rewardData.totalCoins !== undefined) ? rewardData.totalCoins : (rewardData.coins !== undefined ? 100 : 100); // Default Parkour Coins
+
+      const xpVal = document.getElementById('reward-xp-val');
+      const coinsVal = document.getElementById('reward-coins-val');
+      
+      if (xpVal) xpVal.textContent = `+${earnedXp}`;
+      if (coinsVal) coinsVal.textContent = `+${earnedCoins}`;
+
+      // 2. Ustawienie paska postępu Levelu
+      // Dane te przychodzą z serwera (newLevel, newXp, maxXp)
+      const lvl = rewardData.newLevel || 1;
+      const xp = rewardData.newXp || 0;
+      const max = rewardData.maxXp || 100;
+
+      const curLvlEl = document.getElementById('reward-lvl-cur');
+      const nextLvlEl = document.getElementById('reward-lvl-next');
+      const barText = document.getElementById('reward-bar-text');
+      const barFill = document.getElementById('reward-bar-fill');
+
+      if (curLvlEl) curLvlEl.textContent = lvl;
+      if (nextLvlEl) nextLvlEl.textContent = lvl + 1;
+      if (barText) barText.textContent = `${xp}/${max}`;
+      
+      if (barFill) {
+          const percent = Math.min(100, Math.max(0, (xp / max) * 100)); 
+          barFill.style.width = `${percent}%`; 
+      }
+      
+      // Wyczyszczenie oczekujących danych, żeby nie otworzyło się ponownie przypadkiem
+      this.pendingRewardData = null;
   }
 }
