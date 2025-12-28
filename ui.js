@@ -1,4 +1,3 @@
-/* PLIK: ui.js */
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -467,7 +466,6 @@ export class UIManager {
       // --- UŚMIECH (NAPRAWIONY) ---
       const btnSmile = document.getElementById('btn-other-smile');
       if (btnSmile) {
-          // Używamy funkcji strzałkowej, więc `this` będzie instancją UIManager
           btnSmile.onclick = async () => {
               const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
               if (!t) return;
@@ -880,4 +878,56 @@ export class UIManager {
   }
   
   formatMemberSince(dateString) { const date = dateString ? new Date(dateString) : new Date(); const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]; return `Członek od ${monthNames[date.getMonth()]}, ${date.getFullYear()}`; }
+
+  // --- BRAKUJĄCA METODA ---
+  showMessage(message, type = 'info') {
+      const div = document.createElement('div');
+      div.textContent = message;
+      
+      div.style.position = 'fixed';
+      div.style.top = '15%'; 
+      div.style.left = '50%';
+      div.style.transform = 'translate(-50%, -50%) scale(0.8)';
+      div.style.padding = '12px 24px';
+      div.style.borderRadius = '12px';
+      div.style.color = 'white';
+      div.style.fontFamily = "'Titan One', cursive";
+      div.style.fontSize = '18px';
+      div.style.textShadow = '1.5px 1.5px 0 #000';
+      div.style.zIndex = '100000'; 
+      div.style.pointerEvents = 'none'; 
+      div.style.boxShadow = '0 5px 15px rgba(0,0,0,0.4)';
+      div.style.border = '3px solid white';
+      div.style.opacity = '0';
+      div.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+      if (type === 'error') {
+          div.style.backgroundColor = '#e74c3c'; 
+          div.style.borderColor = '#c0392b';
+      } else if (type === 'success') {
+          div.style.backgroundColor = '#2ecc71'; 
+          div.style.borderColor = '#27ae60';
+      } else {
+          div.style.backgroundColor = '#3498db'; 
+          div.style.borderColor = '#2980b9';
+      }
+
+      document.body.appendChild(div);
+
+      requestAnimationFrame(() => {
+          div.style.opacity = '1';
+          div.style.transform = 'translate(-50%, -50%) scale(1)';
+          div.style.top = '20%'; 
+      });
+
+      setTimeout(() => {
+          div.style.opacity = '0';
+          div.style.top = '15%'; 
+          div.style.transform = 'translate(-50%, -50%) scale(0.8)';
+          
+          setTimeout(() => {
+              if (div.parentNode) div.parentNode.removeChild(div);
+          }, 300);
+      }, 2500);
+  }
 }
