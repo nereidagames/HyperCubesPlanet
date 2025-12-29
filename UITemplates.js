@@ -1313,15 +1313,20 @@ export const MODALS_HTML = `
             z-index: 10;
         }
         
-        #more-options-panel .panel-content {
+        /* Styl dla paneli "Więcej" i "Zagraj" - przezroczyste tło, pełna szerokość */
+        #more-options-panel .panel-content,
+        #play-choice-panel .panel-content {
             background: rgba(0,0,0,0.6) !important;
             border: none !important;
             box-shadow: none !important;
             width: 95vw !important;
             max-width: 800px !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
-        #more-options-panel h2 { display: none; }
+        #more-options-panel h2, #play-choice-panel h2 { display: none; } /* Ukrywamy standardowe H2 */
         #more-options-panel .panel-list { display: none; }
         #more-options-panel .panel-close-button { display: none; }
         
@@ -1369,20 +1374,36 @@ export const MODALS_HTML = `
         </div>
     </div>
 
+    <!-- ZMODYFIKOWANA SEKCJA "ZAGRAJ" (BSP STYLE) -->
     <div id="play-choice-panel" class="panel-modal">
         <div class="panel-content">
-            <h2>W co chcesz zagrać?</h2>
-            <div class="build-choice-grid">
-                <div id="play-choice-parkour" class="play-choice-item">
-                    <div class="play-choice-icon" style="background-image: url('icons/icon-parkour.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #e67e22;"></div>
-                    <span class="play-choice-label text-outline">Parkour</span>
+            
+            <!-- Nagłówek w stylu BSP -->
+            <h1 class="text-outline" style="color: white; text-align: center; font-size: 32px; margin-bottom: 20px; width: 100%;">
+                W co chcesz zagrać?
+            </h1>
+
+            <!-- Grid z przyciskami (tak jak w sekcji Więcej) -->
+            <div class="nav-grid-container" style="justify-content: center; display: flex; gap: 30px;">
+                
+                <!-- PARKOUR -->
+                <div class="nav-item" id="btn-play-parkour">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-parkour.png" class="nav-icon" onerror="this.src='icons/icon-jump.png'">
+                        <span class="nav-label">Parkour</span>
+                    </div>
                 </div>
-                <div id="play-choice-chat" class="play-choice-item">
-                    <div class="play-choice-icon" style="background-image: url('icons/icon-chat.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #3498db;"></div>
-                    <span class="play-choice-label text-outline">Czat</span>
+
+                <!-- CZAT -->
+                <div class="nav-item" id="btn-play-chat">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-chat.png" class="nav-icon">
+                        <span class="nav-label">Czat</span>
+                    </div>
                 </div>
+
             </div>
-            <button class="panel-close-button">Anuluj</button>
+            <!-- Brak przycisku Anuluj, bo w BSP klika się po prostu poza okno -->
         </div>
     </div>
 
