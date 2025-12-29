@@ -1277,6 +1277,22 @@ export const MODALS_HTML = `
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
             padding-top: 15px;
         }
+
+        /* NOWY STYL DLA ZIELONYCH PRZYCISKÓW */
+        .nav-btn-box-green {
+            width: 110px; height: 110px;
+            background-image: url('icons/NavigationButtonGreen.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            position: relative;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+            padding-top: 15px;
+        }
         
         .nav-icon {
             width: 55%; height: 55%;
@@ -1291,12 +1307,13 @@ export const MODALS_HTML = `
             left: 0;
             width: 100%;
             color: white;
-            font-size: 12px;
+            font-size: 11px; /* Troszkę mniejsza czcionka, by zmieścić dłuższe nazwy */
             font-family: 'Titan One', cursive;
             text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
             text-align: center;
             z-index: 2;
             pointer-events: none;
+            line-height: 1;
         }
         
         .nav-badge {
@@ -1313,9 +1330,10 @@ export const MODALS_HTML = `
             z-index: 10;
         }
         
-        /* Styl dla paneli "Więcej" i "Zagraj" - przezroczyste tło, pełna szerokość */
+        /* Styl dla paneli "Więcej", "Zagraj" i "Buduj" - przezroczyste tło, pełna szerokość */
         #more-options-panel .panel-content,
-        #play-choice-panel .panel-content {
+        #play-choice-panel .panel-content,
+        #build-choice-panel .panel-content {
             background: rgba(0,0,0,0.6) !important;
             border: none !important;
             box-shadow: none !important;
@@ -1326,20 +1344,20 @@ export const MODALS_HTML = `
             align-items: center;
         }
         
-        #more-options-panel h2, #play-choice-panel h2 { display: none; } /* Ukrywamy standardowe H2 */
-        #more-options-panel .panel-list { display: none; }
-        #more-options-panel .panel-close-button { display: none; }
+        #more-options-panel h2, #play-choice-panel h2, #build-choice-panel h2 { display: none; } 
+        #more-options-panel .panel-list, #build-choice-panel .build-choice-grid { display: none; } 
+        #more-options-panel .panel-close-button, #build-choice-panel .panel-close-button { display: none; }
         
         @media (max-width: 600px) {
             .nav-grid-container {
                 gap: 10px;
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(3, 1fr); /* 3 kolumny na mobile, więc 4 elementy się zawiną */
             }
-            .nav-btn-box {
+            .nav-btn-box, .nav-btn-box-green {
                 width: 90px; height: 90px;
             }
             .nav-label {
-                font-size: 10px;
+                font-size: 9px;
                 bottom: 10px;
             }
         }
@@ -1374,41 +1392,114 @@ export const MODALS_HTML = `
         </div>
     </div>
 
-    <!-- ZMODYFIKOWANA SEKCJA "ZAGRAJ" (BSP STYLE) -->
+    <!-- SEKCJA "ZAGRAJ" (BSP STYLE) -->
     <div id="play-choice-panel" class="panel-modal">
         <div class="panel-content">
-            
-            <!-- Nagłówek w stylu BSP -->
             <h1 class="text-outline" style="color: white; text-align: center; font-size: 32px; margin-bottom: 20px; width: 100%;">
                 W co chcesz zagrać?
             </h1>
-
-            <!-- Grid z przyciskami (tak jak w sekcji Więcej) -->
             <div class="nav-grid-container" style="justify-content: center; display: flex; gap: 30px;">
-                
-                <!-- PARKOUR -->
                 <div class="nav-item" id="btn-play-parkour">
                     <div class="nav-btn-box">
                         <img src="icons/icon-parkour.png" class="nav-icon" onerror="this.src='icons/icon-jump.png'">
                         <span class="nav-label">Parkour</span>
                     </div>
                 </div>
-
-                <!-- CZAT -->
                 <div class="nav-item" id="btn-play-chat">
                     <div class="nav-btn-box">
                         <img src="icons/icon-chat.png" class="nav-icon">
                         <span class="nav-label">Czat</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCJA "BUDUJ" (BSP STYLE - GREEN & BLUE) -->
+    <div id="build-choice-panel" class="panel-modal">
+        <div class="panel-content">
+            
+            <h1 class="text-outline" style="color: white; text-align: center; font-size: 32px; margin-bottom: 20px; width: 100%;">
+                Co chcesz zbudować?
+            </h1>
+
+            <div class="nav-grid-container">
+                
+                <!-- GÓRNY RZĄD (ZIELONY - NOWE) -->
+                
+                <!-- 1. Nowa HyperCube -->
+                <div class="nav-item" id="build-choice-new-skin">
+                    <div class="nav-btn-box-green">
+                        <img src="icons/icon-newhypercube.png" class="nav-icon">
+                        <span class="nav-label">Nowa HyperCube</span>
+                    </div>
+                </div>
+
+                <!-- 2. Nowa Część -->
+                <div class="nav-item" id="build-choice-new-part">
+                    <div class="nav-btn-box-green">
+                        <img src="icons/icon-newhypercubepart.png" class="nav-icon">
+                        <span class="nav-label">Nowa Część</span>
+                    </div>
+                </div>
+
+                <!-- 3. Nowy Świat -->
+                <div class="nav-item" id="build-choice-new-world">
+                    <div class="nav-btn-box-green">
+                        <img src="icons/icon-newworld.png" class="nav-icon">
+                        <span class="nav-label">Nowy Świat</span>
+                    </div>
+                </div>
+
+                <!-- 4. Nowy Prefabrykat -->
+                <div class="nav-item" id="build-choice-new-prefab">
+                    <div class="nav-btn-box-green">
+                        <img src="icons/icon-newprefab.png" class="nav-icon">
+                        <span class="nav-label">Nowy Prefab</span>
+                    </div>
+                </div>
+
+                <!-- DOLNY RZĄD (NIEBIESKI - EDYCJA - PLACEHOLDERY) -->
+
+                <!-- 5. Edytuj HyperCube -->
+                <div class="nav-item" id="build-choice-edit-skin">
+                    <div class="nav-btn-box">
+                        <!-- Używamy tej samej ikony + klucz (w przyszłości) -->
+                        <img src="icons/icon-newhypercube.png" class="nav-icon">
+                        <span class="nav-label">Edytuj HyperCube</span>
+                    </div>
+                </div>
+
+                <!-- 6. Edytuj Część -->
+                <div class="nav-item" id="build-choice-edit-part">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-newhypercubepart.png" class="nav-icon">
+                        <span class="nav-label">Edytuj Część</span>
+                    </div>
+                </div>
+
+                <!-- 7. Edytuj Świat -->
+                <div class="nav-item" id="build-choice-edit-world">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-newworld.png" class="nav-icon">
+                        <span class="nav-label">Edytuj Świat</span>
+                    </div>
+                </div>
+
+                <!-- 8. Edytuj Prefab -->
+                <div class="nav-item" id="build-choice-edit-prefab">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-newprefab.png" class="nav-icon">
+                        <span class="nav-label">Edytuj Prefab</span>
+                    </div>
+                </div>
 
             </div>
-            <!-- Brak przycisku Anuluj, bo w BSP klika się po prostu poza okno -->
         </div>
     </div>
 
     <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
-    <div id="build-choice-panel" class="panel-modal"><div class="panel-content"><h2>Co budujemy?</h2><div class="build-choice-grid"><div id="build-choice-new-skin" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercube.png');"></div><span class="build-choice-label text-outline">Nowa HyperCube</span></div><div id="build-choice-new-world" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newworld.png');"></div><span class="build-choice-label text-outline">Nowy Świat</span></div><div id="build-choice-new-prefab" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newprefab.png');"></div><span class="build-choice-label text-outline">Nowy Prefabrykat</span></div><div id="build-choice-new-part" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png');"></div><span class="build-choice-label text-outline">Nowa Część HyperCube</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
+    
     <div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
     <div id="shop-panel" class="panel-modal"><div class="panel-content"><h2>Sklep</h2><div class="friends-tabs" style="margin-bottom:15px;"><div class="friends-tab active" id="shop-tab-blocks">Bloki</div><div class="friends-tab" id="shop-tab-addons">Dodatki</div></div><div id="shop-list" class="panel-list"></div><button class="panel-close-button">Zamknij</button></div></div>
     <div id="add-choice-panel" class="panel-modal"><div class="panel-content"><h2>Dodaj</h2><div class="panel-list"><div id="add-choice-blocks" class="panel-item">Bloki</div><div id="add-choice-prefabs" class="panel-item">Prefabrykaty</div><div id="add-choice-parts" class="panel-item">Części</div></div><button id="add-choice-close" class="panel-close-button">Anuluj</button></div></div>
