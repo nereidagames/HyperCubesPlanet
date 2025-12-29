@@ -665,14 +665,28 @@ export class UIManager {
     });
     
     // ZAMYKANIE NA KLIKNIĘCIE W TŁO
-    const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
-    const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
+    const moreOptions = document.getElementById('more-options-panel'); 
+    if (moreOptions) { 
+        moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); 
+    }
+    const profilePanel = document.getElementById('player-profile-panel'); 
+    if (profilePanel) { 
+        profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); 
+    }
     
     const playPanel = document.getElementById('play-choice-panel'); 
     if (playPanel) { 
         playPanel.addEventListener('click', (e) => { 
             if (e.target.id === 'play-choice-panel') e.target.style.display = 'none'; 
         }); 
+    }
+
+    // ZAMYKANIE PANELU BUDUJ NA KLIKNIĘCIE W TŁO (NOWOŚĆ)
+    const buildChoicePanel = document.getElementById('build-choice-panel');
+    if (buildChoicePanel) {
+        buildChoicePanel.addEventListener('click', (e) => {
+            if (e.target.id === 'build-choice-panel') e.target.style.display = 'none';
+        });
     }
 
     const otherProfilePanel = document.getElementById('other-player-profile-panel');
@@ -699,7 +713,7 @@ export class UIManager {
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
     const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
     
-    // NOWA OBSŁUGA PRZYCISKÓW "ZAGRAJ"
+    // OBSŁUGA PRZYCISKÓW "ZAGRAJ"
     const btnPlayParkour = document.getElementById('btn-play-parkour'); 
     const btnPlayChat = document.getElementById('btn-play-chat'); 
     
@@ -720,10 +734,19 @@ export class UIManager {
     if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
     
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; }; 
+    
+    // --- OBSŁUGA SEKCJI "BUDUJ" (GÓRNY RZĄD - NOWE) ---
     setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); }); 
     setClick('build-choice-new-skin', () => { this.closePanel('build-choice-panel'); if(this.onSkinBuilderClick) this.onSkinBuilderClick(); }); 
     setClick('build-choice-new-prefab', () => { this.closePanel('build-choice-panel'); if(this.onPrefabBuilderClick) this.onPrefabBuilderClick(); }); 
     setClick('build-choice-new-part', () => { this.closePanel('build-choice-panel'); if(this.onPartBuilderClick) this.onPartBuilderClick(); }); 
+    
+    // --- OBSŁUGA SEKCJI "BUDUJ" (DOLNY RZĄD - EDYCJA - PLACEHOLDERY) ---
+    setClick('build-choice-edit-skin', () => { this.showMessage("Funkcja edycji HyperCube wkrótce!", "info"); });
+    setClick('build-choice-edit-part', () => { this.showMessage("Funkcja edycji Części wkrótce!", "info"); });
+    setClick('build-choice-edit-world', () => { this.showMessage("Funkcja edycji Świata wkrótce!", "info"); });
+    setClick('build-choice-edit-prefab', () => { this.showMessage("Funkcja edycji Prefabrykatu wkrótce!", "info"); });
+
     setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); }); 
     setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); }); 
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
