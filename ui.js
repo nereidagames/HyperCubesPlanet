@@ -1,3 +1,4 @@
+/* PLIK: ui.js */
 import * as THREE from 'three';
 import { createBaseCharacter } from './character.js';
 import { SkinStorage } from './SkinStorage.js';
@@ -663,9 +664,17 @@ export class UIManager {
         };
     });
     
+    // ZAMYKANIE NA KLIKNIĘCIE W TŁO
     const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
     const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
     
+    const playPanel = document.getElementById('play-choice-panel'); 
+    if (playPanel) { 
+        playPanel.addEventListener('click', (e) => { 
+            if (e.target.id === 'play-choice-panel') e.target.style.display = 'none'; 
+        }); 
+    }
+
     const otherProfilePanel = document.getElementById('other-player-profile-panel');
     if (otherProfilePanel) {
         otherProfilePanel.addEventListener('click', (e) => {
@@ -690,10 +699,18 @@ export class UIManager {
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
     const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
     
-    const btnPlayParkour = document.getElementById('play-choice-parkour'); 
-    const btnPlayChat = document.getElementById('play-choice-chat'); 
-    if (btnPlayParkour) btnPlayParkour.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'parkour'); }; 
-    if (btnPlayChat) btnPlayChat.onclick = () => { this.closePanel('play-choice-panel'); this.showDiscoverPanel('worlds', 'creative'); };
+    // NOWA OBSŁUGA PRZYCISKÓW "ZAGRAJ"
+    const btnPlayParkour = document.getElementById('btn-play-parkour'); 
+    const btnPlayChat = document.getElementById('btn-play-chat'); 
+    
+    if (btnPlayParkour) btnPlayParkour.onclick = () => { 
+        this.closePanel('play-choice-panel'); 
+        this.showDiscoverPanel('worlds', 'parkour'); 
+    }; 
+    if (btnPlayChat) btnPlayChat.onclick = () => { 
+        this.closePanel('play-choice-panel'); 
+        this.showDiscoverPanel('worlds', 'creative'); 
+    };
     
     const btnDiscSkin = document.getElementById('discover-choice-skin'); 
     const btnDiscPart = document.getElementById('discover-choice-part'); 
@@ -877,7 +894,6 @@ export class UIManager {
   
   formatMemberSince(dateString) { const date = dateString ? new Date(dateString) : new Date(); const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]; return `Członek od ${monthNames[date.getMonth()]}, ${date.getFullYear()}`; }
 
-  // --- NAPRAWIONA METODA POWIADOMIEŃ ---
   showMessage(message, type = 'info') {
       const div = document.createElement('div');
       div.textContent = message;
@@ -929,12 +945,9 @@ export class UIManager {
       }, 2500);
   }
 
-  // --- NAPRAWIONA METODA NAGRÓD (PARKOUR) ---
   showRewardPanel(data = null) {
-      // Użyj przekazanych danych lub tych zapisanych w pamięci (z Parkoura)
       const rewardData = data || this.pendingRewardData;
       
-      // Jeśli nie ma danych, nie otwieraj panelu
       if (!rewardData) return;
 
       const panel = document.getElementById('reward-panel');
@@ -943,10 +956,8 @@ export class UIManager {
       this.bringToFront(panel);
       panel.style.display = 'flex';
 
-      // 1. Ustawienie wartości nagrody (XP i Monety)
-      // NewsManager zwraca 'totalXp', Parkour domyślnie 500 XP i 100 Monet (chyba że serwer zwrócił inne)
-      const earnedXp = (rewardData.totalXp !== undefined) ? rewardData.totalXp : (rewardData.xp !== undefined ? 500 : 500); // Default Parkour XP
-      const earnedCoins = (rewardData.totalCoins !== undefined) ? rewardData.totalCoins : (rewardData.coins !== undefined ? 100 : 100); // Default Parkour Coins
+      const earnedXp = (rewardData.totalXp !== undefined) ? rewardData.totalXp : (rewardData.xp !== undefined ? 500 : 500); 
+      const earnedCoins = (rewardData.totalCoins !== undefined) ? rewardData.totalCoins : (rewardData.coins !== undefined ? 100 : 100); 
 
       const xpVal = document.getElementById('reward-xp-val');
       const coinsVal = document.getElementById('reward-coins-val');
@@ -954,8 +965,6 @@ export class UIManager {
       if (xpVal) xpVal.textContent = `+${earnedXp}`;
       if (coinsVal) coinsVal.textContent = `+${earnedCoins}`;
 
-      // 2. Ustawienie paska postępu Levelu
-      // Dane te przychodzą z serwera (newLevel, newXp, maxXp)
       const lvl = rewardData.newLevel || 1;
       const xp = rewardData.newXp || 0;
       const max = rewardData.maxXp || 100;
@@ -974,7 +983,6 @@ export class UIManager {
           barFill.style.width = `${percent}%`; 
       }
       
-      // Wyczyszczenie oczekujących danych, żeby nie otworzyło się ponownie przypadkiem
       this.pendingRewardData = null;
   }
 }
