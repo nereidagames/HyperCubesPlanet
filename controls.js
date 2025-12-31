@@ -1,3 +1,4 @@
+/* PLIK: controls.js */
 import * as THREE from 'three';
 import nipplejs from 'nipplejs';
 
@@ -49,10 +50,19 @@ export class PlayerController {
     this.setupInput();
   }
 
+  // --- NOWA METODA POMOCNICZA: SPRAWDZA CZY PISZEMY ---
+  isTyping() {
+      const active = document.activeElement;
+      return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  }
+
   setupInput() {
     this.cleanupInput();
 
     this.handleKeyDown = (e) => {
+      // 1. BLOKADA SKOKU PODCZAS PISANIA
+      if (this.isTyping()) return;
+
       this.keys[e.code] = true;
       if (e.code === 'Space' && this.canJump) {
         this.jump();
@@ -108,14 +118,19 @@ export class PlayerController {
 
     // Obliczanie wektora ruchu
     const moveDirection = new THREE.Vector3();
-    if (!this.isMobile) {
+    
+    // 2. BLOKADA RUCHU (WASD) PODCZAS PISANIA
+    const isTyping = this.isTyping();
+
+    if (!this.isMobile && !isTyping) {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
         const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
         if (this.keys['KeyW']) moveDirection.add(forward);
         if (this.keys['KeyS']) moveDirection.sub(forward);
         if (this.keys['KeyA']) moveDirection.sub(right);
         if (this.keys['KeyD']) moveDirection.add(right);
-    } else {
+    } else if (this.isMobile) {
+        // Na mobile pisanie zazwyczaj zasłania ekran klawiaturą, ale joystick działa niezależnie
         moveDirection.set(this.joystickDirection.x, 0, -this.joystickDirection.y);
         moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
     }
