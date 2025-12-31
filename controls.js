@@ -19,7 +19,7 @@ export class PlayerController {
     this.gravity = options.gravity || 50;
     this.groundRestingY = options.groundRestingY || 0.1;
 
-    // --- NOWOŚĆ: Maksymalna wysokość, na którą można wejść automatycznie ---
+    // Maksymalna wysokość, na którą można wejść automatycznie (Auto-Step)
     this.maxStepHeight = 1.2; 
 
     // Wymiary gracza (hitbox)
@@ -117,7 +117,7 @@ export class PlayerController {
       this.velocity.y -= this.gravity * timeStep;
     }
 
-    // Obliczanie wektora ruchu
+    // Obliczanie wektora ruchu na podstawie Inputu
     const moveDirection = new THREE.Vector3();
     const isTyping = this.isTyping();
 
@@ -138,8 +138,31 @@ export class PlayerController {
       const angle = Math.atan2(moveDirection.x, moveDirection.z);
       this.player.rotation.y = angle;
     }
-    this.velocity.x = moveDirection.x * this.moveSpeed;
-    this.velocity.z = moveDirection.z * this.moveSpeed;
+
+    // --- ZMIANA: LOGIKA INERCJI W POWIETRZU ---
+    
+    // Obliczamy docelową prędkość wynikającą z klawiszy
+    const targetVX = moveDirection.x * this.moveSpeed;
+    const targetVZ = moveDirection.z * this.moveSpeed;
+
+    if (this.isOnGround) {
+        // NA ZIEMI: Pełna przyczepność - natychmiastowa reakcja na input
+        this.velocity.x = targetVX;
+        this.velocity.z = targetVZ;
+    } else {
+        // W POWIETRZU: Inercja (Momentum)
+        // Zamiast przepisywać prędkość na sztywno, płynnie dążymy do nowej prędkości.
+        // Jeśli puścisz klawisze, targetV jest 0, ale velocity.x będzie spadać powoli.
+        
+        // Współczynnik "śliskości" w powietrzu.
+        // Mniejsza wartość = większy poślizg/dłuższe hamowanie.
+        // Większa wartość = szybsza reakcja w powietrzu (lepsza kontrola).
+        const airControlFactor = 3.0 * timeStep; 
+
+        // Lerp (Linear Interpolation)
+        this.velocity.x += (targetVX - this.velocity.x) * airControlFactor;
+        this.velocity.z += (targetVZ - this.velocity.z) * airControlFactor;
+    }
 
     this.applyMovementAndCollisions(timeStep);
   }
@@ -234,13 +257,9 @@ export class PlayerController {
             // --- LOGIKA AUTO-STEP (Wchodzenie po schodach) ---
             const obstacleHeight = this.objectBox.max.y - this.playerBox.min.y;
             
-            // Jeśli przeszkoda jest niska (np. <= 1.2 jednostki) i wyższa niż poziom podłogi
             if (obstacleHeight > 0.01 && obstacleHeight <= this.maxStepHeight) {
-                // Podnieś gracza na wierzch przeszkody
                 this.player.position.y += obstacleHeight;
-                // Zaktualizuj hitbox po zmianie Y, żeby nie kolidował
                 this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
-                // Nie zatrzymuj prędkości X, pozwól przejść dalej
                 continue; 
             }
 
