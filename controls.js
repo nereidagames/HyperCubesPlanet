@@ -19,6 +19,9 @@ export class PlayerController {
     this.gravity = options.gravity || 50;
     this.groundRestingY = options.groundRestingY || 0.1;
 
+    // --- NOWOŚĆ: Maksymalna wysokość, na którą można wejść automatycznie ---
+    this.maxStepHeight = 1.2; 
+
     // Wymiary gracza (hitbox)
     this.playerDimensions = new THREE.Vector3(0.6, 1.0, 0.6);
 
@@ -50,7 +53,6 @@ export class PlayerController {
     this.setupInput();
   }
 
-  // --- NOWA METODA POMOCNICZA: SPRAWDZA CZY PISZEMY ---
   isTyping() {
       const active = document.activeElement;
       return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
@@ -60,7 +62,7 @@ export class PlayerController {
     this.cleanupInput();
 
     this.handleKeyDown = (e) => {
-      // 1. BLOKADA SKOKU PODCZAS PISANIA
+      // BLOKADA SKOKU PODCZAS PISANIA
       if (this.isTyping()) return;
 
       this.keys[e.code] = true;
@@ -108,7 +110,6 @@ export class PlayerController {
   }
   
   update(deltaTime, cameraRotation) {
-    // Ograniczenie kroku czasowego dla stabilności fizyki przy lagach
     const timeStep = Math.min(deltaTime, 0.05);
 
     // Grawitacja
@@ -118,8 +119,6 @@ export class PlayerController {
 
     // Obliczanie wektora ruchu
     const moveDirection = new THREE.Vector3();
-    
-    // 2. BLOKADA RUCHU (WASD) PODCZAS PISANIA
     const isTyping = this.isTyping();
 
     if (!this.isMobile && !isTyping) {
@@ -130,7 +129,6 @@ export class PlayerController {
         if (this.keys['KeyA']) moveDirection.sub(right);
         if (this.keys['KeyD']) moveDirection.add(right);
     } else if (this.isMobile) {
-        // Na mobile pisanie zazwyczaj zasłania ekran klawiaturą, ale joystick działa niezależnie
         moveDirection.set(this.joystickDirection.x, 0, -this.joystickDirection.y);
         moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
     }
@@ -146,7 +144,7 @@ export class PlayerController {
     this.applyMovementAndCollisions(timeStep);
   }
 
-  // --- GRID PARTITIONING COLLISION LOGIC ---
+  // --- GRID PARTITIONING COLLISION LOGIC + AUTO STEP ---
   applyMovementAndCollisions(deltaTime) {
     const halfHeight = this.playerDimensions.y / 2;
     const halfWidth = this.playerDimensions.x / 2;
@@ -156,21 +154,20 @@ export class PlayerController {
     // 1. Zbuduj listę kandydatów do kolizji (Broad Phase)
     const candidates = [];
 
-    // A. Dodaj obiekty globalne (podłoga, bariery) - są zawsze sprawdzane
+    // A. Dodaj obiekty globalne (podłoga, bariery)
     for (let i = 0; i < this.collidableObjects.length; i++) {
         candidates.push(this.collidableObjects[i]);
     }
 
-    // B. Dodaj bloki z Grid Mapy (tylko te blisko gracza)
+    // B. Dodaj bloki z Grid Mapy
     if (this.collisionMap && this.collisionMap.size > 0) {
         const playerX = Math.floor(this.player.position.x);
         const playerY = Math.floor(this.player.position.y);
         const playerZ = Math.floor(this.player.position.z);
 
-        // Sprawdzamy grid 3x3x5 wokół gracza
-        const rangeH = 1;      // Promień poziomy (1 blok w każdą stronę)
-        const rangeV_Down = 1; // 1 blok w dół
-        const rangeV_Up = 3;   // 3 bloki w górę (żeby nie skoczyć w sufit)
+        const rangeH = 1;      
+        const rangeV_Down = 1; 
+        const rangeV_Up = 3;   
 
         for (let x = playerX - rangeH; x <= playerX + rangeH; x++) {
             for (let z = playerZ - rangeH; z <= playerZ + rangeH; z++) {
@@ -195,11 +192,9 @@ export class PlayerController {
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of candidates) {
-        // Optymalizacja: Używamy scachowanego Box3 dla bloków z gridu
         if (object.isBlock) {
             this.objectBox.copy(object.boundingBox);
         } else {
-            // Dla globalnych obiektów (np. podłoga, ściana) obliczamy dynamicznie
             this.objectBox.setFromObject(object);
         }
 
@@ -218,10 +213,9 @@ export class PlayerController {
         }
     }
     
-    // Aktualizujemy Box gracza po korekcie Y
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
-    // === Kolizja pozioma (X) ===
+    // === Kolizja pozioma (X) z AUTO-STEP ===
     const horizontalMovementX = this.velocity.x * deltaTime;
     this.player.position.x += horizontalMovementX;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -233,11 +227,24 @@ export class PlayerController {
             this.objectBox.setFromObject(object);
         }
         
-        // Pomiń obiekty, na które gracz może wejść (schodki)
-        // (Uproszczenie: jeśli góra bloku jest niżej niż stopy gracza + margines)
+        // Pomiń obiekty, na które gracz może wejść (te poniżej stóp)
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
+            // --- LOGIKA AUTO-STEP (Wchodzenie po schodach) ---
+            const obstacleHeight = this.objectBox.max.y - this.playerBox.min.y;
+            
+            // Jeśli przeszkoda jest niska (np. <= 1.2 jednostki) i wyższa niż poziom podłogi
+            if (obstacleHeight > 0.01 && obstacleHeight <= this.maxStepHeight) {
+                // Podnieś gracza na wierzch przeszkody
+                this.player.position.y += obstacleHeight;
+                // Zaktualizuj hitbox po zmianie Y, żeby nie kolidował
+                this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+                // Nie zatrzymuj prędkości X, pozwól przejść dalej
+                continue; 
+            }
+
+            // Standardowa kolizja (ściana)
             if (horizontalMovementX > 0) {
                 this.player.position.x = this.objectBox.min.x - halfWidth - epsilon;
             } else if (horizontalMovementX < 0) {
@@ -248,7 +255,7 @@ export class PlayerController {
         }
     }
 
-    // === Kolizja pozioma (Z) ===
+    // === Kolizja pozioma (Z) z AUTO-STEP ===
     const horizontalMovementZ = this.velocity.z * deltaTime;
     this.player.position.z += horizontalMovementZ;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -263,6 +270,16 @@ export class PlayerController {
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
+            // --- LOGIKA AUTO-STEP (Wchodzenie po schodach) ---
+            const obstacleHeight = this.objectBox.max.y - this.playerBox.min.y;
+            
+            if (obstacleHeight > 0.01 && obstacleHeight <= this.maxStepHeight) {
+                this.player.position.y += obstacleHeight;
+                this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
+                continue; 
+            }
+
+            // Standardowa kolizja
             if (horizontalMovementZ > 0) {
                 this.player.position.z = this.objectBox.min.z - halfDepth - epsilon;
             } else if (horizontalMovementZ < 0) {
@@ -273,7 +290,7 @@ export class PlayerController {
         }
     }
 
-    // Sprawdzenie "podłogi świata" (zabezpieczenie przed spadnięciem w nieskończoność)
+    // Sprawdzenie "podłogi świata"
     if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY + halfHeight;
