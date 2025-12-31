@@ -139,7 +139,7 @@ export class PlayerController {
       this.player.rotation.y = angle;
     }
 
-    // --- ZMIANA: LOGIKA INERCJI W POWIETRZU ---
+    // --- ZMIANA: LOGIKA INERCJI VS KONTROLI W POWIETRZU ---
     
     // Obliczamy docelową prędkość wynikającą z klawiszy
     const targetVX = moveDirection.x * this.moveSpeed;
@@ -150,14 +150,18 @@ export class PlayerController {
         this.velocity.x = targetVX;
         this.velocity.z = targetVZ;
     } else {
-        // W POWIETRZU: Inercja (Momentum)
-        // Zamiast przepisywać prędkość na sztywno, płynnie dążymy do nowej prędkości.
-        // Jeśli puścisz klawisze, targetV jest 0, ale velocity.x będzie spadać powoli.
+        // W POWIETRZU:
         
-        // Współczynnik "śliskości" w powietrzu.
-        // Mniejsza wartość = większy poślizg/dłuższe hamowanie.
-        // Większa wartość = szybsza reakcja w powietrzu (lepsza kontrola).
-        const airControlFactor = 3.0 * timeStep; 
+        // Sprawdzamy, czy gracz próbuje się poruszać (wciska klawisze)
+        const hasInput = moveDirection.lengthSq() > 0.001;
+
+        // Jeśli gracz wciska klawisze (chce zmienić kierunek):
+        // Dajemy bardzo wysoki współczynnik (25.0) -> Reakcja jest niemal natychmiastowa (brak hamowania).
+        //
+        // Jeśli gracz puścił klawisze (chce sunąć):
+        // Dajemy niski współczynnik (2.0) -> Postać powoli traci pęd (ładne sunięcie).
+        
+        const airControlFactor = hasInput ? (25.0 * timeStep) : (2.0 * timeStep);
 
         // Lerp (Linear Interpolation)
         this.velocity.x += (targetVX - this.velocity.x) * airControlFactor;
