@@ -1,6 +1,233 @@
 /* PLIK: FriendsManager.js */
 import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 
+// --- SZABLON HTML/CSS DLA OKNA PRZYJACIÓŁ ---
+const TEMPLATE = `
+    <style>
+        #friends-panel .panel-content {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            pointer-events: auto;
+        }
+
+        .friends-full-container {
+            width: 100%; height: 100%;
+            background-color: #1e375a; 
+            display: flex; flex-direction: column;
+            position: relative;
+            padding-top: 60px; 
+        }
+
+        .friends-nav-bar {
+            background-color: #3498db;
+            height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 10px;
+            border-bottom: 4px solid #2980b9;
+        }
+        
+        .friends-back-btn {
+            width: 50px; height: 50px;
+            background: #e74c3c url('icons/icon-back.png') center/60% no-repeat;
+            border: 2px solid white; border-radius: 10px;
+            box-shadow: 0 4px 0 #c0392b; cursor: pointer;
+            flex-shrink: 0; margin-right: 10px;
+        }
+        
+        .friends-tabs-container {
+            flex: 1; display: flex; gap: 5px; overflow-x: auto;
+            align-items: center; height: 100%;
+        }
+        
+        .friend-nav-tab {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center;
+            width: 80px; height: 50px;
+            cursor: pointer; opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .friend-nav-tab.active { opacity: 1.0; border-bottom: 4px solid white; }
+        
+        .tab-icon { width: 30px; height: 30px; background-size: contain; background-position: center; background-repeat: no-repeat; }
+        .tab-label { font-size: 10px; color: white; text-align: center; text-shadow: 1px 1px 0 #000; font-weight: bold; white-space: nowrap; }
+
+        .friends-content-area {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            background-color: #1e375a;
+            padding: 10px;
+            position: relative;
+        }
+
+        .friends-section-header {
+            color: #00cec9;
+            font-size: 18px; margin: 15px 0 5px 10px;
+            text-shadow: 1.5px 1.5px 0 #000;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .status-dot.online { background: #2ecc71; }
+        .status-dot.offline { background: #e74c3c; }
+
+        .friends-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            padding: 0 5px;
+        }
+        
+        .friend-card {
+            background-color: #54a0ff;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+            position: relative;
+            box-shadow: 0 4px 0 #2e86de;
+            height: 120px;
+            border: 2px solid #2e86de;
+        }
+        
+        .friend-card-header {
+            background-color: #2e86de;
+            color: white; font-size: 11px; text-align: center;
+            padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: bold; text-shadow: 1px 1px 0 #000;
+        }
+        
+        .friend-card-body {
+            flex: 1; background-color: #54a0ff;
+            background-image: url('icons/avatar_placeholder.png'); 
+            background-size: cover; background-position: center;
+            position: relative;
+        }
+        
+        .vip-badge {
+            position: absolute; top: 2px; right: 2px;
+            width: 25px; height: 15px;
+            background: url('icons/vip_badge.png') center/contain no-repeat; 
+        }
+        
+        .add-friend-btn {
+            position: absolute; bottom: 5px; right: 5px;
+            width: 30px; height: 30px;
+            background: #2ecc71 url('icons/icon-add-friend.png') center/60% no-repeat;
+            border: 2px solid white; border-radius: 5px;
+            box-shadow: 0 2px 0 #27ae60; cursor: pointer;
+        }
+        .add-friend-btn:active { transform: translateY(2px); box-shadow: none; }
+        
+        .search-bar-container {
+            display: flex; gap: 5px; padding: 10px;
+            background-color: #2e86de;
+            align-items: center;
+        }
+        .search-input {
+            flex: 1; height: 35px; border-radius: 5px; border: none; padding: 0 10px;
+            font-family: inherit;
+        }
+        .search-btn {
+            width: 40px; height: 35px; background: #3498db url('icons/szukaj.png') center/60% no-repeat;
+            border-radius: 5px; border: 2px solid white; cursor: pointer;
+        }
+        .clear-btn {
+            height: 35px; padding: 0 10px; background: #74b9ff; color: white;
+            border-radius: 5px; border: 2px solid white; cursor: pointer; font-weight: bold; text-shadow: 1px 1px 0 #000;
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+    </style>
+
+    <div id="friends-panel" class="panel-modal" style="display:none;">
+        <div class="panel-content">
+            <div class="friends-full-container">
+                
+                <!-- NAVIGATION -->
+                <div class="friends-nav-bar">
+                    <div id="btn-friends-close-main" class="friends-back-btn"></div>
+                    <div class="friends-tabs-container">
+                        <div class="friend-nav-tab active" data-target="tab-my-friends">
+                            <div class="tab-icon" style="background-image: url('icons/icon-friends.png');"></div>
+                            <span class="tab-label">Moi Przyjaciele</span>
+                        </div>
+                        <div class="friend-nav-tab" data-target="tab-world">
+                            <div class="tab-icon" style="background-image: url('icons/wtymswiecie.png');"></div>
+                            <span class="tab-label">W tym świecie</span>
+                        </div>
+                        <div class="friend-nav-tab" data-target="tab-games">
+                            <div class="tab-icon" style="background-image: url('icons/grazinnymi.png');"></div>
+                            <span class="tab-label">Gra z innymi</span>
+                        </div>
+                        <div class="friend-nav-tab" data-target="tab-search">
+                            <div class="tab-icon" style="background-image: url('icons/szukaj.png');"></div>
+                            <span class="tab-label">Szukaj</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTENT AREA -->
+                <div class="friends-content-area">
+                    
+                    <!-- TAB 1: MOI PRZYJACIELE -->
+                    <div id="tab-my-friends" class="tab-content active">
+                        
+                        <!-- SEKCJA: PROŚBY -->
+                        <div id="section-requests" style="display:none;">
+                            <div class="friends-section-header">Prośby</div>
+                            <div id="requests-grid" class="friends-grid"></div>
+                        </div>
+
+                        <!-- SEKCJA: WYSŁANE (Placeholder) -->
+                        <div class="friends-section-header" style="opacity:0.5;">Wysłane</div>
+                        
+                        <!-- SEKCJA: ONLINE -->
+                        <div class="friends-section-header">
+                            <div class="status-dot online"></div>
+                            Przyjaciele Online: <span id="online-count">0</span>
+                        </div>
+                        <div id="friends-online-grid" class="friends-grid"></div>
+
+                        <!-- SEKCJA: OFFLINE -->
+                        <div class="friends-section-header">
+                            <div class="status-dot offline"></div>
+                            Przyjaciele Offline: <span id="offline-count">0</span>
+                        </div>
+                        <div id="friends-offline-grid" class="friends-grid"></div>
+                    </div>
+
+                    <!-- TAB 2: W TYM ŚWIECIE (Placeholder) -->
+                    <div id="tab-world" class="tab-content">
+                        <p style="color:white; text-align:center; margin-top:50px;">Brak graczy w pobliżu.</p>
+                    </div>
+                    
+                    <!-- TAB 3: GRA Z INNYMI (Placeholder) -->
+                    <div id="tab-games" class="tab-content">
+                        <p style="color:white; text-align:center; margin-top:50px;">Funkcja niedostępna.</p>
+                    </div>
+
+                    <!-- TAB 4: SZUKAJ -->
+                    <div id="tab-search" class="tab-content">
+                        <div class="search-bar-container">
+                            <input id="friends-search-input-new" class="search-input" placeholder="gracz">
+                            <div id="friends-search-btn-new" class="search-btn"></div>
+                            <div id="friends-search-clear" class="clear-btn">Wyczyść</div>
+                        </div>
+                        <div id="search-results-grid-new" class="friends-grid" style="margin-top: 15px;"></div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+`;
+
+// --- KLASA MANAGERA ---
 export class FriendsManager {
     constructor(uiManager) {
         this.ui = uiManager;
@@ -8,6 +235,13 @@ export class FriendsManager {
     }
 
     initialize() {
+        // Sprawdź czy panel już istnieje, jeśli nie - wstrzyknij
+        if (!document.getElementById('friends-panel')) {
+            const modalsLayer = document.getElementById('modals-layer');
+            if (modalsLayer) {
+                modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
+            }
+        }
         this.setupEventListeners();
     }
 
@@ -177,7 +411,6 @@ export class FriendsManager {
             actionBtn.style.backgroundImage = "url('icons/icon-chat.png')";
             actionBtn.onclick = (e) => {
                 e.stopPropagation();
-                // FIX: Otwieranie czatu zamiast tylko skrzynki
                 if(this.ui.mailManager) {
                     this.ui.mailManager.open(); 
                     this.ui.mailManager.openConversation(user.username);
