@@ -219,10 +219,11 @@ export class HighScoresManager {
     }
 
     init() {
-        // Wstrzyknięcie szablonu
-        const modalsLayer = document.getElementById('modals-layer');
-        if (modalsLayer) {
-            modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
+        if (!document.getElementById('highscores-panel')) {
+            const modalsLayer = document.getElementById('modals-layer');
+            if (modalsLayer) {
+                modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
+            }
         }
         this.setupEventListeners();
     }
@@ -387,7 +388,6 @@ export class HighScoresManager {
                 <div class="hs-col-score">${score}</div>
             `;
             
-            // OBSŁUGA KLIKNIĘCIA - Otwiera profil
             row.onclick = () => {
                 if (isMe) {
                     this.ui.openPlayerProfile();
