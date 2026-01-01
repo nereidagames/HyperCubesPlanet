@@ -62,8 +62,7 @@ const TEMPLATE = `
             padding-top: 15px;
         }
 
-        /* Kolor niebieski (domyślny NavigationButton jest niebieski, więc filtr niepotrzebny, 
-           chyba że chcemy dopasować odcień idealnie do screenshota, który jest jasnoniebieski) */
+        /* Kolor niebieski */
         .shop-btn-box.blue-style {
             filter: hue-rotate(10deg) brightness(1.1) drop-shadow(0 4px 4px rgba(0,0,0,0.3));
         }
@@ -158,27 +157,32 @@ const TEMPLATE = `
                 <div class="shop-grid-container">
                     
                     <!-- RZĄD 1 -->
+                    
+                    <!-- Klocki -->
                     <div class="shop-nav-item" id="btn-shop-blocks">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/klocki.png" class="shop-icon" onerror="this.src='icons/icon-build.png'">
+                            <img src="icons/Blocks.png" class="shop-icon" onerror="this.src='icons/icon-build.png'">
                             <span class="shop-label">Klocki</span>
                         </div>
                     </div>
                     
+                    <!-- Broń -->
                     <div class="shop-nav-item" id="btn-shop-weapon">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/bron.png" class="shop-icon" onerror="this.src='icons/icon-more.png'">
+                            <img src="icons/Weapons.png" class="shop-icon" onerror="this.src='icons/icon-more.png'">
                             <span class="shop-label">Broń</span>
                         </div>
                     </div>
 
+                    <!-- Przedmioty dolne -->
                     <div class="shop-nav-item" id="btn-shop-legs">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/przedmioty_dolne.png" class="shop-icon" onerror="this.src='icons/icon-jump.png'">
+                            <img src="icons/Legs.png" class="shop-icon" onerror="this.src='icons/icon-jump.png'">
                             <span class="shop-label">Przedmioty dolne</span>
                         </div>
                     </div>
 
+                    <!-- VIP (tutaj zostaje vip.png, bo nie było go na liście zmian, ale pasuje do reszty) -->
                     <div class="shop-nav-item" id="btn-shop-vip">
                         <div class="shop-btn-box blue-style">
                             <img src="icons/vip.png" class="shop-icon" onerror="this.src='icons/vip_badge.png'">
@@ -186,38 +190,44 @@ const TEMPLATE = `
                         </div>
                     </div>
 
+                    <!-- Zwierzaki -->
                     <div class="shop-nav-item" id="btn-shop-pets">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/zwierzaki.png" class="shop-icon" onerror="this.src='icons/icon-friends.png'">
+                            <img src="icons/Pets.png" class="shop-icon" onerror="this.src='icons/icon-friends.png'">
                             <span class="shop-label">Zwierzaki</span>
                         </div>
                     </div>
 
                     <!-- RZĄD 2 -->
+                    
+                    <!-- Dodatki Do Światów -->
                     <div class="shop-nav-item" id="btn-shop-addons">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/dodatki.png" class="shop-icon" onerror="this.src='icons/icon-newworld.png'">
+                            <img src="icons/WorldSpecials.png" class="shop-icon" onerror="this.src='icons/icon-newworld.png'">
                             <span class="shop-label">Dodatki Do Światów</span>
                         </div>
                     </div>
 
+                    <!-- Panorama nieba -->
                     <div class="shop-nav-item" id="btn-shop-skybox">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/panorama.png" class="shop-icon" onerror="this.src='icons/icon-discover.png'">
+                            <img src="icons/Skydomes.png" class="shop-icon" onerror="this.src='icons/icon-discover.png'">
                             <span class="shop-label">Panorama nieba</span>
                         </div>
                     </div>
 
+                    <!-- Tła -->
                     <div class="shop-nav-item" id="btn-shop-bg">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/tla.png" class="shop-icon" onerror="this.src='icons/icon-build.png'">
+                            <img src="icons/Backgrounds.png" class="shop-icon" onerror="this.src='icons/icon-build.png'">
                             <span class="shop-label">Tła</span>
                         </div>
                     </div>
 
+                    <!-- Muzyka -->
                     <div class="shop-nav-item" id="btn-shop-music">
                         <div class="shop-btn-box blue-style">
-                            <img src="icons/muzyka.png" class="shop-icon" onerror="this.src='icons/icon-play.png'">
+                            <img src="icons/Music.png" class="shop-icon" onerror="this.src='icons/icon-play.png'">
                             <span class="shop-label">Muzyka</span>
                         </div>
                     </div>
