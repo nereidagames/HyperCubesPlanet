@@ -211,7 +211,8 @@ class BlockStarPlanetGame {
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
       this.multiplayer = new MultiplayerManager(this.scene, this.ui, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
       
-      // --- FIX: Przekazanie lokalnej postaci do Multiplayera (do teleportacji) ---
+      // --- FIX: PRZEKAZANIE REFERENCJI LOKALNEJ POSTACI ---
+      // To pozwala MultiplayerManagerowi przesuwać gracza, gdy serwer wyśle 'teleport'
       this.multiplayer.setLocalCharacter(this.characterManager.character);
 
       this.multiplayer.initialize(token);
@@ -344,10 +345,8 @@ class BlockStarPlanetGame {
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
       this.ui.onPrefabBuilderClick = () => this.stateManager.switchToPrefabBuilder();
       this.ui.onPartBuilderClick = () => this.stateManager.switchToPartBuilder();
-      
-      // onDiscoverClick i onPlayClick obsługiwane przez NavigationManager, 
-      // ale UI wciąż może potrzebować callbacków do logiki
-      
+      this.ui.onDiscoverClick = () => this.ui.openPanel('discover-choice-panel'); 
+      this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel'); 
       this.ui.onOpenOtherProfile = (username) => this.ui.openOtherPlayerProfile(username);
 
       this.ui.onPlayerAvatarClick = () => { 
@@ -376,12 +375,12 @@ class BlockStarPlanetGame {
       this.ui.onBuyBlock = async (block) => { 
           const result = await this.blockManager.buyBlock(block.name, block.cost); 
           if(result.success) { 
-              this.ui.showMessage(`Kupiono: ${block.name}!`, 'success'); 
+              if(this.ui.showMessage) this.ui.showMessage(`Kupiono: ${block.name}!`, 'success'); 
               this.coinManager.updateBalance(result.newBalance); 
-              // return true; // Dla ShopManagera, aby odświeżył widok
+              // UI ShopManagera odświeża się sam
           } else { 
-              this.ui.showMessage(result.message, 'error'); 
-          }
+              if(this.ui.showMessage) this.ui.showMessage(result.message, 'error'); 
+          } 
       };
 
       this.ui.onSkinSelect = async (skinId, skinName, thumbnail, ownerId) => { 
@@ -440,8 +439,8 @@ class BlockStarPlanetGame {
           this.stateManager.currentState = 'SkinBuilderMode';
           this.stateManager.toggleGameControls(false);
       };
-      
-      // onShopOpen obsługiwane przez ShopManager w UI.js
+
+      this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
   }
 
   recreatePlayerController(collidables, collisionMap = null) { 
@@ -535,11 +534,12 @@ class BlockStarPlanetGame {
       }
 
       this.stateManager.exploreScene = exploreScene;
-      
-      // --- FIX: PRZEŁĄCZ SCENĘ I JOIN WORLD ---
       this.multiplayer.setScene(exploreScene);
-      this.multiplayer.joinWorld(worldData.id); // Dołącz do pokoju świata
       
+      // --- FIX: WYŚLIJ spawnPoint PRZY DOŁĄCZANIU ---
+      // Serwer użyje tego, aby odesłać komendę 'teleport' zamiast resetować gracza
+      this.multiplayer.joinWorld(worldData.id, worldData.spawnPoint); 
+
       this.stateManager.switchToExploreMode(exploreScene);
       
       const exitBtn = document.getElementById('explore-exit-button');
