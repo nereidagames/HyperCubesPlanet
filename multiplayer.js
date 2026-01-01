@@ -1,3 +1,4 @@
+/* PLIK: multiplayer.js */
 
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'; 
@@ -115,7 +116,6 @@ export class MultiplayerManager {
         break;
 
       case 'playerList':
-        // OPTYMALIZACJA: Diff zamiast resetu
         this.updatePlayersList(msg.players);
         break;
 
@@ -317,14 +317,25 @@ export class MultiplayerManager {
       }
   }
 
+  // --- POPRAWIONA METODA USUWANIA ---
   removeRemotePlayer(id) {
       const p = this.remotePlayers[id];
       if (p) {
           this.scene.remove(p.mesh);
           
+          // Czyścimy rekurencyjnie dzieci (Meshe i CSS2DObjects)
           p.mesh.traverse(child => {
+              // 1. Czyścimy geometrie WebGL (standard)
               if (child.isMesh) {
                   if(child.geometry) child.geometry.dispose();
+              }
+
+              // 2. Czyścimy elementy HTML (Nicki i dymki czatu)
+              // CSS2DObject przechowuje referencję do elementu HTML w polu .element
+              if (child.isCSS2DObject || (child.element && child.element.style)) {
+                  if (child.element && child.element.parentNode) {
+                      child.element.parentNode.removeChild(child.element);
+                  }
               }
           });
           
@@ -343,7 +354,13 @@ export class MultiplayerManager {
     const p = this.remotePlayers[id];
     if (!p) return;
     
-    if (p.chatBubble) p.mesh.remove(p.chatBubble);
+    // Usuń stary dymek jeśli istnieje
+    if (p.chatBubble) {
+        if(p.chatBubble.element && p.chatBubble.element.parentNode) {
+            p.chatBubble.element.parentNode.removeChild(p.chatBubble.element);
+        }
+        p.mesh.remove(p.chatBubble);
+    }
     
     const div = document.createElement('div');
     div.className = 'chat-bubble';
@@ -356,7 +373,11 @@ export class MultiplayerManager {
     p.chatBubble = bubble;
     
     setTimeout(() => {
+      // Sprawdź czy dymek nadal istnieje i jest tym samym dymkiem
       if (p.chatBubble === bubble) {
+        if(bubble.element && bubble.element.parentNode) {
+             bubble.element.parentNode.removeChild(bubble.element);
+        }
         p.mesh.remove(bubble);
         p.chatBubble = null;
       }
