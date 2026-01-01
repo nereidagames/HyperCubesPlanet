@@ -20,7 +20,7 @@ import { NewsManager } from './NewsManager.js';
 import { HighScoresManager } from './HighScoresManager.js';
 import { WallManager } from './WallManager.js';
 import { NavigationManager } from './NavigationManager.js';
-import { ShopManager } from './ShopManager.js'; // NOWOŚĆ
+import { ShopManager } from './ShopManager.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
@@ -62,7 +62,7 @@ export class UIManager {
     this.highScoresManager = new HighScoresManager(this);
     this.wallManager = new WallManager(this); 
     this.navigationManager = new NavigationManager(this);
-    this.shopManager = new ShopManager(this); // NOWOŚĆ
+    this.shopManager = new ShopManager(this); 
 
     this.pendingRewardData = null;
     this.pendingNewsCount = 0;
@@ -94,7 +94,7 @@ export class UIManager {
         if (this.highScoresManager.init) this.highScoresManager.init();
         if (this.wallManager.initialize) this.wallManager.initialize(); 
         if (this.navigationManager.initialize) this.navigationManager.initialize();
-        if (this.shopManager.initialize) this.shopManager.initialize(); // NOWOŚĆ
+        if (this.shopManager.initialize) this.shopManager.initialize(); 
 
         this.setupButtonHandlers();
         this.setupChatSystem(); 
@@ -673,9 +673,31 @@ export class UIManager {
         };
     });
     
-    const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
-    const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
+    // ZAMYKANIE NA KLIKNIĘCIE W TŁO
+    const moreOptions = document.getElementById('more-options-panel'); 
+    if (moreOptions) { 
+        moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); 
+    }
+    const profilePanel = document.getElementById('player-profile-panel'); 
+    if (profilePanel) { 
+        profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); 
+    }
     
+    const playPanel = document.getElementById('play-choice-panel'); 
+    if (playPanel) { 
+        playPanel.addEventListener('click', (e) => { 
+            if (e.target.id === 'play-choice-panel') e.target.style.display = 'none'; 
+        }); 
+    }
+
+    // ZAMYKANIE PANELU BUDUJ NA KLIKNIĘCIE W TŁO (NOWOŚĆ)
+    const buildChoicePanel = document.getElementById('build-choice-panel');
+    if (buildChoicePanel) {
+        buildChoicePanel.addEventListener('click', (e) => {
+            if (e.target.id === 'build-choice-panel') e.target.style.display = 'none';
+        });
+    }
+
     const otherProfilePanel = document.getElementById('other-player-profile-panel');
     if (otherProfilePanel) {
         otherProfilePanel.addEventListener('click', (e) => {
@@ -686,7 +708,6 @@ export class UIManager {
         });
     }
 
-    // GŁÓWNE PRZYCISKI HUD (Delegacja do NavigationManager/ShopManager)
     document.querySelectorAll('.game-btn').forEach(button => { 
         const type = this.getButtonType(button); 
         button.addEventListener('click', () => this.handleButtonClick(type, button)); 
@@ -701,6 +722,19 @@ export class UIManager {
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
     const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
     
+    // NOWA OBSŁUGA PRZYCISKÓW "ZAGRAJ"
+    const btnPlayParkour = document.getElementById('btn-play-parkour'); 
+    const btnPlayChat = document.getElementById('btn-play-chat'); 
+    
+    if (btnPlayParkour) btnPlayParkour.onclick = () => { 
+        this.closePanel('play-choice-panel'); 
+        this.showDiscoverPanel('worlds', 'parkour'); 
+    }; 
+    if (btnPlayChat) btnPlayChat.onclick = () => { 
+        this.closePanel('play-choice-panel'); 
+        this.showDiscoverPanel('worlds', 'creative'); 
+    };
+    
     const btnDiscSkin = document.getElementById('discover-choice-skin'); 
     const btnDiscPart = document.getElementById('discover-choice-part'); 
     const btnDiscPrefab = document.getElementById('discover-choice-prefab'); 
@@ -709,11 +743,29 @@ export class UIManager {
     if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
     
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; }; 
+    
+    // --- OBSŁUGA SEKCJI "BUDUJ" (GÓRNY RZĄD - NOWE) ---
+    setClick('build-choice-new-world', () => { this.closePanel('build-choice-panel'); this.openPanel('world-size-panel'); }); 
+    setClick('build-choice-new-skin', () => { this.closePanel('build-choice-panel'); if(this.onSkinBuilderClick) this.onSkinBuilderClick(); }); 
+    setClick('build-choice-new-prefab', () => { this.closePanel('build-choice-panel'); if(this.onPrefabBuilderClick) this.onPrefabBuilderClick(); }); 
+    setClick('build-choice-new-part', () => { this.closePanel('build-choice-panel'); if(this.onPartBuilderClick) this.onPartBuilderClick(); }); 
+    
+    // --- OBSŁUGA SEKCJI "BUDUJ" (DOLNY RZĄD - EDYCJA - PLACEHOLDERY) ---
+    setClick('build-choice-edit-skin', () => { this.showMessage("Funkcja edycji HyperCube wkrótce!", "info"); });
+    setClick('build-choice-edit-part', () => { this.showMessage("Funkcja edycji Części wkrótce!", "info"); });
+    setClick('build-choice-edit-world', () => { this.showMessage("Funkcja edycji Świata wkrótce!", "info"); });
+    setClick('build-choice-edit-prefab', () => { this.showMessage("Funkcja edycji Prefabrykatu wkrótce!", "info"); });
+
     setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); }); 
     setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); }); 
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     
-    // USUNIĘTO OBSŁUGĘ ZAKŁADEK SKLEPU (ShopManager to robi)
+    const tabBlocks = document.getElementById('shop-tab-blocks'); 
+    const tabAddons = document.getElementById('shop-tab-addons'); 
+    if (tabBlocks && tabAddons) { 
+        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; 
+        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; 
+    }
     
     const nameSubmitBtn = document.getElementById('name-submit-btn'); 
     if (nameSubmitBtn) { 
@@ -732,6 +784,7 @@ export class UIManager {
     setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
+  // --- HELPERS ---
   getButtonType(button) { 
       if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
       if (button.classList.contains('btn-buduj')) return 'buduj'; 
@@ -745,11 +798,11 @@ export class UIManager {
       buttonElement.style.transform = 'translateY(-1px) scale(0.95)'; 
       setTimeout(() => { buttonElement.style.transform = ''; }, 150); 
       
-      if (buttonType === 'zagraj') { this.navigationManager.openPanel('play-choice-panel'); return; } 
-      if (buttonType === 'buduj') { this.navigationManager.openPanel('build-choice-panel'); return; } 
+      if (buttonType === 'zagraj') { this.openPanel('play-choice-panel'); return; } 
+      if (buttonType === 'buduj') { this.openPanel('build-choice-panel'); return; } 
       if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; } 
-      if (buttonType === 'wiecej') { this.navigationManager.openPanel('more-options-panel'); return; } 
-      if (buttonType === 'kup') { if (this.onShopOpen) this.onShopOpen(); return; } // NOWOŚĆ
+      if (buttonType === 'wiecej') { this.openPanel('more-options-panel'); return; } 
+      if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; } 
   }
 
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
@@ -777,15 +830,38 @@ export class UIManager {
       this.friendsManager.close(); 
       this.highScoresManager.close(); 
       this.wallManager.close(); 
-      this.shopManager.close(); // NOWOŚĆ
   }
 
   populateShop(allBlocks, isOwnedCallback) { 
-      // Delegacja do ShopManagera
-      this.shopManager.open(allBlocks, isOwnedCallback);
+      this.allShopItems = allBlocks; 
+      this.shopIsOwnedCallback = isOwnedCallback; 
+      this.refreshShopList(); 
   }
 
-  // refreshShopList() zostało usunięte
+  refreshShopList() { 
+      const list = document.getElementById('shop-list'); 
+      if (!list) return; 
+      list.innerHTML = ''; 
+      const filteredItems = this.allShopItems.filter(item => { 
+          const cat = item.category || 'block'; return cat === this.shopCurrentCategory; 
+      }); 
+      if (filteredItems.length === 0) { 
+          list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; 
+          return; 
+      } 
+      filteredItems.forEach(b => { 
+          const i = document.createElement('div'); i.className = 'shop-item'; 
+          const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; 
+          i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; 
+          list.appendChild(i); 
+      }); 
+      list.querySelectorAll('.buy-btn').forEach(btn => { 
+          btn.onclick = () => { 
+              const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); 
+              if (b && this.onBuyBlock) this.onBuyBlock(b); 
+          }; 
+      }); 
+  }
 
   async showDiscoverPanel(type, category = null) { 
       const title=document.getElementById('discover-panel-title'); 
