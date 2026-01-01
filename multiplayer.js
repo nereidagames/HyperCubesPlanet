@@ -19,7 +19,7 @@ export class MultiplayerManager {
     this.ws = null;
     this.myId = null;
     
-    this.localCharacter = null; // Referencja do gracza lokalnego (do teleportacji)
+    this.localCharacter = null; // Referencja do lokalnego gracza (do teleportacji)
 
     this.onMessageSent = null;
     this.onMessageReceived = null;
@@ -28,7 +28,7 @@ export class MultiplayerManager {
     this.lastSentQuaternion = new THREE.Quaternion();
   }
 
-  // --- Metoda do ustawienia referencji gracza lokalnego ---
+  // --- NOWOŚĆ: Ustawienie referencji do lokalnego gracza ---
   setLocalCharacter(character) {
       this.localCharacter = character;
   }
@@ -89,7 +89,8 @@ export class MultiplayerManager {
     }
   }
 
-  joinWorld(worldId) {
+  // --- ZMODYFIKOWANA METODA: PRZYJMUJE SPAWNPOINT ---
+  joinWorld(worldId, spawnPoint = null) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           console.log(`Dołączanie do pokoju: ${worldId || 'nexus'}`);
           
@@ -98,9 +99,11 @@ export class MultiplayerManager {
               this.uiManager.addChatMessage(`<Dołączanie do: ${worldId ? 'Świata' : 'Nexusa'}...>`);
           }
 
+          // Wysyłamy spawnPoint (jeśli istnieje) do serwera
           this.ws.send(JSON.stringify({
               type: 'joinWorld',
-              worldId: worldId 
+              worldId: worldId,
+              spawnPoint: spawnPoint
           }));
 
           this.removeAllRemotePlayers();
@@ -118,26 +121,24 @@ export class MultiplayerManager {
         this.myId = msg.id;
         if (msg.type === 'init') this.removeAllRemotePlayers();
         
-        // Jeśli serwer wysyła pozycję przy powitaniu
+        // Jeśli serwer wysyła pozycję przy powitaniu (np. SmartSpawn w Nexusie)
         if (msg.position && this.localCharacter) {
              this.localCharacter.position.set(msg.position.x, msg.position.y, msg.position.z);
         }
-
+        
         if (msg.players) {
             this.updatePlayersList(msg.players);
         }
         break;
 
-      // --- OBSŁUGA TELEPORTACJI (FIX RESETU POZYCJI) ---
+      // --- NOWOŚĆ: OBSŁUGA TELEPORTACJI Z SERWERA ---
       case 'teleport':
         if (this.localCharacter && msg.position) {
             console.log("Teleporting local player to:", msg.position);
+            // Przenosimy gracza na bezpieczną pozycję wskazaną przez serwer
             this.localCharacter.position.set(msg.position.x, msg.position.y, msg.position.z);
-            // Opcjonalnie reset rotacji
-            if (msg.rotation) {
-                // Fizyka w controls.js nadpisuje rotację Y, ale to ustawia startową
-                // this.localCharacter.quaternion... (nie jest krytyczne)
-            }
+            // Opcjonalnie: można tu zresetować prędkość w PlayerControllerze, 
+            // ale zmiana pozycji zazwyczaj wystarcza, by "wyciągnąć" gracza z pętli spadania.
         }
         break;
 
@@ -343,18 +344,17 @@ export class MultiplayerManager {
       }
   }
 
-  // --- POPRAWIONE USUWANIE GRACZA (Z DOMU) ---
   removeRemotePlayer(id) {
       const p = this.remotePlayers[id];
       if (p) {
           this.scene.remove(p.mesh);
           
           p.mesh.traverse(child => {
-              // 1. WebGL geometry cleanup
+              // 1. Czyścimy WebGL
               if (child.isMesh) {
                   if(child.geometry) child.geometry.dispose();
               }
-              // 2. CSS2DObject (HTML) cleanup
+              // 2. Czyścimy HTML (Nicki, dymki)
               if (child.isCSS2DObject || (child.element && child.element.style)) {
                   if (child.element && child.element.parentNode) {
                       child.element.parentNode.removeChild(child.element);
@@ -396,7 +396,7 @@ export class MultiplayerManager {
     p.chatBubble = bubble;
     
     setTimeout(() => {
-      // Sprawdź czy to ten sam dymek (mógł zostać nadpisany przez nowszą wiadomość)
+      // Sprawdź czy dymek nadal istnieje i jest tym samym dymkiem
       if (p.chatBubble === bubble) {
         if(bubble.element && bubble.element.parentNode) {
              bubble.element.parentNode.removeChild(bubble.element);
