@@ -22,7 +22,7 @@ export class IntroManager {
         this.screens = {};
 
         this.mapGroup = new THREE.Group();
-        this.scene.add(this.mapGroup);
+        // Nie dodajemy do sceny tutaj, zrobimy to w setupScene
         
         this.textureLoader = new THREE.TextureLoader();
         this.materials = {};
@@ -57,40 +57,38 @@ export class IntroManager {
     }
 
     setupScene() {
+        // Reset kamery
         this.camera.position.copy(this.defaultCamPos);
         this.camera.lookAt(this.defaultLookAt);
         this.targetCamPos.copy(this.defaultCamPos);
         this.currentLookAt.copy(this.defaultLookAt);
         this.targetLookAt.copy(this.defaultLookAt);
 
+        // Wyczyść scenę CAŁKOWICIE
         while(this.scene.children.length > 0){ 
-            const child = this.scene.children[0];
-            if (child !== this.mapGroup) {
-                this.scene.remove(child);
-            } else {
-                this.scene.remove(child);
-            }
+            this.scene.remove(this.scene.children[0]);
         }
+
+        // Dodaj grupę mapy
         this.scene.add(this.mapGroup);
 
+        // Światła
         const amb = new THREE.AmbientLight(0xffffff, 0.7);
         const dir = new THREE.DirectionalLight(0xffffff, 0.8);
         dir.position.set(10, 20, 10);
         dir.castShadow = true;
-        
-        // Optymalizacja cieni dla menu
         dir.shadow.mapSize.width = 512;
         dir.shadow.mapSize.height = 512;
-        
         this.scene.add(amb);
         this.scene.add(dir);
 
+        // Postać
         this.previewCharacter = new THREE.Group();
         this.scene.add(this.previewCharacter);
-        
         createBaseCharacter(this.previewCharacter);
         this.previewCharacter.position.y = 1; 
 
+        // Ładuj mapę i skiny
         this.loadLoginMap();
         this.fetchStarterSkins();
     }
@@ -111,18 +109,28 @@ export class IntroManager {
     }
 
     async loadLoginMap() {
+        // Wyczyść starą mapę
         while(this.mapGroup.children.length > 0) {
             const child = this.mapGroup.children[0];
-            if(child.geometry && child.geometry !== this.sharedGeometry) child.geometry.dispose();
+            // Nie usuwamy sharedGeometry!
             this.mapGroup.remove(child);
         }
 
         try {
+            console.log("Ładowanie mapy logowania...");
             const res = await fetch(`${API_BASE_URL}/api/login-map`);
-            if (!res.ok) return;
+            let blocksData = [];
+            
+            if (res.ok) {
+                blocksData = await res.json();
+            }
 
-            const blocksData = await res.json();
-            if (!Array.isArray(blocksData) || blocksData.length === 0) return;
+            // FALLBACK: Jeśli mapa jest pusta lub błąd, stwórz podłogę
+            if (!Array.isArray(blocksData) || blocksData.length === 0) {
+                console.log("Mapa logowania pusta, generuję domyślną.");
+                this.createDefaultFloor();
+                return;
+            }
 
             const blocksByTexture = {};
             let highestYAtCenter = -100;
@@ -140,6 +148,7 @@ export class IntroManager {
                 }
             });
 
+            // Dostosuj kamerę do wysokości terenu
             if (highestYAtCenter > -100) {
                 const charY = highestYAtCenter + 1.0;
                 this.previewCharacter.position.y = charY;
@@ -179,7 +188,31 @@ export class IntroManager {
 
         } catch (e) {
             console.warn("Błąd mapy logowania:", e);
+            this.createDefaultFloor();
         }
+    }
+
+    createDefaultFloor() {
+        // Prosta szachownica
+        const tex = this.textureLoader.load('textures/trawa.png');
+        tex.magFilter = THREE.NearestFilter;
+        const mat = new THREE.MeshLambertMaterial({ map: tex });
+        
+        const size = 10;
+        const instancedMesh = new THREE.InstancedMesh(this.sharedGeometry, mat, size * size);
+        const dummy = new THREE.Object3D();
+        
+        let i = 0;
+        for(let x = -size/2; x < size/2; x++) {
+            for(let z = -size/2; z < size/2; z++) {
+                dummy.position.set(x, 0, z);
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i++, dummy.matrix);
+            }
+        }
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        this.mapGroup.add(instancedMesh);
+        this.previewCharacter.position.y = 1.5;
     }
 
     zoomIn() {
@@ -391,6 +424,7 @@ export class IntroManager {
             this.previewCharacter = null;
         }
 
+        // Czyszczenie mapy
         if (this.mapGroup) {
             this.scene.remove(this.mapGroup);
             while(this.mapGroup.children.length > 0) {
