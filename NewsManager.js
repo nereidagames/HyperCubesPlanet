@@ -1,6 +1,7 @@
 /* PLIK: NewsManager.js */
 import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 
+// --- SZABLON HTML/CSS DLA AKTUALNOŚCI ---
 const TEMPLATE = `
     <style>
         .news-container {
@@ -8,89 +9,129 @@ const TEMPLATE = `
             background-color: #e0e0e0; border-radius: 15px;
             display: flex; flex-direction: column; overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 4px solid white; font-family: 'Titan One', cursive;
+            border: 4px solid white;
+            font-family: 'Titan One', cursive;
+            pointer-events: auto;
         }
+
+        #news-modal .panel-content {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         .news-header {
             background: linear-gradient(to bottom, #4facfe, #00f2fe);
             color: white; padding: 10px 15px;
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-bottom: 2px solid white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .news-header-title { font-size: 20px; text-shadow: 2px 2px 0 #000; }
+        
+        .news-header-title {
+            font-size: 20px; text-shadow: 2px 2px 0 #000;
+        }
+        
         .btn-claim-all {
             background: linear-gradient(to bottom, #2ecc71, #27ae60);
             border: 2px solid white; border-radius: 10px;
-            padding: 8px 15px; color: white; cursor: pointer; font-family: inherit;
-            box-shadow: 0 4px 0 #1e8449; font-size: 14px; text-shadow: 1px 1px 0 #000;
+            padding: 8px 15px; color: white; cursor: pointer;
+            font-family: inherit; box-shadow: 0 4px 0 #1e8449;
+            font-size: 14px; text-shadow: 1px 1px 0 #000;
             transition: transform 0.1s;
         }
         .btn-claim-all:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e8449; }
+
         #news-list {
             flex: 1; overflow-y: auto; padding: 15px;
-            background-color: #bdc3c7; display: flex; flex-direction: column; gap: 12px;
+            background-color: #bdc3c7;
+            display: flex; flex-direction: column; gap: 12px;
         }
+        
         .news-item {
-            background-color: #fff;
-            border-radius: 12px;
+            background-color: #fff; border-radius: 12px;
             display: flex; height: 90px;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.1); 
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
             border: 2px solid white;
             position: relative; overflow: hidden;
         }
-        .news-icon-area { 
-            width: 70px; display: flex; justify-content: center; align-items: center; 
-            background: transparent; 
+        
+        .news-icon-area {
+            width: 70px; display: flex; justify-content: center; align-items: center;
+            background: transparent;
         }
-        .news-type-icon { 
-            width: 50px; height: 50px; 
+        .news-type-icon {
+            width: 50px; height: 50px;
             background-size: contain; background-repeat: no-repeat; background-position: center;
             filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.2));
         }
-        .news-content-area { 
-            flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center; 
-            color: #333;
-            text-shadow: none;
+        
+        .news-content-area {
+            flex: 1; padding: 10px; display: flex; flex-direction: column;
+            justify-content: center; color: #333; text-shadow: none;
         }
         .news-title { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
         .news-desc { font-size: 12px; color: #666; display: flex; align-items: center; gap: 5px; }
         .news-desc b { color: #e91e63; }
         
-        .news-action-area { 
-            width: 110px; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; gap: 5px; 
-            padding: 5px; background: transparent; 
+        .news-action-area {
+            width: 110px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; gap: 5px;
+            padding: 5px; background: transparent;
         }
-        .news-reward-val { 
-            color: #333; font-size: 14px; font-weight:bold; display: flex; align-items: center; gap: 4px; 
+        
+        .news-reward-val {
+            color: #333; font-size: 14px; font-weight:bold;
+            display: flex; align-items: center; gap: 4px;
         }
+        
         .btn-claim-one {
             background: linear-gradient(to bottom, #8ede13, #5ba806);
             border: 2px solid white; border-radius: 8px;
-            padding: 8px 15px; color: white; cursor: pointer; font-family: inherit; font-size: 14px;
-            box-shadow: 0 4px 0 #3e7504; text-shadow: 1px 1px 0 #000; font-weight: bold;
+            padding: 5px 12px; color: white; cursor: pointer;
+            font-family: inherit; font-size: 12px;
+            box-shadow: 0 3px 0 #3e7504; text-shadow: 1px 1px 0 #000; font-weight: bold;
         }
         .btn-claim-one:active { transform: translateY(3px); box-shadow: none; }
-        
-        .news-footer { height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9); color: white; display: flex; align-items: center; padding: 0 15px; gap: 15px; border-top: 3px solid white; }
-        .footer-chest { width: 50px; height: 50px; background: url('icons/icon-shop.png') center/contain no-repeat; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
+
+        .news-footer {
+            height: 70px; background: linear-gradient(to bottom, #3498db, #2980b9);
+            color: white; display: flex; align-items: center;
+            padding: 0 15px; gap: 15px; border-top: 3px solid white;
+        }
+        .footer-chest {
+            width: 50px; height: 50px;
+            background: url('icons/icon-shop.png') center/contain no-repeat;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+        }
     </style>
 
     <div id="news-modal" class="panel-modal" style="display:none;">
-        <div class="news-container">
-            <div class="news-header">
-                <span class="news-header-title">Twoje aktualności (<span id="news-count-header">0</span>)</span>
-                <button id="btn-news-claim-all" class="btn-claim-all">Odbierz wszystkie!</button>
-            </div>
-            <div id="news-list"></div>
-            <div class="news-footer">
-                <div class="footer-chest"></div>
-                <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">Odbieraj nagrody i uśmiechy!</span>
-                <button id="btn-news-close-main" class="panel-close-button" style="margin: 0; padding: 8px 15px; background: #e74c3c; border: 2px solid white; box-shadow: 0 4px 0 #c0392b;">X</button>
+        <div class="panel-content">
+            <div class="news-container">
+                <div class="news-header">
+                    <span class="news-header-title">Twoje aktualności (<span id="news-count-header">0</span>)</span>
+                    <button id="btn-news-claim-all" class="btn-claim-all">Odbierz wszystkie!</button>
+                </div>
+                <div id="news-list"></div>
+                <div class="news-footer">
+                    <div class="footer-chest"></div>
+                    <span class="text-outline" style="font-size: 13px; text-align: left; flex: 1; line-height: 1.2;">Namów innych graczy do korzystania z Twoich prefabrykatów i skórek</span>
+                    <button id="btn-news-close-main" class="panel-close-button" style="margin: 0; padding: 8px 15px; background: #e74c3c; border: 2px solid white; box-shadow: 0 4px 0 #c0392b;">X</button>
+                </div>
             </div>
         </div>
     </div>
 `;
 
+// --- KLASA MANAGERA ---
 export class NewsManager {
     constructor(uiManager) {
         this.ui = uiManager;
@@ -98,9 +139,12 @@ export class NewsManager {
     }
 
     initialize() {
-        const modalsLayer = document.getElementById('modals-layer');
-        if (modalsLayer) {
-            modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
+        // Wstrzyknij HTML jeśli nie istnieje
+        if (!document.getElementById('news-modal')) {
+            const modalsLayer = document.getElementById('modals-layer');
+            if (modalsLayer) {
+                modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
+            }
         }
         this.setupEventListeners();
     }
@@ -173,12 +217,10 @@ export class NewsManager {
             let descHtml = "";
 
             if (item.type === 'smile') {
-                // --- UŚMIECH (NOWOŚĆ) ---
+                // --- UŚMIECH ---
                 iconUrl = "url('icons/usmiech.png')"; 
                 titleText = "Uśmiech";
-                // source_user_skin pochodzi z JOIN-a w server.js
                 const senderAvatar = item.source_user_skin || 'icons/avatar_placeholder.png';
-                // source_username też pochodzi z server.js
                 const senderName = item.source_username || 'Ktoś';
                 
                 descHtml = `
