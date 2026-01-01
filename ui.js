@@ -19,7 +19,8 @@ import { MailManager } from './MailManager.js';
 import { NewsManager } from './NewsManager.js';
 import { HighScoresManager } from './HighScoresManager.js';
 import { WallManager } from './WallManager.js';
-import { NavigationManager } from './NavigationManager.js'; // NOWOŚĆ
+import { NavigationManager } from './NavigationManager.js';
+import { ShopManager } from './ShopManager.js'; // NOWOŚĆ
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
@@ -28,7 +29,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki (bez zmian)
+    // Callbacki
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -60,22 +61,22 @@ export class UIManager {
     this.newsManager = new NewsManager(this);
     this.highScoresManager = new HighScoresManager(this);
     this.wallManager = new WallManager(this); 
-    this.navigationManager = new NavigationManager(this); // NOWOŚĆ
+    this.navigationManager = new NavigationManager(this);
+    this.shopManager = new ShopManager(this); // NOWOŚĆ
 
-    this.shopCurrentCategory = 'block'; 
-    this.allShopItems = [];
-    this.shopIsOwnedCallback = null;
     this.pendingRewardData = null;
     this.pendingNewsCount = 0;
     this.activeZIndex = 20000; 
     this.myProfileData = null;
 
+    // --- SYSTEM RENDEROWANIA (Singleton) ---
     this.sharedPreviewRenderer = null;
     this.previewScene = null;
     this.previewCamera = null;
     this.previewCharacter = null;
     this.previewAnimId = null;
 
+    // BINDING
     this.setupOtherProfileButtons = this.setupOtherProfileButtons.bind(this);
   }
   
@@ -92,7 +93,8 @@ export class UIManager {
         if (this.newsManager.initialize) this.newsManager.initialize();
         if (this.highScoresManager.init) this.highScoresManager.init();
         if (this.wallManager.initialize) this.wallManager.initialize(); 
-        if (this.navigationManager.initialize) this.navigationManager.initialize(); // NOWOŚĆ
+        if (this.navigationManager.initialize) this.navigationManager.initialize();
+        if (this.shopManager.initialize) this.shopManager.initialize(); // NOWOŚĆ
 
         this.setupButtonHandlers();
         this.setupChatSystem(); 
@@ -104,6 +106,7 @@ export class UIManager {
     }
   }
 
+  // --- ZARZĄDZANIE WARSTWAMI ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -121,13 +124,12 @@ export class UIManager {
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
       
-      // Zredukowana lista (usunięto News, Friends, Mail i Nav Panels)
       if (modalsLayer) {
           modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + PLAYER_PROFILE_HTML + OTHER_PLAYER_PROFILE_HTML;
       }
   }
 
-  // ... (initSharedRenderer, attachRendererTo, applySkinToPreview, disposeCurrentPreview BEZ ZMIAN) ...
+  // --- RENDERER 3D (SINGLETON) ---
   initSharedRenderer() {
       this.sharedPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
       this.sharedPreviewRenderer.setSize(300, 300);
@@ -212,9 +214,11 @@ export class UIManager {
       this.previewCharacter.add(blockGroup);
   }
 
-  disposeCurrentPreview() { }
+  disposeCurrentPreview() {
+      // Singleton
+  }
 
-  // ... (updatePlayerName, updatePlayerAvatar, updateLevelInfo, updateCoinCounter, updateFPSToggleText, toggleMobileControls, updatePendingRewards BEZ ZMIAN) ...
+  // --- HUD METHODS ---
   updatePlayerName(name) { 
       const nameDisplay = document.getElementById('player-name-display'); 
       if (nameDisplay) nameDisplay.textContent = name;
@@ -291,8 +295,6 @@ export class UIManager {
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
-          // Funkcja ta wstrzykuje przyciski admina do grida w NavigationManager
-          // Musimy poczekać aż NavigationManager stworzy HTML
           const checkExist = setInterval(() => {
               const grid = document.querySelector('#more-options-panel .nav-grid-container');
               if (grid) {
@@ -309,14 +311,36 @@ export class UIManager {
                        };
                        grid.insertBefore(adminDiv, grid.firstChild);
                   }
-                  // (Reszta przycisków admina - analogicznie, wstrzykujemy je do kontenera z NavigationManagera)
-                  // ... (skróciłem dla czytelności, logika ta sama)
+
+                  if (!document.getElementById('admin-edit-login-map-btn')) {
+                      const loginEditDiv = document.createElement('div');
+                      loginEditDiv.className = 'nav-item';
+                      loginEditDiv.id = 'admin-edit-login-map-btn';
+                      loginEditDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Login Map</span></div>`;
+                      loginEditDiv.onclick = () => {
+                          this.navigationManager.closePanel('more-options-panel');
+                          if (this.onEditLoginMapClick) this.onEditLoginMapClick();
+                      };
+                      grid.insertBefore(loginEditDiv, grid.firstChild);
+                 }
+        
+                 if (!document.getElementById('admin-add-starter-skin-btn')) {
+                    const starterSkinDiv = document.createElement('div');
+                    starterSkinDiv.className = 'nav-item';
+                    starterSkinDiv.id = 'admin-add-starter-skin-btn';
+                    starterSkinDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Starter Skin</span></div>`;
+                    starterSkinDiv.onclick = () => {
+                        this.navigationManager.closePanel('more-options-panel');
+                        if (this.onAddStarterSkinClick) this.onAddStarterSkinClick();
+                    };
+                    grid.insertBefore(starterSkinDiv, grid.firstChild);
+                }
               }
           }, 500);
       }
   }
 
-  // ... (openOtherPlayerProfile, updateFriendStatusUI, loadSkinForPreview, setupOtherProfileButtons, openPlayerProfile, showItemDetails - BEZ ZMIAN) ...
+  // --- PROFIL INNEGO GRACZA ---
   async openOtherPlayerProfile(username) {
       const myName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
       if (username === myName) {
@@ -420,6 +444,7 @@ export class UIManager {
       } catch (e) { console.error(e); }
   }
 
+  // --- PODPIĘCIE PRZYCISKÓW W PROFILU ---
   setupOtherProfileButtons(userId, username) {
       const btnWall = document.getElementById('btn-other-wall');
       if (btnWall) {
@@ -476,6 +501,7 @@ export class UIManager {
       }
   }
 
+  // --- WŁASNY PROFIL ---
   async openPlayerProfile() {
       const panel = document.getElementById('player-profile-panel');
       if (!panel) return;
@@ -512,6 +538,7 @@ export class UIManager {
       }
   }
 
+  // --- SKIN DETAILS ---
   async showItemDetails(item, type, keepOpen = false) { 
       const modal = document.getElementById('skin-details-modal'); 
       if (!modal) return; 
@@ -584,6 +611,7 @@ export class UIManager {
       this.applySkinToPreview(blocksData);
   }
 
+  // --- CZAT ---
   setupChatSystem() { this.setupChatInput(); }
   
   addChatMessage(m, senderName = null) { 
@@ -612,6 +640,7 @@ export class UIManager {
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
 
+  // --- PARKOUR ---
   setParkourTimerVisible(visible) {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.style.display = visible ? 'block' : 'none';
@@ -632,7 +661,7 @@ export class UIManager {
   }
   hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
 
-  // --- ZMODYFIKOWANA OBSŁUGA PRZYCISKÓW ---
+  // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
     document.querySelectorAll('.panel-close-button').forEach(btn => {
         btn.onclick = () => { 
@@ -644,11 +673,9 @@ export class UIManager {
         };
     });
     
-    // ZAMYKANIE PROFILI
-    const profilePanel = document.getElementById('player-profile-panel'); 
-    if (profilePanel) { 
-        profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); 
-    }
+    const moreOptions = document.getElementById('more-options-panel'); if (moreOptions) { moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); }
+    const profilePanel = document.getElementById('player-profile-panel'); if (profilePanel) { profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); }
+    
     const otherProfilePanel = document.getElementById('other-player-profile-panel');
     if (otherProfilePanel) {
         otherProfilePanel.addEventListener('click', (e) => {
@@ -659,7 +686,7 @@ export class UIManager {
         });
     }
 
-    // GŁÓWNE PRZYCISKI HUD (Delegacja do NavigationManager)
+    // GŁÓWNE PRZYCISKI HUD (Delegacja do NavigationManager/ShopManager)
     document.querySelectorAll('.game-btn').forEach(button => { 
         const type = this.getButtonType(button); 
         button.addEventListener('click', () => this.handleButtonClick(type, button)); 
@@ -681,18 +708,12 @@ export class UIManager {
     if(btnDiscPart) btnDiscPart.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'part'); }; 
     if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
     
-    // Obsługa wyboru rozmiaru świata (zostaje w UI, bo łączy się bezpośrednio z logiką gry)
     const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; }; 
     setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); }); 
     setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); }); 
     setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
     
-    const tabBlocks = document.getElementById('shop-tab-blocks'); 
-    const tabAddons = document.getElementById('shop-tab-addons'); 
-    if (tabBlocks && tabAddons) { 
-        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.shopCurrentCategory = 'block'; this.refreshShopList(); }; 
-        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.shopCurrentCategory = 'addon'; this.refreshShopList(); }; 
-    }
+    // USUNIĘTO OBSŁUGĘ ZAKŁADEK SKLEPU (ShopManager to robi)
     
     const nameSubmitBtn = document.getElementById('name-submit-btn'); 
     if (nameSubmitBtn) { 
@@ -703,6 +724,12 @@ export class UIManager {
             else alert('Nazwa nie może być pusta!'); 
         }; 
     }
+    
+    setClick('btn-open-news', () => { this.newsManager.open(); }); 
+    setClick('btn-open-highscores', () => { if (this.highScoresManager) this.highScoresManager.open(); }); 
+    setClick('btn-nav-options', () => { if(this.onToggleFPS) { this.onToggleFPS(); this.showMessage("Przełączono licznik FPS", "info"); } }); 
+    setClick('logout-btn', () => { localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN); localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME); localStorage.removeItem(STORAGE_KEYS.USER_ID); window.location.reload(); }); 
+    setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
   getButtonType(button) { 
@@ -718,12 +745,11 @@ export class UIManager {
       buttonElement.style.transform = 'translateY(-1px) scale(0.95)'; 
       setTimeout(() => { buttonElement.style.transform = ''; }, 150); 
       
-      // Zmieniono na wywołania NavigationManagera
       if (buttonType === 'zagraj') { this.navigationManager.openPanel('play-choice-panel'); return; } 
       if (buttonType === 'buduj') { this.navigationManager.openPanel('build-choice-panel'); return; } 
       if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; } 
       if (buttonType === 'wiecej') { this.navigationManager.openPanel('more-options-panel'); return; } 
-      if (buttonType === 'kup') { this.openPanel('shop-panel'); if (this.onShopOpen) this.onShopOpen(); return; } 
+      if (buttonType === 'kup') { if (this.onShopOpen) this.onShopOpen(); return; } // NOWOŚĆ
   }
 
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
@@ -751,38 +777,15 @@ export class UIManager {
       this.friendsManager.close(); 
       this.highScoresManager.close(); 
       this.wallManager.close(); 
+      this.shopManager.close(); // NOWOŚĆ
   }
 
   populateShop(allBlocks, isOwnedCallback) { 
-      this.allShopItems = allBlocks; 
-      this.shopIsOwnedCallback = isOwnedCallback; 
-      this.refreshShopList(); 
+      // Delegacja do ShopManagera
+      this.shopManager.open(allBlocks, isOwnedCallback);
   }
 
-  refreshShopList() { 
-      const list = document.getElementById('shop-list'); 
-      if (!list) return; 
-      list.innerHTML = ''; 
-      const filteredItems = this.allShopItems.filter(item => { 
-          const cat = item.category || 'block'; return cat === this.shopCurrentCategory; 
-      }); 
-      if (filteredItems.length === 0) { 
-          list.innerHTML = '<p class="text-outline" style="text-align:center; padding:20px;">Brak elementów w tej kategorii.</p>'; 
-          return; 
-      } 
-      filteredItems.forEach(b => { 
-          const i = document.createElement('div'); i.className = 'shop-item'; 
-          const owned = this.shopIsOwnedCallback ? this.shopIsOwnedCallback(b.name) : false; 
-          i.innerHTML = `<div class="shop-item-info"><div class="shop-item-icon" style="background-image: url('${b.texturePath}')"></div><span class="shop-item-name text-outline">${b.name}</span></div><div class="shop-item-action">${owned ? `<span class="owned-label text-outline">Posiadane</span>` : `<button class="buy-btn" data-block-name="${b.name}">${b.cost} <img src="icons/icon-coin.png" style="width:20px;height:20px;vertical-align:middle;margin-left:5px;"></button>`}</div>`; 
-          list.appendChild(i); 
-      }); 
-      list.querySelectorAll('.buy-btn').forEach(btn => { 
-          btn.onclick = () => { 
-              const b = this.allShopItems.find(x => x.name === btn.dataset.blockName); 
-              if (b && this.onBuyBlock) this.onBuyBlock(b); 
-          }; 
-      }); 
-  }
+  // refreshShopList() zostało usunięte
 
   async showDiscoverPanel(type, category = null) { 
       const title=document.getElementById('discover-panel-title'); 
