@@ -1,5 +1,7 @@
+/* PLIK: MailManager.js */
 import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 
+// --- SZABLON HTML/CSS DLA POCZTY ---
 const TEMPLATE = `
     <style>
         .mail-wrapper {
@@ -11,6 +13,20 @@ const TEMPLATE = `
             border: 4px solid white;
             font-family: 'Titan One', sans-serif;
             position: relative;
+            pointer-events: auto;
+        }
+
+        #mail-panel .panel-content {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* INBOX HEADER */
@@ -138,46 +154,49 @@ const TEMPLATE = `
     </style>
 
     <div id="mail-panel" class="panel-modal" style="display:none;">
-        <div class="mail-wrapper">
-            
-            <!-- WIDOK 1: LISTA (INBOX) -->
-            <div id="mail-inbox-view" style="display: flex; flex-direction: column; height: 100%;">
-                <div class="mail-header">
-                    <span>Poczta</span>
-                    <div id="btn-mail-compose" class="mail-header-btn-new">+</div>
+        <div class="panel-content">
+            <div class="mail-wrapper">
+                
+                <!-- WIDOK 1: LISTA (INBOX) -->
+                <div id="mail-inbox-view" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="mail-header">
+                        <span>Poczta</span>
+                        <div id="btn-mail-compose" class="mail-header-btn-new">+</div>
+                    </div>
+                    <div id="mail-inbox-list" class="mail-inbox-list"></div>
+                    <button id="btn-mail-close-main" class="panel-close-button" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10;">Zamknij</button>
                 </div>
-                <div id="mail-inbox-list" class="mail-inbox-list"></div>
-                <button id="btn-mail-close-main" class="panel-close-button" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10;">Zamknij</button>
-            </div>
 
-            <!-- WIDOK 2: KONWERSACJA (CHAT) -->
-            <div id="mail-conversation-view" class="hidden" style="flex-direction: column; height: 100%;">
-                <div class="chat-header">
-                    <div id="btn-mail-back" class="chat-btn-back"></div>
-                    <div id="mail-chat-username" class="chat-header-user-bar">Nazwa Gracza</div>
+                <!-- WIDOK 2: KONWERSACJA (CHAT) -->
+                <div id="mail-conversation-view" class="hidden" style="flex-direction: column; height: 100%;">
+                    <div class="chat-header">
+                        <div id="btn-mail-back" class="chat-btn-back"></div>
+                        <div id="mail-chat-username" class="chat-header-user-bar">Nazwa Gracza</div>
+                    </div>
+                    <div id="mail-chat-messages" class="chat-messages-area"></div>
+                    <div class="chat-footer">
+                        <input id="mail-reply-input" class="chat-input" placeholder="Napisz wiadomość...">
+                        <div id="mail-reply-btn" class="chat-btn-send">✔</div>
+                    </div>
                 </div>
-                <div id="mail-chat-messages" class="chat-messages-area"></div>
-                <div class="chat-footer">
-                    <input id="mail-reply-input" class="chat-input" placeholder="Napisz wiadomość...">
-                    <div id="mail-reply-btn" class="chat-btn-send">✔</div>
+
+                <!-- WIDOK 3: NOWA WIADOMOŚĆ (COMPOSER) -->
+                <div id="new-mail-composer" class="hidden" style="flex-direction: column; height: 100%; background: #3498db; padding: 20px; color: white;">
+                     <h2 class="text-outline">Nowa wiadomość</h2>
+                     <input id="new-mail-recipient" class="chat-input" placeholder="Do kogo?" style="margin-bottom: 10px;">
+                     <textarea id="new-mail-text" class="chat-input" style="height: 100px; padding-top: 10px;" placeholder="Treść"></textarea>
+                     <div style="display:flex; gap: 10px; margin-top: 20px;">
+                        <button id="btn-send-new" class="btn-claim-all" style="flex:1; background: #2ecc71; border: 2px solid white; color: white; padding: 10px; border-radius: 8px;">Wyślij</button>
+                        <button id="btn-cancel-new" class="panel-close-button" style="margin:0; flex:1;">Anuluj</button>
+                     </div>
                 </div>
-            </div>
 
-            <!-- WIDOK 3: NOWA WIADOMOŚĆ (COMPOSER) -->
-            <div id="new-mail-composer" class="hidden" style="flex-direction: column; height: 100%; background: #3498db; padding: 20px; color: white;">
-                 <h2 class="text-outline">Nowa wiadomość</h2>
-                 <input id="new-mail-recipient" class="chat-input" placeholder="Do kogo?" style="margin-bottom: 10px;">
-                 <textarea id="new-mail-text" class="chat-input" style="height: 100px; padding-top: 10px;" placeholder="Treść"></textarea>
-                 <div style="display:flex; gap: 10px; margin-top: 20px;">
-                    <button id="btn-send-new" class="btn-claim-all" style="flex:1; background: #2ecc71; border: 2px solid white; color: white; padding: 10px; border-radius: 8px;">Wyślij</button>
-                    <button id="btn-cancel-new" class="panel-close-button" style="margin:0; flex:1;">Anuluj</button>
-                 </div>
             </div>
-
         </div>
     </div>
 `;
 
+// --- KLASA MANAGERA ---
 export class MailManager {
     constructor(uiManager) {
         this.ui = uiManager;
@@ -185,15 +204,17 @@ export class MailManager {
     }
 
     initialize() {
-        const modalsLayer = document.getElementById('modals-layer');
-        if (modalsLayer) {
-            modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
+        // Wstrzyknij HTML jeśli nie istnieje
+        if (!document.getElementById('mail-panel')) {
+            const modalsLayer = document.getElementById('modals-layer');
+            if (modalsLayer) {
+                modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
+            }
         }
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        // Otwieranie nowej wiadomości
         const btnCompose = document.getElementById('btn-mail-compose');
         if(btnCompose) {
             btnCompose.onclick = () => {
@@ -201,13 +222,11 @@ export class MailManager {
             };
         }
 
-        // Zamknięcie całego panelu
         const btnClose = document.getElementById('btn-mail-close-main');
         if (btnClose) {
             btnClose.onclick = () => this.close();
         }
 
-        // Wstecz z czatu do listy
         const btnBack = document.getElementById('btn-mail-back');
         if(btnBack) {
             btnBack.onclick = () => {
@@ -216,7 +235,6 @@ export class MailManager {
             };
         }
         
-        // Anuluj nową wiadomość
         const btnCancel = document.getElementById('btn-cancel-new');
         if(btnCancel) {
             btnCancel.onclick = () => {
@@ -224,7 +242,6 @@ export class MailManager {
             };
         }
 
-        // Wyślij nową wiadomość
         const btnSendNew = document.getElementById('btn-send-new');
         if(btnSendNew) {
             btnSendNew.onclick = async () => {
@@ -242,7 +259,6 @@ export class MailManager {
             };
         }
 
-        // Wyślij odpowiedź (Reply)
         const btnReply = document.getElementById('mail-reply-btn');
         if(btnReply) {
             btnReply.onclick = async () => {
@@ -250,7 +266,6 @@ export class MailManager {
             };
         }
 
-        // Obsługa Enter w polu odpowiedzi
         const replyInput = document.getElementById('mail-reply-input');
         if (replyInput) {
             replyInput.addEventListener('keypress', (e) => {
@@ -266,7 +281,6 @@ export class MailManager {
             this.ui.onSendPrivateMessage(this.activeConversation, text);
             input.value = '';
             
-            // Optymistyczne dodanie dymka
             const container = document.getElementById('mail-chat-messages');
             const row = document.createElement('div');
             row.className = 'chat-msg-row sent';
@@ -304,7 +318,7 @@ export class MailManager {
             inbox.classList.remove('hidden');
         } else if (viewName === 'chat') {
             chat.classList.remove('hidden');
-            chat.style.display = 'flex'; // Flex potrzebny dla układu
+            chat.style.display = 'flex';
         } else if (viewName === 'composer') {
             composer.classList.remove('hidden');
             composer.style.display = 'flex';
