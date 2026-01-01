@@ -163,7 +163,12 @@ export class SkinBuilderManager {
     
     document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
     
+    // --- POPRAWIONA LOGIKA OTWIERANIA MENU ---
     document.getElementById('build-add-button').onclick = () => {
+        // Reset widoczności paneli wyboru
+        document.getElementById('block-selection-panel').style.display = 'none';
+        document.getElementById('part-selection-panel').style.display = 'none';
+        
         document.getElementById('add-choice-panel').style.display = 'flex';
         // W skin builderze pokazujemy tylko parts i bloki
         document.getElementById('add-choice-prefabs').style.display = 'none';
@@ -174,14 +179,20 @@ export class SkinBuilderManager {
 
     document.getElementById('add-choice-blocks').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('part-selection-panel').style.display = 'none'; // Zamykamy części
         document.getElementById('block-selection-panel').style.display = 'flex';
     };
+    
     document.getElementById('add-choice-parts').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'none'; // Zamykamy bloki
         this.showPartSelectionPanel();
     };
+    
     document.getElementById('add-choice-close').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'none';
+        document.getElementById('part-selection-panel').style.display = 'none';
     };
   }
   
