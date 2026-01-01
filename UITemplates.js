@@ -359,15 +359,107 @@ export const HUD_HTML = `
 `;
 
 export const BUILD_UI_HTML = `
+    <style>
+        /* Style podstawowe dla przycisków UI */
+        .build-ui-button { position: absolute; pointer-events: auto; cursor: url('icons/cursor.png'), auto; background-color: #2c75ff; border: 3px solid white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 8px #0004; transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; color: white; text-shadow: 1.5px 1.5px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; font-family: 'Titan One', cursive; }
+        .build-ui-button:hover { background-color: #4c8cff; } 
+        .build-ui-button:active { transform: scale(0.95); }
+        
+        #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
+        #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
+        #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 24px; }
+        #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; z-index: 2005; }
+        
+        #build-tools-right { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
+        .tool-btn { width: 60px; height: 60px; background-color: rgba(0, 0, 0, 0.6); border: 3px solid white; border-radius: 10px; cursor: url('icons/cursor.png'), auto; display: flex; justify-content: center; align-items: center; font-size: 30px; color: white; transition: transform 0.1s, background-color 0.1s; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .tool-btn.active { background-color: #2ed573; transform: scale(1.1); border-color: #ffd700; } 
+        
+        #build-rotate-zone { position: absolute; bottom: 30px; right: 30px; width: 120px; height: 120px; background: rgba(0, 0, 0, 0.4); border: 4px solid white; border-radius: 50%; pointer-events: auto; cursor: grab; z-index: 2001; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .rotate-icon { font-size: 50px; color: white; filter: drop-shadow(2px 2px 0 #000); }
+
+        /* PANELE WYBORU (BLOKI, CZĘŚCI) */
+        #block-selection-panel, #prefab-selection-panel, #part-selection-panel { 
+            position: absolute; 
+            bottom: 90px; /* Wyżej niż przycisk + */
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85); 
+            border: 3px solid white; 
+            border-radius: 15px; 
+            padding: 15px; 
+            display: none; 
+            flex-direction: column; 
+            gap: 15px; 
+            width: 340px; 
+            pointer-events: auto; 
+            max-height: 50vh; 
+            overflow-y: auto; 
+            z-index: 3000;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        /* GRID DLA BLOKÓW - NAPRAWA ŚCISKANIA */
+        #build-block-list { 
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 10px;
+            width: 100%;
+            justify-items: center;
+        }
+
+        .block-item, .prefab-item, .part-item { 
+            width: 50px; height: 50px; 
+            border: 2px solid #ddd; border-radius: 8px; 
+            cursor: url('icons/cursor.png'), auto; 
+            transition: transform 0.1s ease; 
+            color: white; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            background-color: rgba(255,255,255,0.1);
+            flex-shrink: 0; 
+        } 
+        .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
+        
+        .part-item, .prefab-item {
+            width: 100%; 
+            height: auto;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        /* --- STYL DLA URZĄDZEŃ MOBILNYCH --- */
+        @media (max-width: 900px) {
+            #block-selection-panel, #prefab-selection-panel, #part-selection-panel {
+                left: 50%;
+                transform: translateX(-50%);
+                bottom: 100px;
+                width: 70vw; 
+                max-width: 400px;
+            }
+            
+            .block-item {
+                width: 60px;
+                height: 60px;
+            }
+            
+            #build-block-list {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+                gap: 15px;
+            }
+        }
+    </style>
+
     <div id="build-exit-button" class="build-ui-button"></div>
     <div id="build-save-button" class="build-ui-button">Zapisz</div>
     <div id="build-mode-button" class="build-ui-button">Łatwy</div>
     <div id="build-add-button" class="build-ui-button">+</div>
+    
     <div id="build-tools-right">
         <div id="tool-single" class="tool-btn active">⬜</div>
         <div id="tool-line" class="tool-btn">📏</div>
     </div>
+    
     <div id="build-rotate-zone"><div class="rotate-icon">🔄</div></div>
+    
     <div id="block-selection-panel">
         <div class="friends-tabs">
             <div class="friends-tab active" id="build-tab-blocks">Bloki</div>
@@ -375,6 +467,7 @@ export const BUILD_UI_HTML = `
         </div>
         <div id="build-block-list"></div>
     </div>
+    
     <div id="prefab-selection-panel"></div>
     <div id="part-selection-panel"></div>
 `;
