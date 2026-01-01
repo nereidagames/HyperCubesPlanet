@@ -19,11 +19,18 @@ export class MultiplayerManager {
     this.ws = null;
     this.myId = null;
     
+    this.localCharacter = null; // Referencja do gracza lokalnego (do teleportacji)
+
     this.onMessageSent = null;
     this.onMessageReceived = null;
 
     this.lastSentPosition = new THREE.Vector3();
     this.lastSentQuaternion = new THREE.Quaternion();
+  }
+
+  // --- Metoda do ustawienia referencji gracza lokalnego ---
+  setLocalCharacter(character) {
+      this.localCharacter = character;
   }
 
   setScene(newScene) {
@@ -110,8 +117,27 @@ export class MultiplayerManager {
       case 'welcome':
         this.myId = msg.id;
         if (msg.type === 'init') this.removeAllRemotePlayers();
+        
+        // Jeśli serwer wysyła pozycję przy powitaniu
+        if (msg.position && this.localCharacter) {
+             this.localCharacter.position.set(msg.position.x, msg.position.y, msg.position.z);
+        }
+
         if (msg.players) {
             this.updatePlayersList(msg.players);
+        }
+        break;
+
+      // --- OBSŁUGA TELEPORTACJI (FIX RESETU POZYCJI) ---
+      case 'teleport':
+        if (this.localCharacter && msg.position) {
+            console.log("Teleporting local player to:", msg.position);
+            this.localCharacter.position.set(msg.position.x, msg.position.y, msg.position.z);
+            // Opcjonalnie reset rotacji
+            if (msg.rotation) {
+                // Fizyka w controls.js nadpisuje rotację Y, ale to ustawia startową
+                // this.localCharacter.quaternion... (nie jest krytyczne)
+            }
         }
         break;
 
@@ -317,21 +343,18 @@ export class MultiplayerManager {
       }
   }
 
-  // --- POPRAWIONA METODA USUWANIA ---
+  // --- POPRAWIONE USUWANIE GRACZA (Z DOMU) ---
   removeRemotePlayer(id) {
       const p = this.remotePlayers[id];
       if (p) {
           this.scene.remove(p.mesh);
           
-          // Czyścimy rekurencyjnie dzieci (Meshe i CSS2DObjects)
           p.mesh.traverse(child => {
-              // 1. Czyścimy geometrie WebGL (standard)
+              // 1. WebGL geometry cleanup
               if (child.isMesh) {
                   if(child.geometry) child.geometry.dispose();
               }
-
-              // 2. Czyścimy elementy HTML (Nicki i dymki czatu)
-              // CSS2DObject przechowuje referencję do elementu HTML w polu .element
+              // 2. CSS2DObject (HTML) cleanup
               if (child.isCSS2DObject || (child.element && child.element.style)) {
                   if (child.element && child.element.parentNode) {
                       child.element.parentNode.removeChild(child.element);
@@ -354,7 +377,7 @@ export class MultiplayerManager {
     const p = this.remotePlayers[id];
     if (!p) return;
     
-    // Usuń stary dymek jeśli istnieje
+    // Usuń stary dymek
     if (p.chatBubble) {
         if(p.chatBubble.element && p.chatBubble.element.parentNode) {
             p.chatBubble.element.parentNode.removeChild(p.chatBubble.element);
@@ -373,7 +396,7 @@ export class MultiplayerManager {
     p.chatBubble = bubble;
     
     setTimeout(() => {
-      // Sprawdź czy dymek nadal istnieje i jest tym samym dymkiem
+      // Sprawdź czy to ten sam dymek (mógł zostać nadpisany przez nowszą wiadomość)
       if (p.chatBubble === bubble) {
         if(bubble.element && bubble.element.parentNode) {
              bubble.element.parentNode.removeChild(bubble.element);
