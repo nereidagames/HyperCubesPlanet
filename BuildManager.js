@@ -38,7 +38,7 @@ export class BuildManager {
     
     // FLAGI TRYBÓW
     this.isNexusMode = false;
-    this.isLoginMapMode = false; // Nowa flaga
+    this.isLoginMapMode = false;
 
     this.blockTypes = []; 
     this.selectedBlockType = null;
@@ -85,7 +85,6 @@ export class BuildManager {
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
-    // Aktualizacja tekstu przycisku Zapisz
     const saveBtn = document.getElementById('build-save-button');
     if(saveBtn) {
         if (isNexusMode) saveBtn.textContent = "Zapisz Nexus";
@@ -137,7 +136,6 @@ export class BuildManager {
     this.cameraController.setIsMobile(this.game.isMobile);
     this.setupBuildEventListeners();
 
-    // Ładowanie istniejącej mapy (Nexus lub LoginMap)
     if (this.isNexusMode) {
         await this.loadExistingMap('/api/nexus');
     } else if (this.isLoginMapMode) {
@@ -178,6 +176,89 @@ export class BuildManager {
       });
   }
 
+  // --- POPRAWIONA LOGIKA UI (NAPRAWA NAKŁADANIA SIĘ OKIEN) ---
+  setupBuildEventListeners() {
+    window.addEventListener('mousemove', this.onMouseMove);
+    window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
+    window.addEventListener('contextmenu', this.onContextMenu);
+    window.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    window.addEventListener('touchend', this.onTouchEnd);
+    window.addEventListener('touchmove', this.onTouchMove);
+
+    document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
+    document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
+    
+    // Przycisk "+" - resetuje widok i pokazuje wybór
+    document.getElementById('build-add-button').onclick = () => {
+        // Ukryj wszystkie panele wyboru
+        document.getElementById('block-selection-panel').style.display = 'none';
+        document.getElementById('prefab-selection-panel').style.display = 'none';
+        
+        document.getElementById('add-choice-panel').style.display = 'flex';
+        document.getElementById('add-choice-parts').style.display = 'none';
+        document.getElementById('add-choice-prefabs').style.display = 'block';
+    };
+
+    document.getElementById('build-save-button').onclick = () => {
+        if (this.isNexusMode) this.saveNexus();
+        else if (this.isLoginMapMode) this.saveLoginMap();
+        else this.saveWorld();
+    };
+
+    // Wybór: Bloki
+    document.getElementById('add-choice-blocks').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('prefab-selection-panel').style.display = 'none'; // UKRYJ PREFABY
+        document.getElementById('block-selection-panel').style.display = 'flex';
+        document.getElementById('build-tab-blocks').click();
+    };
+
+    // Wybór: Prefabrykaty
+    document.getElementById('add-choice-prefabs').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'none'; // UKRYJ BLOKI
+        this.showPrefabSelectionPanel();
+    };
+
+    // Zamknij
+    document.getElementById('add-choice-close').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'none';
+        document.getElementById('prefab-selection-panel').style.display = 'none';
+    };
+
+    const tabBlocks = document.getElementById('build-tab-blocks');
+    const tabAddons = document.getElementById('build-tab-addons');
+    if (tabBlocks && tabAddons) {
+        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.currentBlockCategory = 'block'; this.populateBlockSelectionPanel(); };
+        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.currentBlockCategory = 'addon'; this.populateBlockSelectionPanel(); };
+    }
+    if (this.cameraController) this.cameraController.destroy();
+  }
+  
+  async showPrefabSelectionPanel() { 
+      const panel=document.getElementById('prefab-selection-panel'); 
+      panel.innerHTML='<p style="color:white">Ładowanie...</p>'; 
+      panel.style.display='flex';
+      const prefabList = await PrefabStorage.getSavedPrefabsList();
+      panel.innerHTML = '';
+      if(prefabList.length===0){ 
+          panel.innerHTML='<div class="panel-item text-outline">Brak prefabrykatów</div>'; 
+      } else { 
+          prefabList.forEach(item => { 
+              const div=document.createElement('div'); 
+              div.className='panel-item text-outline prefab-item'; 
+              div.textContent=item.name; 
+              div.onclick=async ()=>{ 
+                  await this.selectPrefab(item.id); 
+                  panel.style.display='none'; 
+              }; 
+              panel.appendChild(div); 
+          }); 
+      } 
+  }
+  
   getPointsOnLine(start, end) { 
       const points=[]; 
       const dist=start.distanceTo(end); 
@@ -194,10 +275,7 @@ export class BuildManager {
 
   updateLinePreview(targetPos) { 
       if(!this.isDraggingLine || !this.dragStartPos || !this.selectedBlockType) return;
-      
-      if (this.lastLineTargetPos && this.lastLineTargetPos.equals(targetPos)) {
-          return;
-      }
+      if (this.lastLineTargetPos && this.lastLineTargetPos.equals(targetPos)) { return; }
       this.lastLineTargetPos = targetPos.clone();
 
       while(this.previewLineGroup.children.length > 0){ 
@@ -238,7 +316,6 @@ export class BuildManager {
       this.lastLineTargetPos = null;
   }
 
-  // --- UNIWERSALNE ŁADOWANIE MAPY (Nexus / Login) ---
   async loadExistingMap(endpoint) { 
       try{ 
           const response=await fetch(`${API_BASE_URL}${endpoint}`); 
@@ -301,73 +378,6 @@ export class BuildManager {
       this.scene.add(this.previewBlock); 
   }
   
-  setupBuildEventListeners() {
-    window.addEventListener('mousemove', this.onMouseMove);
-    window.addEventListener('mousedown', this.onMouseDown);
-    window.addEventListener('mouseup', this.onMouseUp);
-    window.addEventListener('contextmenu', this.onContextMenu);
-    window.addEventListener('touchstart', this.onTouchStart, { passive: false });
-    window.addEventListener('touchend', this.onTouchEnd);
-    window.addEventListener('touchmove', this.onTouchMove);
-
-    document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
-    document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
-    document.getElementById('build-add-button').onclick = () => {
-        document.getElementById('add-choice-panel').style.display = 'flex';
-        document.getElementById('add-choice-parts').style.display = 'none';
-        document.getElementById('add-choice-prefabs').style.display = 'block';
-    };
-
-    // ZAPISYWANIE (Obsługa różnych trybów)
-    document.getElementById('build-save-button').onclick = () => {
-        if (this.isNexusMode) this.saveNexus();
-        else if (this.isLoginMapMode) this.saveLoginMap();
-        else this.saveWorld();
-    };
-
-    document.getElementById('add-choice-blocks').onclick = () => {
-        document.getElementById('add-choice-panel').style.display = 'none';
-        document.getElementById('block-selection-panel').style.display = 'flex';
-        document.getElementById('build-tab-blocks').click();
-    };
-    document.getElementById('add-choice-prefabs').onclick = () => {
-        document.getElementById('add-choice-panel').style.display = 'none';
-        this.showPrefabSelectionPanel();
-    };
-    document.getElementById('add-choice-close').onclick = () => {
-        document.getElementById('add-choice-panel').style.display = 'none';
-    };
-    const tabBlocks = document.getElementById('build-tab-blocks');
-    const tabAddons = document.getElementById('build-tab-addons');
-    if (tabBlocks && tabAddons) {
-        tabBlocks.onclick = () => { tabBlocks.classList.add('active'); tabAddons.classList.remove('active'); this.currentBlockCategory = 'block'; this.populateBlockSelectionPanel(); };
-        tabAddons.onclick = () => { tabAddons.classList.add('active'); tabBlocks.classList.remove('active'); this.currentBlockCategory = 'addon'; this.populateBlockSelectionPanel(); };
-    }
-    if (this.cameraController) this.cameraController.destroy();
-  }
-  
-  async showPrefabSelectionPanel() { 
-      const panel=document.getElementById('prefab-selection-panel'); 
-      panel.innerHTML='<p style="color:white">Ładowanie...</p>'; 
-      panel.style.display='flex';
-      const prefabList = await PrefabStorage.getSavedPrefabsList();
-      panel.innerHTML = '';
-      if(prefabList.length===0){ 
-          panel.innerHTML='<div class="panel-item text-outline">Brak prefabrykatów</div>'; 
-      } else { 
-          prefabList.forEach(item => { 
-              const div=document.createElement('div'); 
-              div.className='panel-item text-outline prefab-item'; 
-              div.textContent=item.name; 
-              div.onclick=async ()=>{ 
-                  await this.selectPrefab(item.id); 
-                  panel.style.display='none'; 
-              }; 
-              panel.appendChild(div); 
-          }); 
-      } 
-  }
-  
   selectBlockType(blockType) { this.currentBuildMode='block'; this.selectedBlockType=blockType; if(this.previewBlock){ this.previewBlock.material=this.materials[blockType.texturePath].clone(); this.previewBlock.material.transparent=true; this.previewBlock.material.opacity=0.5; this.previewBlock.material.needsUpdate=true; } this.previewPrefab.visible=false; this.previewBlock.visible=true; }
   async selectPrefab(prefabId) { 
       this.currentBuildMode='prefab'; 
@@ -387,13 +397,21 @@ export class BuildManager {
   }
   
   toggleCameraMode() { const button=document.getElementById('build-mode-button'); if(this.cameraController.mode==='orbital'){ this.cameraController.setMode('free'); button.textContent='Zaawansowany'; } else { this.cameraController.setMode('orbital'); button.textContent='Łatwy'; } }
+  
   removeBuildEventListeners() { window.removeEventListener('mousemove',this.onMouseMove); window.removeEventListener('mousedown',this.onMouseDown); window.removeEventListener('mouseup',this.onMouseUp); window.removeEventListener('contextmenu',this.onContextMenu); window.removeEventListener('touchstart',this.onTouchStart); window.removeEventListener('touchend',this.onTouchEnd); window.removeEventListener('touchmove',this.onTouchMove); document.getElementById('build-exit-button').onclick=null; document.getElementById('build-mode-button').onclick=null; document.getElementById('build-add-button').onclick=null; document.getElementById('build-save-button').onclick=null; document.getElementById('add-choice-blocks').onclick=null; document.getElementById('add-choice-prefabs').onclick=null; document.getElementById('add-choice-close').onclick=null; if(this.cameraController) this.cameraController.destroy(); }
+  
   onMouseMove(e) { this.mouse.x=(e.clientX/window.innerWidth)*2-1; this.mouse.y=-(e.clientY/window.innerHeight)*2+1; if(this.isDraggingLine){ this.updateRaycast(); if(this.previewBlock.visible) this.updateLinePreview(this.previewBlock.position); } }
+  
   isEventOnUI(event) { const target=event.target; return (target.closest('.build-ui-button')||target.closest('.panel-list')||target.closest('#build-tools-right')||target.closest('#block-selection-panel')||target.closest('#prefab-selection-panel')||target.closest('#part-selection-panel')||target.closest('#add-choice-panel')||target.closest('#build-rotate-zone')||target.closest('#joystick-zone')); }
+  
   onMouseDown(e) { if(!this.isActive||this.game.isMobile||this.isEventOnUI(e)) return; if(e.button===0){ if(this.currentBuildMode==='block'&&this.previewBlock.visible){ if(this.currentTool==='line'){ this.isDraggingLine=true; this.dragStartPos=this.previewBlock.position.clone(); this.previewBlock.visible=false; } else { this.placeBlock(); } } else if(this.currentBuildMode==='prefab'&&this.previewPrefab.visible){ this.placePrefab(); } } else if(e.button===2){ this.removeBlock(); } }
+  
   onMouseUp(e) { if(this.isDraggingLine){ this.isDraggingLine=false; this.placeLine(); this.previewBlock.visible=true; } }
+  
   onTouchStart(event) { if(!this.isActive||!this.game.isMobile) return; if(this.isEventOnUI(event)) return; const touch=event.touches[0]; if(event.touches.length>1) return; event.preventDefault(); this.isLongPress=false; this.mouse.x=(touch.clientX/window.innerWidth)*2-1; this.mouse.y=-(touch.clientY/window.innerHeight)*2+1; this.touchStartPosition.x=touch.clientX; this.touchStartPosition.y=touch.clientY; this.updateRaycast(); if(this.currentTool==='line'&&this.previewBlock.visible){ this.isDraggingLine=true; this.dragStartPos=this.previewBlock.position.clone(); this.previewBlock.visible=false; this.isLongPress=false; } else { this.isLongPress=false; clearTimeout(this.longPressTimer); this.longPressTimer=setTimeout(()=>{ this.isLongPress=true; this.removeBlock(); },500); } }
+  
   onTouchMove(event) { if(!this.isActive||!this.game.isMobile) return; const touch=event.touches[0]; if(this.isDraggingLine){ this.mouse.x=(touch.clientX/window.innerWidth)*2-1; this.mouse.y=-(touch.clientY/window.innerHeight)*2+1; this.updateRaycast(); if(this.previewBlock.visible){ this.updateLinePreview(this.previewBlock.position); } } else { const deltaX=touch.clientX-this.touchStartPosition.x; const deltaY=touch.clientY-this.touchStartPosition.y; if(Math.sqrt(deltaX*deltaX+deltaY*deltaY)>10) clearTimeout(this.longPressTimer); } }
+  
   onTouchEnd(event) { if(!this.isActive||!this.game.isMobile) return; if(this.isEventOnUI(event)) return; clearTimeout(this.longPressTimer); if(this.isDraggingLine){ this.isDraggingLine=false; this.placeLine(); this.previewBlock.visible=true; } else if(!this.isLongPress){ if(this.currentBuildMode==='block'&&this.previewBlock.visible&&this.currentTool==='single') this.placeBlock(); else if(this.currentBuildMode==='prefab'&&this.previewPrefab.visible) this.placePrefab(); } }
   
   updateRaycast() { 
@@ -439,7 +457,6 @@ export class BuildManager {
   
   async saveNexus() { const token=localStorage.getItem(JWT_TOKEN_KEY); if(!token){ alert("Błąd autoryzacji!"); return; } const blocksData=this.placedBlocks.map(block=>({ x:block.position.x, y:block.position.y, z:block.position.z, texturePath:block.userData.texturePath })); const saveBtn=document.getElementById('build-save-button'); saveBtn.textContent="Zapisywanie..."; saveBtn.style.cursor='wait'; try{ const response=await fetch(`${API_BASE_URL}/api/nexus`,{ method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, body:JSON.stringify({blocks:blocksData}) }); const result=await response.json(); if(response.ok){ alert("Nexus zaktualizowany!"); this.game.stateManager.switchToMainMenu(); } else { alert(`Błąd: ${result.message}`); } } catch(e){ alert("Błąd sieci."); console.error(e); } finally{ saveBtn.textContent="Zapisz Nexus"; saveBtn.style.cursor='pointer'; } }
 
-  // --- NOWOŚĆ: Zapisywanie mapy logowania ---
   async saveLoginMap() { 
       const token=localStorage.getItem(JWT_TOKEN_KEY); 
       if(!token){ alert("Błąd autoryzacji!"); return; } 
@@ -488,7 +505,7 @@ export class BuildManager {
   exitBuildMode() {
     this.isActive = false;
     this.isNexusMode = false;
-    this.isLoginMapMode = false; // Reset flagi
+    this.isLoginMapMode = false;
     this.removeBuildEventListeners();
     this.collidableBuildObjects = [];
     this.placedBlocks = [];
