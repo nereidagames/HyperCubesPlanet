@@ -80,20 +80,59 @@ export class GameStateManager {
         if(joystickZone) joystickZone.style.display = 'block'; 
     }
 
-    // --- POPRAWKA: Przekazywanie isLoginMapMode ---
+    // --- FIX: CZYSZCZENIE NICKÓW PRZY WEJŚCIU DO BUILDERA ---
+    
+    cleanUpMultiplayerEntities() {
+        // Ta funkcja usuwa graczy (modele 3D + nicki HTML)
+        if (this.managers.multiplayer) {
+            this.managers.multiplayer.removeAllRemotePlayers();
+        }
+        // Ukrywamy chat bubble jeśli jakieś wiszą
+        const bubbles = document.querySelectorAll('.chat-bubble');
+        bubbles.forEach(b => b.remove());
+    }
+
     switchToBuildMode(size, isNexusMode = false, isLoginMapMode = false) {
         if (this.currentState !== 'MainMenu') return;
+        
+        this.cleanUpMultiplayerEntities(); // FIX
+        
         this.currentState = 'BuildMode';
         this.toggleGameControls(false);
         if (this.managers.build) {
-            // Przekazujemy wszystkie 3 parametry do BuildManagera
             this.managers.build.enterBuildMode(size, isNexusMode, isLoginMapMode);
         }
     }
 
-    switchToSkinBuilder() { if (this.currentState !== 'MainMenu') return; this.currentState = 'SkinBuilderMode'; this.toggleGameControls(false); if (this.managers.skinBuild) this.managers.skinBuild.enterBuildMode(); }
-    switchToPrefabBuilder() { if (this.currentState !== 'MainMenu') return; this.currentState = 'PrefabBuilderMode'; this.toggleGameControls(false); if (this.managers.prefabBuild) this.managers.prefabBuild.enterBuildMode(); }
-    switchToPartBuilder() { if (this.currentState !== 'MainMenu') return; this.currentState = 'PartBuilderMode'; this.toggleGameControls(false); if (this.managers.partBuild) this.managers.partBuild.enterBuildMode(); }
+    switchToSkinBuilder() { 
+        if (this.currentState !== 'MainMenu') return;
+        
+        this.cleanUpMultiplayerEntities(); // FIX
+        
+        this.currentState = 'SkinBuilderMode'; 
+        this.toggleGameControls(false); 
+        if (this.managers.skinBuild) this.managers.skinBuild.enterBuildMode(); 
+    }
+    
+    switchToPrefabBuilder() { 
+        if (this.currentState !== 'MainMenu') return;
+        
+        this.cleanUpMultiplayerEntities(); // FIX
+        
+        this.currentState = 'PrefabBuilderMode'; 
+        this.toggleGameControls(false); 
+        if (this.managers.prefabBuild) this.managers.prefabBuild.enterBuildMode(); 
+    }
+    
+    switchToPartBuilder() { 
+        if (this.currentState !== 'MainMenu') return;
+        
+        this.cleanUpMultiplayerEntities(); // FIX
+        
+        this.currentState = 'PartBuilderMode'; 
+        this.toggleGameControls(false); 
+        if (this.managers.partBuild) this.managers.partBuild.enterBuildMode(); 
+    }
 
     switchToMainMenu() {
         if (this.currentState === 'MainMenu') return;
@@ -101,6 +140,7 @@ export class GameStateManager {
         if (this.currentState === 'ExploreMode') {
             if (this.ui) this.ui.clearChat();
             if (this.managers.multiplayer) {
+                // Po powrocie do Nexusa ponownie pobieramy graczy
                 this.managers.multiplayer.joinWorld('nexus');
                 this.managers.multiplayer.setScene(this.core.scene);
             }
@@ -127,6 +167,7 @@ export class GameStateManager {
             }
         } 
         else {
+            // Wyjście z trybów budowania
             if (this.currentState === 'BuildMode') this.managers.build.exitBuildMode();
             else if (this.currentState === 'SkinBuilderMode') this.managers.skinBuild.exitBuildMode();
             else if (this.currentState === 'PrefabBuilderMode') this.managers.prefabBuild.exitBuildMode();
@@ -134,6 +175,11 @@ export class GameStateManager {
 
             this.currentState = 'MainMenu';
             this.toggleGameControls(true);
+            
+            // Po wyjściu z buildera odświeżamy połączenie z Nexusem, żeby zobaczyć graczy
+            if (this.managers.multiplayer) {
+                 this.managers.multiplayer.joinWorld('nexus');
+            }
         }
     }
 
