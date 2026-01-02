@@ -59,7 +59,7 @@ body {
 .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
 @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
 
-/* --- EKRAN LOGOWANIA / REJESTRACJI (Przeniesione z JS) --- */
+/* --- EKRAN LOGOWANIA / REJESTRACJI --- */
 .bsp-interactive { pointer-events: auto !important; }
 
 #bsp-welcome-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; pointer-events: none; }
@@ -194,10 +194,11 @@ canvas { display: block; }
 /* Ukrywamy stare przyciski w trybie budowania */
 .build-ui-button { display: none !important; }
 
-/* 1. PASEK GÓRNY LEWY */
+/* 1. PASEK GÓRNY LEWY - DOMYŚLNIE UKRYTY */
 .build-top-left {
     position: absolute; top: 70px; left: 10px;
-    display: flex; gap: 10px; pointer-events: auto; z-index: 2005;
+    display: none; /* Default hidden */
+    gap: 10px; pointer-events: auto; z-index: 2005;
 }
 
 .btn-bsp-back {
@@ -221,10 +222,11 @@ canvas { display: block; }
 }
 .btn-bsp-green:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e8449; }
 
-/* 2. PASEK BOCZNY PRAWY */
+/* 2. PASEK BOCZNY PRAWY - DOMYŚLNIE UKRYTY */
 .build-sidebar-right {
     position: absolute; right: 10px; top: 80px;
-    display: flex; flex-direction: column; gap: 15px;
+    display: none; /* Default hidden */
+    flex-direction: column; gap: 15px;
     pointer-events: auto; align-items: flex-end; z-index: 2005;
 }
 
@@ -254,7 +256,7 @@ canvas { display: block; }
 }
 .btn-undo-redo:active { transform: translateY(3px); box-shadow: 0 1px 0 #7f8c8d; }
 
-/* 3. JOYSTICK SFERA */
+/* 3. JOYSTICK SFERA - DOMYŚLNIE UKRYTY */
 #build-rotate-zone {
     position: absolute; bottom: 30px; right: 30px;
     width: 140px; height: 140px;
@@ -268,14 +270,17 @@ canvas { display: block; }
         linear-gradient(90deg, rgba(0,0,0,0.2) 1px, transparent 1px);
     background-size: 20px 20px;
     background-position: center;
+    display: none; /* Default hidden */
+    justify-content: center; align-items: center;
 }
 .rotate-icon { display: none; }
 
-/* 4. DOLNY PASEK AKCJI */
+/* 4. DOLNY PASEK AKCJI - DOMYŚLNIE UKRYTY */
 .build-bottom-bar {
     position: absolute; bottom: 0; left: 0; width: 100%; height: 120px;
     background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
-    display: flex; align-items: flex-end; padding-bottom: 20px; padding-left: 20px;
+    display: none; /* Default hidden */
+    align-items: flex-end; padding-bottom: 20px; padding-left: 20px;
     pointer-events: none; z-index: 2000;
 }
 
@@ -353,6 +358,25 @@ canvas { display: block; }
     cursor: url('icons/cursor.png'), auto; background-color: rgba(255,255,255,0.1); flex-shrink: 0;
 }
 .part-item, .prefab-item { width: 100%; height: auto; padding: 10px; text-align: left; font-size: 16px; }
+
+@media (max-width: 1280px) {
+    .right-ui { top: 65px; right: 5px; gap: 5px; }
+    .game-buttons { gap: 5px; margin-bottom: 5px; }
+    .game-btn { width: 38px; height: 38px; }
+    #level-container { width: 110px; height: 25px; margin: 2px 0; }
+    .level-star { width: 28px; height: 28px; }
+    #level-value { font-size: 12px; margin-top: 1px; }
+    .level-bar-background { left: 15px; right: 20px; top: 5px; bottom: 5px; border-radius: 5px; border: 1px solid white; }
+    #level-text { font-size: 8px; }
+    .level-plus-btn { width: 18px; height: 18px; font-size: 12px; border-radius: 4px; border: 1px solid white; }
+    #coin-counter { width: 85px; height: 25px; margin-top: 2px; }
+    .coin-icon { width: 25px; height: 25px; }
+    .coin-bar-background { left: 12px; right: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.5); }
+    #coin-value { font-size: 11px; }
+    #coin-add-btn { width: 25px; height: 25px; font-size: 18px; border-radius: 8px; border: 1px solid white; padding-bottom: 2px; }
+    #joystick-zone { bottom: 20px; left: 20px; display: block; }
+    #jump-button { bottom: 20px; right: 20px; width: 70px; height: 70px; display: block; }
+}
 
 @media (max-width: 900px) {
     .tools-grid { grid-template-columns: repeat(4, 1fr); }
