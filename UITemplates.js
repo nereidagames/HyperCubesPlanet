@@ -264,61 +264,170 @@ export const HUD_HTML = `
 
 export const BUILD_UI_HTML = `
     <style>
-        .build-ui-button { position: absolute; pointer-events: auto; cursor: url('icons/cursor.png'), auto; background-color: #2c75ff; border: 3px solid white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 8px #0004; transition: transform 0.1s ease, background-color 0.2s ease, filter 0.2s ease; color: white; text-shadow: 1.5px 1.5px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; font-family: 'Titan One', cursive; }
-        .build-ui-button:hover { background-color: #4c8cff; } 
-        .build-ui-button:active { transform: scale(0.95); }
-        
-        #build-exit-button { top: 20px; left: 20px; width: 60px; height: 60px; background: url('icons/icon-back.png') center center / contain no-repeat; border: none; box-shadow: none; }
-        #build-mode-button { top: 20px; right: 20px; width: 180px; height: 50px; font-size: 20px; }
-        #build-save-button { top: 100px; left: 20px; width: 150px; height: 60px; background-color: #2ed573; font-size: 24px; }
-        #build-add-button { bottom: 20px; left: 20px; width: 60px; height: 60px; font-size: 36px; z-index: 2005; }
-        
-        #build-tools-right { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
-        .tool-btn { width: 60px; height: 60px; background-color: rgba(0, 0, 0, 0.6); border: 3px solid white; border-radius: 10px; cursor: url('icons/cursor.png'), auto; display: flex; justify-content: center; align-items: center; font-size: 30px; color: white; transition: transform 0.1s, background-color 0.1s; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        .tool-btn.active { background-color: #2ed573; transform: scale(1.1); border-color: #ffd700; } 
-        
-        #build-rotate-zone { position: absolute; bottom: 30px; right: 30px; width: 120px; height: 120px; background: rgba(0, 0, 0, 0.4); border: 4px solid white; border-radius: 50%; pointer-events: auto; cursor: grab; z-index: 2001; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        .rotate-icon { font-size: 50px; color: white; filter: drop-shadow(2px 2px 0 #000); }
+        /* --- NOWY STYL BUILDERA (BSP STYLE) --- */
+        .build-ui-button { display: none; } /* Ukrywamy stare przyciski */
 
+        /* 1. PASEK GÓRNY LEWY (Powrót, Czat, Zapisz) */
+        .build-top-left {
+            position: absolute; top: 70px; left: 10px; /* Pod głównym Top Barem */
+            display: flex; gap: 5px; pointer-events: auto;
+        }
+        .btn-bsp-back {
+            width: 50px; height: 50px;
+            background: #c0392b url('icons/icon-back.png') center/60% no-repeat;
+            border: 2px solid white; border-radius: 8px;
+            box-shadow: 0 4px 0 #96281b; cursor: pointer;
+        }
+        .btn-bsp-back:active { transform: translateY(3px); box-shadow: 0 1px 0 #96281b; }
+
+        .btn-bsp-green {
+            height: 50px; padding: 0 15px;
+            background: linear-gradient(to bottom, #2ecc71, #27ae60);
+            border: 2px solid white; border-radius: 8px;
+            color: white; font-family: 'Titan One', cursive; font-size: 14px;
+            text-shadow: 1px 1px 0 #000;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 0 #1e8449; cursor: pointer;
+        }
+        .btn-bsp-green:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e8449; }
+
+        /* 2. PASEK BOCZNY PRAWY */
+        .build-sidebar-right {
+            position: absolute; right: 10px; top: 80px;
+            display: flex; flex-direction: column; gap: 10px;
+            pointer-events: auto; align-items: flex-end;
+        }
+
+        .btn-mode-toggle {
+            background: #3498db; border: 2px solid white; border-radius: 8px;
+            color: white; padding: 8px 15px; font-family: 'Titan One', cursive;
+            box-shadow: 0 4px 0 #2980b9; cursor: pointer; margin-bottom: 20px;
+        }
+
+        .btn-tool-main {
+            width: 70px; height: 70px;
+            background: linear-gradient(to bottom, #74b9ff, #0984e3);
+            border: 3px solid white; border-radius: 12px;
+            box-shadow: 0 4px 0 #0c2461; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+        }
+        .btn-tool-main:active { transform: translateY(3px); box-shadow: 0 1px 0 #0c2461; }
+        .icon-finger { font-size: 35px; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)); }
+
+        .btn-undo-redo {
+            width: 50px; height: 50px;
+            background: #bdc3c7; border: 2px solid white; border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 0 #7f8c8d; cursor: pointer; font-size: 24px;
+        }
+
+        /* 3. JOYSTICK JAKO NIEBIESKA SFERA */
+        #build-rotate-zone {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 120px; height: 120px;
+            background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe);
+            border: 4px solid #000;
+            border-radius: 50%;
+            pointer-events: auto; cursor: grab; z-index: 2001;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.2) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: center;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .rotate-icon { display: none; }
+
+        /* 4. DOLNY PASEK AKCJI (HOTBAR) */
+        .build-bottom-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100px;
+            background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+            display: flex; align-items: flex-end; padding-bottom: 10px; padding-left: 10px;
+            pointer-events: none;
+        }
+
+        .btn-add-block {
+            width: 60px; height: 60px;
+            background: #3498db url('icons/icon-build.png') center/60% no-repeat;
+            border: 3px solid white; border-radius: 12px;
+            box-shadow: 0 4px 0 #2980b9; cursor: pointer; pointer-events: auto;
+            margin-right: 15px;
+        }
+
+        .hotbar-container {
+            display: flex; gap: 8px; overflow-x: auto; 
+            pointer-events: auto; padding-bottom: 5px;
+            max-width: 60vw; align-items: center;
+            scrollbar-width: none;
+        }
+        .hotbar-slot {
+            width: 50px; height: 50px;
+            border: 2px solid rgba(255,255,255,0.5); border-radius: 8px;
+            background-color: rgba(0,0,0,0.3);
+            background-size: cover; background-position: center;
+            cursor: pointer; transition: transform 0.1s;
+            position: relative;
+        }
+        .hotbar-slot.active {
+            border-color: #2ecc71; transform: scale(1.1);
+            box-shadow: 0 0 10px #2ecc71;
+            border-width: 3px;
+        }
+        .hotbar-slot:active { transform: scale(0.9); }
+
+        /* 5. MODAL NARZĘDZI (TOOLS MENU) */
+        #tools-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 600px; max-width: 95vw;
+            background: rgba(135, 206, 235, 0.95);
+            border: 4px solid white; border-radius: 20px;
+            padding: 10px; z-index: 5000;
+            display: none; flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .tools-section { margin-bottom: 10px; }
+        .tools-section-title {
+            font-family: 'Titan One', cursive; color: white; 
+            text-shadow: 1.5px 1.5px 0 #000; font-size: 16px; margin: 5px 0 5px 10px;
+        }
+        .tools-grid {
+            display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+            background: rgba(255,255,255,0.2); border-radius: 15px; padding: 10px;
+        }
+        .tool-icon-btn {
+            width: 100%; aspect-ratio: 1;
+            background: linear-gradient(to bottom, #4facfe, #00f2fe);
+            border: 2px solid white; border-radius: 10px;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 3px 0 #0984e3;
+        }
+        .tool-icon-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #0984e3; }
+        .tool-icon-btn.vip { background: linear-gradient(to bottom, #a8c0ff, #3f2b96); } 
+        .tool-icon-img { width: 60%; height: 60%; object-fit: contain; filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.3)); }
+
+        @media (max-width: 600px) {
+            .tools-grid { grid-template-columns: repeat(4, 1fr); }
+            #tools-modal { width: 95vw; }
+        }
+
+        /* PANELE WYBORU (Grid Fix) */
         #block-selection-panel, #prefab-selection-panel, #part-selection-panel { 
-            position: absolute; 
-            bottom: 90px; 
-            left: 20px;
-            background: rgba(0, 0, 0, 0.85); 
-            border: 3px solid white; 
-            border-radius: 15px; 
-            padding: 15px; 
-            display: none; 
-            flex-direction: column; 
-            gap: 15px; 
-            width: 340px; 
-            pointer-events: auto; 
-            max-height: 50vh; 
-            overflow-y: auto; 
-            z-index: 3000;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            position: absolute; bottom: 90px; left: 20px;
+            background: rgba(0, 0, 0, 0.85); border: 3px solid white; border-radius: 15px; 
+            padding: 15px; display: none; flex-direction: column; gap: 15px; 
+            width: 340px; pointer-events: auto; max-height: 50vh; overflow-y: auto; z-index: 3000;
         }
-
         #build-block-list { 
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-            gap: 10px;
-            width: 100%;
-            justify-items: center;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 10px; 
+            width: 100%; justify-items: center;
         }
-
         .block-item, .prefab-item, .part-item { 
-            width: 50px; height: 50px; 
-            border: 2px solid #ddd; border-radius: 8px; 
-            cursor: url('icons/cursor.png'), auto; 
-            transition: transform 0.1s ease; 
-            color: white; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            background-color: rgba(255,255,255,0.1);
-            flex-shrink: 0; 
-        } 
-        .block-item:hover, .prefab-item:hover, .part-item:hover { transform: scale(1.1); border-color: #00ff00; }
-        
+            width: 50px; height: 50px; border: 2px solid #ddd; border-radius: 8px; 
+            cursor: pointer; background-color: rgba(255,255,255,0.1); flex-shrink: 0;
+        }
         .part-item, .prefab-item { width: 100%; height: auto; padding: 10px; text-align: left; font-size: 14px; }
 
         @media (max-width: 900px) {
@@ -330,18 +439,64 @@ export const BUILD_UI_HTML = `
         }
     </style>
 
-    <div id="build-exit-button" class="build-ui-button"></div>
-    <div id="build-save-button" class="build-ui-button">Zapisz</div>
-    <div id="build-mode-button" class="build-ui-button">Łatwy</div>
-    <div id="build-add-button" class="build-ui-button">+</div>
-    
-    <div id="build-tools-right">
-        <div id="tool-single" class="tool-btn active">⬜</div>
-        <div id="tool-line" class="tool-btn">📏</div>
+    <!-- NOWE UI BUILDERA -->
+    <div class="build-top-left">
+        <div id="build-exit-btn-new" class="btn-bsp-back"></div>
+        <div class="btn-bsp-green" style="display:none;" id="build-chat-dummy">...</div>
+        <div id="build-save-btn-new" class="btn-bsp-green">Zapisz</div>
     </div>
-    
-    <div id="build-rotate-zone"><div class="rotate-icon">🔄</div></div>
-    
+
+    <div class="build-sidebar-right">
+        <div id="build-mode-toggle-new" class="btn-mode-toggle">Tryb: Łatwy</div>
+        <div id="build-tools-menu-btn" class="btn-tool-main">
+            <div class="icon-finger">👆</div>
+        </div>
+        <div class="btn-undo-redo" style="margin-top:10px;">↩️</div>
+        <div class="btn-undo-redo">↪️</div>
+    </div>
+
+    <div id="build-rotate-zone"></div>
+
+    <div class="build-bottom-bar">
+        <div id="build-add-btn-new" class="btn-add-block"></div>
+        <div id="build-hotbar-container" class="hotbar-container"></div>
+    </div>
+
+    <!-- MODAL NARZĘDZI -->
+    <div id="tools-modal">
+        <div class="tools-section">
+            <div class="tools-section-title">Narzędzia Łatwe</div>
+            <div class="tools-grid">
+                <div class="tool-icon-btn" id="tool-btn-single" title="Pojedynczy"><img src="icons/tool-hand.png" onerror="this.src='icons/icon-build.png'" class="tool-icon-img"></div>
+                <div class="tool-icon-btn" id="tool-btn-eraser" title="Gumka"><img src="icons/tool-eraser.png" onerror="this.src='icons/icon-back.png'" class="tool-icon-img"></div>
+                <div class="tool-icon-btn"><img src="icons/tool-bucket.png" onerror="this.src='icons/icon-shop.png'" class="tool-icon-img"></div>
+                <div class="tool-icon-btn"><img src="icons/tool-swap.png" onerror="this.src='icons/icon-restart.png'" class="tool-icon-img"></div>
+                <div class="tool-icon-btn"><img src="icons/tool-grid.png" onerror="this.src='icons/icon-smallworld.png'" class="tool-icon-img"></div>
+                <div class="tool-icon-btn"><img src="icons/tool-trash.png" onerror="this.src='icons/icon-back.png'" class="tool-icon-img"></div>
+            </div>
+        </div>
+        <div class="tools-section">
+            <div class="tools-section-title">Narzędzia Profesjonalne</div>
+            <div class="tools-grid">
+                 <div class="tool-icon-btn"><img src="icons/tool-mound.png" onerror="this.src='icons/icon-newworld.png'" class="tool-icon-img"></div>
+                 <div class="tool-icon-btn"><img src="icons/tool-pencil.png" onerror="this.src='icons/icon-build.png'" class="tool-icon-img"></div>
+                 <div class="tool-icon-btn"><img src="icons/tool-pipette.png" onerror="this.src='icons/icon-more.png'" class="tool-icon-img"></div>
+                 <div class="tool-icon-btn" id="tool-btn-line" title="Linia"><img src="icons/tool-line.png" onerror="this.src='icons/icon-jump.png'" class="tool-icon-img"></div>
+                 <div class="tool-icon-btn"><img src="icons/tool-rotate.png" onerror="this.src='icons/icon-restart.png'" class="tool-icon-img"></div>
+                 <div class="tool-icon-btn"><img src="icons/tool-box.png" onerror="this.src='icons/icon-newprefab.png'" class="tool-icon-img"></div>
+            </div>
+        </div>
+        <div class="tools-section">
+            <div class="tools-section-title" style="color:#f1c40f;">Narzędzia VIP</div>
+            <div class="tools-grid">
+                 <div class="tool-icon-btn vip"><img src="icons/tool-tnt.png" onerror="this.src='icons/alert.png'" class="tool-icon-img"></div>
+                 <div class="tool-icon-btn vip"><img src="icons/tool-fog.png" onerror="this.src='icons/icon-discover.png'" class="tool-icon-img"></div>
+                 <div class="tool-icon-btn vip"><img src="icons/tool-wire.png" onerror="this.src='icons/icon-newhypercubepart.png'" class="tool-icon-img"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANELE WYBORU (Stare) -->
     <div id="block-selection-panel">
         <div class="friends-tabs">
             <div class="friends-tab active" id="build-tab-blocks">Bloki</div>
@@ -349,7 +504,6 @@ export const BUILD_UI_HTML = `
         </div>
         <div id="build-block-list"></div>
     </div>
-    
     <div id="prefab-selection-panel"></div>
     <div id="part-selection-panel"></div>
 `;
@@ -451,82 +605,125 @@ export const PLAYER_PROFILE_HTML = `
             pointer-events: auto;
         }
 
+        /* Główny kontener profilu */
         .profile-container {
-            width: 450px; height: 400px;
-            background: radial-gradient(circle, #5addc5 0%, #16a085 100%);
-            border-radius: 20px; position: relative;
+            width: 450px;
+            height: 400px;
+            background: radial-gradient(circle, #5addc5 0%, #16a085 100%); /* Turkusowy gradient */
+            border-radius: 20px;
+            position: relative;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             font-family: 'Titan One', cursive;
         }
 
+        /* Górny pasek z nickiem */
         .profile-header {
-            position: absolute; top: 15px; left: 0; right: 0; height: 50px;
-            background-color: #0d8a72;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: white; text-shadow: 1.5px 1.5px 0 #000; z-index: 2;
+            position: absolute;
+            top: 15px; left: 0; right: 0;
+            height: 50px;
+            background-color: #0d8a72; /* Ciemniejszy turkus */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-shadow: 1.5px 1.5px 0 #000;
+            z-index: 2;
         }
 
         .profile-name { font-size: 20px; text-transform: uppercase; }
         .profile-joined { font-size: 10px; opacity: 0.9; }
 
+        /* Gwiazda z levelem (nachodząca na pasek) */
         .level-star-large {
-            position: absolute; top: -10px; left: -10px; width: 90px; height: 90px;
+            position: absolute;
+            top: -10px; left: -10px;
+            width: 90px; height: 90px;
             background: url('icons/icon-level.png') center/contain no-repeat;
             display: flex; justify-content: center; align-items: center;
-            font-size: 32px; color: white; text-shadow: 2px 2px 0 #000; z-index: 10;
+            font-size: 32px; color: white;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 10;
             filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
         }
 
+        /* Flaga pod gwiazdą */
         .profile-flag {
-            position: absolute; top: 85px; left: 20px; width: 40px; height: 25px;
-            background-color: #fff; border-radius: 4px;
+            position: absolute;
+            top: 85px; left: 20px;
+            width: 40px; height: 25px;
+            background-color: #fff;
+            border-radius: 4px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            display: flex; justify-content: center; align-items: center; font-size: 20px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 20px;
         }
 
+        /* Canvas 3D (Postać) */
         #profile-preview-canvas {
-            position: absolute; top: 65px; left: 50px; right: 80px; bottom: 50px; z-index: 1;
+            position: absolute;
+            top: 65px; left: 50px; right: 80px; bottom: 50px;
+            z-index: 1;
         }
         
+        /* Cień/Poświata za postacią */
         .profile-glow {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 200px; height: 200px;
             background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
-            z-index: 0; pointer-events: none;
+            z-index: 0;
+            pointer-events: none;
         }
 
+        /* Pasek boczny (Przyciski) */
         .profile-sidebar {
-            position: absolute; top: 15px; right: -70px;
-            display: flex; flex-direction: column; gap: 10px; z-index: 5;
+            position: absolute;
+            top: 15px; right: -70px; /* PRZESUNIĘTO NA PRAWO */
+            display: flex; flex-direction: column; gap: 10px;
+            z-index: 5;
         }
 
         .sidebar-btn {
             width: 80px; height: 80px;
             background: linear-gradient(to bottom, #54a0ff, #2e86de);
-            border: 3px solid white; border-radius: 15px;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            border: 3px solid white;
+            border-radius: 15px;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
             box-shadow: 0 5px 0 #1e60a3, 5px 5px 10px rgba(0,0,0,0.3);
-            cursor: pointer; transition: transform 0.1s;
+            cursor: pointer;
+            transition: transform 0.1s;
         }
         .sidebar-btn:active { transform: translateY(4px); box-shadow: 5px 1px 10px rgba(0,0,0,0.3); }
 
         .sidebar-icon { width: 40px; height: 40px; background-size: contain; background-repeat: no-repeat; background-position: center; margin-bottom: 2px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
         .sidebar-label { color: white; font-size: 12px; text-shadow: 1px 1px 0 #000; }
 
+        /* Strzałki nawigacji na dole */
         .nav-arrow {
-            position: absolute; bottom: 20px; width: 60px; height: 60px;
-            background-color: transparent; border: none; box-shadow: none;
-            cursor: pointer; background-repeat: no-repeat; background-position: center; background-size: contain;
-            filter: drop-shadow(2px 4px 2px rgba(0,0,0,0.4)); transition: transform 0.1s;
+            position: absolute; bottom: 20px;
+            width: 60px; height: 60px;
+            background-color: transparent;
+            border: none;
+            box-shadow: none;
+            cursor: pointer;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            filter: drop-shadow(2px 4px 2px rgba(0,0,0,0.4));
+            transition: transform 0.1s;
         }
         .nav-arrow:active { transform: scale(0.9); }
         .nav-arrow.left { left: 20px; background-image: url('icons/arrow-left.png'); }
         .nav-arrow.right { right: 100px; background-image: url('icons/arrow-right.png'); } 
         
+
+        /* Responsywność dla mobile */
         @media (max-width: 600px) {
             .profile-container { width: 90vw; height: 80vw; max-height: 400px; }
             .sidebar-btn { width: 60px; height: 60px; }
-            .profile-sidebar { right: -55px; } 
+            .profile-sidebar { right: -55px; } /* Mobile adjustment */
             .sidebar-icon { width: 30px; height: 30px; }
             .sidebar-label { font-size: 10px; }
             .level-star-large { width: 70px; height: 70px; font-size: 24px; }
@@ -537,20 +734,34 @@ export const PLAYER_PROFILE_HTML = `
     <div id="player-profile-panel" class="panel-modal" style="display:none;">
         <div class="panel-content">
             <div class="profile-container">
-                <div class="level-star-large"><span id="profile-level-val" style="margin-top:5px;">1</span></div>
+                <!-- Gwiazda -->
+                <div class="level-star-large">
+                    <span id="profile-level-val" style="margin-top:5px;">1</span>
+                </div>
+
+                <!-- Nagłówek -->
                 <div class="profile-header">
                     <div id="profile-username" class="profile-name">PLAYER</div>
                     <div id="profile-joined-date" class="profile-joined">Członek od maj, 2024</div>
                 </div>
+
+                <!-- Flaga -->
                 <div class="profile-flag">🇵🇱</div>
+
+                <!-- Postać 3D -->
                 <div class="profile-glow"></div>
                 <div id="profile-preview-canvas"></div>
+
+                <!-- Przyciski boczne (tylko Ściana) -->
                 <div class="profile-sidebar">
                     <div id="btn-profile-wall" class="sidebar-btn">
+                        <!-- ZMIANA: Ikona sciana.png -->
                         <div class="sidebar-icon" style="background-image: url('icons/sciana.png');"></div>
                         <span class="sidebar-label">Ściana</span>
                     </div>
                 </div>
+
+                <!-- Strzałki nawigacji -->
                 <div class="nav-arrow left"></div>
                 <div class="nav-arrow right"></div>
             </div>
@@ -560,100 +771,192 @@ export const PLAYER_PROFILE_HTML = `
 
 export const OTHER_PLAYER_PROFILE_HTML = `
 <style>
+    /* Kontener modala */
     #other-player-profile-panel .panel-content {
-        background: transparent !important; box-shadow: none !important; border: none !important;
-        padding: 0 !important; width: auto !important; height: auto !important; pointer-events: auto;
-        display: flex; justify-content: center; align-items: center;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        width: auto !important;
+        height: auto !important;
+        pointer-events: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
-    .bsp-profile-wrapper { display: flex; gap: 10px; font-family: 'Titan One', cursive; position: relative; }
+    .bsp-profile-wrapper {
+        display: flex;
+        gap: 10px;
+        font-family: 'Titan One', cursive;
+        position: relative;
+    }
 
+    /* Główna karta (niebieska) */
     .bsp-main-card {
-        width: 380px; height: 450px;
+        width: 380px;
+        height: 450px;
         background: radial-gradient(circle at center, #7ed6df 0%, #22a6b3 100%);
-        border-radius: 20px; border: 4px solid rgba(0,0,0,0.2);
+        border-radius: 20px;
+        border: 4px solid rgba(0,0,0,0.2);
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
+    /* Nagłówek */
     .bsp-header {
-        width: 100%; height: 60px; background: linear-gradient(to bottom, #4facfe, #00f2fe);
-        display: flex; flex-direction: column; justify-content: center; align-items: center;
-        color: white; text-shadow: 1.5px 1.5px 0 #000; box-shadow: 0 4px 5px rgba(0,0,0,0.2); z-index: 2;
+        width: 100%;
+        height: 60px;
+        background: linear-gradient(to bottom, #4facfe, #00f2fe);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        text-shadow: 1.5px 1.5px 0 #000;
+        box-shadow: 0 4px 5px rgba(0,0,0,0.2);
+        z-index: 2;
         border-bottom: 2px solid rgba(255,255,255,0.3);
     }
     .bsp-username { font-size: 22px; margin-bottom: 2px; }
     .bsp-joined { font-size: 11px; opacity: 0.9; }
 
+    /* Gwiazda Levelu */
     .bsp-level-star {
-        position: absolute; top: -10px; left: -10px; width: 90px; height: 90px;
+        position: absolute;
+        top: -10px; left: -10px;
+        width: 90px; height: 90px;
         background: url('icons/icon-level.png') center/contain no-repeat;
         display: flex; justify-content: center; align-items: center;
-        font-size: 32px; color: white; text-shadow: 2px 2px 0 #000; z-index: 10;
-        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.4)); transform: rotate(-10deg);
+        font-size: 32px; color: white;
+        text-shadow: 2px 2px 0 #000;
+        z-index: 10;
+        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.4));
+        transform: rotate(-10deg);
     }
 
+    /* Kropka statusu */
     .bsp-status-dot {
-        position: absolute; top: 15px; right: 15px; width: 25px; height: 25px;
+        position: absolute;
+        top: 15px; right: 15px;
+        width: 25px; height: 25px;
         background: radial-gradient(circle at 30% 30%, #2ecc71, #27ae60);
-        border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 10; display: none;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        z-index: 10;
+        display: none; /* Domyślnie ukryta */
     }
     .bsp-status-dot.offline { background: radial-gradient(circle at 30% 30%, #e74c3c, #c0392b); }
 
+    /* Flaga */
     .bsp-flag {
-        position: absolute; top: 75px; left: 20px; width: 45px; height: 30px;
-        background-color: #fff; background-image: linear-gradient(to bottom, #fff 50%, #dc143c 50%);
-        border: 2px solid white; border-radius: 6px; box-shadow: 0 3px 5px rgba(0,0,0,0.2); z-index: 5;
+        position: absolute;
+        top: 75px; left: 20px;
+        width: 45px; height: 30px;
+        background-color: #fff; /* Placeholder dla Polski */
+        background-image: linear-gradient(to bottom, #fff 50%, #dc143c 50%);
+        border: 2px solid white;
+        border-radius: 6px;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+        z-index: 5;
     }
 
-    #other-player-preview-canvas { position: absolute; top: 60px; left: 0; width: 100%; height: 100%; z-index: 1; }
+    /* Canvas 3D */
+    #other-player-preview-canvas {
+        position: absolute;
+        top: 60px; left: 0; width: 100%; height: 100%;
+        z-index: 1;
+    }
 
+    /* Dolne przyciski (Report, Friend) */
     .bsp-corner-btn {
-        position: absolute; bottom: 15px; width: 60px; height: 60px; border-radius: 12px; border: 3px solid white;
-        cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center;
-        box-shadow: 0 5px 0 rgba(0,0,0,0.3); transition: transform 0.1s; z-index: 10;
+        position: absolute;
+        bottom: 15px;
+        width: 60px; height: 60px;
+        border-radius: 12px;
+        border: 3px solid white;
+        cursor: pointer;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        box-shadow: 0 5px 0 rgba(0,0,0,0.3);
+        transition: transform 0.1s;
+        z-index: 10;
     }
     .bsp-corner-btn:active { transform: translateY(4px); box-shadow: none; }
 
     .btn-report {
-        left: 15px; background: #535c68; background-image: url('icons/alert.png');
+        left: 15px;
+        background: #535c68; /* Szary */
+        background-image: url('icons/alert.png'); /* Placeholder */
         background-size: 60%; background-repeat: no-repeat; background-position: center;
     }
+    /* Fallback icon for report */
     .btn-report::after { content: '⚠️'; font-size: 30px; }
 
     .btn-friend-action {
-        right: 15px; background: linear-gradient(to bottom, #e74c3c, #c0392b);
+        right: 15px;
+        background: linear-gradient(to bottom, #e74c3c, #c0392b); /* Czerwony - usuń/anuluj */
     }
     .friend-icon-placeholder { font-size: 30px; filter: drop-shadow(1px 1px 0 #000); }
 
-    .bsp-sidebar { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; }
+    /* Pasek boczny (Sidebar) */
+    .bsp-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-top: 10px;
+    }
 
     .bsp-side-btn {
-        width: 100px; height: 75px; background: linear-gradient(to bottom, #4facfe, #00f2fe);
-        border: 3px solid white; border-radius: 15px; display: flex; flex-direction: column;
-        justify-content: center; align-items: center; box-shadow: 0 5px 0 #2980b9, 0 8px 10px rgba(0,0,0,0.3);
-        cursor: pointer; transition: transform 0.1s; position: relative;
+        width: 100px; height: 75px;
+        background: linear-gradient(to bottom, #4facfe, #00f2fe);
+        border: 3px solid white;
+        border-radius: 15px;
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        box-shadow: 0 5px 0 #2980b9, 0 8px 10px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.1s;
+        position: relative;
     }
     .bsp-side-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #2980b9; }
     
     .bsp-side-btn.green {
-        background: linear-gradient(to bottom, #2ecc71, #27ae60); box-shadow: 0 5px 0 #1e8449, 0 8px 10px rgba(0,0,0,0.3);
+        background: linear-gradient(to bottom, #2ecc71, #27ae60);
+        box-shadow: 0 5px 0 #1e8449, 0 8px 10px rgba(0,0,0,0.3);
     }
     .bsp-side-btn.green:active { transform: translateY(4px); box-shadow: 0 1px 0 #1e8449; }
 
     .bsp-btn-icon {
-        width: 35px; height: 35px; background-size: contain; background-repeat: no-repeat; background-position: center;
-        filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2)); margin-bottom: 2px;
+        width: 35px; height: 35px;
+        background-size: contain; background-repeat: no-repeat; background-position: center;
+        filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2));
+        margin-bottom: 2px;
     }
-    .bsp-btn-label { font-size: 13px; color: white; text-shadow: 1.5px 1.5px 0 #000; font-weight: bold; }
+    .bsp-btn-label {
+        font-size: 13px; color: white; text-shadow: 1.5px 1.5px 0 #000;
+        font-weight: bold;
+    }
 
+    /* Zamknięcie */
     .bsp-close-x {
-        position: absolute; top: -15px; right: -15px; width: 40px; height: 40px; background: #e74c3c;
-        border: 3px solid white; border-radius: 50%; color: white; font-size: 20px; font-weight: bold;
-        display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 20;
+        position: absolute;
+        top: -15px; right: -15px;
+        width: 40px; height: 40px;
+        background: #e74c3c;
+        border: 3px solid white;
+        border-radius: 50%;
+        color: white; font-size: 20px; font-weight: bold;
+        display: flex; justify-content: center; align-items: center;
+        cursor: pointer; z-index: 20;
         box-shadow: 0 3px 5px rgba(0,0,0,0.3);
     }
 
+    /* Responsive mobile */
     @media (max-width: 600px) {
         .bsp-profile-wrapper { flex-direction: column; align-items: center; gap: 5px; transform: scale(0.9); }
         .bsp-sidebar { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 380px; }
@@ -666,43 +969,71 @@ export const OTHER_PLAYER_PROFILE_HTML = `
 <div id="other-player-profile-panel" class="panel-modal" style="display:none;">
     <div class="panel-content">
         <div class="bsp-profile-wrapper">
+            
+            <!-- Główna karta -->
             <div class="bsp-main-card">
                 <div class="bsp-close-x" id="btn-other-profile-close">X</div>
-                <div class="bsp-level-star"><span id="other-profile-level" style="transform: rotate(10deg); margin-top:5px;">100</span></div>
+
+                <!-- Level -->
+                <div class="bsp-level-star">
+                    <span id="other-profile-level" style="transform: rotate(10deg); margin-top:5px;">100</span>
+                </div>
+
+                <!-- Status -->
                 <div id="other-profile-status" class="bsp-status-dot"></div>
+
+                <!-- Header -->
                 <div class="bsp-header">
                     <div id="other-profile-username" class="bsp-username">cybervamp</div>
                     <div id="other-profile-date" class="bsp-joined">Członek od maj, 2024</div>
                 </div>
+
+                <!-- Flaga -->
                 <div class="bsp-flag"></div>
+
+                <!-- Postać -->
                 <div id="other-player-preview-canvas"></div>
+
+                <!-- Dolne przyciski -->
                 <div class="bsp-corner-btn btn-report"></div>
                 <div id="btn-other-friend-action" class="bsp-corner-btn btn-friend-action">
                     <div class="friend-icon-placeholder">👤🗑️</div>
                 </div>
             </div>
+
+            <!-- Boczny pasek -->
             <div class="bsp-sidebar">
+                <!-- 1. Ściana -->
                 <div id="btn-other-wall" class="bsp-side-btn">
                     <div class="bsp-btn-icon" style="background-image: url('icons/icon-like.png');"></div>
                     <div class="bsp-btn-label">Ściana</div>
                 </div>
+                
+                <!-- 2. Czat -->
                 <div id="btn-other-chat" class="bsp-side-btn">
                     <div class="bsp-btn-icon" style="background-image: url('icons/icon-chat.png');"></div>
                     <div class="bsp-btn-label">Czat</div>
                 </div>
+
+                <!-- 3. Uśmiech (Z NAPRAWIONYM ID) -->
                 <div id="btn-other-smile" class="bsp-side-btn">
                     <div class="bsp-btn-icon" style="background-image: url('icons/usmiech.png');">🎉</div> 
                     <div class="bsp-btn-label">Uśmiech</div>
                 </div>
+
+                <!-- 4. Zaproś -->
                 <div class="bsp-side-btn green">
                     <div class="bsp-btn-icon" style="background-image: url('icons/gamepad.png');">🎮</div>
                     <div class="bsp-btn-label">Zaproś</div>
                 </div>
+
+                <!-- 5. Dom (Placeholder) -->
                 <div class="bsp-side-btn">
                     <div class="bsp-btn-icon" style="background-image: url('icons/icon-home.png');"></div>
                     <div class="bsp-btn-label">Dom</div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -710,6 +1041,127 @@ export const OTHER_PLAYER_PROFILE_HTML = `
 
 // W TEJ WERSJI USUNIĘTO JUŻ: #shop-panel, #play-choice-panel, #build-choice-panel, #more-options-panel
 export const MODALS_HTML = `
+    <style>
+        .nav-grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: auto;
+            gap: 15px;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+            position: relative;
+        }
+        .nav-item:active { transform: scale(0.95); }
+        
+        .nav-btn-box {
+            width: 110px; height: 110px;
+            background-image: url('icons/NavigationButton.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            position: relative;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+            padding-top: 15px;
+        }
+
+        /* NOWY STYL DLA ZIELONYCH PRZYCISKÓW */
+        .nav-btn-box-green {
+            width: 110px; height: 110px;
+            background-image: url('icons/NavigationButtonGreen.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            position: relative;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+            padding-top: 15px;
+        }
+        
+        .nav-icon {
+            width: 55%; height: 55%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+            z-index: 1;
+        }
+        
+        .nav-label {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            width: 100%;
+            color: white;
+            font-size: 11px; /* Troszkę mniejsza czcionka, by zmieścić dłuższe nazwy */
+            font-family: 'Titan One', cursive;
+            text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
+            text-align: center;
+            z-index: 2;
+            pointer-events: none;
+            line-height: 1;
+        }
+        
+        .nav-badge {
+            position: absolute;
+            top: -5px; right: -5px;
+            background-color: #e74c3c;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 28px; height: 28px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 14px; font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        
+        /* Styl dla paneli "Więcej", "Zagraj" i "Buduj" - przezroczyste tło, pełna szerokość */
+        #more-options-panel .panel-content,
+        #play-choice-panel .panel-content,
+        #build-choice-panel .panel-content {
+            background: rgba(0,0,0,0.6) !important;
+            border: none !important;
+            box-shadow: none !important;
+            width: 95vw !important;
+            max-width: 800px !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #more-options-panel h2, #play-choice-panel h2, #build-choice-panel h2 { display: none; } 
+        #more-options-panel .panel-list, #build-choice-panel .build-choice-grid { display: none; } 
+        #more-options-panel .panel-close-button, #build-choice-panel .panel-close-button { display: none; }
+        
+        @media (max-width: 600px) {
+            .nav-grid-container {
+                gap: 10px;
+                grid-template-columns: repeat(3, 1fr); /* 3 kolumny na mobile, więc 4 elementy się zawiną */
+            }
+            .nav-btn-box, .nav-btn-box-green {
+                width: 90px; height: 90px;
+            }
+            .nav-label {
+                font-size: 9px;
+                bottom: 10px;
+            }
+        }
+    </style>
+
     <div id="explore-exit-button"></div>
     
     <div id="victory-panel">
