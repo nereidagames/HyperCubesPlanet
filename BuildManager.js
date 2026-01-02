@@ -21,7 +21,7 @@ export class BuildManager {
     this.previewLineGroup = new THREE.Group();
     this.scene.add(this.previewLineGroup);
 
-    this.currentBuildMode = 'block'; // 'block', 'prefab', 'remove'
+    this.currentBuildMode = 'block'; 
     this.currentTool = 'single';
     this.currentBlockCategory = 'block';
     
@@ -36,15 +36,12 @@ export class BuildManager {
     this.platformSize = 64;
     this.cameraController = null;
     
-    // FLAGI TRYBÓW
     this.isNexusMode = false;
     this.isLoginMapMode = false;
 
     this.blockTypes = []; 
     this.selectedBlockType = null;
-    
-    // HOTBAR - historia używanych bloków
-    this.recentBlocks = [];
+    this.recentBlocks = []; // HOTBAR
     
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
@@ -80,12 +77,9 @@ export class BuildManager {
     this.isNexusMode = isNexusMode;
     this.isLoginMapMode = isLoginMapMode;
     
-    // --- FIX: NAJPIERW TWORZYMY SCENĘ I OBIEKTY, POTEM WYBIERAMY BLOK ---
-    // Inicjalizacja środowiska 3D
     this.scene.background = new THREE.Color(0x87CEEB);
     this.scene.fog = new THREE.Fog(0x87CEEB, 40, 160);
     
-    // Światła
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
@@ -93,13 +87,11 @@ export class BuildManager {
     directionalLight.castShadow = false; 
     this.scene.add(directionalLight);
     
-    // Tworzenie platformy i podglądu (To musi być przed selectBlockType)
     this.createBuildPlatform();
     this.createPreviewBlock();
     this.previewPrefab = new THREE.Group();
     this.scene.add(this.previewPrefab);
 
-    // Dopiero teraz pobieramy bloki i ustawiamy domyślny
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     if (this.blockTypes.length > 0) {
         this.selectBlockType(this.blockTypes[0]);
@@ -111,14 +103,28 @@ export class BuildManager {
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
-    // POKAZANIE GÓRNEGO PASKA (HUD)
+    // --- ZARZĄDZANIE WIDOCZNOŚCIĄ UI (NAPRAWA BŁĘDU) ---
+    // 1. Pokaż nowe elementy Buildera
+    const buildElements = [
+        '.build-top-left', 
+        '.build-sidebar-right', 
+        '.build-bottom-bar',
+        '#build-rotate-zone'
+    ];
+    buildElements.forEach(selector => {
+        const el = document.querySelector(selector);
+        if (el) el.style.display = 'flex';
+    });
+
+    // 2. Pokaż górny pasek (HUD)
     const topBar = document.querySelector('.top-bar');
     if(topBar) topBar.style.display = 'flex';
     
-    // Ukrycie przycisków "Zagraj", "Buduj" itp z prawej, żeby nie przeszkadzały
+    // 3. Ukryj boczne menu gry (Zagraj/Buduj...)
     const rightUi = document.querySelector('.right-ui');
     if(rightUi) rightUi.style.display = 'none';
 
+    // Aktualizacja tekstu przycisku Zapisz
     const saveBtn = document.getElementById('build-save-btn-new');
     if(saveBtn) {
         if (isNexusMode) saveBtn.textContent = "Zapisz Nexus";
@@ -130,6 +136,7 @@ export class BuildManager {
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
 
+    // Mobile specific
     if (this.game.isMobile) {
         const mobileControls = document.getElementById('mobile-game-controls');
         const jumpBtn = document.getElementById('jump-button');
@@ -214,7 +221,6 @@ export class BuildManager {
     window.addEventListener('touchmove', this.onTouchMove);
 
     document.getElementById('build-exit-btn-new').onclick = () => this.game.stateManager.switchToMainMenu();
-    
     document.getElementById('build-mode-toggle-new').onclick = () => this.toggleCameraMode();
 
     document.getElementById('build-tools-menu-btn').onclick = () => {
@@ -437,7 +443,6 @@ export class BuildManager {
       this.currentBuildMode='block'; 
       this.selectedBlockType=blockType; 
       
-      // FIX: Check if previewBlock exists before accessing
       if(this.previewBlock){ 
           this.previewBlock.material=this.materials[blockType.texturePath].clone(); 
           this.previewBlock.material.transparent=true; 
@@ -445,9 +450,7 @@ export class BuildManager {
           this.previewBlock.material.needsUpdate=true; 
       } 
       
-      // FIX: Check if previewPrefab exists
       if(this.previewPrefab) this.previewPrefab.visible=false; 
-      
       if(this.previewBlock) this.previewBlock.visible=true; 
       
       this.updateHotbarUI(); 
@@ -631,7 +634,20 @@ export class BuildManager {
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
 
-    // PRZYWRÓĆ STANDARDOWE UI
+    // --- PRZYWRÓĆ STANDARDOWE UI ---
+    // Ukryj Build UI
+    const buildElements = [
+        '.build-top-left', 
+        '.build-sidebar-right', 
+        '.build-bottom-bar',
+        '#build-rotate-zone'
+    ];
+    buildElements.forEach(selector => {
+        const el = document.querySelector(selector);
+        if (el) el.style.display = 'none';
+    });
+    
+    // Pokaż UI Gry
     const rightUi = document.querySelector('.right-ui');
     if(rightUi) rightUi.style.display = 'flex';
 
