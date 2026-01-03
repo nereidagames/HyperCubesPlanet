@@ -40,6 +40,7 @@ class OptimizedGameCore {
         this.scene.background = new THREE.Color(0x87CEEB);
         this.camera = new THREE.PerspectiveCamera(70, this.width / this.height, 0.1, 1000);
 
+        // RENDERER 3D (WebGL)
         this.renderer = new THREE.WebGLRenderer({ 
             antialias: false,
             powerPreference: "high-performance",
@@ -55,14 +56,25 @@ class OptimizedGameCore {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.BasicShadowMap; 
         this.renderer.shadowMap.autoUpdate = true;
+        
+        // Ustawiamy styl dla Canvasa, aby był tłem
+        this.renderer.domElement.style.position = 'absolute';
+        this.renderer.domElement.style.top = '0';
+        this.renderer.domElement.style.left = '0';
+        this.renderer.domElement.style.zIndex = '0';
 
-        // --- FIX: Inicjalizacja CSS2DRenderer (Dymki) ---
+        // --- FIX: RENDERER 2D (Dymki i Nicki) ---
         this.css2dRenderer = new CSS2DRenderer();
         this.css2dRenderer.setSize(this.width, this.height);
+        
+        // WYMUSZAMY STYLE, ŻEBY NA PEWNO BYŁO WIDAĆ
         this.css2dRenderer.domElement.style.position = 'absolute';
         this.css2dRenderer.domElement.style.top = '0px';
-        this.css2dRenderer.domElement.style.pointerEvents = 'none'; // Umożliwia klikanie przez napisy
-        this.css2dRenderer.domElement.style.zIndex = '1'; // WAŻNE: Nad Canvasem (który ma 0 lub auto)
+        this.css2dRenderer.domElement.style.left = '0px';
+        this.css2dRenderer.domElement.style.width = '100%';
+        this.css2dRenderer.domElement.style.height = '100%';
+        this.css2dRenderer.domElement.style.pointerEvents = 'none'; // Klikanie przez napisy
+        this.css2dRenderer.domElement.style.zIndex = '500'; // Wysoki Z-Index (nad grą, pod UI)
         
         if (this.container) {
             this.container.appendChild(this.renderer.domElement);
@@ -77,15 +89,23 @@ class OptimizedGameCore {
         this.height = window.innerHeight;
         this.camera.aspect = this.width / this.height;
         this.camera.updateProjectionMatrix();
+        
         this.renderer.setSize(this.width, this.height);
-        if(this.css2dRenderer) this.css2dRenderer.setSize(this.width, this.height);
+        
+        // Aktualizacja rozmiaru warstwy tekstowej
+        if(this.css2dRenderer) {
+            this.css2dRenderer.setSize(this.width, this.height);
+        }
     }
 
     render(activeScene) {
         const sceneToRender = activeScene || this.scene;
         this.renderer.render(sceneToRender, this.camera);
-        // Renderujemy warstwę tekstową (nicki, dymki)
-        if(this.css2dRenderer) this.css2dRenderer.render(sceneToRender, this.camera);
+        
+        // Renderujemy warstwę tekstową
+        if(this.css2dRenderer) {
+            this.css2dRenderer.render(sceneToRender, this.camera);
+        }
     }
 }
 
