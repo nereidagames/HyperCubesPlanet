@@ -151,15 +151,72 @@ const TEMPLATE = `
             <div id="shop-main-menu">
                 <h1 class="shop-header-title">Kup</h1>
                 <div class="shop-grid-container">
-                    <div class="shop-nav-item" id="btn-shop-blocks"><div class="shop-btn-box blue-style"><img src="icons/Blocks.png" class="shop-icon" onerror="this.src='icons/icon-build.png'"><span class="shop-label">Klocki</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-weapon"><div class="shop-btn-box blue-style"><img src="icons/Weapons.png" class="shop-icon" onerror="this.src='icons/icon-more.png'"><span class="shop-label">Broń</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-legs"><div class="shop-btn-box blue-style"><img src="icons/Legs.png" class="shop-icon" onerror="this.src='icons/icon-jump.png'"><span class="shop-label">Przedmioty dolne</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-vip"><div class="shop-btn-box blue-style"><img src="icons/vip.png" class="shop-icon" onerror="this.src='icons/vip_badge.png'"><span class="shop-label">VIP</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-pets"><div class="shop-btn-box blue-style"><img src="icons/Pets.png" class="shop-icon" onerror="this.src='icons/icon-friends.png'"><span class="shop-label">Zwierzaki</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-addons"><div class="shop-btn-box blue-style"><img src="icons/WorldSpecials.png" class="shop-icon" onerror="this.src='icons/icon-newworld.png'"><span class="shop-label">Dodatki Do Światów</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-skybox"><div class="shop-btn-box blue-style"><img src="icons/Skydomes.png" class="shop-icon" onerror="this.src='icons/icon-discover.png'"><span class="shop-label">Panorama nieba</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-bg"><div class="shop-btn-box blue-style"><img src="icons/Backgrounds.png" class="shop-icon" onerror="this.src='icons/icon-build.png'"><span class="shop-label">Tła</span></div></div>
-                    <div class="shop-nav-item" id="btn-shop-music"><div class="shop-btn-box blue-style"><img src="icons/Music.png" class="shop-icon" onerror="this.src='icons/icon-play.png'"><span class="shop-label">Muzyka</span></div></div>
+                    
+                    <!-- RZĄD 1 -->
+                    <div class="shop-nav-item" id="btn-shop-blocks">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/Blocks.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-build.png'">
+                            <span class="shop-label">Klocki</span>
+                        </div>
+                    </div>
+                    
+                    <div class="shop-nav-item" id="btn-shop-weapon">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/Weapons.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-more.png'">
+                            <span class="shop-label">Broń</span>
+                        </div>
+                    </div>
+
+                    <div class="shop-nav-item" id="btn-shop-legs">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/Legs.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-jump.png'">
+                            <span class="shop-label">Przedmioty dolne</span>
+                        </div>
+                    </div>
+
+                    <div class="shop-nav-item" id="btn-shop-vip">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/vip.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/vip_badge.png'">
+                            <span class="shop-label">VIP</span>
+                        </div>
+                    </div>
+
+                    <div class="shop-nav-item" id="btn-shop-pets">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/Pets.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-friends.png'">
+                            <span class="shop-label">Zwierzaki</span>
+                        </div>
+                    </div>
+
+                    <!-- RZĄD 2 -->
+                    <div class="shop-nav-item" id="btn-shop-addons">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/WorldSpecials.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-newworld.png'">
+                            <span class="shop-label">Dodatki Do Światów</span>
+                        </div>
+                    </div>
+
+                    <div class="shop-nav-item" id="btn-shop-skybox">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/Skydomes.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-discover.png'">
+                            <span class="shop-label">Panorama nieba</span>
+                        </div>
+                    </div>
+
+                    <div class="shop-nav-item" id="btn-shop-bg">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/Backgrounds.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-build.png'">
+                            <span class="shop-label">Tła</span>
+                        </div>
+                    </div>
+
+                    <div class="shop-nav-item" id="btn-shop-music">
+                        <div class="shop-btn-box blue-style">
+                            <img src="icons/Music.png" class="shop-icon" onerror="this.onerror=null; this.src='icons/icon-play.png'">
+                            <span class="shop-label">Muzyka</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -182,17 +239,13 @@ export class ShopManager {
     }
 
     initialize() {
-        // Usuń stary panel jeśli istnieje, żeby wstrzyknąć nowy
-        const existingPanel = document.getElementById('shop-panel');
-        if (existingPanel) {
-            existingPanel.remove();
+        if (document.getElementById('shop-panel')) {
+            document.getElementById('shop-panel').remove();
         }
-        
         const modalsLayer = document.getElementById('modals-layer');
         if (modalsLayer) {
             modalsLayer.insertAdjacentHTML('beforeend', TEMPLATE);
         }
-        
         this.setupEventListeners();
     }
 
@@ -212,9 +265,11 @@ export class ShopManager {
             };
         }
 
+        // --- OBSŁUGA KATEGORII ---
         this.bindCategory('btn-shop-blocks', 'block', 'Klocki');
         this.bindCategory('btn-shop-addons', 'addon', 'Dodatki Do Światów');
 
+        // Placeholdery
         const placeholders = [
             ['btn-shop-weapon', 'Broń'],
             ['btn-shop-legs', 'Przedmioty dolne'],
@@ -247,7 +302,7 @@ export class ShopManager {
     }
 
     open(allBlocks, isOwnedCallback) {
-        console.log("Otwieranie sklepu. Liczba wszystkich bloków:", allBlocks.length);
+        console.log("Otwieranie sklepu. Liczba przekazanych bloków:", allBlocks.length);
         this.allItems = allBlocks;
         this.isOwnedCallback = isOwnedCallback;
 
@@ -276,18 +331,24 @@ export class ShopManager {
     }
 
     renderItems(category) {
-        console.log(`Filtrowanie kategorii: ${category}`);
         const list = document.getElementById('shop-list-container');
         list.innerHTML = '';
 
-        // FIX: Usunięto warunek item.cost > 0, aby pokazać wszystko co pasuje do kategorii.
-        // Jeśli coś się nie pokazuje, to wina braku kategorii w BlockManager.js
+        // --- DEBUGOWANIE ---
+        console.log("=== SHOP DEBUG ===");
+        console.log("Szukana kategoria:", category);
+        console.log("Wszystkie elementy w pamięci Managera:", this.allItems.length);
+        if (this.allItems.length > 0) {
+            // Wypisz strukturę pierwszego obiektu, żeby sprawdzić czy ma pole 'category'
+            console.log("Przykładowy przedmiot (pierwszy z listy):", JSON.stringify(this.allItems[0], null, 2));
+        }
+
         const filteredItems = this.allItems.filter(item => {
             const cat = item.category || 'block'; 
             return cat === category;
         });
 
-        console.log(`Znaleziono elementów w kategorii ${category}:`, filteredItems.length);
+        console.log("Znaleziono pasujących po filtracji:", filteredItems.length);
 
         if (filteredItems.length === 0) {
             list.innerHTML = '<p style="color:white; text-align:center;">Brak elementów w tej kategorii.</p>';
