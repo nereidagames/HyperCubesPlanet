@@ -24,7 +24,6 @@ export const BLOCK_DEFINITIONS = [
     { id: 17, name: 'Cukierek', texturePath: 'textures/cukierek.png', cost: 1200, category: 'block' },
 
     // --- DODATKI / PARKOUR (100+) ---
-    // Zwróć uwagę, że tekstury mogą się powtarzać z blokami, ale ID są unikalne
     { id: 100, name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
     { id: 101, name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
 ];
@@ -34,7 +33,6 @@ export class BlockManager {
         this.ownedBlocks = new Set();
     }
 
-    // Ta metoda ładuje darmowe bloki na start sesji
     load() {
         BLOCK_DEFINITIONS.forEach(block => {
             if (block.cost === 0) {
@@ -45,14 +43,9 @@ export class BlockManager {
 
     setOwnedBlocks(blocksArray) {
         if (typeof blocksArray === 'string') {
-            try {
-                blocksArray = JSON.parse(blocksArray);
-            } catch (e) {
-                blocksArray = [];
-            }
+            try { blocksArray = JSON.parse(blocksArray); } catch (e) { blocksArray = []; }
         }
         
-        // Zawsze dodaj darmowe bloki
         BLOCK_DEFINITIONS.forEach(block => {
             if (block.cost === 0) {
                 this.ownedBlocks.add(block.name);
@@ -68,35 +61,26 @@ export class BlockManager {
         return this.ownedBlocks.has(blockName);
     }
 
-    // --- NOWE METODY KONWERSJI (DLA BEZPIECZEŃSTWA) ---
-
-    // Zamienia ID (np. 1) na ścieżkę tekstury (np. 'textures/ziemia.png')
-    // Używane przy WCZYTYWANIU mapy z serwera
-    getTextureById(id) {
-        const block = BLOCK_DEFINITIONS.find(b => b.id === id);
-        return block ? block.texturePath : 'textures/ziemia.png'; // Fallback
-    }
-
-    // Zwraca pełny obiekt bloku po ID
-    getBlockById(id) {
-        return BLOCK_DEFINITIONS.find(b => b.id === id);
-    }
-
-    // Zamienia teksturę i nazwę na ID
-    // Używane przy ZAPISYWANIU mapy (wysyłamy ID, nie teksturę)
     getIdByTexture(texturePath, blockName) {
-        // Specjalna obsługa dla dodatków Parkour, które dzielą tekstury ze zwykłymi blokami
         if (blockName === 'Parkour Start') return 100;
         if (blockName === 'Parkour Meta') return 101;
-
-        // Szukamy pasującego bloku w definicjach
         const block = BLOCK_DEFINITIONS.find(b => b.texturePath === texturePath && b.category !== 'addon');
-        
-        // Jeśli znaleziono - zwróć ID, w przeciwnym razie domyślne ID 1 (Ziemia)
         return block ? block.id : 1; 
     }
 
-    // --------------------------------------------------
+    getTextureById(id) {
+        const block = BLOCK_DEFINITIONS.find(b => b.id === id);
+        return block ? block.texturePath : 'textures/ziemia.png';
+    }
+    
+    getBlockNameById(id) {
+        const block = BLOCK_DEFINITIONS.find(b => b.id === id);
+        return block ? block.name : 'Nieznany';
+    }
+
+    getBlockById(id) {
+        return BLOCK_DEFINITIONS.find(b => b.id === id);
+    }
 
     async buyBlock(blockName, cost) {
         if (this.isOwned(blockName)) return { success: false, message: "Już posiadasz ten element." };
