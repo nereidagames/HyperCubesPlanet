@@ -1,6 +1,8 @@
 /* PLIK: main.js */
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
+// --- FIX: Statyczny import CSS2DRenderer ---
+import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js'; 
 import { createBaseCharacter } from './character.js';
 
 import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
@@ -48,24 +50,23 @@ class OptimizedGameCore {
         
         const pixelRatio = Math.min(window.devicePixelRatio, 1.5); 
         this.renderer.setPixelRatio(pixelRatio * 0.75); 
-        
         this.renderer.setSize(this.width, this.height);
         
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.BasicShadowMap; 
         this.renderer.shadowMap.autoUpdate = true;
 
-        import('three/addons/renderers/CSS2DRenderer.js').then((module) => {
-             this.css2dRenderer = new module.CSS2DRenderer();
-             this.css2dRenderer.setSize(this.width, this.height);
-             this.css2dRenderer.domElement.style.position = 'absolute';
-             this.css2dRenderer.domElement.style.top = '0px';
-             this.css2dRenderer.domElement.style.pointerEvents = 'none';
-             if (this.container) this.container.appendChild(this.css2dRenderer.domElement);
-        });
-
+        // --- FIX: Inicjalizacja CSS2DRenderer (Dymki) ---
+        this.css2dRenderer = new CSS2DRenderer();
+        this.css2dRenderer.setSize(this.width, this.height);
+        this.css2dRenderer.domElement.style.position = 'absolute';
+        this.css2dRenderer.domElement.style.top = '0px';
+        this.css2dRenderer.domElement.style.pointerEvents = 'none'; // Umożliwia klikanie przez napisy
+        this.css2dRenderer.domElement.style.zIndex = '1'; // WAŻNE: Nad Canvasem (który ma 0 lub auto)
+        
         if (this.container) {
             this.container.appendChild(this.renderer.domElement);
+            this.container.appendChild(this.css2dRenderer.domElement);
         }
 
         window.addEventListener('resize', () => this.onWindowResize());
@@ -83,6 +84,7 @@ class OptimizedGameCore {
     render(activeScene) {
         const sceneToRender = activeScene || this.scene;
         this.renderer.render(sceneToRender, this.camera);
+        // Renderujemy warstwę tekstową (nicki, dymki)
         if(this.css2dRenderer) this.css2dRenderer.render(sceneToRender, this.camera);
     }
 }
@@ -190,7 +192,7 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      // Przekazanie blockManagera do SceneManagera (ważne dla ID bloków!)
+      // Przekazanie blockManagera do SceneManagera
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager(), this.blockManager);
       try { await this.sceneManager.initialize(); } catch(e) {}
 
@@ -210,7 +212,7 @@ class BlockStarPlanetGame {
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
       this.multiplayer = new MultiplayerManager(this.scene, this.ui, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
       
-      // Przekazanie lokalnej postaci do Multiplayera (dla teleportacji)
+      // Przekazanie lokalnej postaci do Multiplayera (dla dymków i teleportacji)
       this.multiplayer.setLocalCharacter(this.characterManager.character);
 
       this.multiplayer.initialize(token);
