@@ -118,7 +118,7 @@ canvas { display: block; }
     background-repeat: repeat-x; background-size: auto 100%; background-color: #2c3e50;
     image-rendering: pixelated; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     display: flex; align-items: center; padding: 5px 15px; gap: 15px; 
-    z-index: 2100; /* ZMIANA: Musi być wyżej niż Build UI */
+    z-index: 2100;
 }
 .top-bar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
 .player-avatar { width: 45px; height: 45px; background-color: #4a90e2; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; background-size: cover; background-position: center; }
@@ -190,15 +190,12 @@ canvas { display: block; }
 .panel-item:hover { background: #4c8cff; } 
 .panel-close-button { margin-top: 20px; background: #ff4757; padding: 10px 20px; border-radius: 8px; cursor: pointer; color: white; font-family: var(--font-main); }
 
-/* --- NOWY STYL BUILDERA (BSP STYLE) --- */
-
-/* Ukrywamy stare przyciski w trybie budowania */
+/* --- BUILDER UI (BSP STYLE) --- */
 .build-ui-button { display: none !important; }
 
-/* 1. PASEK GÓRNY LEWY - DOMYŚLNIE UKRYTY */
 .build-top-left {
     position: absolute; top: 70px; left: 10px;
-    display: none; /* Default hidden */
+    display: none; 
     gap: 10px; pointer-events: auto; z-index: 2005;
 }
 
@@ -223,10 +220,9 @@ canvas { display: block; }
 }
 .btn-bsp-green:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e8449; }
 
-/* 2. PASEK BOCZNY PRAWY - DOMYŚLNIE UKRYTY */
 .build-sidebar-right {
     position: absolute; right: 10px; top: 80px;
-    display: none; /* Default hidden */
+    display: none;
     flex-direction: column; gap: 15px;
     pointer-events: auto; align-items: flex-end; z-index: 2005;
 }
@@ -257,7 +253,6 @@ canvas { display: block; }
 }
 .btn-undo-redo:active { transform: translateY(3px); box-shadow: 0 1px 0 #7f8c8d; }
 
-/* 3. JOYSTICK SFERA - ZMODYFIKOWANA */
 #build-rotate-zone {
     position: absolute; bottom: 130px; right: 20px;
     width: 100px; height: 100px;
@@ -265,22 +260,16 @@ canvas { display: block; }
     border: 2px solid rgba(255, 255, 255, 0.5);
     border-radius: 50%;
     pointer-events: auto; cursor: grab; z-index: 2001;
-    display: none; /* Default hidden */
+    display: none;
     justify-content: center; align-items: center;
     backdrop-filter: blur(2px);
 }
-#build-rotate-zone::after {
-    content: '🔄';
-    font-size: 40px;
-    opacity: 0.7;
-}
-.rotate-icon { display: none; }
+#build-rotate-zone::after { content: '🔄'; font-size: 40px; opacity: 0.7; }
 
-/* 4. DOLNY PASEK AKCJI - DOMYŚLNIE UKRYTY */
 .build-bottom-bar {
     position: absolute; bottom: 0; left: 0; width: 100%; height: 100px;
     background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
-    display: none; /* Default hidden */
+    display: none;
     align-items: center; padding-left: 20px;
     pointer-events: none; z-index: 2000;
 }
@@ -295,7 +284,7 @@ canvas { display: block; }
     color: white; font-size: 40px; font-weight: bold;
     text-shadow: 2px 2px 0 #000;
 }
-.btn-add-block::after { content: '+'; } /* IKONA PLUS */
+.btn-add-block::after { content: '+'; }
 .btn-add-block:active { transform: translateY(3px); box-shadow: 0 1px 0 #2980b9; }
 
 .hotbar-container {
@@ -318,7 +307,6 @@ canvas { display: block; }
 }
 .hotbar-slot:active { transform: scale(0.95); }
 
-/* 5. MODAL NARZĘDZI */
 #tools-modal {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: 600px; max-width: 90vw;
@@ -347,7 +335,6 @@ canvas { display: block; }
 .tool-icon-btn.vip { background: linear-gradient(to bottom, #a8c0ff, #3f2b96); } 
 .tool-icon-img { width: 70%; height: 70%; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.3)); }
 
-/* PANELE WYBORU (BLOKI) */
 #block-selection-panel, #prefab-selection-panel, #part-selection-panel { 
     position: absolute; bottom: 110px; left: 20px;
     background: rgba(0, 0, 0, 0.9); border: 3px solid white; border-radius: 15px; 
@@ -390,3 +377,184 @@ canvas { display: block; }
         left: 50%; transform: translateX(-50%); bottom: 120px; width: 80vw; max-width: 400px;
     }
 }
+
+/* --- PARKOUR & EXPLORE UI FIXES --- */
+
+/* 1. Licznik czasu */
+#parkour-timer {
+    position: absolute;
+    top: 80px; /* Poniżej Top Bar */
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 32px;
+    color: #f1c40f; /* Złoty kolor */
+    font-weight: bold;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+    z-index: 2000; /* Musi być nad grą */
+    display: none; /* Domyślnie ukryty, JS go pokaże */
+    pointer-events: none;
+}
+
+/* 2. Przycisk wyjścia z eksploracji */
+#explore-exit-button {
+    position: absolute;
+    top: 80px; /* Poniżej Top Bar */
+    left: 20px;
+    width: 60px;
+    height: 60px;
+    background-color: #e74c3c;
+    background-image: url('icons/icon-back.png');
+    background-size: 60%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: 3px solid white;
+    border-radius: 12px;
+    box-shadow: 0 4px 0 #c0392b;
+    cursor: pointer;
+    z-index: 2000;
+    display: none; /* JS go włączy */
+    pointer-events: auto;
+    transition: transform 0.1s;
+}
+#explore-exit-button:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #c0392b;
+}
+
+/* 3. Panel Zwycięstwa (Victory Panel) */
+#victory-panel {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 10002; /* Bardzo wysoko */
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.victory-title {
+    font-size: 48px;
+    color: #f1c40f;
+    text-transform: uppercase;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.victory-time {
+    font-size: 36px;
+    color: white;
+}
+
+.victory-btn {
+    padding: 15px 40px;
+    font-size: 24px;
+    font-family: 'Titan One', cursive;
+    background: linear-gradient(to bottom, #2ecc71, #27ae60);
+    border: 4px solid white;
+    border-radius: 15px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 5px 0 #1e8449;
+    text-shadow: 1.5px 1.5px 0 #000;
+    transition: transform 0.1s;
+}
+.victory-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #1e8449;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    80% { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+/* 4. Panel Nagród (Reward Panel) - Po kliknięciu Super! */
+#reward-panel {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    background: #3498db;
+    border: 4px solid white;
+    border-radius: 20px;
+    padding: 20px;
+    z-index: 10003;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+}
+
+#reward-title-text {
+    font-size: 24px; color: white; margin-bottom: 20px;
+}
+
+.reward-box-container {
+    width: 100%;
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.reward-box {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+
+.reward-title { color: #f1c40f; font-size: 18px; margin-bottom: 5px; }
+
+.reward-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 20px; color: white;
+}
+.reward-row img { width: 24px; height: 24px; }
+
+.level-progress-area {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.level-star-big {
+    width: 50px; height: 50px;
+    background: url('icons/icon-level.png') center/contain no-repeat;
+    display: flex; justify-content: center; align-items: center;
+    color: white; font-size: 18px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+}
+
+.reward-bar-bg {
+    flex: 1; height: 20px; background: rgba(0,0,0,0.5);
+    border: 2px solid white; border-radius: 10px;
+    margin: 0 10px; position: relative;
+    display: flex; justify-content: center; align-items: center;
+}
+
+#reward-bar-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 0%; background: linear-gradient(to right, #2ecc71, #27ae60);
+    border-radius: 8px;
+}
+
+#reward-bar-text {
+    position: relative; z-index: 1; font-size: 10px; color: white;
+}
+
+.reward-buttons {
+    display: flex; gap: 15px;
+}
+
+.reward-buttons button {
+    width: 60px; height: 60px;
+    border: 3px solid white; border-radius: 12px;
+    background-color: #9b59b6;
+    background-size: 60%; background-position: center; background-repeat: no-repeat;
+    cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+}
+.reward-buttons button:active { transform: translateY(3px); box-shadow: none; }
+
+#reward-btn-home { background-image: url('icons/icon-home.png'); background-color: #e74c3c; }
+#reward-btn-replay { background-image: url('icons/icon-restart.png'); background-color: #f1c40f; }
+#reward-btn-next { background-image: url('icons/icon-next.png'); background-color: #2ecc71; display: none; }
