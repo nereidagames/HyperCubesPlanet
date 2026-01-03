@@ -1,14 +1,33 @@
 /* PLIK: ShopManager.js */
 import { STORAGE_KEYS } from './Config.js';
 
-// --- GLOBALNE ZMIENNE MODUŁOWE (PANCERNE ROZWIĄZANIE) ---
-// Przechowują dane niezależnie od instancji klasy, eliminując problemy z 'this'
+// --- ZAPASOWA BAZA DANYCH (HARDCODED) ---
+// To gwarantuje, że sklep ZAWSZE ma co wyświetlić, nawet jak BlockManager zawiedzie.
+const SHOP_DATA_BACKUP = [
+    // --- Klocki ---
+    { id: 6, name: 'Gładki', texturePath: 'textures/gladki.png', cost: 150, category: 'block' },
+    { id: 7, name: 'Karton', texturePath: 'textures/karton.png', cost: 200, category: 'block' },
+    { id: 8, name: 'Dżins', texturePath: 'textures/dzins.png', cost: 300, category: 'block' },
+    { id: 9, name: 'Kamień', texturePath: 'textures/kamien.png', cost: 400, category: 'block' },
+    { id: 10, name: 'Drewniana podłoga', texturePath: 'textures/drewnianapodloga.png', cost: 450, category: 'block' },
+    { id: 11, name: 'Bruk', texturePath: 'textures/bruk.png', cost: 450, category: 'block' },
+    { id: 12, name: 'Cegła', texturePath: 'textures/cegla.png', cost: 500, category: 'block' },
+    { id: 13, name: 'Otoczak', texturePath: 'textures/otoczak.png', cost: 550, category: 'block' },
+    { id: 14, name: 'Metalowa siatka', texturePath: 'textures/metalowasiatka.png', cost: 600, category: 'block' },
+    { id: 15, name: 'Metalowa płyta', texturePath: 'textures/metalowaplyta.png', cost: 800, category: 'block' },
+    { id: 16, name: 'Granit', texturePath: 'textures/granit.png', cost: 900, category: 'block' },
+    { id: 17, name: 'Cukierek', texturePath: 'textures/cukierek.png', cost: 1200, category: 'block' },
+    // --- Dodatki ---
+    { id: 100, name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
+    { id: 101, name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
+];
+
+// Zmienne modułowe
 let CURRENT_SHOP_ITEMS = [];
 let CURRENT_OWNED_CALLBACK = null;
 
 const TEMPLATE = `
     <style>
-        /* GŁÓWNY KONTENER SKLEPU */
         #shop-panel .panel-content {
             background: rgba(0,0,0,0.6) !important;
             border: none !important;
@@ -21,7 +40,6 @@ const TEMPLATE = `
             pointer-events: auto;
         }
 
-        /* TYTUŁ */
         .shop-header-title {
             font-family: 'Titan One', cursive;
             color: white;
@@ -31,7 +49,6 @@ const TEMPLATE = `
             text-align: center;
         }
 
-        /* GRID MENU GŁÓWNEGO (KATEGORIE) */
         .shop-grid-container {
             display: grid;
             grid-template-columns: repeat(5, 1fr); 
@@ -41,7 +58,6 @@ const TEMPLATE = `
             padding: 10px;
         }
 
-        /* STYL PRZYCISKU KATEGORII */
         .shop-nav-item {
             display: flex;
             flex-direction: column;
@@ -94,7 +110,6 @@ const TEMPLATE = `
             padding: 0 5px;
         }
 
-        /* WIDOK LISTY PRZEDMIOTÓW */
         #shop-items-view {
             display: none; 
             width: 100%;
@@ -156,72 +171,15 @@ const TEMPLATE = `
             <div id="shop-main-menu">
                 <h1 class="shop-header-title">Kup</h1>
                 <div class="shop-grid-container">
-                    
-                    <!-- RZĄD 1 -->
-                    <div class="shop-nav-item" id="btn-shop-blocks">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/Blocks.png" class="shop-icon" onerror="this.src='icons/icon-build.png'">
-                            <span class="shop-label">Klocki</span>
-                        </div>
-                    </div>
-                    
-                    <div class="shop-nav-item" id="btn-shop-weapon">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/Weapons.png" class="shop-icon" onerror="this.src='icons/icon-more.png'">
-                            <span class="shop-label">Broń</span>
-                        </div>
-                    </div>
-
-                    <div class="shop-nav-item" id="btn-shop-legs">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/Legs.png" class="shop-icon" onerror="this.src='icons/icon-jump.png'">
-                            <span class="shop-label">Przedmioty dolne</span>
-                        </div>
-                    </div>
-
-                    <div class="shop-nav-item" id="btn-shop-vip">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/vip.png" class="shop-icon" onerror="this.src='icons/vip_badge.png'">
-                            <span class="shop-label">VIP</span>
-                        </div>
-                    </div>
-
-                    <div class="shop-nav-item" id="btn-shop-pets">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/Pets.png" class="shop-icon" onerror="this.src='icons/icon-friends.png'">
-                            <span class="shop-label">Zwierzaki</span>
-                        </div>
-                    </div>
-
-                    <!-- RZĄD 2 -->
-                    <div class="shop-nav-item" id="btn-shop-addons">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/WorldSpecials.png" class="shop-icon" onerror="this.src='icons/icon-newworld.png'">
-                            <span class="shop-label">Dodatki Do Światów</span>
-                        </div>
-                    </div>
-
-                    <div class="shop-nav-item" id="btn-shop-skybox">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/Skydomes.png" class="shop-icon" onerror="this.src='icons/icon-discover.png'">
-                            <span class="shop-label">Panorama nieba</span>
-                        </div>
-                    </div>
-
-                    <div class="shop-nav-item" id="btn-shop-bg">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/Backgrounds.png" class="shop-icon" onerror="this.src='icons/icon-build.png'">
-                            <span class="shop-label">Tła</span>
-                        </div>
-                    </div>
-
-                    <div class="shop-nav-item" id="btn-shop-music">
-                        <div class="shop-btn-box blue-style">
-                            <img src="icons/Music.png" class="shop-icon" onerror="this.src='icons/icon-play.png'">
-                            <span class="shop-label">Muzyka</span>
-                        </div>
-                    </div>
-
+                    <div class="shop-nav-item" id="btn-shop-blocks"><div class="shop-btn-box blue-style"><img src="icons/Blocks.png" class="shop-icon" onerror="this.src='icons/icon-build.png'"><span class="shop-label">Klocki</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-weapon"><div class="shop-btn-box blue-style"><img src="icons/Weapons.png" class="shop-icon" onerror="this.src='icons/icon-more.png'"><span class="shop-label">Broń</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-legs"><div class="shop-btn-box blue-style"><img src="icons/Legs.png" class="shop-icon" onerror="this.src='icons/icon-jump.png'"><span class="shop-label">Przedmioty dolne</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-vip"><div class="shop-btn-box blue-style"><img src="icons/vip.png" class="shop-icon" onerror="this.src='icons/vip_badge.png'"><span class="shop-label">VIP</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-pets"><div class="shop-btn-box blue-style"><img src="icons/Pets.png" class="shop-icon" onerror="this.src='icons/icon-friends.png'"><span class="shop-label">Zwierzaki</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-addons"><div class="shop-btn-box blue-style"><img src="icons/WorldSpecials.png" class="shop-icon" onerror="this.src='icons/icon-newworld.png'"><span class="shop-label">Dodatki Do Światów</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-skybox"><div class="shop-btn-box blue-style"><img src="icons/Skydomes.png" class="shop-icon" onerror="this.src='icons/icon-discover.png'"><span class="shop-label">Panorama nieba</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-bg"><div class="shop-btn-box blue-style"><img src="icons/Backgrounds.png" class="shop-icon" onerror="this.src='icons/icon-build.png'"><span class="shop-label">Tła</span></div></div>
+                    <div class="shop-nav-item" id="btn-shop-music"><div class="shop-btn-box blue-style"><img src="icons/Music.png" class="shop-icon" onerror="this.src='icons/icon-play.png'"><span class="shop-label">Muzyka</span></div></div>
                 </div>
             </div>
 
@@ -238,7 +196,6 @@ const TEMPLATE = `
 export class ShopManager {
     constructor(uiManager) {
         this.ui = uiManager;
-        // Instancja klasy nie trzyma już danych, są one globalne w module
     }
 
     initialize() {
@@ -303,11 +260,17 @@ export class ShopManager {
     }
 
     open(allBlocks, isOwnedCallback) {
-        // --- ZAPIS DO ZMIENNEJ GLOBALNEJ ---
-        CURRENT_SHOP_ITEMS = allBlocks;
-        CURRENT_OWNED_CALLBACK = isOwnedCallback;
+        console.log("ShopManager: Otwieranie. Przekazano elementów:", allBlocks ? allBlocks.length : "BRAK");
+        
+        // Zapisz przekazane dane. Jeśli są puste, użyj BACKUPU.
+        if (allBlocks && allBlocks.length > 0) {
+            CURRENT_SHOP_ITEMS = allBlocks;
+        } else {
+            console.warn("ShopManager: Puste dane z BlockManager! Używam bazy awaryjnej.");
+            CURRENT_SHOP_ITEMS = SHOP_DATA_BACKUP;
+        }
 
-        console.log("ShopManager.open(): Zapisano do globalnej listy:", CURRENT_SHOP_ITEMS.length);
+        CURRENT_OWNED_CALLBACK = isOwnedCallback;
 
         const panel = document.getElementById('shop-panel');
         if (panel) {
@@ -337,25 +300,15 @@ export class ShopManager {
         const list = document.getElementById('shop-list-container');
         list.innerHTML = '';
 
-        // --- ODCZYT ZE ZMIENNEJ GLOBALNEJ ---
-        const itemsToRender = CURRENT_SHOP_ITEMS;
-
-        console.log("=== SHOP DEBUG ===");
-        console.log("Kategoria:", category);
-        console.log("Globalna lista przedmiotów:", itemsToRender.length);
-
-        if (itemsToRender.length === 0) {
-            console.error("BŁĄD: Lista przedmiotów jest pusta mimo otwarcia sklepu!");
-            list.innerHTML = '<p style="color:red; text-align:center;">Błąd ładowania przedmiotów.</p>';
-            return;
-        }
+        // Używamy globalnej zmiennej, która na pewno ma dane (z backupu lub z maina)
+        const itemsToRender = CURRENT_SHOP_ITEMS.length > 0 ? CURRENT_SHOP_ITEMS : SHOP_DATA_BACKUP;
 
         const filteredItems = itemsToRender.filter(item => {
             const cat = item.category || 'block'; 
             return cat === category;
         });
 
-        console.log("Znaleziono pasujących:", filteredItems.length);
+        console.log(`Rendering kategorii ${category}. Znaleziono: ${filteredItems.length}`);
 
         if (filteredItems.length === 0) {
             list.innerHTML = '<p style="color:white; text-align:center;">Brak elementów w tej kategorii.</p>';
