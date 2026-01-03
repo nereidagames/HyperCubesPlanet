@@ -1,40 +1,43 @@
 /* PLIK: BlockManager.js */
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
-export const BLOCK_DEFINITIONS = [
-    // --- BLOKI PODSTAWOWE (0-5) ---
-    { id: 1, name: 'Ziemia', texturePath: 'textures/ziemia.png', cost: 0, category: 'block' },
-    { id: 2, name: 'Trawa', texturePath: 'textures/trawa.png', cost: 0, category: 'block' },
-    { id: 3, name: 'Drewno', texturePath: 'textures/drewno.png', cost: 0, category: 'block' },
-    { id: 4, name: 'Piasek', texturePath: 'textures/piasek.png', cost: 0, category: 'block' },
-    { id: 5, name: 'Beton', texturePath: 'textures/beton.png', cost: 0, category: 'block' },
-    
-    // --- BLOKI PŁATNE (6-20) ---
-    { id: 6, name: 'Gładki', texturePath: 'textures/gladki.png', cost: 150, category: 'block' },
-    { id: 7, name: 'Karton', texturePath: 'textures/karton.png', cost: 200, category: 'block' },
-    { id: 8, name: 'Dżins', texturePath: 'textures/dzins.png', cost: 300, category: 'block' },
-    { id: 9, name: 'Kamień', texturePath: 'textures/kamien.png', cost: 400, category: 'block' },
-    { id: 10, name: 'Drewniana podłoga', texturePath: 'textures/drewnianapodloga.png', cost: 450, category: 'block' },
-    { id: 11, name: 'Bruk', texturePath: 'textures/bruk.png', cost: 450, category: 'block' },
-    { id: 12, name: 'Cegła', texturePath: 'textures/cegla.png', cost: 500, category: 'block' },
-    { id: 13, name: 'Otoczak', texturePath: 'textures/otoczak.png', cost: 550, category: 'block' },
-    { id: 14, name: 'Metalowa siatka', texturePath: 'textures/metalowasiatka.png', cost: 600, category: 'block' },
-    { id: 15, name: 'Metalowa płyta', texturePath: 'textures/metalowaplyta.png', cost: 800, category: 'block' },
-    { id: 16, name: 'Granit', texturePath: 'textures/granit.png', cost: 900, category: 'block' },
-    { id: 17, name: 'Cukierek', texturePath: 'textures/cukierek.png', cost: 1200, category: 'block' },
-
-    // --- DODATKI / PARKOUR (100+) ---
-    { id: 100, name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
-    { id: 101, name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
-];
-
 export class BlockManager {
     constructor() {
         this.ownedBlocks = new Set();
+        
+        // --- DANE NA TWARDO W KLASIE (BEZPIECZNIEJ) ---
+        this.allBlocks = [
+            // --- PODSTAWOWE (0-5) ---
+            { id: 1, name: 'Ziemia', texturePath: 'textures/ziemia.png', cost: 0, category: 'block' },
+            { id: 2, name: 'Trawa', texturePath: 'textures/trawa.png', cost: 0, category: 'block' },
+            { id: 3, name: 'Drewno', texturePath: 'textures/drewno.png', cost: 0, category: 'block' },
+            { id: 4, name: 'Piasek', texturePath: 'textures/piasek.png', cost: 0, category: 'block' },
+            { id: 5, name: 'Beton', texturePath: 'textures/beton.png', cost: 0, category: 'block' },
+            
+            // --- SKLEP (6-20) ---
+            { id: 6, name: 'Gładki', texturePath: 'textures/gladki.png', cost: 150, category: 'block' },
+            { id: 7, name: 'Karton', texturePath: 'textures/karton.png', cost: 200, category: 'block' },
+            { id: 8, name: 'Dżins', texturePath: 'textures/dzins.png', cost: 300, category: 'block' },
+            { id: 9, name: 'Kamień', texturePath: 'textures/kamien.png', cost: 400, category: 'block' },
+            { id: 10, name: 'Drewniana podłoga', texturePath: 'textures/drewnianapodloga.png', cost: 450, category: 'block' },
+            { id: 11, name: 'Bruk', texturePath: 'textures/bruk.png', cost: 450, category: 'block' },
+            { id: 12, name: 'Cegła', texturePath: 'textures/cegla.png', cost: 500, category: 'block' },
+            { id: 13, name: 'Otoczak', texturePath: 'textures/otoczak.png', cost: 550, category: 'block' },
+            { id: 14, name: 'Metalowa siatka', texturePath: 'textures/metalowasiatka.png', cost: 600, category: 'block' },
+            { id: 15, name: 'Metalowa płyta', texturePath: 'textures/metalowaplyta.png', cost: 800, category: 'block' },
+            { id: 16, name: 'Granit', texturePath: 'textures/granit.png', cost: 900, category: 'block' },
+            { id: 17, name: 'Cukierek', texturePath: 'textures/cukierek.png', cost: 1200, category: 'block' },
+
+            // --- DODATKI / PARKOUR (100+) ---
+            { id: 100, name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
+            { id: 101, name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
+        ];
+
+        console.log("BlockManager zainicjalizowany. Liczba bloków:", this.allBlocks.length);
     }
 
     load() {
-        BLOCK_DEFINITIONS.forEach(block => {
+        this.allBlocks.forEach(block => {
             if (block.cost === 0) {
                 this.ownedBlocks.add(block.name);
             }
@@ -46,10 +49,9 @@ export class BlockManager {
             try { blocksArray = JSON.parse(blocksArray); } catch (e) { blocksArray = []; }
         }
         
-        BLOCK_DEFINITIONS.forEach(block => {
-            if (block.cost === 0) {
-                this.ownedBlocks.add(block.name);
-            }
+        // Zawsze dodaj darmowe
+        this.allBlocks.forEach(block => {
+            if (block.cost === 0) this.ownedBlocks.add(block.name);
         });
 
         if (Array.isArray(blocksArray)) {
@@ -64,22 +66,22 @@ export class BlockManager {
     getIdByTexture(texturePath, blockName) {
         if (blockName === 'Parkour Start') return 100;
         if (blockName === 'Parkour Meta') return 101;
-        const block = BLOCK_DEFINITIONS.find(b => b.texturePath === texturePath && b.category !== 'addon');
+        const block = this.allBlocks.find(b => b.texturePath === texturePath && b.category !== 'addon');
         return block ? block.id : 1; 
     }
 
     getTextureById(id) {
-        const block = BLOCK_DEFINITIONS.find(b => b.id === id);
+        const block = this.allBlocks.find(b => b.id === id);
         return block ? block.texturePath : 'textures/ziemia.png';
     }
     
     getBlockNameById(id) {
-        const block = BLOCK_DEFINITIONS.find(b => b.id === id);
+        const block = this.allBlocks.find(b => b.id === id);
         return block ? block.name : 'Nieznany';
     }
 
     getBlockById(id) {
-        return BLOCK_DEFINITIONS.find(b => b.id === id);
+        return this.allBlocks.find(b => b.id === id);
     }
 
     async buyBlock(blockName, cost) {
@@ -112,14 +114,15 @@ export class BlockManager {
     }
 
     getOwnedBlockTypes() {
-        return BLOCK_DEFINITIONS.filter(block => this.isOwned(block.name));
+        return this.allBlocks.filter(block => this.isOwned(block.name));
     }
 
     getOwnedByCategory(category) {
-        return BLOCK_DEFINITIONS.filter(block => this.isOwned(block.name) && block.category === category);
+        return this.allBlocks.filter(block => this.isOwned(block.name) && block.category === category);
     }
 
+    // Ta metoda jest najważniejsza dla Sklepu
     getAllBlockDefinitions() {
-        return BLOCK_DEFINITIONS;
+        return this.allBlocks;
     }
 }
