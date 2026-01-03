@@ -72,7 +72,7 @@ export class BuildManager {
     });
   }
 
-  // --- GŁÓWNA METODA WEJŚCIA (POPRAWIONA) ---
+  // --- GŁÓWNA METODA WEJŚCIA (POPRAWIONA KOLEJNOŚĆ) ---
   async enterBuildMode(size = 64, isNexusMode = false, isLoginMapMode = false) {
     this.platformSize = size;
     this.isNexusMode = isNexusMode;
@@ -90,24 +90,24 @@ export class BuildManager {
     directionalLight.castShadow = false; 
     this.scene.add(directionalLight);
     
-    // --- FIX START: Ustawienie bloku PRZED stworzeniem preview ---
-    // Pobieramy bloki i ustawiamy domyślny, aby createPreviewBlock miało co robić
+    // 1. Pobieramy bloki i ustawiamy domyślny
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     if (this.blockTypes.length > 0) {
         this.selectedBlockType = this.blockTypes[0];
     }
-    // --- FIX END ---
 
-    // Tworzenie obiektów
+    // 2. Ładujemy tekstury (TERAZ, zanim stworzymy previewBlock)
+    this.preloadTextures();
+
+    // 3. Tworzenie obiektów
     this.createBuildPlatform();
-    this.createPreviewBlock(); // Teraz zadziała, bo selectedBlockType jest ustawiony
+    this.createPreviewBlock(); // Teraz zadziała, bo materials są załadowane
     this.previewPrefab = new THREE.Group();
     this.scene.add(this.previewPrefab);
 
     this.currentBuildMode = 'block';
     this.currentTool = 'single';
 
-    this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
     // ZARZĄDZANIE WIDOCZNOŚCIĄ UI
@@ -135,7 +135,7 @@ export class BuildManager {
         else saveBtn.textContent = "Zapisz";
     }
 
-    // Odświeżenie Hotbara (UI)
+    // Odświeżenie Hotbara
     if (this.selectedBlockType) {
         this.selectBlockType(this.selectedBlockType);
     }
@@ -452,6 +452,7 @@ export class BuildManager {
   createPreviewBlock() { 
       if(!this.selectedBlockType) return; 
       const previewGeo=new THREE.BoxGeometry(1.01,1.01,1.01); 
+      // Tutaj materials MUSI już być załadowane
       const previewMat=this.materials[this.selectedBlockType.texturePath].clone(); 
       previewMat.transparent=true; 
       previewMat.opacity=0.5; 
