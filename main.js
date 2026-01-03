@@ -29,7 +29,7 @@ import { WorldStorage } from './WorldStorage.js';
 
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
-// --- ZOPTYMALIZOWANY SILNIK (ZAMIENNIK GameCore.js) ---
+// --- ZOPTYMALIZOWANY SILNIK ---
 class OptimizedGameCore {
     constructor(containerId = 'gameContainer') {
         this.container = document.getElementById(containerId);
@@ -192,7 +192,8 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager());
+      // Przekazujemy blockManager do SceneManager (dla wczytywania ID bloków)
+      this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager(), this.blockManager);
       try { await this.sceneManager.initialize(); } catch(e) {}
 
       this.characterManager = new CharacterManager(this.scene);
@@ -211,8 +212,7 @@ class BlockStarPlanetGame {
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
       this.multiplayer = new MultiplayerManager(this.scene, this.ui, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
       
-      // --- FIX: PRZEKAZANIE REFERENCJI LOKALNEJ POSTACI ---
-      // To pozwala MultiplayerManagerowi przesuwać gracza, gdy serwer wyśle 'teleport'
+      // Przekazanie lokalnej postaci do Multiplayera (dla teleportacji)
       this.multiplayer.setLocalCharacter(this.characterManager.character);
 
       this.multiplayer.initialize(token);
@@ -327,7 +327,11 @@ class BlockStarPlanetGame {
 
   setupMultiplayerCallbacks() { 
       this.ui.onSendPrivateMessage = (recipient, text) => this.multiplayer.sendPrivateMessage(recipient, text); 
-      this.coinManager.onCollect = () => this.multiplayer.sendMessage({ type: 'collectCoin' }); 
+      
+      // --- ANTYCHEAT: Klient NIE wysyła już collectCoin ---
+      // this.coinManager.onCollect = () => this.multiplayer.sendMessage({ type: 'collectCoin' }); 
+      // Zamiast tego, serwer sam decyduje. Możemy tu dać puste wywołanie lub nic.
+      this.coinManager.onCollect = () => {}; 
       
       const originalHandle = this.multiplayer.handleMessage.bind(this.multiplayer); 
       this.multiplayer.handleMessage = (msg) => { 
@@ -345,8 +349,8 @@ class BlockStarPlanetGame {
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
       this.ui.onPrefabBuilderClick = () => this.stateManager.switchToPrefabBuilder();
       this.ui.onPartBuilderClick = () => this.stateManager.switchToPartBuilder();
-      this.ui.onDiscoverClick = () => this.ui.openPanel('discover-choice-panel'); 
-      this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel'); 
+      
+      // onDiscoverClick i onPlayClick obsługiwane przez NavigationManager
       this.ui.onOpenOtherProfile = (username) => this.ui.openOtherPlayerProfile(username);
 
       this.ui.onPlayerAvatarClick = () => { 
@@ -439,8 +443,8 @@ class BlockStarPlanetGame {
           this.stateManager.currentState = 'SkinBuilderMode';
           this.stateManager.toggleGameControls(false);
       };
-
-      this.ui.onShopOpen = () => this.ui.populateShop(this.blockManager.getAllBlockDefinitions(),(name) => this.blockManager.isOwned(name));
+      
+      // onShopOpen obsługiwane przez ShopManager w UI.js
   }
 
   recreatePlayerController(collidables, collisionMap = null) { 
@@ -536,10 +540,9 @@ class BlockStarPlanetGame {
       this.stateManager.exploreScene = exploreScene;
       this.multiplayer.setScene(exploreScene);
       
-      // --- FIX: WYŚLIJ spawnPoint PRZY DOŁĄCZANIU ---
-      // Serwer użyje tego, aby odesłać komendę 'teleport' zamiast resetować gracza
+      // Wysyłamy spawnPoint do serwera - naprawia teleportację
       this.multiplayer.joinWorld(worldData.id, worldData.spawnPoint); 
-
+      
       this.stateManager.switchToExploreMode(exploreScene);
       
       const exitBtn = document.getElementById('explore-exit-button');
