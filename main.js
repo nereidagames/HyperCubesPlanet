@@ -348,6 +348,21 @@ class BlockStarPlanetGame {
       this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel'); 
       this.ui.onOpenOtherProfile = (username) => this.ui.openOtherPlayerProfile(username);
 
+      this.ui.onVictoryScreenOpen = () => {
+          if (this.playerController) this.playerController.enabled = false;
+          if (this.cameraController) this.cameraController.enabled = false;
+          this.ui.toggleMobileControls(false); 
+      };
+
+      this.ui.onReplayParkour = () => {
+          this.parkourManager.restartParkour(); 
+          if (this.playerController) this.playerController.enabled = true;
+          if (this.cameraController) this.cameraController.enabled = true;
+          this.ui.toggleMobileControls(true); 
+      };
+
+      this.ui.onExitParkour = () => this.stateManager.switchToMainMenu();
+
       this.ui.onPlayerAvatarClick = () => { 
           if (this.previewCharacter) { 
               while(this.previewCharacter.children.length > 4) { 
@@ -440,7 +455,6 @@ class BlockStarPlanetGame {
           this.stateManager.toggleGameControls(false);
       };
 
-      // --- OBSŁUGA SKLEPU ---
       this.ui.onShopOpen = () => {
           const blocks = this.blockManager.getAllBlockDefinitions();
           this.ui.populateShop(blocks, (name) => this.blockManager.isOwned(name));
@@ -506,12 +520,10 @@ class BlockStarPlanetGame {
       const tempCollisionMap = new Map();
       const geometry = new THREE.BoxGeometry(1, 1, 1); 
 
-      // --- PĘTLA ŁADUJĄCA BLOKI ---
       worldBlocksData.forEach(data => {
-          // !!! FIX: Konwersja ID na TexturePath !!!
+          // --- FIX: Konwersja ID na TexturePath ---
           if (data.id !== undefined && !data.texturePath) {
               data.texturePath = this.blockManager.getTextureById(data.id);
-              // Opcjonalnie odzyskaj nazwę dla Parkouru
               if (!data.name) {
                   data.name = this.blockManager.getBlockNameById(data.id);
               }
@@ -578,12 +590,8 @@ class BlockStarPlanetGame {
   animate() {
     requestAnimationFrame(() => this.animate());
     if (this.isFPSEnabled) this.stats.update();
-    
-    // --- FIX: Cap deltaTime (max 0.1s) ---
     const delta = Math.min(this.clock.getDelta(), 0.1);
-    
     this.stateManager.update(delta);
-    
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
       if (this.previewCharacter && !this.isPreviewDragging) { this.previewCharacter.rotation.y += 0.005; }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
