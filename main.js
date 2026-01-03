@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 import { createBaseCharacter } from './character.js';
 
-import { STORAGE_KEYS } from './Config.js';
+import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 import { GameCore } from './GameCore.js';
 import { AuthManager } from './AuthManager.js';
 import { AssetLoader } from './AssetLoader.js';
@@ -26,8 +26,6 @@ import { HyperCubePartBuilderManager } from './HyperCubePartBuilderManager.js';
 
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
-
-const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 // --- ZOPTYMALIZOWANY SILNIK ---
 class OptimizedGameCore {
@@ -328,8 +326,6 @@ class BlockStarPlanetGame {
   setupMultiplayerCallbacks() { 
       this.ui.onSendPrivateMessage = (recipient, text) => this.multiplayer.sendPrivateMessage(recipient, text); 
       
-      // ANTYCHEAT: Klient nie wysyła już collectCoin.
-      // Serwer sam wykrywa kolizję.
       this.coinManager.onCollect = () => {}; 
       
       const originalHandle = this.multiplayer.handleMessage.bind(this.multiplayer); 
@@ -380,8 +376,10 @@ class BlockStarPlanetGame {
           if(result.success) { 
               if(this.ui.showMessage) this.ui.showMessage(`Kupiono: ${block.name}!`, 'success'); 
               this.coinManager.updateBalance(result.newBalance); 
+              return true;
           } else { 
               if(this.ui.showMessage) this.ui.showMessage(result.message, 'error'); 
+              return false;
           } 
       };
 
@@ -442,29 +440,10 @@ class BlockStarPlanetGame {
           this.stateManager.toggleGameControls(false);
       };
 
-      // --- DEBUGOWANIE SKLEPU (Z FALLBACKIEM) ---
+      // --- OBSŁUGA SKLEPU ---
       this.ui.onShopOpen = () => {
           const blocks = this.blockManager.getAllBlockDefinitions();
-          console.log("Main.js: Próba otwarcia sklepu. BlockManager zwrócił:", blocks);
-          
-          if (!blocks || blocks.length === 0) {
-              console.error("Main.js: BŁĄD KRYTYCZNY! BlockManager pusty. Wgrywam dane awaryjne.");
-              
-              // Ostateczny fallback, żeby sklep w ogóle ruszył
-              const fallbackBlocks = [
-                 { id: 6, name: 'Gładki', texturePath: 'textures/gladki.png', cost: 150, category: 'block' },
-                 { id: 7, name: 'Karton', texturePath: 'textures/karton.png', cost: 200, category: 'block' },
-                 { id: 8, name: 'Dżins', texturePath: 'textures/dzins.png', cost: 300, category: 'block' },
-                 { id: 9, name: 'Kamień', texturePath: 'textures/kamien.png', cost: 400, category: 'block' },
-                 { id: 10, name: 'Drewniana podłoga', texturePath: 'textures/drewnianapodloga.png', cost: 450, category: 'block' },
-                 { id: 100, name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' },
-                 { id: 101, name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
-              ];
-              
-              this.ui.populateShop(fallbackBlocks, (name) => this.blockManager.isOwned(name));
-          } else {
-              this.ui.populateShop(blocks, (name) => this.blockManager.isOwned(name));
-          }
+          this.ui.populateShop(blocks, (name) => this.blockManager.isOwned(name));
       };
   }
 
@@ -527,7 +506,17 @@ class BlockStarPlanetGame {
       const tempCollisionMap = new Map();
       const geometry = new THREE.BoxGeometry(1, 1, 1); 
 
+      // --- PĘTLA ŁADUJĄCA BLOKI ---
       worldBlocksData.forEach(data => {
+          // !!! FIX: Konwersja ID na TexturePath !!!
+          if (data.id !== undefined && !data.texturePath) {
+              data.texturePath = this.blockManager.getTextureById(data.id);
+              // Opcjonalnie odzyskaj nazwę dla Parkouru
+              if (!data.name) {
+                  data.name = this.blockManager.getBlockNameById(data.id);
+              }
+          }
+
           if(data.texturePath) {
               let mat = materials[data.texturePath];
               if(!mat) {
@@ -538,6 +527,11 @@ class BlockStarPlanetGame {
               }
               const mesh = new THREE.Mesh(geometry, mat);
               mesh.position.set(data.x, data.y, data.z);
+              
+              if (data.name) {
+                  mesh.userData.name = data.name;
+              }
+
               exploreScene.add(mesh);
               
               const key = `${Math.floor(data.x)},${Math.floor(data.y)},${Math.floor(data.z)}`;
@@ -561,7 +555,6 @@ class BlockStarPlanetGame {
       this.stateManager.exploreScene = exploreScene;
       this.multiplayer.setScene(exploreScene);
       
-      // Wysyłamy spawnPoint do serwera (Teleport FIX)
       this.multiplayer.joinWorld(worldData.id, worldData.spawnPoint); 
       
       this.stateManager.switchToExploreMode(exploreScene);
@@ -573,7 +566,8 @@ class BlockStarPlanetGame {
       }
 
       if (this.parkourManager) {
-          this.parkourManager.init(worldData);
+          const fixedWorldData = { ...worldData, blocks: worldBlocksData };
+          this.parkourManager.init(fixedWorldData);
       }
 
       this.recreatePlayerController(globalCollidables, tempCollisionMap);
@@ -584,8 +578,12 @@ class BlockStarPlanetGame {
   animate() {
     requestAnimationFrame(() => this.animate());
     if (this.isFPSEnabled) this.stats.update();
-    const delta = this.clock.getDelta();
+    
+    // --- FIX: Cap deltaTime (max 0.1s) ---
+    const delta = Math.min(this.clock.getDelta(), 0.1);
+    
     this.stateManager.update(delta);
+    
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
       if (this.previewCharacter && !this.isPreviewDragging) { this.previewCharacter.rotation.y += 0.005; }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
