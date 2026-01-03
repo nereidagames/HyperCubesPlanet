@@ -19,7 +19,7 @@ export class MultiplayerManager {
     this.ws = null;
     this.myId = null;
     
-    this.localCharacter = null; // Referencja do lokalnego gracza (do teleportacji)
+    this.localCharacter = null; // Referencja do lokalnego gracza
 
     this.onMessageSent = null;
     this.onMessageReceived = null;
@@ -28,7 +28,6 @@ export class MultiplayerManager {
     this.lastSentQuaternion = new THREE.Quaternion();
   }
 
-  // --- NOWOŚĆ: Ustawienie referencji do lokalnego gracza ---
   setLocalCharacter(character) {
       this.localCharacter = character;
   }
@@ -43,7 +42,7 @@ export class MultiplayerManager {
         console.error("Brak tokenu JWT.");
         return;
     }
-    const serverUrl = `wss://hypercubes-nexus-server.onrender.com?token=${token}`;
+    const serverUrl = `wss://hypercubes-nexus-server.onrender.com?token=${token}`; // Pamiętaj o URL z Config.js w finalnej wersji
 
     this.uiManager.addChatMessage('<Łączenie z Nexusem...>');
 
@@ -89,7 +88,6 @@ export class MultiplayerManager {
     }
   }
 
-  // --- ZMODYFIKOWANA METODA: PRZYJMUJE SPAWNPOINT ---
   joinWorld(worldId, spawnPoint = null) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           console.log(`Dołączanie do pokoju: ${worldId || 'nexus'}`);
@@ -99,7 +97,6 @@ export class MultiplayerManager {
               this.uiManager.addChatMessage(`<Dołączanie do: ${worldId ? 'Świata' : 'Nexusa'}...>`);
           }
 
-          // Wysyłamy spawnPoint (jeśli istnieje) do serwera
           this.ws.send(JSON.stringify({
               type: 'joinWorld',
               worldId: worldId,
@@ -120,25 +117,15 @@ export class MultiplayerManager {
       case 'welcome':
         this.myId = msg.id;
         if (msg.type === 'init') this.removeAllRemotePlayers();
-        
-        // Jeśli serwer wysyła pozycję przy powitaniu (np. SmartSpawn w Nexusie)
         if (msg.position && this.localCharacter) {
              this.localCharacter.position.set(msg.position.x, msg.position.y, msg.position.z);
         }
-        
-        if (msg.players) {
-            this.updatePlayersList(msg.players);
-        }
+        if (msg.players) this.updatePlayersList(msg.players);
         break;
 
-      // --- NOWOŚĆ: OBSŁUGA TELEPORTACJI Z SERWERA ---
       case 'teleport':
         if (this.localCharacter && msg.position) {
-            console.log("Teleporting local player to:", msg.position);
-            // Przenosimy gracza na bezpieczną pozycję wskazaną przez serwer
             this.localCharacter.position.set(msg.position.x, msg.position.y, msg.position.z);
-            // Opcjonalnie: można tu zresetować prędkość w PlayerControllerze, 
-            // ale zmiana pozycji zazwyczaj wystarcza, by "wyciągnąć" gracza z pętli spadania.
         }
         break;
 
@@ -166,9 +153,18 @@ export class MultiplayerManager {
       case 'chat':
       case 'chatMessage':
         this.uiManager.addChatMessage(`${msg.nickname}: ${msg.text}`);
-        this.displayChatBubble(msg.id, msg.text);
+        
+        // --- LOGIKA DYMKÓW ---
+        if (msg.id === this.myId) {
+            // To jest moja wiadomość - pokaż dymek nad moją głową
+            this.displayLocalChatBubble(msg.text);
+        } else {
+            // To wiadomość innego gracza
+            this.displayChatBubble(msg.id, msg.text);
+        }
         break;
         
+      // ... (reszta case'ów bez zmian: friendRequest, coinSpawned itp.) ...
       case 'friendRequestReceived':
         this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
@@ -187,7 +183,6 @@ export class MultiplayerManager {
       case 'privateMessageSent':
         if (this.onMessageSent) this.onMessageSent(msg);
         break;
-
       case 'coinSpawned':
         if (this.coinManager) this.coinManager.spawnCoinAt(msg.position);
         break;
@@ -200,124 +195,114 @@ export class MultiplayerManager {
     }
   }
 
+  // --- Helper dla lokalnego gracza ---
+  displayLocalChatBubble(message) {
+      if (!this.localCharacter) return;
+
+      // Usuń stary dymek
+      if (this.localCharacter.chatBubble) {
+          this.localCharacter.remove(this.localCharacter.chatBubble);
+          if (this.localCharacter.chatBubble.element && this.localCharacter.chatBubble.element.parentNode) {
+              this.localCharacter.chatBubble.element.parentNode.removeChild(this.localCharacter.chatBubble.element);
+          }
+          this.localCharacter.chatBubble = null;
+      }
+
+      // Stwórz nowy (używamy stylu ze style.css)
+      const div = document.createElement('div');
+      div.className = 'chat-bubble-styled';
+      div.textContent = message;
+
+      const bubble = new CSS2DObject(div);
+      bubble.position.set(0, 2.8, 0); // Pozycja nad głową
+      this.localCharacter.add(bubble);
+      this.localCharacter.chatBubble = bubble;
+
+      setTimeout(() => {
+          if (this.localCharacter && this.localCharacter.chatBubble === bubble) {
+              this.localCharacter.remove(bubble);
+              if (bubble.element.parentNode) {
+                  bubble.element.parentNode.removeChild(bubble.element);
+              }
+              this.localCharacter.chatBubble = null;
+          }
+      }, 6000);
+  }
+
+  // ... (reszta metod: updatePlayersList, sendMyPosition, sendMessage, sendPrivateMessage, createRemotePlayer, updateRemotePlayerTarget, removeRemotePlayer, removeAllRemotePlayers) ...
+  // Upewnij się, że są one w pliku. Poniżej tylko zmodyfikowana funkcja displayChatBubble dla remote
+
   updatePlayersList(playersData) {
       const currentIds = Object.keys(this.remotePlayers).map(Number);
       const newIds = new Set(playersData.map(p => p.id));
-
-      // Usuń nieobecnych
-      currentIds.forEach(id => {
-          if (!newIds.has(id)) {
-              this.removeRemotePlayer(id);
-          }
-      });
-
-      // Dodaj/Zaktualizuj obecnych
+      currentIds.forEach(id => { if (!newIds.has(id)) this.removeRemotePlayer(id); });
       playersData.forEach(pData => {
           if (pData.id === this.myId) return;
-
-          if (this.remotePlayers[pData.id]) {
-              this.updateRemotePlayerTarget(pData);
-          } else {
-              this.createRemotePlayer(pData);
-          }
+          if (this.remotePlayers[pData.id]) this.updateRemotePlayerTarget(pData);
+          else this.createRemotePlayer(pData);
       });
   }
 
   sendMyPosition(position, quaternion) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          if (position.distanceTo(this.lastSentPosition) > 0.01 || 
-              Math.abs(quaternion.x - this.lastSentQuaternion.x) > 0.01) {
-              
+          if (position.distanceTo(this.lastSentPosition) > 0.01 || Math.abs(quaternion.x - this.lastSentQuaternion.x) > 0.01) {
               this.ws.send(JSON.stringify({
-                  type: 'playerMove', 
-                  position: { x: position.x, y: position.y, z: position.z },
+                  type: 'playerMove', position: { x: position.x, y: position.y, z: position.z },
                   quaternion: { _x: quaternion.x, _y: quaternion.y, _z: quaternion.z, _w: quaternion.w }
               }));
-              
               this.lastSentPosition.copy(position);
               this.lastSentQuaternion.copy(quaternion);
           }
       }
   }
 
-  sendMessage(data) {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          this.ws.send(JSON.stringify(data));
-      }
-  }
-
-  sendPrivateMessage(recipient, text) {
-      this.sendMessage({ type: 'sendPrivateMessage', recipient, text });
-  }
+  sendMessage(data) { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(data)); }
+  sendPrivateMessage(recipient, text) { this.sendMessage({ type: 'sendPrivateMessage', recipient, text }); }
 
   createRemotePlayer(data) {
-    if (data.id === this.myId) return; 
-    if (this.remotePlayers[data.id]) return; 
-
+    if (data.id === this.myId || this.remotePlayers[data.id]) return;
     const group = new THREE.Group();
-    
     createBaseCharacter(group);
 
     if (data.skinData && Array.isArray(data.skinData) && data.skinData.length > 0) {
         const skinContainer = new THREE.Group();
         skinContainer.scale.setScalar(0.125);
         skinContainer.position.y = 0.5;
-
         const geometriesByTexture = {};
-
         data.skinData.forEach(block => {
             if (!block.texturePath) return;
-
-            if (!geometriesByTexture[block.texturePath]) {
-                geometriesByTexture[block.texturePath] = [];
-            }
-
+            if (!geometriesByTexture[block.texturePath]) geometriesByTexture[block.texturePath] = [];
             const geometry = new THREE.BoxGeometry(1, 1, 1);
             geometry.translate(block.x, block.y, block.z);
-            
             geometriesByTexture[block.texturePath].push(geometry);
         });
-
         for (const [texturePath, geometries] of Object.entries(geometriesByTexture)) {
             if (geometries.length === 0) continue;
-
             const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
-            
             let material = this.materialsCache[texturePath];
             if (!material) {
                 const tex = this.textureLoader.load(texturePath);
-                tex.magFilter = THREE.NearestFilter;
-                tex.minFilter = THREE.NearestFilter;
+                tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
                 material = new THREE.MeshLambertMaterial({ map: tex });
                 this.materialsCache[texturePath] = material;
             }
-
             const mesh = new THREE.Mesh(mergedGeometry, material);
             mesh.castShadow = true;
             skinContainer.add(mesh);
         }
-
         group.add(skinContainer);
     }
 
-    if (data.position) {
-        group.position.set(data.position.x, data.position.y, data.position.z);
-    } else if (data.x !== undefined) {
-        group.position.set(data.x, data.y, data.z);
-    }
+    if (data.position) group.position.set(data.position.x, data.position.y, data.position.z);
+    else if (data.x !== undefined) group.position.set(data.x, data.y, data.z);
 
-    if (data.quaternion) {
-        group.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
-    } else if (data.qx !== undefined) {
-        group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
-    }
+    if (data.quaternion) group.quaternion.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
+    else if (data.qx !== undefined) group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
 
     const div = document.createElement('div');
     div.className = 'text-outline';
     div.textContent = data.nickname || data.username || "Gracz";
-    div.style.color = 'white';
-    div.style.fontSize = '14px';
-    div.style.fontWeight = 'bold';
+    div.style.color = 'white'; div.style.fontSize = '14px'; div.style.fontWeight = 'bold';
     const label = new CSS2DObject(div);
     label.position.set(0, 2.2, 0);
     group.add(label);
@@ -335,12 +320,8 @@ export class MultiplayerManager {
   updateRemotePlayerTarget(data) {
       const p = this.remotePlayers[data.id];
       if (p) {
-          if (data.position) {
-              p.targetPos.set(data.position.x, data.position.y, data.position.z);
-          }
-          if (data.quaternion) {
-              p.targetRot.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
-          }
+          if (data.position) p.targetPos.set(data.position.x, data.position.y, data.position.z);
+          if (data.quaternion) p.targetRot.set(data.quaternion._x, data.quaternion._y, data.quaternion._z, data.quaternion._w);
       }
   }
 
@@ -348,36 +329,21 @@ export class MultiplayerManager {
       const p = this.remotePlayers[id];
       if (p) {
           this.scene.remove(p.mesh);
-          
           p.mesh.traverse(child => {
-              // 1. Czyścimy WebGL
-              if (child.isMesh) {
-                  if(child.geometry) child.geometry.dispose();
-              }
-              // 2. Czyścimy HTML (Nicki, dymki)
-              if (child.isCSS2DObject || (child.element && child.element.style)) {
-                  if (child.element && child.element.parentNode) {
-                      child.element.parentNode.removeChild(child.element);
-                  }
-              }
+              if (child.isMesh && child.geometry) child.geometry.dispose();
+              if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.parentNode.removeChild(child.element);
           });
-          
           delete this.remotePlayers[id];
       }
   }
   
-  removeAllRemotePlayers() {
-      Object.keys(this.remotePlayers).forEach(id => {
-          this.removeRemotePlayer(id);
-      });
-      this.remotePlayers = {};
-  }
+  removeAllRemotePlayers() { Object.keys(this.remotePlayers).forEach(id => this.removeRemotePlayer(id)); this.remotePlayers = {}; }
 
+  // --- ZMODYFIKOWANA METODA DLA INNYCH GRACZY ---
   displayChatBubble(id, message) {
     const p = this.remotePlayers[id];
     if (!p) return;
     
-    // Usuń stary dymek
     if (p.chatBubble) {
         if(p.chatBubble.element && p.chatBubble.element.parentNode) {
             p.chatBubble.element.parentNode.removeChild(p.chatBubble.element);
@@ -386,17 +352,15 @@ export class MultiplayerManager {
     }
     
     const div = document.createElement('div');
-    div.className = 'chat-bubble';
+    div.className = 'chat-bubble-styled'; // Nowa klasa
     div.textContent = message;
-    div.style.cssText = `background-color: rgba(255, 255, 255, 0.9); color: #000; padding: 5px 10px; border-radius: 10px; font-size: 12px; max-width: 150px; text-align: center;`;
     
     const bubble = new CSS2DObject(div);
-    bubble.position.set(0, 2.5, 0);
+    bubble.position.set(0, 2.8, 0); // Wyżej nad nickiem
     p.mesh.add(bubble);
     p.chatBubble = bubble;
     
     setTimeout(() => {
-      // Sprawdź czy dymek nadal istnieje i jest tym samym dymkiem
       if (p.chatBubble === bubble) {
         if(bubble.element && bubble.element.parentNode) {
              bubble.element.parentNode.removeChild(bubble.element);
@@ -404,7 +368,7 @@ export class MultiplayerManager {
         p.mesh.remove(bubble);
         p.chatBubble = null;
       }
-    }, 5000);
+    }, 6000);
   }
 
   update(deltaTime) {
