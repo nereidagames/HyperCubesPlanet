@@ -2,30 +2,31 @@
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 export const BLOCK_DEFINITIONS = [
-    // --- STARE BLOKI (TERAZ DARMOWE - OD POCZĄTKU) ---
-    { name: 'Ziemia', texturePath: 'textures/ziemia.png', cost: 0, category: 'block' },
-    { name: 'Trawa', texturePath: 'textures/trawa.png', cost: 0, category: 'block' },
-    { name: 'Drewno', texturePath: 'textures/drewno.png', cost: 0, category: 'block' },
-    { name: 'Piasek', texturePath: 'textures/piasek.png', cost: 0, category: 'block' },
-    { name: 'Beton', texturePath: 'textures/beton.png', cost: 0, category: 'block' },
+    // --- BLOKI PODSTAWOWE (0-5) ---
+    { id: 1, name: 'Ziemia', texturePath: 'textures/ziemia.png', cost: 0, category: 'block' },
+    { id: 2, name: 'Trawa', texturePath: 'textures/trawa.png', cost: 0, category: 'block' },
+    { id: 3, name: 'Drewno', texturePath: 'textures/drewno.png', cost: 0, category: 'block' },
+    { id: 4, name: 'Piasek', texturePath: 'textures/piasek.png', cost: 0, category: 'block' },
+    { id: 5, name: 'Beton', texturePath: 'textures/beton.png', cost: 0, category: 'block' },
     
-    // --- NOWE BLOKI (DO KUPIENIA) ---
-    { name: 'Gładki', texturePath: 'textures/gladki.png', cost: 150, category: 'block' },
-    { name: 'Karton', texturePath: 'textures/karton.png', cost: 200, category: 'block' },
-    { name: 'Dżins', texturePath: 'textures/dzins.png', cost: 300, category: 'block' },
-    { name: 'Kamień', texturePath: 'textures/kamien.png', cost: 400, category: 'block' },
-    { name: 'Drewniana podłoga', texturePath: 'textures/drewnianapodloga.png', cost: 450, category: 'block' },
-    { name: 'Bruk', texturePath: 'textures/bruk.png', cost: 450, category: 'block' },
-    { name: 'Cegła', texturePath: 'textures/cegla.png', cost: 500, category: 'block' },
-    { name: 'Otoczak', texturePath: 'textures/otoczak.png', cost: 550, category: 'block' },
-    { name: 'Metalowa siatka', texturePath: 'textures/metalowasiatka.png', cost: 600, category: 'block' },
-    { name: 'Metalowa płyta', texturePath: 'textures/metalowaplyta.png', cost: 800, category: 'block' },
-    { name: 'Granit', texturePath: 'textures/granit.png', cost: 900, category: 'block' },
-    { name: 'Cukierek', texturePath: 'textures/cukierek.png', cost: 1200, category: 'block' },
+    // --- BLOKI PŁATNE (6-20) ---
+    { id: 6, name: 'Gładki', texturePath: 'textures/gladki.png', cost: 150, category: 'block' },
+    { id: 7, name: 'Karton', texturePath: 'textures/karton.png', cost: 200, category: 'block' },
+    { id: 8, name: 'Dżins', texturePath: 'textures/dzins.png', cost: 300, category: 'block' },
+    { id: 9, name: 'Kamień', texturePath: 'textures/kamien.png', cost: 400, category: 'block' },
+    { id: 10, name: 'Drewniana podłoga', texturePath: 'textures/drewnianapodloga.png', cost: 450, category: 'block' },
+    { id: 11, name: 'Bruk', texturePath: 'textures/bruk.png', cost: 450, category: 'block' },
+    { id: 12, name: 'Cegła', texturePath: 'textures/cegla.png', cost: 500, category: 'block' },
+    { id: 13, name: 'Otoczak', texturePath: 'textures/otoczak.png', cost: 550, category: 'block' },
+    { id: 14, name: 'Metalowa siatka', texturePath: 'textures/metalowasiatka.png', cost: 600, category: 'block' },
+    { id: 15, name: 'Metalowa płyta', texturePath: 'textures/metalowaplyta.png', cost: 800, category: 'block' },
+    { id: 16, name: 'Granit', texturePath: 'textures/granit.png', cost: 900, category: 'block' },
+    { id: 17, name: 'Cukierek', texturePath: 'textures/cukierek.png', cost: 1200, category: 'block' },
 
-    // --- DODATKI (Parkour) ---
-    { name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
-    { name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
+    // --- DODATKI / PARKOUR (100+) ---
+    // Zwróć uwagę, że tekstury mogą się powtarzać z blokami, ale ID są unikalne
+    { id: 100, name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' }, 
+    { id: 101, name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
 ];
 
 export class BlockManager {
@@ -51,7 +52,7 @@ export class BlockManager {
             }
         }
         
-        // Zawsze dodaj darmowe bloki, nawet jeśli serwer ich nie zwrócił
+        // Zawsze dodaj darmowe bloki
         BLOCK_DEFINITIONS.forEach(block => {
             if (block.cost === 0) {
                 this.ownedBlocks.add(block.name);
@@ -66,6 +67,36 @@ export class BlockManager {
     isOwned(blockName) {
         return this.ownedBlocks.has(blockName);
     }
+
+    // --- NOWE METODY KONWERSJI (DLA BEZPIECZEŃSTWA) ---
+
+    // Zamienia ID (np. 1) na ścieżkę tekstury (np. 'textures/ziemia.png')
+    // Używane przy WCZYTYWANIU mapy z serwera
+    getTextureById(id) {
+        const block = BLOCK_DEFINITIONS.find(b => b.id === id);
+        return block ? block.texturePath : 'textures/ziemia.png'; // Fallback
+    }
+
+    // Zwraca pełny obiekt bloku po ID
+    getBlockById(id) {
+        return BLOCK_DEFINITIONS.find(b => b.id === id);
+    }
+
+    // Zamienia teksturę i nazwę na ID
+    // Używane przy ZAPISYWANIU mapy (wysyłamy ID, nie teksturę)
+    getIdByTexture(texturePath, blockName) {
+        // Specjalna obsługa dla dodatków Parkour, które dzielą tekstury ze zwykłymi blokami
+        if (blockName === 'Parkour Start') return 100;
+        if (blockName === 'Parkour Meta') return 101;
+
+        // Szukamy pasującego bloku w definicjach
+        const block = BLOCK_DEFINITIONS.find(b => b.texturePath === texturePath && b.category !== 'addon');
+        
+        // Jeśli znaleziono - zwróć ID, w przeciwnym razie domyślne ID 1 (Ziemia)
+        return block ? block.id : 1; 
+    }
+
+    // --------------------------------------------------
 
     async buyBlock(blockName, cost) {
         if (this.isOwned(blockName)) return { success: false, message: "Już posiadasz ten element." };
