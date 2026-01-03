@@ -1,3 +1,4 @@
+/* PLIK: BuildCameraController.js */
 import * as THREE from 'three';
 import nipplejs from 'nipplejs';
 
@@ -30,7 +31,7 @@ export class BuildCameraController {
     this.boundOnKeyDown = this.onKeyDown.bind(this);
     this.boundOnKeyUp = this.onKeyUp.bind(this);
 
-    // Opóźniamy bindowanie, żeby DOM zdążył się załadować (dla pewności)
+    // Opóźnienie, aby DOM zdążył się załadować (np. joystick-zone)
     setTimeout(() => this.bindEvents(), 100);
     this.updateCameraPosition();
   }
@@ -78,17 +79,27 @@ export class BuildCameraController {
 
     // --- PC MOUSE ---
     this.handleMouseDown = (e) => {
-        // Sprawdzamy czy kliknięto w strefę obrotu
-        // Jeśli rotateZone istnieje, musimy kliknąć w niego lub jego dzieci
-        if (rotateZone) {
-            if (rotateZone.contains(e.target)) {
-                this.isDragging = true;
-                this.previousMousePosition = { x: e.clientX, y: e.clientY };
-                e.preventDefault();
-            }
-        } else {
-            // Fallback (stare zachowanie) jeśli nie ma strefy w HTML
-            if (!e.target.closest('.ui-element') && !e.target.closest('.build-ui-button')) {
+        // Sprawdzamy czy kliknięto w strefę obrotu LUB prawym przyciskiem w tło
+        const isZone = e.target.closest('#build-rotate-zone');
+        // Czy to element UI? (Przyciski, listy) - ale NIE strefa obrotu
+        const isUI = e.target.closest('.build-ui-button') || 
+                     e.target.closest('.panel-list') || 
+                     e.target.closest('.build-sidebar-right') || 
+                     e.target.closest('.build-top-left') || 
+                     e.target.closest('.build-bottom-bar') ||
+                     e.target.closest('#tools-modal') ||
+                     e.target.closest('#joystick-zone');
+
+        if (isZone) {
+            // Kliknięcie w sferę obrotu zawsze obraca
+            this.isDragging = true;
+            this.previousMousePosition = { x: e.clientX, y: e.clientY };
+            e.preventDefault(); // Zapobiega zaznaczaniu tekstu
+        } else if (!isUI) {
+            // Kliknięcie w świat gry:
+            // Lewy przycisk (0) -> Stawia blok (ignorujemy tutaj, BuildManager to robi)
+            // Środkowy (1) lub Prawy (2) -> Obraca kamerę
+            if (e.button === 1 || e.button === 2) {
                 this.isDragging = true;
                 this.previousMousePosition = { x: e.clientX, y: e.clientY };
             }
@@ -111,27 +122,9 @@ export class BuildCameraController {
 
         for (const touch of e.changedTouches) {
             const target = touch.target;
-            let shouldRotate = false;
-
-            if (rotateZone) {
-                // Nowe zachowanie: tylko strefa obrotu
-                if (rotateZone.contains(target)) {
-                    shouldRotate = true;
-                }
-            } else {
-                // Stare zachowanie: unikanie UI
-                const isJoystickElement = target.closest('.nipple') || target.closest('.back') || target.closest('.front') || target.closest('#joystick-zone');
-                const isUI = target.closest('.ui-element') || target.closest('.build-ui-button');
-                const x = touch.clientX;
-                const y = touch.clientY;
-                const isBottomLeft = x < window.innerWidth * 0.4 && y > window.innerHeight * 0.6; // Strefa joysticka
-
-                if (!isJoystickElement && !isUI && !isBottomLeft) {
-                    shouldRotate = true;
-                }
-            }
-
-            if (shouldRotate) {
+            
+            // Na mobile obracamy TYLKO jeśli dotkniemy strefy obrotu (#build-rotate-zone)
+            if (target.closest('#build-rotate-zone')) {
                 this.cameraTouchId = touch.identifier;
                 this.isDragging = true;
                 this.previousMousePosition = { x: touch.clientX, y: touch.clientY };
@@ -147,7 +140,8 @@ export class BuildCameraController {
             if (touch.identifier === this.cameraTouchId) {
                 const deltaX = touch.clientX - this.previousMousePosition.x;
                 const deltaY = touch.clientY - this.previousMousePosition.y;
-                this.applyRotation(deltaX, deltaY, 1.5); 
+                // Zwiększamy czułość na mobile (x2.0) dla wygody
+                this.applyRotation(deltaX, deltaY, 2.0); 
                 this.previousMousePosition = { x: touch.clientX, y: touch.clientY };
                 break;
             }
@@ -164,8 +158,8 @@ export class BuildCameraController {
         }
     };
 
-    // Nasłuchujemy na całym dokumencie, ale logika wewnątrz decyduje czy zacząć drag
-    // Używamy { passive: false } dla touchstart/move aby móc zablokować scrollowanie w strefie
+    // Nasłuchujemy na całym oknie (żeby złapać ruch myszką poza sferą po kliknięciu)
+    // Ale używamy passive: false dla touch, żeby móc zablokować scrollowanie w strefie
     document.addEventListener('mousedown', this.handleMouseDown);
     document.addEventListener('mousemove', this.handleMouseMove);
     document.addEventListener('mouseup', this.handleMouseUp);
@@ -225,7 +219,7 @@ export class BuildCameraController {
     const moveDir = new THREE.Vector3(0, 0, 0);
     let hasInput = false;
 
-    // JOYSTICK (Mobilne)
+    // JOYSTICK (Mobilne) - Ruch kamery (targetu)
     if (this.isMobile && (Math.abs(this.joystickData.x) > 0.01 || Math.abs(this.joystickData.y) > 0.01)) {
         moveDir.z = -this.joystickData.y; 
         moveDir.x = this.joystickData.x;
