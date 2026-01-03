@@ -212,7 +212,7 @@ class BlockStarPlanetGame {
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
       this.multiplayer = new MultiplayerManager(this.scene, this.ui, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
       
-      // Przekazanie lokalnej postaci (dla teleportacji)
+      // Przekazanie lokalnej postaci do Multiplayera (dla teleportacji)
       this.multiplayer.setLocalCharacter(this.characterManager.character);
 
       this.multiplayer.initialize(token);
@@ -442,18 +442,29 @@ class BlockStarPlanetGame {
           this.stateManager.toggleGameControls(false);
       };
 
-      // --- ZMODYFIKOWANA OBSŁUGA SKLEPU ---
+      // --- DEBUGOWANIE SKLEPU (Z FALLBACKIEM) ---
       this.ui.onShopOpen = () => {
-          // Pobieramy bloki bezpośrednio z pancernego BlockManagera
           const blocks = this.blockManager.getAllBlockDefinitions();
+          console.log("Main.js: Próba otwarcia sklepu. BlockManager zwrócił:", blocks);
           
-          console.log("Main.js: Przekazuję do sklepu:", blocks.length, "elementów");
-          
-          if (blocks.length === 0) {
-              console.error("Main.js: BŁĄD! BlockManager zwrócił pustą tablicę!");
+          if (!blocks || blocks.length === 0) {
+              console.error("Main.js: BŁĄD KRYTYCZNY! BlockManager pusty. Wgrywam dane awaryjne.");
+              
+              // Ostateczny fallback, żeby sklep w ogóle ruszył
+              const fallbackBlocks = [
+                 { id: 6, name: 'Gładki', texturePath: 'textures/gladki.png', cost: 150, category: 'block' },
+                 { id: 7, name: 'Karton', texturePath: 'textures/karton.png', cost: 200, category: 'block' },
+                 { id: 8, name: 'Dżins', texturePath: 'textures/dzins.png', cost: 300, category: 'block' },
+                 { id: 9, name: 'Kamień', texturePath: 'textures/kamien.png', cost: 400, category: 'block' },
+                 { id: 10, name: 'Drewniana podłoga', texturePath: 'textures/drewnianapodloga.png', cost: 450, category: 'block' },
+                 { id: 100, name: 'Parkour Start', texturePath: 'textures/beton.png', cost: 1000, category: 'addon' },
+                 { id: 101, name: 'Parkour Meta', texturePath: 'textures/drewno.png', cost: 1000, category: 'addon' }
+              ];
+              
+              this.ui.populateShop(fallbackBlocks, (name) => this.blockManager.isOwned(name));
+          } else {
+              this.ui.populateShop(blocks, (name) => this.blockManager.isOwned(name));
           }
-          
-          this.ui.populateShop(blocks, (name) => this.blockManager.isOwned(name));
       };
   }
 
