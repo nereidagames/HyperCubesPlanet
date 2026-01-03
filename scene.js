@@ -5,9 +5,10 @@ import * as THREE from 'three';
 const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
 
 export class SceneManager {
-  constructor(scene, loadingManager) {
+  constructor(scene, loadingManager, blockManager) { // Dodano blockManager
     this.scene = scene;
     this.loadingManager = loadingManager;
+    this.blockManager = blockManager; // Zapisujemy referencję
     
     this.collidableObjects = []; 
     this.collisionMap = new Map();
@@ -25,7 +26,6 @@ export class SceneManager {
     
     this.sharedCollisionGeometry = new THREE.BoxGeometry(1, 1, 1);
     
-    // Zmniejszamy anizotropię dla wydajności (było 16, dajemy 4 lub 2 na słabych PC)
     this.maxAnisotropy = 4; 
     
     this.environmentObjects = [];
@@ -34,10 +34,9 @@ export class SceneManager {
   async initialize() {
     if (this.isInitialized) return;
 
-    // Sprawdzamy możliwości GPU
     const renderer = new THREE.WebGLRenderer();
     const maxAnisotropyCap = renderer.capabilities.getMaxAnisotropy();
-    this.maxAnisotropy = Math.min(4, maxAnisotropyCap); // Limit do 4x
+    this.maxAnisotropy = Math.min(4, maxAnisotropyCap); 
     renderer.dispose();
 
     this.setupLighting();
@@ -76,14 +75,11 @@ export class SceneManager {
     directionalLight.position.set(30, 60, 40); 
     directionalLight.castShadow = true;
     
-    // OPTYMALIZACJA CIENI
-    // Zmniejszamy mapę cieni. Dla Celerona 512 to max bezpieczna wartość.
     directionalLight.shadow.mapSize.width = 512; 
     directionalLight.shadow.mapSize.height = 512;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 100;
     
-    // Zmniejszamy zasięg kamery cieni, żeby były ostrzejsze przy małej mapie
     const shadowSize = 35;
     directionalLight.shadow.camera.left = -shadowSize;
     directionalLight.shadow.camera.right = shadowSize;
@@ -96,7 +92,7 @@ export class SceneManager {
   }
   
   setupFog() {
-    this.scene.fog = new THREE.Fog(0x87CEEB, 15, 80); // Nieco bliższa mgła
+    this.scene.fog = new THREE.Fog(0x87CEEB, 15, 80);
   }
 
   getMapKey(x, y, z) {
@@ -115,6 +111,20 @@ export class SceneManager {
           this.collisionMap.clear(); 
 
           blocksData.forEach(block => {
+              // --- FIX: OBSŁUGA ID i KONWERSJA NA TEKSTURĘ ---
+              // Jeśli blok ma ID zamiast texturePath (nowy format), odzyskujemy ścieżkę
+              if (block.id !== undefined && !block.texturePath) {
+                  if (this.blockManager) {
+                      block.texturePath = this.blockManager.getTextureById(block.id);
+                  } else {
+                      console.warn("BlockManager not linked in SceneManager!");
+                      block.texturePath = 'textures/ziemia.png'; // Fallback
+                  }
+              }
+
+              // Jeśli nadal nie ma tekstury, pomiń
+              if (!block.texturePath) return;
+
               if (!blocksByTexture[block.texturePath]) {
                   blocksByTexture[block.texturePath] = [];
               }
@@ -129,7 +139,7 @@ export class SceneManager {
               if (!material) {
                   const texture = this.textureLoader.load(texturePath);
                   texture.magFilter = THREE.NearestFilter;
-                  texture.minFilter = THREE.NearestFilter; // Szybsze filtrowanie
+                  texture.minFilter = THREE.NearestFilter;
                   material = new THREE.MeshLambertMaterial({ map: texture });
                   this.materials[texturePath] = material;
               }
@@ -193,7 +203,7 @@ export class SceneManager {
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestFilter; // Szybsze
+    texture.minFilter = THREE.NearestFilter;
     texture.repeat.set(floorSize / 2, floorSize / 2);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
