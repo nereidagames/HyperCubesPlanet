@@ -352,9 +352,17 @@ export class ShopManager {
         const list = document.getElementById('shop-list-container');
         list.innerHTML = '';
 
+        // --- FIX: Filtrowanie po kategorii I cenie > 0 (chyba że dodatek) ---
         const filteredItems = this.allItems.filter(item => {
             const cat = item.category || 'block'; 
-            return cat === category;
+            
+            // Jeśli kategoria się zgadza
+            if (cat === category) {
+                // Pokaż tylko płatne przedmioty w sklepie (chyba że to addon, one są zawsze płatne)
+                // Możesz usunąć "&& item.cost > 0" jeśli chcesz widzieć też darmowe jako "Posiadane"
+                if (item.cost > 0) return true;
+            }
+            return false;
         });
 
         if (filteredItems.length === 0) {
