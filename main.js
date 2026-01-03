@@ -192,7 +192,7 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      // Przekazujemy blockManager do SceneManager (dla wczytywania ID bloków)
+      // Przekazanie blockManagera do SceneManagera (ważne dla ID bloków!)
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager(), this.blockManager);
       try { await this.sceneManager.initialize(); } catch(e) {}
 
@@ -212,7 +212,7 @@ class BlockStarPlanetGame {
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
       this.multiplayer = new MultiplayerManager(this.scene, this.ui, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
       
-      // Przekazanie lokalnej postaci do Multiplayera (dla teleportacji)
+      // Przekazanie lokalnej postaci (dla teleportacji)
       this.multiplayer.setLocalCharacter(this.characterManager.character);
 
       this.multiplayer.initialize(token);
@@ -328,9 +328,8 @@ class BlockStarPlanetGame {
   setupMultiplayerCallbacks() { 
       this.ui.onSendPrivateMessage = (recipient, text) => this.multiplayer.sendPrivateMessage(recipient, text); 
       
-      // --- ANTYCHEAT: Klient NIE wysyła już collectCoin ---
-      // this.coinManager.onCollect = () => this.multiplayer.sendMessage({ type: 'collectCoin' }); 
-      // Zamiast tego, serwer sam decyduje. Możemy tu dać puste wywołanie lub nic.
+      // ANTYCHEAT: Klient nie wysyła już collectCoin.
+      // Serwer sam wykrywa kolizję.
       this.coinManager.onCollect = () => {}; 
       
       const originalHandle = this.multiplayer.handleMessage.bind(this.multiplayer); 
@@ -349,8 +348,8 @@ class BlockStarPlanetGame {
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
       this.ui.onPrefabBuilderClick = () => this.stateManager.switchToPrefabBuilder();
       this.ui.onPartBuilderClick = () => this.stateManager.switchToPartBuilder();
-      
-      // onDiscoverClick i onPlayClick obsługiwane przez NavigationManager
+      this.ui.onDiscoverClick = () => this.ui.openPanel('discover-choice-panel'); 
+      this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel'); 
       this.ui.onOpenOtherProfile = (username) => this.ui.openOtherPlayerProfile(username);
 
       this.ui.onPlayerAvatarClick = () => { 
@@ -381,7 +380,6 @@ class BlockStarPlanetGame {
           if(result.success) { 
               if(this.ui.showMessage) this.ui.showMessage(`Kupiono: ${block.name}!`, 'success'); 
               this.coinManager.updateBalance(result.newBalance); 
-              // UI ShopManagera odświeża się sam
           } else { 
               if(this.ui.showMessage) this.ui.showMessage(result.message, 'error'); 
           } 
@@ -443,8 +441,20 @@ class BlockStarPlanetGame {
           this.stateManager.currentState = 'SkinBuilderMode';
           this.stateManager.toggleGameControls(false);
       };
-      
-      // onShopOpen obsługiwane przez ShopManager w UI.js
+
+      // --- ZMODYFIKOWANA OBSŁUGA SKLEPU ---
+      this.ui.onShopOpen = () => {
+          // Pobieramy bloki bezpośrednio z pancernego BlockManagera
+          const blocks = this.blockManager.getAllBlockDefinitions();
+          
+          console.log("Main.js: Przekazuję do sklepu:", blocks.length, "elementów");
+          
+          if (blocks.length === 0) {
+              console.error("Main.js: BŁĄD! BlockManager zwrócił pustą tablicę!");
+          }
+          
+          this.ui.populateShop(blocks, (name) => this.blockManager.isOwned(name));
+      };
   }
 
   recreatePlayerController(collidables, collisionMap = null) { 
@@ -540,7 +550,7 @@ class BlockStarPlanetGame {
       this.stateManager.exploreScene = exploreScene;
       this.multiplayer.setScene(exploreScene);
       
-      // Wysyłamy spawnPoint do serwera - naprawia teleportację
+      // Wysyłamy spawnPoint do serwera (Teleport FIX)
       this.multiplayer.joinWorld(worldData.id, worldData.spawnPoint); 
       
       this.stateManager.switchToExploreMode(exploreScene);
