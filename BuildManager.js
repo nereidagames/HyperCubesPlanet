@@ -92,13 +92,13 @@ export class BuildManager {
     directionalLight.castShadow = false; 
     this.scene.add(directionalLight);
     
-    // --- FIX: NAJPIERW TWORZYMY OBIEKTY, POTEM LOGIKĘ ---
+    // Tworzenie obiektów (Przed logiką wyboru bloku)
     this.createBuildPlatform();
     this.createPreviewBlock();
     this.previewPrefab = new THREE.Group();
     this.scene.add(this.previewPrefab);
 
-    // Pobieramy bloki i ustawiamy domyślny (jeśli jest)
+    // Pobieramy bloki i ustawiamy domyślny
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     if (this.blockTypes.length > 0) {
         this.selectBlockType(this.blockTypes[0]);
@@ -110,8 +110,7 @@ export class BuildManager {
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
-    // --- ZARZĄDZANIE WIDOCZNOŚCIĄ UI ---
-    // 1. Pokaż nowe elementy Buildera
+    // ZARZĄDZANIE WIDOCZNOŚCIĄ UI
     const buildElements = [
         '.build-top-left', 
         '.build-sidebar-right', 
@@ -123,15 +122,12 @@ export class BuildManager {
         if (el) el.style.display = 'flex';
     });
 
-    // 2. Pokaż górny pasek (HUD)
     const topBar = document.querySelector('.top-bar');
     if(topBar) topBar.style.display = 'flex';
     
-    // 3. Ukryj boczne menu gry (Zagraj/Buduj...)
     const rightUi = document.querySelector('.right-ui');
     if(rightUi) rightUi.style.display = 'none';
 
-    // Aktualizacja tekstu przycisku Zapisz
     const saveBtn = document.getElementById('build-save-btn-new');
     if(saveBtn) {
         if (isNexusMode) saveBtn.textContent = "Zapisz Nexus";
@@ -210,7 +206,7 @@ export class BuildManager {
           if (this.currentBlockCategory === 'addon') blockItem.title = blockType.name;
           blockItem.onclick = () => {
               this.selectBlockType(blockType);
-              this.addToHotbar(blockType); // DODAJ DO HOTBARA
+              this.addToHotbar(blockType);
               document.getElementById('block-selection-panel').style.display = 'none';
           };
           list.appendChild(blockItem);
@@ -226,23 +222,17 @@ export class BuildManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    // NOWE PRZYCISKI
     document.getElementById('build-exit-btn-new').onclick = () => this.game.stateManager.switchToMainMenu();
-    
-    // Toggle Mode (Łatwy/Zaawansowany - kamera)
     document.getElementById('build-mode-toggle-new').onclick = () => this.toggleCameraMode();
 
-    // Menu Narzędzi (Palec)
     document.getElementById('build-tools-menu-btn').onclick = () => {
         document.getElementById('tools-modal').style.display = 'flex';
     };
     
-    // Zamykanie Menu Narzędzi na tło
     document.getElementById('tools-modal').onclick = (e) => {
         if(e.target.id === 'tools-modal') e.target.style.display = 'none';
     };
 
-    // WYBÓR NARZĘDZI W MENU
     const bindTool = (id, toolName, mode = 'block') => {
         const btn = document.getElementById(id);
         if(btn) btn.onclick = () => {
@@ -267,9 +257,8 @@ export class BuildManager {
 
     bindTool('tool-btn-single', 'single', 'block');
     bindTool('tool-btn-line', 'line', 'block');
-    bindTool('tool-btn-eraser', 'single', 'remove'); // Gumka
+    bindTool('tool-btn-eraser', 'single', 'remove');
 
-    // Przycisk "+" (Dodaj blok)
     document.getElementById('build-add-btn-new').onclick = () => {
         document.getElementById('block-selection-panel').style.display = 'none';
         document.getElementById('prefab-selection-panel').style.display = 'none';
@@ -285,7 +274,6 @@ export class BuildManager {
         else this.saveWorld();
     };
 
-    // Obsługa paneli wyboru
     document.getElementById('add-choice-blocks').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
         document.getElementById('prefab-selection-panel').style.display = 'none';
@@ -391,6 +379,7 @@ export class BuildManager {
       this.lastLineTargetPos = null;
   }
 
+  // --- ZMODYFIKOWANA METODA: OBSŁUGA NOWEGO FORMATU Z ID ---
   async loadExistingMap(endpoint) { 
       try{ 
           const response=await fetch(`${API_BASE_URL}${endpoint}`); 
@@ -401,19 +390,37 @@ export class BuildManager {
                   for(let i=0;i<blocksData.length;i+=batchSize){ 
                       const batch=blocksData.slice(i,i+batchSize); 
                       batch.forEach(blockData=>{ 
+                          
+                          // --- FIX: OBSŁUGA ID ---
+                          // Jeśli blok ma ID zamiast texturePath (nowy system), odzyskaj ścieżkę
+                          let texPath = blockData.texturePath;
+                          if (blockData.id !== undefined && !texPath) {
+                              texPath = this.blockManager.getTextureById(blockData.id);
+                          }
+                          // Jeśli nadal nie ma tekstury, pomiń
+                          if (!texPath) return;
+
                           const geometry=this.sharedBoxGeometry; 
-                          let material=this.materials[blockData.texturePath]; 
+                          let material=this.materials[texPath]; 
                           if(!material){ 
-                              const texture=this.textureLoader.load(blockData.texturePath); 
+                              const texture=this.textureLoader.load(texPath); 
                               texture.magFilter=THREE.NearestFilter; 
                               texture.minFilter=THREE.NearestMipmapNearestFilter; 
                               texture.anisotropy=2; 
                               material=new THREE.MeshLambertMaterial({map:texture}); 
-                              this.materials[blockData.texturePath]=material; 
+                              this.materials[texPath]=material; 
                           } 
                           const mesh=new THREE.Mesh(geometry,material); 
                           mesh.position.set(blockData.x,blockData.y,blockData.z); 
-                          mesh.userData.texturePath=blockData.texturePath; 
+                          
+                          // Zapisz dane do usunięcia/eksportu
+                          mesh.userData.texturePath = texPath;
+                          // Opcjonalnie: odzyskaj nazwę
+                          if (blockData.id) {
+                              const def = this.blockManager.getBlockById(blockData.id);
+                              if(def) mesh.userData.name = def.name;
+                          }
+
                           mesh.castShadow=false; 
                           mesh.receiveShadow=false; 
                           this.scene.add(mesh); 
@@ -497,14 +504,11 @@ export class BuildManager {
   
   onMouseMove(e) { this.mouse.x=(e.clientX/window.innerWidth)*2-1; this.mouse.y=-(e.clientY/window.innerHeight)*2+1; if(this.isDraggingLine){ this.updateRaycast(); if(this.previewBlock && this.previewBlock.visible) this.updateLinePreview(this.previewBlock.position); } }
   
-  // --- FIX: DETEKCJA KLIKNIĘĆ W UI ---
   isEventOnUI(event) { 
       const target = event.target; 
-      
       // Jeśli kliknięto w strefę obrotu, to NIE JEST element UI blokujący grę
-      if (target.closest('#build-rotate-zone')) return true; // WRÓCIŁEM NA TRUE ŻEBY NIE STAWIAŁO BLOKÓW, KAMERA OBSŁUŻY TO SAMA
+      if (target.closest('#build-rotate-zone')) return true; 
       
-      // Sprawdzamy klasy (kropka) zamiast ID (hash) tam gdzie to konieczne
       return (
           target.closest('.build-ui-button') || 
           target.closest('.panel-list') || 
@@ -596,12 +600,60 @@ export class BuildManager {
   updateSaveButton() { const b=document.getElementById('build-save-btn-new'); if(this.placedBlocks.length>0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { if((this.isNexusMode || this.isLoginMapMode) && this.placedBlocks.length===0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { b.style.opacity='0.5'; b.style.cursor='not-allowed'; } } }
   generateThumbnail() { const width=200; const height=150; const thumbnailRenderer=new THREE.WebGLRenderer({alpha:false,antialias:true}); thumbnailRenderer.setSize(width,height); thumbnailRenderer.setClearColor(0x87CEEB); const thumbnailScene=new THREE.Scene(); const ambLight=new THREE.AmbientLight(0xffffff,0.8); thumbnailScene.add(ambLight); const dirLight=new THREE.DirectionalLight(0xffffff,0.5); dirLight.position.set(50,50,50); thumbnailScene.add(dirLight); const floorGeo=new THREE.BoxGeometry(this.platformSize,1,this.platformSize); const floorMat=new THREE.MeshLambertMaterial({color:0x559022}); const floor=new THREE.Mesh(floorGeo,floorMat); floor.position.y=-0.5; thumbnailScene.add(floor); if(this.placedBlocks.length>0){ this.placedBlocks.forEach(block=>{ const clone=block.clone(); thumbnailScene.add(clone); }); } const thumbnailCamera=new THREE.PerspectiveCamera(45,width/height,0.1,1000); const distance=this.platformSize*1.5; thumbnailCamera.position.set(distance,distance*0.8,distance); thumbnailCamera.lookAt(0,0,0); thumbnailRenderer.render(thumbnailScene,thumbnailCamera); const dataURL=thumbnailRenderer.domElement.toDataURL('image/jpeg',0.8); thumbnailRenderer.dispose(); return dataURL; }
   
-  async saveNexus() { const token=localStorage.getItem(JWT_TOKEN_KEY); if(!token){ alert("Błąd autoryzacji!"); return; } const blocksData=this.placedBlocks.map(block=>({ x:block.position.x, y:block.position.y, z:block.position.z, texturePath:block.userData.texturePath })); const saveBtn=document.getElementById('build-save-btn-new'); saveBtn.textContent="Zapisywanie..."; saveBtn.style.cursor='wait'; try{ const response=await fetch(`${API_BASE_URL}/api/nexus`,{ method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, body:JSON.stringify({blocks:blocksData}) }); const result=await response.json(); if(response.ok){ alert("Nexus zaktualizowany!"); this.game.stateManager.switchToMainMenu(); } else { alert(`Błąd: ${result.message}`); } } catch(e){ alert("Błąd sieci."); console.error(e); } finally{ saveBtn.textContent="Zapisz Nexus"; saveBtn.style.cursor='pointer'; } }
+  // --- FUNKCJA HELPER DO PRZYGOTOWANIA DANYCH ZAPISU (ZMIANA NA ID) ---
+  getBlocksDataForSave() {
+      return this.placedBlocks.map(block => {
+          const tex = block.userData.texturePath;
+          const name = block.userData.name;
+          // Pobierz ID
+          const id = this.blockManager.getIdByTexture(tex, name);
+          
+          return {
+              x: Math.round(block.position.x), 
+              y: Math.round(block.position.y),
+              z: Math.round(block.position.z),
+              id: id // Wysyłamy ID!
+          };
+      });
+  }
+
+  async saveNexus() { 
+      const token=localStorage.getItem(JWT_TOKEN_KEY); 
+      if(!token){ alert("Błąd autoryzacji!"); return; } 
+      
+      const blocksData = this.getBlocksDataForSave(); // Używamy helpera
+
+      const saveBtn=document.getElementById('build-save-btn-new'); 
+      saveBtn.textContent="Zapisywanie..."; 
+      saveBtn.style.cursor='wait'; 
+      try{ 
+          const response=await fetch(`${API_BASE_URL}/api/nexus`,{ 
+              method:'POST', 
+              headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, 
+              body:JSON.stringify({blocks:blocksData}) 
+          }); 
+          const result=await response.json(); 
+          if(response.ok){ 
+              alert("Nexus zaktualizowany!"); 
+              this.game.stateManager.switchToMainMenu(); 
+          } else { 
+              alert(`Błąd: ${result.message}`); 
+          } 
+      } catch(e){ 
+          alert("Błąd sieci."); 
+          console.error(e); 
+      } finally{ 
+          saveBtn.textContent="Zapisz Nexus"; 
+          saveBtn.style.cursor='pointer'; 
+      } 
+  }
 
   async saveLoginMap() { 
       const token=localStorage.getItem(JWT_TOKEN_KEY); 
       if(!token){ alert("Błąd autoryzacji!"); return; } 
-      const blocksData=this.placedBlocks.map(block=>({ x:block.position.x, y:block.position.y, z:block.position.z, texturePath:block.userData.texturePath })); 
+      
+      const blocksData = this.getBlocksDataForSave();
+
       const saveBtn=document.getElementById('build-save-btn-new'); 
       saveBtn.textContent="Zapisywanie..."; 
       saveBtn.style.cursor='wait'; 
@@ -634,10 +686,14 @@ export class BuildManager {
     if (starts.length > 1) { alert("Błąd: Świat może mieć tylko JEDEN punkt startowy Parkouru!"); return; }
     let worldType = 'creative'; let spawnPoint = null;
     if (starts.length === 1 && metas.length >= 1) { worldType = 'parkour'; spawnPoint = { x: starts[0].position.x, y: starts[0].position.y + 1.5, z: starts[0].position.z }; } else if (starts.length === 1 || metas.length >= 1) { if(!confirm("Masz Start lub Metę, ale nie kompletny tor. Świat zostanie zapisany jako zwykły (Creative). Kontynuować?")) return; }
+    
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
       const thumbnail = this.generateThumbnail();
-      const worldData = { size: this.platformSize, thumbnail: thumbnail, type: worldType, spawnPoint: spawnPoint, blocks: this.placedBlocks.map(block => ({ x: block.position.x, y: block.position.y, z: block.position.z, texturePath: block.userData.texturePath, name: block.userData.name })) };
+      
+      const blocksData = this.getBlocksDataForSave();
+
+      const worldData = { size: this.platformSize, thumbnail: thumbnail, type: worldType, spawnPoint: spawnPoint, blocks: blocksData };
       const success = await WorldStorage.saveWorld(worldName, worldData);
       if (success) { alert(`Świat "${worldName}" (${worldType}) został pomyślnie zapisany!`); this.game.stateManager.switchToMainMenu(); }
     }
