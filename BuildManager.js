@@ -210,7 +210,7 @@ export class BuildManager {
           if (this.currentBlockCategory === 'addon') blockItem.title = blockType.name;
           blockItem.onclick = () => {
               this.selectBlockType(blockType);
-              this.addToHotbar(blockType); // Dodaj do hotbara
+              this.addToHotbar(blockType); // DODAJ DO HOTBARA
               document.getElementById('block-selection-panel').style.display = 'none';
           };
           list.appendChild(blockItem);
@@ -226,7 +226,10 @@ export class BuildManager {
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
+    // NOWE PRZYCISKI
     document.getElementById('build-exit-btn-new').onclick = () => this.game.stateManager.switchToMainMenu();
+    
+    // Toggle Mode (Łatwy/Zaawansowany - kamera)
     document.getElementById('build-mode-toggle-new').onclick = () => this.toggleCameraMode();
 
     // Menu Narzędzi (Palec)
@@ -234,11 +237,12 @@ export class BuildManager {
         document.getElementById('tools-modal').style.display = 'flex';
     };
     
+    // Zamykanie Menu Narzędzi na tło
     document.getElementById('tools-modal').onclick = (e) => {
         if(e.target.id === 'tools-modal') e.target.style.display = 'none';
     };
 
-    // Obsługa narzędzi w menu
+    // WYBÓR NARZĘDZI W MENU
     const bindTool = (id, toolName, mode = 'block') => {
         const btn = document.getElementById(id);
         if(btn) btn.onclick = () => {
@@ -265,7 +269,7 @@ export class BuildManager {
     bindTool('tool-btn-line', 'line', 'block');
     bindTool('tool-btn-eraser', 'single', 'remove'); // Gumka
 
-    // Przycisk "+"
+    // Przycisk "+" (Dodaj blok)
     document.getElementById('build-add-btn-new').onclick = () => {
         document.getElementById('block-selection-panel').style.display = 'none';
         document.getElementById('prefab-selection-panel').style.display = 'none';
@@ -281,6 +285,7 @@ export class BuildManager {
         else this.saveWorld();
     };
 
+    // Obsługa paneli wyboru
     document.getElementById('add-choice-blocks').onclick = () => {
         document.getElementById('add-choice-panel').style.display = 'none';
         document.getElementById('prefab-selection-panel').style.display = 'none';
@@ -497,7 +502,7 @@ export class BuildManager {
       const target = event.target; 
       
       // Jeśli kliknięto w strefę obrotu, to NIE JEST element UI blokujący grę
-      if (target.closest('#build-rotate-zone')) return false; 
+      if (target.closest('#build-rotate-zone')) return true; // WRÓCIŁEM NA TRUE ŻEBY NIE STAWIAŁO BLOKÓW, KAMERA OBSŁUŻY TO SAMA
       
       // Sprawdzamy klasy (kropka) zamiast ID (hash) tam gdzie to konieczne
       return (
