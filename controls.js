@@ -3,26 +3,17 @@ import * as THREE from 'three';
 import nipplejs from 'nipplejs';
 
 export class PlayerController {
-  /**
-   * @param {THREE.Object3D} player - Model gracza
-   * @param {Array} collidableObjects - Tablica dużych/globalnych obiektów (podłoga, bariery)
-   * @param {Map} collisionMap - Mapa bloków (Grid Partitioning) dla szybkiego wyszukiwania
-   * @param {Object} options - Opcje fizyki
-   */
   constructor(player, collidableObjects, collisionMap, options = {}) {
     this.player = player;
-    this.collidableObjects = collidableObjects; // Tablica dla dużych obiektów
-    this.collisionMap = collisionMap;           // Mapa dla małych bloków (Grid)
+    this.collidableObjects = collidableObjects; 
+    this.collisionMap = collisionMap;           
     
     this.moveSpeed = options.moveSpeed || 8;
     this.jumpForce = options.jumpForce || 18;
     this.gravity = options.gravity || 50;
     this.groundRestingY = options.groundRestingY || 0.1;
 
-    // Maksymalna wysokość, na którą można wejść automatycznie (Auto-Step)
     this.maxStepHeight = 1.2; 
-
-    // Wymiary gracza (hitbox)
     this.playerDimensions = new THREE.Vector3(0.6, 1.0, 0.6);
 
     this.velocity = new THREE.Vector3();
@@ -37,9 +28,13 @@ export class PlayerController {
     this.joystickDirection = new THREE.Vector2();
     this.joystick = null;
 
-    // Cache dla obiektów fizycznych (aby nie tworzyć ich w pętli)
+    // --- NOWOŚĆ: Flaga włączająca/wyłączająca sterowanie ---
+    this.enabled = true; 
+
     this.playerBox = new THREE.Box3();
     this.objectBox = new THREE.Box3();
+    
+    this.setupInput();
   }
 
   setIsMobile(isMobile) {
@@ -62,8 +57,8 @@ export class PlayerController {
     this.cleanupInput();
 
     this.handleKeyDown = (e) => {
-      // BLOKADA SKOKU PODCZAS PISANIA
-      if (this.isTyping()) return;
+      // --- NOWOŚĆ: Blokada inputu ---
+      if (!this.enabled || this.isTyping()) return;
 
       this.keys[e.code] = true;
       if (e.code === 'Space' && this.canJump) {
@@ -110,25 +105,33 @@ export class PlayerController {
   }
   
   update(deltaTime, cameraRotation) {
+    // --- NOWOŚĆ: Jeśli wyłączony, zatrzymaj postać i nie licz fizyki ---
+    if (!this.enabled) {
+        this.velocity.x = 0;
+        this.velocity.z = 0;
+        // Opcjonalnie pozwalamy grawitacji działać, żeby nie wisiał w powietrzu,
+        // ale blokujemy input. Tutaj stosujemy pełne zatrzymanie ruchu poziomego.
+        // Grawitację liczymy dalej poniżej, chyba że chcesz zamrozić całkowicie.
+    }
+
     const timeStep = Math.min(deltaTime, 0.05);
 
-    // Grawitacja
     if (!this.isOnGround) {
       this.velocity.y -= this.gravity * timeStep;
     }
 
-    // Obliczanie wektora ruchu na podstawie Inputu
     const moveDirection = new THREE.Vector3();
     const isTyping = this.isTyping();
 
-    if (!this.isMobile && !isTyping) {
+    // Obliczanie inputu TYLKO jeśli enabled i nie piszemy
+    if (this.enabled && !this.isMobile && !isTyping) {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
         const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
         if (this.keys['KeyW']) moveDirection.add(forward);
         if (this.keys['KeyS']) moveDirection.sub(forward);
         if (this.keys['KeyA']) moveDirection.sub(right);
         if (this.keys['KeyD']) moveDirection.add(right);
-    } else if (this.isMobile) {
+    } else if (this.enabled && this.isMobile) {
         moveDirection.set(this.joystickDirection.x, 0, -this.joystickDirection.y);
         moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
     }
@@ -139,31 +142,15 @@ export class PlayerController {
       this.player.rotation.y = angle;
     }
 
-    // --- ZMIANA: LOGIKA INERCJI VS KONTROLI W POWIETRZU ---
-    
-    // Obliczamy docelową prędkość wynikającą z klawiszy
     const targetVX = moveDirection.x * this.moveSpeed;
     const targetVZ = moveDirection.z * this.moveSpeed;
 
     if (this.isOnGround) {
-        // NA ZIEMI: Pełna przyczepność - natychmiastowa reakcja na input
         this.velocity.x = targetVX;
         this.velocity.z = targetVZ;
     } else {
-        // W POWIETRZU:
-        
-        // Sprawdzamy, czy gracz próbuje się poruszać (wciska klawisze)
         const hasInput = moveDirection.lengthSq() > 0.001;
-
-        // Jeśli gracz wciska klawisze (chce zmienić kierunek):
-        // Dajemy bardzo wysoki współczynnik (25.0) -> Reakcja jest niemal natychmiastowa (brak hamowania).
-        //
-        // Jeśli gracz puścił klawisze (chce sunąć):
-        // Dajemy niski współczynnik (2.0) -> Postać powoli traci pęd (ładne sunięcie).
-        
         const airControlFactor = hasInput ? (25.0 * timeStep) : (2.0 * timeStep);
-
-        // Lerp (Linear Interpolation)
         this.velocity.x += (targetVX - this.velocity.x) * airControlFactor;
         this.velocity.z += (targetVZ - this.velocity.z) * airControlFactor;
     }
@@ -171,22 +158,17 @@ export class PlayerController {
     this.applyMovementAndCollisions(timeStep);
   }
 
-  // --- GRID PARTITIONING COLLISION LOGIC + AUTO STEP ---
   applyMovementAndCollisions(deltaTime) {
     const halfHeight = this.playerDimensions.y / 2;
     const halfWidth = this.playerDimensions.x / 2;
     const halfDepth = this.playerDimensions.z / 2;
     const epsilon = 0.001;
 
-    // 1. Zbuduj listę kandydatów do kolizji (Broad Phase)
     const candidates = [];
-
-    // A. Dodaj obiekty globalne (podłoga, bariery)
     for (let i = 0; i < this.collidableObjects.length; i++) {
         candidates.push(this.collidableObjects[i]);
     }
 
-    // B. Dodaj bloki z Grid Mapy
     if (this.collisionMap && this.collisionMap.size > 0) {
         const playerX = Math.floor(this.player.position.x);
         const playerY = Math.floor(this.player.position.y);
@@ -211,9 +193,7 @@ export class PlayerController {
 
     let landedOnBlock = false;
 
-    // --- Faza 2: Dokładna kolizja (Narrow Phase) ---
-
-    // === Kolizja pionowa (Y) ===
+    // Y Axis
     const verticalMovement = this.velocity.y * deltaTime;
     this.player.position.y += verticalMovement;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -226,14 +206,14 @@ export class PlayerController {
         }
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
-            if (verticalMovement < 0) { // Spadanie na blok
+            if (verticalMovement < 0) { 
                 this.player.position.y = this.objectBox.max.y + halfHeight;
                 this.velocity.y = 0;
                 this.isOnGround = true;
                 this.jumpsRemaining = this.maxJumps;
                 this.canJump = true;
                 landedOnBlock = true;
-            } else if (verticalMovement > 0) { // Skok w sufit
+            } else if (verticalMovement > 0) { 
                 this.player.position.y = this.objectBox.min.y - halfHeight - epsilon;
                 this.velocity.y = 0;
             }
@@ -242,7 +222,7 @@ export class PlayerController {
     
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
-    // === Kolizja pozioma (X) z AUTO-STEP ===
+    // X Axis
     const horizontalMovementX = this.velocity.x * deltaTime;
     this.player.position.x += horizontalMovementX;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -254,20 +234,15 @@ export class PlayerController {
             this.objectBox.setFromObject(object);
         }
         
-        // Pomiń obiekty, na które gracz może wejść (te poniżej stóp)
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
-            // --- LOGIKA AUTO-STEP (Wchodzenie po schodach) ---
             const obstacleHeight = this.objectBox.max.y - this.playerBox.min.y;
-            
             if (obstacleHeight > 0.01 && obstacleHeight <= this.maxStepHeight) {
                 this.player.position.y += obstacleHeight;
                 this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
                 continue; 
             }
-
-            // Standardowa kolizja (ściana)
             if (horizontalMovementX > 0) {
                 this.player.position.x = this.objectBox.min.x - halfWidth - epsilon;
             } else if (horizontalMovementX < 0) {
@@ -278,7 +253,7 @@ export class PlayerController {
         }
     }
 
-    // === Kolizja pozioma (Z) z AUTO-STEP ===
+    // Z Axis
     const horizontalMovementZ = this.velocity.z * deltaTime;
     this.player.position.z += horizontalMovementZ;
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
@@ -293,16 +268,12 @@ export class PlayerController {
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
-            // --- LOGIKA AUTO-STEP (Wchodzenie po schodach) ---
             const obstacleHeight = this.objectBox.max.y - this.playerBox.min.y;
-            
             if (obstacleHeight > 0.01 && obstacleHeight <= this.maxStepHeight) {
                 this.player.position.y += obstacleHeight;
                 this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
                 continue; 
             }
-
-            // Standardowa kolizja
             if (horizontalMovementZ > 0) {
                 this.player.position.z = this.objectBox.min.z - halfDepth - epsilon;
             } else if (horizontalMovementZ < 0) {
@@ -313,7 +284,6 @@ export class PlayerController {
         }
     }
 
-    // Sprawdzenie "podłogi świata"
     if (this.player.position.y <= this.groundRestingY + halfHeight) {
         if (!landedOnBlock) {
             this.player.position.y = this.groundRestingY + halfHeight;
@@ -338,7 +308,7 @@ export class PlayerController {
     if (jumpButton) {
         this.handleMobileJumpStart = (e) => {
             e.preventDefault();
-            if (this.canJump) {
+            if (this.enabled && this.canJump) { // Dodano check this.enabled
                 this.jump();
                 this.canJump = false;
             }
@@ -364,7 +334,7 @@ export class PlayerController {
         this.joystick = nipplejs.create(options);
 
         this.joystick.on('move', (evt, data) => {
-            if (data.vector) {
+            if (this.enabled && data.vector) { // Dodano check this.enabled
                 this.joystickDirection.set(data.vector.x, data.vector.y);
             }
         });
@@ -405,7 +375,7 @@ export class ThirdPersonCameraController {
 
     setupControls() {
         this.handleMouseDown = (e) => {
-            if (!this.enabled || e.target.closest('.ui-element')) return;
+            if (!this.enabled || e.target.closest('.ui-element') || e.target.closest('.panel-modal') || e.target.closest('#victory-panel')) return; // FIX
             this.isDragging = true;
             this.mousePosition = { x: e.clientX, y: e.clientY };
         };
