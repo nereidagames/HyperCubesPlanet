@@ -1,8 +1,9 @@
+/* PLIK: character.js */
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // Funkcja tworzy model nóg.
-// POPRAWKA: Przesuwamy elementy w dół o 0.5 (połowa wysokości postaci), 
+// Przesuwamy elementy w dół o 0.5 (połowa wysokości postaci), 
 // aby środek modelu (pivot) pokrywał się ze środkiem fizycznego hitboxa.
 export function createBaseCharacter(parentContainer) {
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
@@ -60,7 +61,7 @@ export class CharacterManager {
     
     this.skinContainer.scale.setScalar(0.125);
     
-    // POPRAWKA: Skin musi być teraz niżej, bo cały model został obniżony.
+    // Skin musi być niżej, bo cały model został obniżony.
     // Nogi kończą się na Y = 0.5 (względem środka), więc skin zaczyna się tam.
     this.skinContainer.position.y = 0.5; 
     
@@ -69,7 +70,7 @@ export class CharacterManager {
     this.character.position.set(0, 5, 0); 
     this.scene.add(this.character);
     this.setupShadow();
-    console.log("Postać gracza załadowana (zcentrowana).");
+    console.log("Postać gracza załadowana.");
   }
   
   applySkin(skinData) {
@@ -113,30 +114,44 @@ export class CharacterManager {
       this.shadow.position.x = this.character.position.x;
       this.shadow.position.z = this.character.position.z;
       // Cień zawsze na poziomie podłogi, niezależnie od skoku
-      // Zakładamy, że podłoga jest na ~0.1
       this.shadow.position.y = 0.11;
     }
   }
   
   displayChatBubble(message) {
     if (!this.character) return;
-    if (this.character.chatBubble) this.character.remove(this.character.chatBubble);
     
+    // 1. Usuń stary dymek, jeśli istnieje
+    if (this.character.chatBubble) {
+        this.character.remove(this.character.chatBubble);
+        if (this.character.chatBubble.element && this.character.chatBubble.element.parentNode) {
+            this.character.chatBubble.element.parentNode.removeChild(this.character.chatBubble.element);
+        }
+        this.character.chatBubble = null;
+    }
+    
+    // 2. Stwórz element HTML z nową klasą CSS
     const div = document.createElement('div');
-    div.className = 'chat-bubble';
+    div.className = 'chat-bubble-styled'; // Styl zdefiniowany w style.css
     div.textContent = message;
-    div.style.cssText = `background-color: rgba(255, 255, 255, 0.9); color: black; padding: 8px 12px; border-radius: 15px; font-size: 13px; max-width: 150px; text-align: center; pointer-events: none;`;
+    
+    // 3. Stwórz obiekt 3D (CSS2D)
     const chatBubble = new CSS2DObject(div);
-    // Dymek nad głową (teraz niżej, bo postać jest niższa fizycznie)
-    chatBubble.position.set(0, 1.5, 0); 
+    // Pozycja nad głową (Y=2.8 jest optymalne, by nie zasłaniać nicku)
+    chatBubble.position.set(0, 2.8, 0); 
+    
     this.character.add(chatBubble);
     this.character.chatBubble = chatBubble;
 
+    // 4. Usuń automatycznie po 6 sekundach
     setTimeout(() => {
       if (this.character && this.character.chatBubble === chatBubble) {
         this.character.remove(chatBubble);
+        if (chatBubble.element.parentNode) {
+            chatBubble.element.parentNode.removeChild(chatBubble.element);
+        }
         this.character.chatBubble = null;
       }
-    }, 5000);
+    }, 6000);
   }
 }
