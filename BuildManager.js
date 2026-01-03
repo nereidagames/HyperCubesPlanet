@@ -3,9 +3,7 @@ import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { WorldStorage } from './WorldStorage.js';
 import { PrefabStorage } from './PrefabStorage.js';
-
-const API_BASE_URL = 'https://hypercubes-nexus-server.onrender.com';
-const JWT_TOKEN_KEY = 'bsp_clone_jwt_token';
+import { API_BASE_URL, STORAGE_KEYS } from './Config.js';
 
 export class BuildManager {
   constructor(game, loadingManager, blockManager) {
@@ -74,7 +72,7 @@ export class BuildManager {
     });
   }
 
-  // --- GŁÓWNA METODA WEJŚCIA ---
+  // --- GŁÓWNA METODA WEJŚCIA (POPRAWIONA) ---
   async enterBuildMode(size = 64, isNexusMode = false, isLoginMapMode = false) {
     this.platformSize = size;
     this.isNexusMode = isNexusMode;
@@ -92,18 +90,20 @@ export class BuildManager {
     directionalLight.castShadow = false; 
     this.scene.add(directionalLight);
     
-    // Tworzenie obiektów (Przed logiką wyboru bloku)
+    // --- FIX START: Ustawienie bloku PRZED stworzeniem preview ---
+    // Pobieramy bloki i ustawiamy domyślny, aby createPreviewBlock miało co robić
+    this.blockTypes = this.blockManager.getOwnedBlockTypes();
+    if (this.blockTypes.length > 0) {
+        this.selectedBlockType = this.blockTypes[0];
+    }
+    // --- FIX END ---
+
+    // Tworzenie obiektów
     this.createBuildPlatform();
-    this.createPreviewBlock();
+    this.createPreviewBlock(); // Teraz zadziała, bo selectedBlockType jest ustawiony
     this.previewPrefab = new THREE.Group();
     this.scene.add(this.previewPrefab);
 
-    // Pobieramy bloki i ustawiamy domyślny
-    this.blockTypes = this.blockManager.getOwnedBlockTypes();
-    if (this.blockTypes.length > 0) {
-        this.selectBlockType(this.blockTypes[0]);
-    }
-    
     this.currentBuildMode = 'block';
     this.currentTool = 'single';
 
@@ -135,6 +135,10 @@ export class BuildManager {
         else saveBtn.textContent = "Zapisz";
     }
 
+    // Odświeżenie Hotbara (UI)
+    if (this.selectedBlockType) {
+        this.selectBlockType(this.selectedBlockType);
+    }
     this.updateHotbarUI(); 
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
@@ -379,7 +383,6 @@ export class BuildManager {
       this.lastLineTargetPos = null;
   }
 
-  // --- ZMODYFIKOWANA METODA: OBSŁUGA NOWEGO FORMATU Z ID ---
   async loadExistingMap(endpoint) { 
       try{ 
           const response=await fetch(`${API_BASE_URL}${endpoint}`); 
@@ -392,12 +395,10 @@ export class BuildManager {
                       batch.forEach(blockData=>{ 
                           
                           // --- FIX: OBSŁUGA ID ---
-                          // Jeśli blok ma ID zamiast texturePath (nowy system), odzyskaj ścieżkę
                           let texPath = blockData.texturePath;
                           if (blockData.id !== undefined && !texPath) {
                               texPath = this.blockManager.getTextureById(blockData.id);
                           }
-                          // Jeśli nadal nie ma tekstury, pomiń
                           if (!texPath) return;
 
                           const geometry=this.sharedBoxGeometry; 
@@ -415,7 +416,6 @@ export class BuildManager {
                           
                           // Zapisz dane do usunięcia/eksportu
                           mesh.userData.texturePath = texPath;
-                          // Opcjonalnie: odzyskaj nazwę
                           if (blockData.id) {
                               const def = this.blockManager.getBlockById(blockData.id);
                               if(def) mesh.userData.name = def.name;
@@ -506,7 +506,6 @@ export class BuildManager {
   
   isEventOnUI(event) { 
       const target = event.target; 
-      // Jeśli kliknięto w strefę obrotu, to NIE JEST element UI blokujący grę
       if (target.closest('#build-rotate-zone')) return true; 
       
       return (
@@ -600,28 +599,26 @@ export class BuildManager {
   updateSaveButton() { const b=document.getElementById('build-save-btn-new'); if(this.placedBlocks.length>0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { if((this.isNexusMode || this.isLoginMapMode) && this.placedBlocks.length===0){ b.style.opacity='1'; b.style.cursor='pointer'; } else { b.style.opacity='0.5'; b.style.cursor='not-allowed'; } } }
   generateThumbnail() { const width=200; const height=150; const thumbnailRenderer=new THREE.WebGLRenderer({alpha:false,antialias:true}); thumbnailRenderer.setSize(width,height); thumbnailRenderer.setClearColor(0x87CEEB); const thumbnailScene=new THREE.Scene(); const ambLight=new THREE.AmbientLight(0xffffff,0.8); thumbnailScene.add(ambLight); const dirLight=new THREE.DirectionalLight(0xffffff,0.5); dirLight.position.set(50,50,50); thumbnailScene.add(dirLight); const floorGeo=new THREE.BoxGeometry(this.platformSize,1,this.platformSize); const floorMat=new THREE.MeshLambertMaterial({color:0x559022}); const floor=new THREE.Mesh(floorGeo,floorMat); floor.position.y=-0.5; thumbnailScene.add(floor); if(this.placedBlocks.length>0){ this.placedBlocks.forEach(block=>{ const clone=block.clone(); thumbnailScene.add(clone); }); } const thumbnailCamera=new THREE.PerspectiveCamera(45,width/height,0.1,1000); const distance=this.platformSize*1.5; thumbnailCamera.position.set(distance,distance*0.8,distance); thumbnailCamera.lookAt(0,0,0); thumbnailRenderer.render(thumbnailScene,thumbnailCamera); const dataURL=thumbnailRenderer.domElement.toDataURL('image/jpeg',0.8); thumbnailRenderer.dispose(); return dataURL; }
   
-  // --- FUNKCJA HELPER DO PRZYGOTOWANIA DANYCH ZAPISU (ZMIANA NA ID) ---
   getBlocksDataForSave() {
       return this.placedBlocks.map(block => {
           const tex = block.userData.texturePath;
           const name = block.userData.name;
-          // Pobierz ID
           const id = this.blockManager.getIdByTexture(tex, name);
           
           return {
               x: Math.round(block.position.x), 
               y: Math.round(block.position.y),
               z: Math.round(block.position.z),
-              id: id // Wysyłamy ID!
+              id: id
           };
       });
   }
 
   async saveNexus() { 
-      const token=localStorage.getItem(JWT_TOKEN_KEY); 
+      const token=localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); 
       if(!token){ alert("Błąd autoryzacji!"); return; } 
       
-      const blocksData = this.getBlocksDataForSave(); // Używamy helpera
+      const blocksData = this.getBlocksDataForSave();
 
       const saveBtn=document.getElementById('build-save-btn-new'); 
       saveBtn.textContent="Zapisywanie..."; 
@@ -649,7 +646,7 @@ export class BuildManager {
   }
 
   async saveLoginMap() { 
-      const token=localStorage.getItem(JWT_TOKEN_KEY); 
+      const token=localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); 
       if(!token){ alert("Błąd autoryzacji!"); return; } 
       
       const blocksData = this.getBlocksDataForSave();
@@ -690,7 +687,6 @@ export class BuildManager {
     const worldName = prompt("Podaj nazwę dla swojego świata:", "Mój Nowy Świat");
     if (worldName) {
       const thumbnail = this.generateThumbnail();
-      
       const blocksData = this.getBlocksDataForSave();
 
       const worldData = { size: this.platformSize, thumbnail: thumbnail, type: worldType, spawnPoint: spawnPoint, blocks: blocksData };
@@ -709,11 +705,9 @@ export class BuildManager {
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
 
-    // PRZYWRÓĆ STANDARDOWE UI
     const rightUi = document.querySelector('.right-ui');
     if(rightUi) rightUi.style.display = 'flex';
     
-    // UKRYJ ELEMENTY BUILDERA
     const buildElements = ['.build-top-left', '.build-sidebar-right', '.build-bottom-bar', '#build-rotate-zone'];
     buildElements.forEach(selector => { const el = document.querySelector(selector); if(el) el.style.display='none'; });
 
