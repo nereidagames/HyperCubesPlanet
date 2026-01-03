@@ -21,8 +21,8 @@ export class BuildManager {
     this.previewLineGroup = new THREE.Group();
     this.scene.add(this.previewLineGroup);
 
-    this.currentBuildMode = 'block'; 
-    this.currentTool = 'single';
+    this.currentBuildMode = 'block'; // 'block', 'prefab', 'remove'
+    this.currentTool = 'single'; // 'single', 'line'
     this.currentBlockCategory = 'block';
     
     this.isDraggingLine = false;
@@ -36,12 +36,15 @@ export class BuildManager {
     this.platformSize = 64;
     this.cameraController = null;
     
+    // FLAGI TRYBÓW
     this.isNexusMode = false;
     this.isLoginMapMode = false;
 
     this.blockTypes = []; 
     this.selectedBlockType = null;
-    this.recentBlocks = []; // HOTBAR
+    
+    // HOTBAR - historia używanych bloków
+    this.recentBlocks = [];
     
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
@@ -77,9 +80,11 @@ export class BuildManager {
     this.isNexusMode = isNexusMode;
     this.isLoginMapMode = isLoginMapMode;
     
+    // Inicjalizacja środowiska 3D
     this.scene.background = new THREE.Color(0x87CEEB);
     this.scene.fog = new THREE.Fog(0x87CEEB, 40, 160);
     
+    // Światła
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
@@ -87,11 +92,13 @@ export class BuildManager {
     directionalLight.castShadow = false; 
     this.scene.add(directionalLight);
     
+    // --- FIX: NAJPIERW TWORZYMY OBIEKTY, POTEM LOGIKĘ ---
     this.createBuildPlatform();
     this.createPreviewBlock();
     this.previewPrefab = new THREE.Group();
     this.scene.add(this.previewPrefab);
 
+    // Pobieramy bloki i ustawiamy domyślny (jeśli jest)
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
     if (this.blockTypes.length > 0) {
         this.selectBlockType(this.blockTypes[0]);
@@ -103,7 +110,7 @@ export class BuildManager {
     this.preloadTextures();
     document.getElementById('build-ui-container').style.display = 'block';
     
-    // --- ZARZĄDZANIE WIDOCZNOŚCIĄ UI (NAPRAWA BŁĘDU) ---
+    // --- ZARZĄDZANIE WIDOCZNOŚCIĄ UI ---
     // 1. Pokaż nowe elementy Buildera
     const buildElements = [
         '.build-top-left', 
@@ -136,7 +143,6 @@ export class BuildManager {
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
 
-    // Mobile specific
     if (this.game.isMobile) {
         const mobileControls = document.getElementById('mobile-game-controls');
         const jumpBtn = document.getElementById('jump-button');
@@ -204,7 +210,7 @@ export class BuildManager {
           if (this.currentBlockCategory === 'addon') blockItem.title = blockType.name;
           blockItem.onclick = () => {
               this.selectBlockType(blockType);
-              this.addToHotbar(blockType); 
+              this.addToHotbar(blockType); // Dodaj do hotbara
               document.getElementById('block-selection-panel').style.display = 'none';
           };
           list.appendChild(blockItem);
@@ -223,6 +229,7 @@ export class BuildManager {
     document.getElementById('build-exit-btn-new').onclick = () => this.game.stateManager.switchToMainMenu();
     document.getElementById('build-mode-toggle-new').onclick = () => this.toggleCameraMode();
 
+    // Menu Narzędzi (Palec)
     document.getElementById('build-tools-menu-btn').onclick = () => {
         document.getElementById('tools-modal').style.display = 'flex';
     };
@@ -231,6 +238,7 @@ export class BuildManager {
         if(e.target.id === 'tools-modal') e.target.style.display = 'none';
     };
 
+    // Obsługa narzędzi w menu
     const bindTool = (id, toolName, mode = 'block') => {
         const btn = document.getElementById(id);
         if(btn) btn.onclick = () => {
@@ -255,8 +263,9 @@ export class BuildManager {
 
     bindTool('tool-btn-single', 'single', 'block');
     bindTool('tool-btn-line', 'line', 'block');
-    bindTool('tool-btn-eraser', 'single', 'remove');
+    bindTool('tool-btn-eraser', 'single', 'remove'); // Gumka
 
+    // Przycisk "+"
     document.getElementById('build-add-btn-new').onclick = () => {
         document.getElementById('block-selection-panel').style.display = 'none';
         document.getElementById('prefab-selection-panel').style.display = 'none';
@@ -483,19 +492,24 @@ export class BuildManager {
   
   onMouseMove(e) { this.mouse.x=(e.clientX/window.innerWidth)*2-1; this.mouse.y=-(e.clientY/window.innerHeight)*2+1; if(this.isDraggingLine){ this.updateRaycast(); if(this.previewBlock && this.previewBlock.visible) this.updateLinePreview(this.previewBlock.position); } }
   
+  // --- FIX: DETEKCJA KLIKNIĘĆ W UI ---
   isEventOnUI(event) { 
       const target = event.target; 
+      
+      // Jeśli kliknięto w strefę obrotu, to NIE JEST element UI blokujący grę
       if (target.closest('#build-rotate-zone')) return false; 
       
+      // Sprawdzamy klasy (kropka) zamiast ID (hash) tam gdzie to konieczne
       return (
           target.closest('.build-ui-button') || 
           target.closest('.panel-list') || 
-          target.closest('#build-sidebar-right') || 
-          target.closest('#build-top-left') || 
+          target.closest('.build-sidebar-right') || 
+          target.closest('.build-top-left') || 
           target.closest('.build-bottom-bar') ||
           target.closest('#tools-modal') ||
           target.closest('#block-selection-panel') || 
           target.closest('#prefab-selection-panel') || 
+          target.closest('#part-selection-panel') || 
           target.closest('#add-choice-panel') || 
           target.closest('#joystick-zone')
       ); 
@@ -634,22 +648,13 @@ export class BuildManager {
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
 
-    // --- PRZYWRÓĆ STANDARDOWE UI ---
-    // Ukryj Build UI
-    const buildElements = [
-        '.build-top-left', 
-        '.build-sidebar-right', 
-        '.build-bottom-bar',
-        '#build-rotate-zone'
-    ];
-    buildElements.forEach(selector => {
-        const el = document.querySelector(selector);
-        if (el) el.style.display = 'none';
-    });
-    
-    // Pokaż UI Gry
+    // PRZYWRÓĆ STANDARDOWE UI
     const rightUi = document.querySelector('.right-ui');
     if(rightUi) rightUi.style.display = 'flex';
+    
+    // UKRYJ ELEMENTY BUILDERA
+    const buildElements = ['.build-top-left', '.build-sidebar-right', '.build-bottom-bar', '#build-rotate-zone'];
+    buildElements.forEach(selector => { const el = document.querySelector(selector); if(el) el.style.display='none'; });
 
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
