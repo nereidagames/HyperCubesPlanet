@@ -1,7 +1,6 @@
 /* PLIK: main.js */
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
-// --- FIX: Statyczny import CSS2DRenderer ---
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js'; 
 import { createBaseCharacter } from './character.js';
 
@@ -57,24 +56,22 @@ class OptimizedGameCore {
         this.renderer.shadowMap.type = THREE.BasicShadowMap; 
         this.renderer.shadowMap.autoUpdate = true;
         
-        // Ustawiamy styl dla Canvasa, aby był tłem
         this.renderer.domElement.style.position = 'absolute';
         this.renderer.domElement.style.top = '0';
         this.renderer.domElement.style.left = '0';
         this.renderer.domElement.style.zIndex = '0';
 
-        // --- FIX: RENDERER 2D (Dymki i Nicki) ---
+        // RENDERER 2D (Dymki i Nicki)
         this.css2dRenderer = new CSS2DRenderer();
         this.css2dRenderer.setSize(this.width, this.height);
         
-        // WYMUSZAMY STYLE, ŻEBY NA PEWNO BYŁO WIDAĆ
         this.css2dRenderer.domElement.style.position = 'absolute';
         this.css2dRenderer.domElement.style.top = '0px';
         this.css2dRenderer.domElement.style.left = '0px';
         this.css2dRenderer.domElement.style.width = '100%';
         this.css2dRenderer.domElement.style.height = '100%';
-        this.css2dRenderer.domElement.style.pointerEvents = 'none'; // Klikanie przez napisy
-        this.css2dRenderer.domElement.style.zIndex = '500'; // Wysoki Z-Index (nad grą, pod UI)
+        this.css2dRenderer.domElement.style.pointerEvents = 'none'; 
+        this.css2dRenderer.domElement.style.zIndex = '500'; 
         
         if (this.container) {
             this.container.appendChild(this.renderer.domElement);
@@ -91,8 +88,6 @@ class OptimizedGameCore {
         this.camera.updateProjectionMatrix();
         
         this.renderer.setSize(this.width, this.height);
-        
-        // Aktualizacja rozmiaru warstwy tekstowej
         if(this.css2dRenderer) {
             this.css2dRenderer.setSize(this.width, this.height);
         }
@@ -101,8 +96,6 @@ class OptimizedGameCore {
     render(activeScene) {
         const sceneToRender = activeScene || this.scene;
         this.renderer.render(sceneToRender, this.camera);
-        
-        // Renderujemy warstwę tekstową
         if(this.css2dRenderer) {
             this.css2dRenderer.render(sceneToRender, this.camera);
         }
@@ -212,7 +205,6 @@ class BlockStarPlanetGame {
 
       document.querySelector('.ui-overlay').style.display = 'block';
 
-      // Przekazanie blockManagera do SceneManagera
       this.sceneManager = new SceneManager(this.scene, this.loader.getLoadingManager(), this.blockManager);
       try { await this.sceneManager.initialize(); } catch(e) {}
 
@@ -232,7 +224,6 @@ class BlockStarPlanetGame {
       this.coinManager = new CoinManager(this.scene, this.ui, this.characterManager.character, user.coins);
       this.multiplayer = new MultiplayerManager(this.scene, this.ui, this.sceneManager, this.characterManager.materialsCache, this.coinManager);
       
-      // Przekazanie lokalnej postaci do Multiplayera (dla dymków i teleportacji)
       this.multiplayer.setLocalCharacter(this.characterManager.character);
 
       this.multiplayer.initialize(token);
@@ -361,6 +352,7 @@ class BlockStarPlanetGame {
       }; 
   }
 
+  // --- POPRAWIONA METODA SETUP UIACTIONS ---
   setupUIActions() {
       this.ui.onWorldSizeSelected = (size) => this.stateManager.switchToBuildMode(size);
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
@@ -370,17 +362,40 @@ class BlockStarPlanetGame {
       this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel'); 
       this.ui.onOpenOtherProfile = (username) => this.ui.openOtherPlayerProfile(username);
 
+      // --- FIX: BLOKOWANIE STEROWANIA PRZY WYGRANEJ ---
       this.ui.onVictoryScreenOpen = () => {
-          if (this.playerController) this.playerController.enabled = false;
-          if (this.cameraController) this.cameraController.enabled = false;
+          if (this.playerController) {
+              this.playerController.enabled = false;
+              this.playerController.keys = {}; // Reset klawiszy, żeby nie biegł w miejscu
+              this.playerController.velocity.set(0, 0, 0); // Stop
+          }
+          if (this.cameraController) {
+              this.cameraController.enabled = false;
+              this.cameraController.isDragging = false;
+          }
           this.ui.toggleMobileControls(false); 
       };
 
+      // --- FIX: ODBLOKOWANIE STEROWANIA PO REPLAY ---
       this.ui.onReplayParkour = () => {
           this.parkourManager.restartParkour(); 
-          if (this.playerController) this.playerController.enabled = true;
-          if (this.cameraController) this.cameraController.enabled = true;
-          this.ui.toggleMobileControls(true); 
+          
+          if (this.playerController) {
+              this.playerController.enabled = true;
+              this.playerController.keys = {}; 
+              this.playerController.velocity.set(0, 0, 0);
+          }
+          
+          if (this.cameraController) {
+              this.cameraController.enabled = true;
+              this.cameraController.isDragging = false;
+              this.cameraController.cameraTouchId = null;
+          }
+
+          // Przywróć joystick TYLKO jeśli jesteśmy na mobile
+          if (this.isMobile) {
+              this.ui.toggleMobileControls(true); 
+          }
       };
 
       this.ui.onExitParkour = () => this.stateManager.switchToMainMenu();
@@ -543,7 +558,6 @@ class BlockStarPlanetGame {
       const geometry = new THREE.BoxGeometry(1, 1, 1); 
 
       worldBlocksData.forEach(data => {
-          // --- FIX: Konwersja ID na TexturePath ---
           if (data.id !== undefined && !data.texturePath) {
               data.texturePath = this.blockManager.getTextureById(data.id);
               if (!data.name) {
