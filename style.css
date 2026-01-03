@@ -558,3 +558,47 @@ canvas { display: block; }
 #reward-btn-home { background-image: url('icons/icon-home.png'); background-color: #e74c3c; }
 #reward-btn-replay { background-image: url('icons/icon-restart.png'); background-color: #f1c40f; }
 #reward-btn-next { background-image: url('icons/icon-next.png'); background-color: #2ecc71; display: none; }
+
+/* --- CHAT BUBBLE STYLE (NOWY) --- */
+.chat-bubble-styled {
+    background: linear-gradient(to bottom, #dff9fb 0%, #c7ecee 100%); /* Jasny błękit */
+    border: 2px solid #00a8ff; /* Niebieska ramka */
+    border-radius: 12px;
+    padding: 6px 14px;
+    color: #2d3436;
+    font-family: 'Titan One', cursive, sans-serif;
+    font-size: 14px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    max-width: 200px;
+    word-wrap: break-word;
+    pointer-events: none; /* Ważne: pozwala klikać "przez" dymek */
+    margin-bottom: 10px; /* Odstęp od nicku */
+    z-index: 1000;
+}
+
+/* Trójkącik (strzałka) pod dymkiem */
+.chat-bubble-styled::after {
+    content: '';
+    position: absolute;
+    bottom: -8px; /* Wystaje poza dymek */
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 8px 8px 0;
+    border-style: solid;
+    border-color: #00a8ff transparent transparent transparent; /* Kolor ramki */
+}
+
+/* Wewnętrzny trójkącik (żeby strzałka też miała gradient/tło) */
+.chat-bubble-styled::before {
+    content: '';
+    position: absolute;
+    bottom: -5px; 
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px 6px 0;
+    border-style: solid;
+    border-color: #c7ecee transparent transparent transparent; /* Kolor tła */
+    z-index: 1;
+}
