@@ -18,7 +18,7 @@ import { FriendsManager } from './FriendsManager.js';
 import { MailManager } from './MailManager.js';
 import { NewsManager } from './NewsManager.js';
 import { HighScoresManager } from './HighScoresManager.js';
-import { WallManager } from './WallManager.js';
+import { WallManager } from './WallManager.js'; 
 import { NavigationManager } from './NavigationManager.js';
 import { ShopManager } from './ShopManager.js';
 
@@ -54,6 +54,9 @@ export class UIManager {
     this.onExitParkour = null;
     this.onReplayParkour = null;
     this.onOpenOtherProfile = null;
+    
+    // --- NOWOŚĆ: Callback otwarcia ekranu wygranej ---
+    this.onVictoryScreenOpen = null;
     
     // Menedżery
     this.friendsManager = new FriendsManager(this);
@@ -655,6 +658,9 @@ export class UIManager {
       if (victoryPanel) {
           this.bringToFront(victoryPanel);
           victoryPanel.style.display = 'flex';
+          
+          // --- FIX: Wywołaj callback, by Main.js zablokował sterowanie ---
+          if (this.onVictoryScreenOpen) this.onVictoryScreenOpen();
       }
       if (timeDisplay) timeDisplay.textContent = timeStr;
       this.pendingRewardData = rewardData;
@@ -690,7 +696,6 @@ export class UIManager {
         }); 
     }
 
-    // ZAMYKANIE PANELU BUDUJ NA KLIKNIĘCIE W TŁO
     const buildChoicePanel = document.getElementById('build-choice-panel');
     if (buildChoicePanel) {
         buildChoicePanel.addEventListener('click', (e) => {
@@ -801,7 +806,6 @@ export class UIManager {
   }
 
   populateShop(allBlocks, isOwnedCallback) { 
-      // Delegacja do ShopManagera
       this.shopManager.open(allBlocks, isOwnedCallback);
   }
 
