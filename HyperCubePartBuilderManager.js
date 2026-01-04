@@ -1,3 +1,4 @@
+/* PLIK: HyperCubePartBuilderManager.js */
 import * as THREE from 'three';
 import { BuildCameraController } from './BuildCameraController.js';
 import { HyperCubePartStorage } from './HyperCubePartStorage.js';
@@ -18,11 +19,13 @@ export class HyperCubePartBuilderManager {
     this.cameraController = null;
     this.blockTypes = [];
     this.selectedBlockType = null;
+    this.recentBlocks = [];
     this.textureLoader = new THREE.TextureLoader(loadingManager);
     this.materials = {};
-    // Bindingi
+    
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
     this.onTouchStart = this.onTouchStart.bind(this);
     this.onTouchEnd = this.onTouchEnd.bind(this);
@@ -46,13 +49,29 @@ export class HyperCubePartBuilderManager {
   enterBuildMode() {
     this.isActive = true;
     this.blockTypes = this.blockManager.getOwnedBlockTypes();
-    this.selectedBlockType = this.blockTypes[0] || null;
+    if (this.blockTypes.length > 0) this.selectedBlockType = this.blockTypes[0];
 
     this.preloadTextures();
-    document.getElementById('build-ui-container').style.display = 'block';
-    this.updateSaveButton();
-    this.populateBlockSelectionPanel();
     
+    // UI SETUP
+    document.getElementById('build-ui-container').style.display = 'block';
+    
+    const buildElements = ['.build-top-left', '.build-sidebar-right', '.build-bottom-bar', '#build-rotate-zone'];
+    buildElements.forEach(selector => {
+        const el = document.querySelector(selector);
+        if (el) el.style.display = 'flex';
+    });
+    
+    const rightUi = document.querySelector('.right-ui');
+    if(rightUi) rightUi.style.display = 'none';
+
+    const saveBtn = document.getElementById('build-save-btn-new');
+    if(saveBtn) saveBtn.textContent = "Zapisz Część";
+
+    if (this.selectedBlockType) this.selectBlockType(this.selectedBlockType);
+    this.updateHotbarUI();
+    
+    // SCENA
     this.scene.background = new THREE.Color(0x5e3434); 
     this.scene.fog = new THREE.Fog(0x5e3434, 20, 100);
     
@@ -66,21 +85,60 @@ export class HyperCubePartBuilderManager {
     this.createPreviewBlock();
     
     this.cameraController = new BuildCameraController(this.game.camera, this.game.renderer.domElement);
-
-    // FIX: KOLEJNOŚĆ UI NA MOBILE
     if (this.game.isMobile) {
+        document.getElementById('mobile-game-controls').style.display = 'block';
         document.getElementById('jump-button').style.display = 'none';
         const joy = document.getElementById('joystick-zone');
-        if(joy) { 
-            joy.style.display = 'block'; 
-            joy.innerHTML = ''; 
-        }
+        if(joy) { joy.innerHTML = ''; joy.style.display = 'block'; }
     }
     
     this.cameraController.setIsMobile(this.game.isMobile);
     this.cameraController.distance = 25;
 
     this.setupBuildEventListeners();
+  }
+
+  // --- HOTBAR ---
+  addToHotbar(blockType) {
+      const idx = this.recentBlocks.findIndex(b => b.name === blockType.name);
+      if (idx !== -1) this.recentBlocks.splice(idx, 1);
+      this.recentBlocks.unshift(blockType);
+      if (this.recentBlocks.length > 8) this.recentBlocks.pop();
+      this.updateHotbarUI();
+  }
+
+  updateHotbarUI() {
+      const container = document.getElementById('build-hotbar-container');
+      if (!container) return;
+      container.innerHTML = '';
+      this.recentBlocks.forEach(blockType => {
+          const slot = document.createElement('div');
+          slot.className = 'hotbar-slot';
+          slot.style.backgroundImage = `url(${blockType.texturePath})`;
+          if (this.selectedBlockType && this.selectedBlockType.name === blockType.name) {
+              slot.classList.add('active');
+          }
+          slot.onclick = () => { this.selectBlockType(blockType); };
+          container.appendChild(slot);
+      });
+  }
+
+  populateBlockSelectionPanel() {
+      const list = document.getElementById('build-block-list');
+      if (!list) return;
+      list.innerHTML = '';
+      this.blockTypes.forEach(blockType => {
+          const blockItem = document.createElement('div');
+          blockItem.className = 'block-item';
+          blockItem.style.backgroundImage = `url(${blockType.texturePath})`;
+          blockItem.style.backgroundSize = 'cover';
+          blockItem.onclick = () => {
+              this.selectBlockType(blockType);
+              this.addToHotbar(blockType);
+              document.getElementById('block-selection-panel').style.display = 'none';
+          };
+          list.appendChild(blockItem);
+      });
   }
 
   createBuildPlatform() {
@@ -101,7 +159,7 @@ export class HyperCubePartBuilderManager {
 
   createPreviewBlock() {
     if (!this.selectedBlockType) return;
-    const previewGeo = new THREE.BoxGeometry(1, 1, 1);
+    const previewGeo = this.sharedBoxGeometry;
     const previewMat = this.materials[this.selectedBlockType.texturePath].clone();
     previewMat.transparent = true;
     previewMat.opacity = 0.6;
@@ -113,36 +171,34 @@ export class HyperCubePartBuilderManager {
   setupBuildEventListeners() {
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('contextmenu', this.onContextMenu);
     window.addEventListener('touchstart', this.onTouchStart, { passive: false });
     window.addEventListener('touchend', this.onTouchEnd);
     window.addEventListener('touchmove', this.onTouchMove);
 
-    // FIX: Poprawione wywołanie stateManager
-    document.getElementById('build-exit-button').onclick = () => this.game.stateManager.switchToMainMenu();
-    
-    document.getElementById('build-mode-button').onclick = () => this.toggleCameraMode();
-    document.getElementById('build-add-button').onclick = () => {
-        const panel = document.getElementById('block-selection-panel');
-        panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+    document.getElementById('build-exit-btn-new').onclick = () => this.game.stateManager.switchToMainMenu();
+    document.getElementById('build-mode-toggle-new').onclick = () => this.toggleCameraMode();
+    document.getElementById('build-save-btn-new').onclick = () => this.savePart();
+
+    document.getElementById('build-add-btn-new').onclick = () => {
+        document.getElementById('block-selection-panel').style.display = 'none';
+        document.getElementById('add-choice-panel').style.display = 'flex';
+        document.getElementById('add-choice-prefabs').style.display = 'none';
+        document.getElementById('add-choice-parts').style.display = 'none';
     };
-    document.getElementById('build-save-button').onclick = () => this.savePart();
-  }
-  
-  populateBlockSelectionPanel() {
-      const panel = document.getElementById('block-selection-panel');
-      panel.innerHTML = '';
-      this.blockTypes.forEach(blockType => {
-          const blockItem = document.createElement('div');
-          blockItem.className = 'block-item';
-          blockItem.style.backgroundImage = `url(${blockType.texturePath})`;
-          blockItem.style.backgroundSize = 'cover';
-          blockItem.onclick = () => {
-              this.selectBlockType(blockType);
-              panel.style.display = 'none';
-          };
-          panel.appendChild(blockItem);
-      });
+    
+    document.getElementById('add-choice-blocks').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'flex';
+        this.populateBlockSelectionPanel();
+        document.getElementById('build-tab-blocks').click();
+    };
+    
+    document.getElementById('add-choice-close').onclick = () => {
+        document.getElementById('add-choice-panel').style.display = 'none';
+        document.getElementById('block-selection-panel').style.display = 'none';
+    };
   }
   
   selectBlockType(blockType) {
@@ -152,10 +208,11 @@ export class HyperCubePartBuilderManager {
         this.previewBlock.material.transparent = true;
         this.previewBlock.material.opacity = 0.6;
       }
+      this.updateHotbarUI();
   }
 
   toggleCameraMode() {
-      const button = document.getElementById('build-mode-button');
+      const button = document.getElementById('build-mode-toggle-new');
       if (this.cameraController.mode === 'orbital') {
           this.cameraController.setMode('free');
           button.textContent = 'Zaawansowany';
@@ -168,14 +225,19 @@ export class HyperCubePartBuilderManager {
   removeBuildEventListeners() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
     window.removeEventListener('contextmenu', this.onContextMenu);
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchmove', this.onTouchMove);
-    document.getElementById('build-exit-button').onclick = null;
-    document.getElementById('build-mode-button').onclick = null;
-    document.getElementById('build-add-button').onclick = null;
-    document.getElementById('build-save-button').onclick = null;
+
+    document.getElementById('build-exit-btn-new').onclick = null;
+    document.getElementById('build-mode-toggle-new').onclick = null;
+    document.getElementById('build-add-btn-new').onclick = null;
+    document.getElementById('build-save-btn-new').onclick = null;
+    document.getElementById('add-choice-blocks').onclick = null;
+    document.getElementById('add-choice-close').onclick = null;
+
     if (this.cameraController) this.cameraController.destroy();
   }
   
@@ -184,15 +246,23 @@ export class HyperCubePartBuilderManager {
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   }
   
+  isEventOnUI(event) {
+      const target = event.target;
+      if (target.closest('#build-rotate-zone')) return true;
+      return (target.closest('.build-ui-button') || target.closest('.panel-list') || target.closest('.build-sidebar-right') || target.closest('.build-top-left') || target.closest('.build-bottom-bar') || target.closest('#tools-modal') || target.closest('#block-selection-panel') || target.closest('#add-choice-panel') || target.closest('#joystick-zone'));
+  }
+
   onMouseDown(event) {
-    if (!this.isActive || this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || this.game.isMobile || this.isEventOnUI(event)) return;
     if (event.button === 0 && this.previewBlock.visible) this.placeBlock();
     else if (event.button === 2) this.removeBlock();
   }
+  
+  onMouseUp() {}
 
   placeBlock() {
     if (!this.selectedBlockType) return;
-    const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+    const blockGeo = this.sharedBoxGeometry;
     const blockMat = this.materials[this.selectedBlockType.texturePath];
     const newBlock = new THREE.Mesh(blockGeo, blockMat);
     newBlock.userData.texturePath = this.selectedBlockType.texturePath;
@@ -216,7 +286,7 @@ export class HyperCubePartBuilderManager {
   }
   
   updateSaveButton() {
-    const button = document.getElementById('build-save-button');
+    const button = document.getElementById('build-save-btn-new');
     if (this.placedBlocks.length > 0) {
       button.style.opacity = '1';
       button.style.cursor = 'pointer';
@@ -269,7 +339,6 @@ export class HyperCubePartBuilderManager {
         texturePath: block.userData.texturePath
       }));
       const thumbnail = this.generateThumbnail();
-      // FIX: Czekamy na serwer
       const success = await HyperCubePartStorage.savePart(partName, blocksData, thumbnail);
       if (success) {
         alert(`Część "${partName}" została pomyślnie zapisana!`);
@@ -285,6 +354,12 @@ export class HyperCubePartBuilderManager {
     this.placedBlocks = [];
     while(this.scene.children.length > 0){ this.scene.remove(this.scene.children[0]); }
     document.getElementById('build-ui-container').style.display = 'none';
+    
+    const rightUi = document.querySelector('.right-ui');
+    if(rightUi) rightUi.style.display = 'flex';
+    const buildElements = ['.build-top-left', '.build-sidebar-right', '.build-bottom-bar', '#build-rotate-zone'];
+    buildElements.forEach(selector => { const el = document.querySelector(selector); if(el) el.style.display='none'; });
+
     if (this.game.isMobile) {
         document.getElementById('jump-button').style.display = 'block';
         document.getElementById('joystick-zone').style.display = 'none';
@@ -315,19 +390,18 @@ export class HyperCubePartBuilderManager {
   }
 
   onTouchStart(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || !this.game.isMobile || this.isEventOnUI(event)) return;
     event.preventDefault();
     this.isLongPress = false;
     const touch = event.touches[0];
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-    this.touchStartPosition.x = touch.clientX;
-    this.touchStartPosition.y = touch.clientY;
+    this.touchStartPosition = { x: touch.clientX, y: touch.clientY };
     clearTimeout(this.longPressTimer);
     this.longPressTimer = setTimeout(() => { this.isLongPress = true; this.removeBlock(); }, 500);
   }
   onTouchEnd(event) {
-    if (!this.isActive || !this.game.isMobile || event.target.closest('.build-ui-button') || event.target.closest('#block-selection-panel') || event.target.closest('#joystick-zone')) return;
+    if (!this.isActive || !this.game.isMobile || this.isEventOnUI(event)) return;
     clearTimeout(this.longPressTimer);
     if (!this.isLongPress && this.previewBlock && this.previewBlock.visible) { this.placeBlock(); }
   }
@@ -337,8 +411,7 @@ export class HyperCubePartBuilderManager {
     const deltaX = touch.clientX - this.touchStartPosition.x;
     const deltaY = touch.clientY - this.touchStartPosition.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const MOVE_THRESHOLD = 10; 
-    if (distance > MOVE_THRESHOLD) { clearTimeout(this.longPressTimer); }
+    if (distance > 10) { clearTimeout(this.longPressTimer); }
     this.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
   }
