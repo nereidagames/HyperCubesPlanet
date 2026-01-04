@@ -3,9 +3,8 @@ import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // Funkcja tworzy model nóg.
-// Przesuwamy elementy w dół o 0.5 (połowa wysokości postaci), 
-// aby środek modelu (pivot) pokrywał się ze środkiem fizycznego hitboxa.
 export function createBaseCharacter(parentContainer) {
+    // Te materiały są tworzone za każdym razem na nowo, więc są bezpieczne do zmiany przezroczystości
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
@@ -16,7 +15,6 @@ export function createBaseCharacter(parentContainer) {
     const bootDepth = 0.3;
     const legSeparation = 0.15;
     
-    // Całkowita wysokość wizualna to ok 1.0. Przesuwamy wszystko w dół o 0.5.
     const verticalOffset = -0.5; 
 
     const bootCenterY = (bootHeight / 2) + verticalOffset;
@@ -60,9 +58,6 @@ export class CharacterManager {
     createBaseCharacter(this.character);
     
     this.skinContainer.scale.setScalar(0.125);
-    
-    // Skin musi być niżej, bo cały model został obniżony.
-    // Nogi kończą się na Y = 0.5 (względem środka), więc skin zaczyna się tam.
     this.skinContainer.position.y = 0.5; 
     
     this.character.add(this.skinContainer);
@@ -84,6 +79,7 @@ export class CharacterManager {
     skinData.forEach(blockData => {
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         let material = this.materialsCache[blockData.texturePath];
+        
         if (!material) {
             const texture = this.textureLoader.load(blockData.texturePath);
             texture.magFilter = THREE.NearestFilter;
@@ -91,12 +87,66 @@ export class CharacterManager {
             material = new THREE.MeshLambertMaterial({ map: texture });
             this.materialsCache[blockData.texturePath] = material;
         }
-        const block = new THREE.Mesh(geometry, material);
+
+        // --- ZMIANA: KLONOWANIE MATERIAŁU ---
+        // Klonujemy materiał, aby zmiana przezroczystości lokalnego gracza
+        // nie wpływała na innych graczy używających tej samej tekstury.
+        const localMaterial = material.clone();
+
+        const block = new THREE.Mesh(geometry, localMaterial);
         block.position.set(blockData.x, blockData.y, blockData.z);
         block.castShadow = true;
         block.receiveShadow = true;
         this.skinContainer.add(block);
     });
+  }
+
+  // --- NOWA METODA: AKTUALIZACJA PRZEZROCZYSTOŚCI ---
+  updateTransparency(camera) {
+      if (!this.character) return;
+
+      // Oblicz dystans między kamerą a środkiem postaci
+      // Podnosimy punkt postaci o 1.0 (w okolice klatki piersiowej), aby dystans był liczony od "ciała"
+      const charPos = this.character.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+      const dist = camera.position.distanceTo(charPos);
+
+      // Konfiguracja zanikania
+      const fadeStartDist = 2.5; // Poniżej tego dystansu zaczyna znikać
+      const fadeEndDist = 0.8;   // Poniżej tego dystansu jest całkowicie niewidzialny
+
+      let opacity = 1;
+
+      if (dist < fadeEndDist) {
+          opacity = 0;
+      } else if (dist < fadeStartDist) {
+          // Liniowa interpolacja od 0 do 1
+          opacity = (dist - fadeEndDist) / (fadeStartDist - fadeEndDist);
+      }
+
+      // Aplikujemy przezroczystość do wszystkich części modelu (nogi, buty, skin)
+      this.character.traverse((child) => {
+          if (child.isMesh && child.material) {
+              const mat = child.material;
+              
+              if (opacity < 0.99) {
+                  // Włączamy tryb przezroczysty
+                  mat.transparent = true;
+                  mat.opacity = opacity;
+                  // depthWrite: false pomaga uniknąć błędów sortowania, gdy obiekt jest duchem
+                  mat.depthWrite = false; 
+              } else {
+                  // Wyłączamy tryb przezroczysty (optymalizacja i poprawny wygląd cieni)
+                  mat.transparent = false;
+                  mat.opacity = 1;
+                  mat.depthWrite = true;
+              }
+          }
+      });
+      
+      // Opcjonalnie: ukrywanie cienia gdy postać znika całkowicie
+      if (this.shadow) {
+          this.shadow.visible = opacity > 0.1;
+      }
   }
 
   setupShadow() {
@@ -113,7 +163,6 @@ export class CharacterManager {
     if (this.character && this.shadow) {
       this.shadow.position.x = this.character.position.x;
       this.shadow.position.z = this.character.position.z;
-      // Cień zawsze na poziomie podłogi, niezależnie od skoku
       this.shadow.position.y = 0.11;
     }
   }
@@ -121,7 +170,6 @@ export class CharacterManager {
   displayChatBubble(message) {
     if (!this.character) return;
     
-    // 1. Usuń stary dymek, jeśli istnieje
     if (this.character.chatBubble) {
         this.character.remove(this.character.chatBubble);
         if (this.character.chatBubble.element && this.character.chatBubble.element.parentNode) {
@@ -130,20 +178,16 @@ export class CharacterManager {
         this.character.chatBubble = null;
     }
     
-    // 2. Stwórz element HTML z nową klasą CSS
     const div = document.createElement('div');
-    div.className = 'chat-bubble-styled'; // Styl zdefiniowany w style.css
+    div.className = 'chat-bubble-styled'; 
     div.textContent = message;
     
-    // 3. Stwórz obiekt 3D (CSS2D)
     const chatBubble = new CSS2DObject(div);
-    // ZMIANA: Obniżono do 1.9 (tuż nad nickiem)
     chatBubble.position.set(0, 1.9, 0); 
     
     this.character.add(chatBubble);
     this.character.chatBubble = chatBubble;
 
-    // 4. Usuń automatycznie po 6 sekundach
     setTimeout(() => {
       if (this.character && this.character.chatBubble === chatBubble) {
         this.character.remove(chatBubble);
