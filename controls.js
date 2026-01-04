@@ -38,12 +38,10 @@ export class PlayerController {
 
   setIsMobile(isMobile) {
     this.isMobile = isMobile;
-    
     const mobileControls = document.getElementById('mobile-game-controls');
     const joystickZone = document.getElementById('joystick-zone');
     if (mobileControls) mobileControls.style.display = isMobile ? 'block' : 'none';
     if (joystickZone) joystickZone.style.display = isMobile ? 'block' : 'none';
-
     this.setupInput();
   }
 
@@ -54,30 +52,18 @@ export class PlayerController {
 
   setupInput() {
     this.cleanupInput();
-
     this.handleKeyDown = (e) => {
       if (!this.enabled || this.isTyping()) return;
-
       this.keys[e.code] = true;
-      if (e.code === 'Space' && this.canJump) {
-        this.jump();
-        this.canJump = false; 
-      }
+      if (e.code === 'Space' && this.canJump) { this.jump(); this.canJump = false; }
     };
-
     this.handleKeyUp = (e) => {
       this.keys[e.code] = false;
-      if (e.code === 'Space') {
-        this.canJump = true;
-      }
+      if (e.code === 'Space') { this.canJump = true; }
     };
-
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
-    
-    if (this.isMobile) {
-      this.setupMobileControls();
-    }
+    if (this.isMobile) { this.setupMobileControls(); }
   }
   
   cleanupInput() {
@@ -88,10 +74,7 @@ export class PlayerController {
         jumpButton.removeEventListener('touchstart', this.handleMobileJumpStart);
         jumpButton.removeEventListener('touchend', this.handleMobileJumpEnd);
     }
-    if (this.joystick) {
-        this.joystick.destroy();
-        this.joystick = null;
-    }
+    if (this.joystick) { this.joystick.destroy(); this.joystick = null; }
   }
   
   jump() {
@@ -100,6 +83,14 @@ export class PlayerController {
         this.jumpsRemaining--;
         this.isOnGround = false;
     }
+  }
+
+  // --- NOWOŚĆ: Metoda resetująca stan sterowania ---
+  reset() {
+      this.keys = {};
+      this.velocity.set(0, 0, 0);
+      this.joystickDirection.set(0, 0);
+      this.enabled = true;
   }
   
   update(deltaTime, cameraRotation) {
@@ -166,19 +157,15 @@ export class PlayerController {
         const playerX = Math.floor(this.player.position.x);
         const playerY = Math.floor(this.player.position.y);
         const playerZ = Math.floor(this.player.position.z);
-
         const rangeH = 1;      
         const rangeV_Down = 1; 
         const rangeV_Up = 3;   
-
         for (let x = playerX - rangeH; x <= playerX + rangeH; x++) {
             for (let z = playerZ - rangeH; z <= playerZ + rangeH; z++) {
                 for (let y = playerY - rangeV_Down; y <= playerY + rangeV_Up; y++) {
                     const key = `${x},${y},${z}`;
                     const block = this.collisionMap.get(key);
-                    if (block) {
-                        candidates.push(block);
-                    }
+                    if (block) candidates.push(block);
                 }
             }
         }
@@ -192,11 +179,8 @@ export class PlayerController {
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of candidates) {
-        if (object.isBlock) {
-            this.objectBox.copy(object.boundingBox);
-        } else {
-            this.objectBox.setFromObject(object);
-        }
+        if (object.isBlock) this.objectBox.copy(object.boundingBox);
+        else this.objectBox.setFromObject(object);
 
         if (this.playerBox.intersectsBox(this.objectBox)) {
             if (verticalMovement < 0) { 
@@ -221,11 +205,8 @@ export class PlayerController {
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of candidates) {
-        if (object.isBlock) {
-            this.objectBox.copy(object.boundingBox);
-        } else {
-            this.objectBox.setFromObject(object);
-        }
+        if (object.isBlock) this.objectBox.copy(object.boundingBox);
+        else this.objectBox.setFromObject(object);
         
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
@@ -236,11 +217,8 @@ export class PlayerController {
                 this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
                 continue; 
             }
-            if (horizontalMovementX > 0) {
-                this.player.position.x = this.objectBox.min.x - halfWidth - epsilon;
-            } else if (horizontalMovementX < 0) {
-                this.player.position.x = this.objectBox.max.x + halfWidth + epsilon;
-            }
+            if (horizontalMovementX > 0) this.player.position.x = this.objectBox.min.x - halfWidth - epsilon;
+            else if (horizontalMovementX < 0) this.player.position.x = this.objectBox.max.x + halfWidth + epsilon;
             this.velocity.x = 0;
             break; 
         }
@@ -252,11 +230,8 @@ export class PlayerController {
     this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
 
     for (const object of candidates) {
-        if (object.isBlock) {
-            this.objectBox.copy(object.boundingBox);
-        } else {
-            this.objectBox.setFromObject(object);
-        }
+        if (object.isBlock) this.objectBox.copy(object.boundingBox);
+        else this.objectBox.setFromObject(object);
 
         if (this.objectBox.max.y < this.playerBox.min.y + epsilon) continue;
 
@@ -267,11 +242,8 @@ export class PlayerController {
                 this.playerBox.setFromCenterAndSize(this.player.position, this.playerDimensions);
                 continue; 
             }
-            if (horizontalMovementZ > 0) {
-                this.player.position.z = this.objectBox.min.z - halfDepth - epsilon;
-            } else if (horizontalMovementZ < 0) {
-                this.player.position.z = this.objectBox.max.z + halfDepth + epsilon;
-            }
+            if (horizontalMovementZ > 0) this.player.position.z = this.objectBox.min.z - halfDepth - epsilon;
+            else if (horizontalMovementZ < 0) this.player.position.z = this.objectBox.max.z + halfDepth + epsilon;
             this.velocity.z = 0;
             break;
         }
@@ -325,13 +297,11 @@ export class PlayerController {
             dynamicPage: true 
         };
         this.joystick = nipplejs.create(options);
-
         this.joystick.on('move', (evt, data) => {
             if (this.enabled && data.vector) { 
                 this.joystickDirection.set(data.vector.x, data.vector.y);
             }
         });
-
         this.joystick.on('end', () => {
             this.joystickDirection.set(0, 0);
         });
@@ -368,6 +338,15 @@ export class ThirdPersonCameraController {
         this.isMobile = isMobile;
         this.cleanupControls();
         this.setupControls();
+    }
+
+    // --- NOWOŚĆ: Metoda resetująca kamerę ---
+    reset() {
+        this.enabled = true;
+        this.isDragging = false;
+        this.cameraTouchId = null;
+        // Wymuś natychmiastową aktualizację, aby kamera "skoczyła" do gracza
+        this.update(); 
     }
 
     setupControls() {
@@ -456,7 +435,6 @@ export class ThirdPersonCameraController {
         
         let currentDistance = this.distance;
         
-        // --- FIX: Przywrócono Starą Wysokość Celowania ---
         const targetHeight = 1.0; 
         
         const targetPosition = new THREE.Vector3(
@@ -476,7 +454,7 @@ export class ThirdPersonCameraController {
         
         const idealCameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
 
-        // --- KOLIZJA KAMERY Z BLOKAMI (RAYCAST) ---
+        // KOLIZJA
         const direction = new THREE.Vector3().subVectors(idealCameraPosition, targetPosition).normalize();
         this.raycaster.set(targetPosition, direction);
         this.raycaster.far = currentDistance;
@@ -495,7 +473,6 @@ export class ThirdPersonCameraController {
                 Math.cos(this.rotation) * newH
             );
         }
-        // --- KONIEC KOLIZJI ---
 
         const cameraFloorClearance = 0.5;
         const finalCameraPos = new THREE.Vector3().copy(targetPosition).add(offset);
