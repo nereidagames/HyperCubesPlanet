@@ -378,6 +378,71 @@ export class UIManager {
       this.pendingRewardData=null; 
   }
 
+  // --- PRZYWRÓCONE METODY ODKRYWANIA ---
+
+  async showDiscoverPanel(type, category = null) { 
+      const title=document.getElementById('discover-panel-title'); 
+      const tabs=document.getElementById('discover-tabs'); 
+      const list=document.getElementById('discover-list'); 
+      if(!list) return; 
+      this.openPanel('discover-panel'); 
+      list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
+      if(type === 'worlds') { 
+          if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
+          if(tabs) tabs.style.display='none'; 
+          try { 
+              const allWorlds = await WorldStorage.getAllWorlds(); 
+              let filteredWorlds = allWorlds; 
+              if (category) { filteredWorlds = allWorlds.filter(w => { const wType = w.type || 'creative'; return wType === category; }); } 
+              this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); 
+          } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } 
+      } else if (type === 'discovery') { 
+          const labels = { skin: 'Skiny', part: 'Części', prefab: 'Prefabrykaty' }; 
+          if(title) title.textContent = `Wybierz ${labels[category] || 'Element'}`; 
+          if(tabs) { 
+              tabs.style.display = 'flex'; 
+              const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); 
+              const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); 
+              if(tabMine) tabMine.classList.remove('active'); 
+              if(tabAll) { tabAll.classList.add('active'); tabAll.onclick = () => { tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshDiscoveryList(category, 'all'); }; } 
+              if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshDiscoveryList(category, 'mine'); }; } 
+          } 
+          this.refreshDiscoveryList(category, 'all'); 
+      } 
+  }
+
+  async refreshDiscoveryList(type, mode) { 
+      const list=document.getElementById('discover-list'); 
+      if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; 
+      let items = []; 
+      try { 
+          if (type === 'skin') { items = mode === 'mine' ? await SkinStorage.getMySkins() : await SkinStorage.getAllSkins(); } 
+          else if (type === 'prefab') { items = mode === 'mine' ? await PrefabStorage.getSavedPrefabsList() : await PrefabStorage.getAllPrefabs(); } 
+          else if (type === 'part') { items = mode === 'mine' ? await HyperCubePartStorage.getSavedPartsList() : await HyperCubePartStorage.getAllParts(); } 
+          this.populateDiscoverPanel(type, items, (item) => { this.showItemDetails(item, type, true); }); 
+      } catch(e) { console.error(e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Błąd połączenia.</p>'; } 
+  }
+
+  populateDiscoverPanel(type, items, onSelect) { 
+      const list=document.getElementById('discover-list'); 
+      if(!list) return; 
+      list.innerHTML=''; 
+      if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } 
+      items.forEach(item => { 
+          const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; 
+          const thumbContainer=document.createElement('div'); thumbContainer.style.width='64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; 
+          let thumbSrc = item.thumbnail; let label = item.name; 
+          if (type === 'worlds' && typeof item === 'object') { if(item.creator) label += ` (od ${item.creator})`; } else if (item.creator) { label += ` (od ${item.creator})`; } 
+          if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent='?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; } 
+          const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; 
+          div.appendChild(thumbContainer); div.appendChild(nameSpan); 
+          div.onclick=()=>{ if (type === 'worlds') { this.closeAllPanels(); onSelect(item); } else { onSelect(item); } }; 
+          list.appendChild(div); 
+      }); 
+  }
+
+  formatMemberSince(dateString) { const date = dateString ? new Date(dateString) : new Date(); const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]; return `Członek od ${monthNames[date.getMonth()]}, ${date.getFullYear()}`; }
+
   setupButtonHandlers() {
       document.querySelectorAll('.panel-close-button').forEach(btn => {
           btn.onclick = () => { 
