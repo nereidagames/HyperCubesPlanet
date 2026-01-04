@@ -4,7 +4,7 @@ import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // Funkcja tworzy model nóg.
 export function createBaseCharacter(parentContainer) {
-    // Te materiały są tworzone za każdym razem na nowo, więc są bezpieczne do zmiany przezroczystości
+    // Materiały tworzone wewnątrz funkcji, aby każda postać miała unikalne
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
@@ -88,9 +88,7 @@ export class CharacterManager {
             this.materialsCache[blockData.texturePath] = material;
         }
 
-        // --- ZMIANA: KLONOWANIE MATERIAŁU ---
-        // Klonujemy materiał, aby zmiana przezroczystości lokalnego gracza
-        // nie wpływała na innych graczy używających tej samej tekstury.
+        // Klonujemy materiał, aby móc zmieniać jego przezroczystość tylko dla lokalnego gracza
         const localMaterial = material.clone();
 
         const block = new THREE.Mesh(geometry, localMaterial);
@@ -101,51 +99,55 @@ export class CharacterManager {
     });
   }
 
-  // --- NOWA METODA: AKTUALIZACJA PRZEZROCZYSTOŚCI ---
+  // --- ZMODYFIKOWANA METODA: AGRESYWNE ZANIKANIE ---
   updateTransparency(camera) {
       if (!this.character) return;
 
-      // Oblicz dystans między kamerą a środkiem postaci
-      // Podnosimy punkt postaci o 1.0 (w okolice klatki piersiowej), aby dystans był liczony od "ciała"
-      const charPos = this.character.position.clone().add(new THREE.Vector3(0, 1.0, 0));
-      const dist = camera.position.distanceTo(charPos);
+      // Liczymy dystans od kamery do "środka ciała" postaci (trochę wyżej niż stopy)
+      const charCenter = this.character.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+      const dist = camera.position.distanceTo(charCenter);
 
-      // Konfiguracja zanikania
-      const fadeStartDist = 2.5; // Poniżej tego dystansu zaczyna znikać
-      const fadeEndDist = 0.8;   // Poniżej tego dystansu jest całkowicie niewidzialny
+      // Konfiguracja dystansów
+      const fadeStartDist = 3.5; // Zaczyna znikać, gdy kamera jest 3.5m od postaci
+      const fadeEndDist = 1.8;   // Całkowicie znika, gdy kamera jest bliżej niż 1.8m
 
       let opacity = 1;
+      let shouldBeVisible = true;
 
       if (dist < fadeEndDist) {
           opacity = 0;
+          shouldBeVisible = false; // Wyłączamy renderowanie całkowicie
       } else if (dist < fadeStartDist) {
-          // Liniowa interpolacja od 0 do 1
+          // Płynne przejście 0 -> 1
           opacity = (dist - fadeEndDist) / (fadeStartDist - fadeEndDist);
       }
 
-      // Aplikujemy przezroczystość do wszystkich części modelu (nogi, buty, skin)
+      // Aplikujemy zmiany do wszystkich Meshy w postaci
       this.character.traverse((child) => {
           if (child.isMesh && child.material) {
-              const mat = child.material;
               
-              if (opacity < 0.99) {
-                  // Włączamy tryb przezroczysty
-                  mat.transparent = true;
-                  mat.opacity = opacity;
-                  // depthWrite: false pomaga uniknąć błędów sortowania, gdy obiekt jest duchem
-                  mat.depthWrite = false; 
-              } else {
-                  // Wyłączamy tryb przezroczysty (optymalizacja i poprawny wygląd cieni)
-                  mat.transparent = false;
-                  mat.opacity = 1;
-                  mat.depthWrite = true;
+              // 1. Ustawienie widoczności
+              // Jeśli opacity jest 0, po prostu ukrywamy obiekt (najlepsza metoda na "wchodzenie w tekstury")
+              child.visible = shouldBeVisible;
+
+              // 2. Jeśli widoczny, ale blisko -> włącz przezroczystość
+              if (shouldBeVisible) {
+                  if (opacity < 0.99) {
+                      child.material.transparent = true;
+                      child.material.opacity = opacity;
+                      child.material.depthWrite = false; // Ważne dla poprawnego renderowania duchów
+                  } else {
+                      child.material.transparent = false;
+                      child.material.opacity = 1.0;
+                      child.material.depthWrite = true;
+                  }
               }
           }
       });
       
-      // Opcjonalnie: ukrywanie cienia gdy postać znika całkowicie
+      // Ukrywamy cień, gdy postać znika
       if (this.shadow) {
-          this.shadow.visible = opacity > 0.1;
+          this.shadow.visible = opacity > 0.2;
       }
   }
 
