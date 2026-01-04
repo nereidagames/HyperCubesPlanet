@@ -235,7 +235,7 @@ class BlockStarPlanetGame {
           this.camera, 
           this.characterManager.character, 
           this.core.renderer.domElement, 
-          this.sceneManager.collidableObjects, // Przekazujemy kolizje
+          this.sceneManager.collidableObjects, 
           { distance: 2.5, height: 2, floorY: this.sceneManager.FLOOR_TOP_Y }
       );
       this.cameraController.setIsMobile(this.isMobile);
@@ -577,7 +577,6 @@ class BlockStarPlanetGame {
               }
 
               exploreScene.add(mesh);
-              // --- FIX: Dodaj blok do tablicy raycastingu kamery ---
               globalCollidables.push(mesh);
               
               const key = `${Math.floor(data.x)},${Math.floor(data.y)},${Math.floor(data.z)}`;
@@ -619,13 +618,12 @@ class BlockStarPlanetGame {
       this.recreatePlayerController(globalCollidables, tempCollisionMap);
       this.stateManager.setManagers({ playerController: this.playerController });
       
-      // --- FIX: Recreate Camera Controller with NEW collision objects ---
       if(this.cameraController) this.cameraController.destroy();
       this.cameraController = new ThirdPersonCameraController(
           this.camera, 
           this.characterManager.character, 
           this.core.renderer.domElement, 
-          globalCollidables, // Przekazujemy listę bloków do kamery!
+          globalCollidables, 
           { distance: 2.5, height: 2, floorY: -0.5 }
       );
       this.cameraController.setIsMobile(this.isMobile);
@@ -641,6 +639,11 @@ class BlockStarPlanetGame {
     if (this.previewRenderer && document.getElementById('player-preview-panel').style.display === 'flex') {
       if (this.previewCharacter && !this.isPreviewDragging) { this.previewCharacter.rotation.y += 0.005; }
       this.previewRenderer.render(this.previewScene, this.previewCamera);
+    }
+    
+    // --- NOWA METODA AKTUALIZACJI PRZEZROCZYSTOŚCI ---
+    if (this.characterManager && this.cameraController && this.cameraController.enabled) {
+        this.characterManager.updateTransparency(this.camera);
     }
   }
 }
