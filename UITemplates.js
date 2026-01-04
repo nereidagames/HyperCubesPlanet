@@ -234,7 +234,6 @@ export const AUTH_HTML = `
 </div>
 `;
 
-// --- HUD_HTML ZMODYFIKOWANY DLA TRANSPARENTNYCH IKON ---
 export const HUD_HTML = `
     <div class="top-bar ui-element">
         <div id="player-avatar-button" class="top-bar-item">
@@ -1012,31 +1011,118 @@ export const MODALS_HTML = `
 
     <div id="explore-exit-button"></div>
     
-    <div id="victory-panel">
-        <div class="victory-title text-outline">Parkour Ukończony!</div>
-        <div class="victory-time text-outline" id="victory-time-display">00:00.00</div>
-        <button id="victory-super-btn" class="victory-btn">Super!</button>
-    </div>
-    
-    <div id="reward-panel">
-        <h1 class="text-outline" id="reward-title-text">Otrzymujesz:</h1>
-        <div class="reward-box-container">
-            <div class="reward-box">
-                <div class="reward-title text-outline">Nagroda</div>
-                <div class="reward-row"><span id="reward-xp-val" class="text-outline">+500</span> <img src="icons/icon-level.png"></div>
-                <div class="reward-row"><span id="reward-coins-val" class="text-outline">+100</span> <img src="icons/icon-coin.png"></div>
+    <!-- EKRAN WYGRANEJ (Parkour) -->
+    <div id="bsp-victory-screen" class="bsp-overlay-bg">
+        <div class="bsp-title-header">
+            <div class="bsp-cup-icon"></div>
+            <div class="bsp-gotowe-text">GOTOWE!</div>
+            <div class="bsp-cup-icon" style="transform: scaleX(-1);"></div>
+        </div>
+
+        <div class="bsp-victory-container">
+            <!-- LEWA: Odznaka (tylko jak rekord) -->
+            <div class="bsp-pb-badge" id="bsp-new-record-badge" style="display:none;">
+                <div class="bsp-pb-icon"></div>
+                <div class="bsp-pb-text">Nowy Osobisty Rekord</div>
+            </div>
+
+            <!-- ŚRODEK: Czas i Rekordy -->
+            <div class="bsp-center-circle">
+                <div style="display:flex; align-items:center;">
+                    <span class="bsp-finish-flag">🏁</span>
+                    <span id="bsp-run-time" class="bsp-main-time">00:00:00</span>
+                </div>
+
+                <div class="bsp-record-row">
+                    <span class="bsp-lbl" style="color:#d6a2e8;">Najlepszy rekord</span>
+                    <span id="bsp-rec-all" class="bsp-val">--:--.--</span>
+                </div>
+                <div class="bsp-record-row">
+                    <span class="bsp-lbl" style="color:#74b9ff;">Najlepszy dzienny</span>
+                    <span id="bsp-rec-day" class="bsp-val">--:--.--</span>
+                </div>
+                <div class="bsp-record-row">
+                    <span class="bsp-lbl" style="color:#55efc4;">Najlepszy osobisty</span>
+                    <span id="bsp-rec-personal" class="bsp-val">--:--.--</span>
+                </div>
+                
+                <!-- Model gracza (Placeholder, bo canvas jest pod spodem) -->
+                <div style="margin-top:10px; width:80px; height:120px; background:url('icons/avatar_placeholder.png') center/contain no-repeat;"></div>
+            </div>
+
+            <!-- PRAWA: Mapa -->
+            <div style="display:flex;">
+                <div class="bsp-map-card">
+                    <div id="bsp-map-name" class="bsp-map-header">Parkour</div>
+                    <div id="bsp-map-thumb" class="bsp-map-thumb"></div>
+                    <div class="bsp-map-stats">
+                        <span>👍 <span id="bsp-map-likes">0</span></span>
+                        <span>🎮 <span>0</span></span>
+                    </div>
+                </div>
+                <div class="bsp-side-actions">
+                    <div class="bsp-action-btn-sq"><img src="icons/icon-like.png" style="width:30px;"></div>
+                    <div class="bsp-action-btn-sq">💬</div>
+                </div>
             </div>
         </div>
-        <div class="level-progress-area">
-            <div class="level-star-big"><span id="reward-lvl-cur" class="text-outline">1</span></div>
-            <div class="reward-bar-bg"><div id="reward-bar-fill"></div><div id="reward-bar-text" class="text-outline">0/50</div></div>
-            <div class="level-star-big"><span id="reward-lvl-next" class="text-outline">2</span></div>
+
+        <div id="bsp-continue-btn">➜</div>
+    </div>
+    
+    <!-- EKRAN NAGRÓD (Parkour) -->
+    <div id="bsp-reward-screen" class="bsp-overlay-bg">
+        <h1 class="bsp-reward-title">Otrzymujesz:</h1>
+        
+        <div class="bsp-reward-boxes">
+            <!-- Bez VIP -->
+            <div class="bsp-reward-box blue">
+                <div class="bsp-box-header">Bez VIP</div>
+                <div class="bsp-box-content">
+                    <div>+<span id="bsp-rew-xp">0</span> ⭐</div>
+                    <div>+<span id="bsp-rew-coins">0</span> 🟡</div>
+                </div>
+            </div>
+            
+            <!-- Z VIP -->
+            <div class="bsp-reward-box gold">
+                <div class="bsp-box-header">Z VIP</div>
+                <div class="bsp-box-content">
+                    <div>+<span id="bsp-vip-xp">0</span> ⭐</div>
+                    <div>+<span id="bsp-vip-coins">0</span> 🟡</div>
+                </div>
+                <div class="bsp-vip-promo">Zostań<br><b>VIP</b><br>teraz!</div>
+            </div>
         </div>
-        <div class="reward-buttons">
-            <button id="reward-btn-home"></button>
-            <button id="reward-btn-replay"></button>
-            <button id="reward-btn-next"></button>
+
+        <!-- Pasek Postępu -->
+        <div class="bsp-progress-wrapper">
+            <div class="bsp-star-badge" id="bsp-lvl-cur">1</div>
+            <div class="bsp-bar-frame">
+                <div id="bsp-xp-fill" class="bsp-bar-fill"></div>
+                <span id="bsp-xp-text" class="bsp-bar-text">0/100</span>
+            </div>
+            <div class="bsp-star-badge" id="bsp-lvl-next">2</div>
         </div>
+
+        <!-- Przyciski -->
+        <div class="bsp-nav-row">
+            <div id="bsp-btn-home" class="bsp-nav-btn btn-home"><div class="bsp-icon-large" style="background-image:url('icons/icon-home.png')"></div></div>
+            <div id="bsp-btn-replay" class="bsp-nav-btn btn-replay"><div class="bsp-icon-large" style="background-image:url('icons/icon-restart.png')"></div></div>
+            <div id="bsp-btn-next" class="bsp-nav-btn btn-next"><div class="bsp-icon-large" style="background-image:url('icons/icon-next.png')"></div></div>
+        </div>
+    </div>
+    
+    <!-- Dummy elements for backward compatibility if needed -->
+    <div id="victory-panel" style="display:none;">
+        <div class="victory-time" id="victory-time-display"></div>
+        <button id="victory-super-btn"></button>
+    </div>
+    <div id="reward-panel" style="display:none;">
+        <span id="reward-xp-val"></span><span id="reward-coins-val"></span>
+        <span id="reward-lvl-cur"></span><span id="reward-lvl-next"></span>
+        <div id="reward-bar-text"></div><div id="reward-bar-fill"></div>
+        <button id="reward-btn-home"></button><button id="reward-btn-replay"></button><button id="reward-btn-next"></button>
     </div>
 
     <!-- SEKCJA "ZAGRAJ" (BSP STYLE) -->
@@ -1073,32 +1159,24 @@ export const MODALS_HTML = `
             <div class="nav-grid-container">
                 
                 <!-- GÓRNY RZĄD (ZIELONY - NOWE) -->
-                
-                <!-- 1. Nowa HyperCube -->
                 <div class="nav-item" id="build-choice-new-skin">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newhypercube.png" class="nav-icon">
                         <span class="nav-label">Nowa HyperCube</span>
                     </div>
                 </div>
-
-                <!-- 2. Nowa Część -->
                 <div class="nav-item" id="build-choice-new-part">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newhypercubepart.png" class="nav-icon">
                         <span class="nav-label">Nowa Część</span>
                     </div>
                 </div>
-
-                <!-- 3. Nowy Świat -->
                 <div class="nav-item" id="build-choice-new-world">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newworld.png" class="nav-icon">
                         <span class="nav-label">Nowy Świat</span>
                     </div>
                 </div>
-
-                <!-- 4. Nowy Prefabrykat -->
                 <div class="nav-item" id="build-choice-new-prefab">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newprefab.png" class="nav-icon">
@@ -1106,34 +1184,25 @@ export const MODALS_HTML = `
                     </div>
                 </div>
 
-                <!-- DOLNY RZĄD (NIEBIESKI - EDYCJA - PLACEHOLDERY) -->
-
-                <!-- 5. Edytuj HyperCube -->
+                <!-- DOLNY RZĄD (NIEBIESKI - EDYCJA) -->
                 <div class="nav-item" id="build-choice-edit-skin">
                     <div class="nav-btn-box">
-                        <!-- Używamy tej samej ikony + klucz (w przyszłości) -->
                         <img src="icons/icon-newhypercube.png" class="nav-icon">
                         <span class="nav-label">Edytuj HyperCube</span>
                     </div>
                 </div>
-
-                <!-- 6. Edytuj Część -->
                 <div class="nav-item" id="build-choice-edit-part">
                     <div class="nav-btn-box">
                         <img src="icons/icon-newhypercubepart.png" class="nav-icon">
                         <span class="nav-label">Edytuj Część</span>
                     </div>
                 </div>
-
-                <!-- 7. Edytuj Świat -->
                 <div class="nav-item" id="build-choice-edit-world">
                     <div class="nav-btn-box">
                         <img src="icons/icon-newworld.png" class="nav-icon">
                         <span class="nav-label">Edytuj Świat</span>
                     </div>
                 </div>
-
-                <!-- 8. Edytuj Prefab -->
                 <div class="nav-item" id="build-choice-edit-prefab">
                     <div class="nav-btn-box">
                         <img src="icons/icon-newprefab.png" class="nav-icon">
@@ -1165,4 +1234,108 @@ export const MODALS_HTML = `
     </div>
     
     <div id="name-input-panel" class="panel-modal"><div id="name-input-panel-container"><h2>Nick</h2><input id="name-input-field"><button id="name-submit-btn">OK</button></div></div>
+`;
+
+export const VICTORY_HTML = `
+    <div id="bsp-victory-screen" class="bsp-overlay-bg">
+        <div class="bsp-title-header">
+            <div class="bsp-cup-icon"></div>
+            <div class="bsp-gotowe-text">GOTOWE!</div>
+            <div class="bsp-cup-icon" style="transform: scaleX(-1);"></div>
+        </div>
+
+        <div class="bsp-victory-container">
+            <!-- LEWA: Odznaka (tylko jak rekord) -->
+            <div class="bsp-pb-badge" id="bsp-new-record-badge" style="display:none;">
+                <div class="bsp-pb-icon"></div>
+                <div class="bsp-pb-text">Nowy Osobisty Rekord</div>
+            </div>
+
+            <!-- ŚRODEK: Czas i Rekordy -->
+            <div class="bsp-center-circle">
+                <div style="display:flex; align-items:center;">
+                    <span class="bsp-finish-flag">🏁</span>
+                    <span id="bsp-run-time" class="bsp-main-time">00:00:00</span>
+                </div>
+
+                <div class="bsp-record-row">
+                    <span class="bsp-lbl" style="color:#d6a2e8;">Najlepszy rekord</span>
+                    <span id="bsp-rec-all" class="bsp-val">--:--.--</span>
+                </div>
+                <div class="bsp-record-row">
+                    <span class="bsp-lbl" style="color:#74b9ff;">Najlepszy dzienny</span>
+                    <span id="bsp-rec-day" class="bsp-val">--:--.--</span>
+                </div>
+                <div class="bsp-record-row">
+                    <span class="bsp-lbl" style="color:#55efc4;">Najlepszy osobisty</span>
+                    <span id="bsp-rec-personal" class="bsp-val">--:--.--</span>
+                </div>
+                
+                <!-- Model gracza (Placeholder, bo canvas jest pod spodem) -->
+                <div style="margin-top:10px; width:80px; height:120px; background:url('icons/avatar_placeholder.png') center/contain no-repeat;"></div>
+            </div>
+
+            <!-- PRAWA: Mapa -->
+            <div style="display:flex;">
+                <div class="bsp-map-card">
+                    <div id="bsp-map-name" class="bsp-map-header">Parkour</div>
+                    <div id="bsp-map-thumb" class="bsp-map-thumb"></div>
+                    <div class="bsp-map-stats">
+                        <span>👍 <span id="bsp-map-likes">0</span></span>
+                        <span>🎮 <span>0</span></span>
+                    </div>
+                </div>
+                <div class="bsp-side-actions">
+                    <div class="bsp-action-btn-sq"><img src="icons/icon-like.png" style="width:30px;"></div>
+                    <div class="bsp-action-btn-sq">💬</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="bsp-continue-btn">➜</div>
+    </div>
+`;
+
+export const REWARD_HTML = `
+    <div id="bsp-reward-screen" class="bsp-overlay-bg">
+        <h1 class="bsp-reward-title">Otrzymujesz:</h1>
+        
+        <div class="bsp-reward-boxes">
+            <!-- Bez VIP -->
+            <div class="bsp-reward-box blue">
+                <div class="bsp-box-header">Bez VIP</div>
+                <div class="bsp-box-content">
+                    <div>+<span id="bsp-rew-xp">0</span> ⭐</div>
+                    <div>+<span id="bsp-rew-coins">0</span> 🟡</div>
+                </div>
+            </div>
+            
+            <!-- Z VIP -->
+            <div class="bsp-reward-box gold">
+                <div class="bsp-box-header">Z VIP</div>
+                <div class="bsp-box-content">
+                    <div>+<span id="bsp-vip-xp">0</span> ⭐</div>
+                    <div>+<span id="bsp-vip-coins">0</span> 🟡</div>
+                </div>
+                <div class="bsp-vip-promo">Zostań<br><b>VIP</b><br>teraz!</div>
+            </div>
+        </div>
+
+        <!-- Pasek Postępu -->
+        <div class="bsp-progress-wrapper">
+            <div class="bsp-star-badge" id="bsp-lvl-cur">1</div>
+            <div class="bsp-bar-frame">
+                <div id="bsp-xp-fill" class="bsp-bar-fill"></div>
+                <span id="bsp-xp-text" class="bsp-bar-text">0/100</span>
+            </div>
+            <div class="bsp-star-badge" id="bsp-lvl-next">2</div>
+        </div>
+
+        <!-- Przyciski -->
+        <div class="bsp-nav-row">
+            <div id="bsp-btn-home" class="bsp-nav-btn btn-home"><div class="bsp-icon-large" style="background-image:url('icons/icon-home.png')"></div></div>
+            <div id="bsp-btn-replay" class="bsp-nav-btn btn-replay"><div class="bsp-icon-large" style="background-image:url('icons/icon-restart.png')"></div></div>
+            <div id="bsp-btn-next" class="bsp-nav-btn btn-next"><div class="bsp-icon-large" style="background-image:url('icons/icon-next.png')"></div></div>
+        </div>
+    </div>
 `;
