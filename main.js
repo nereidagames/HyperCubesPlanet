@@ -355,6 +355,7 @@ class BlockStarPlanetGame {
       }; 
   }
 
+  // --- POPRAWIONA METODA SETUP UIACTIONS (FIX REPLAY) ---
   setupUIActions() {
       this.ui.onWorldSizeSelected = (size) => this.stateManager.switchToBuildMode(size);
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
@@ -364,6 +365,7 @@ class BlockStarPlanetGame {
       this.ui.onPlayClick = () => this.ui.openPanel('play-choice-panel'); 
       this.ui.onOpenOtherProfile = (username) => this.ui.openOtherPlayerProfile(username);
 
+      // BLOKADA STEROWANIA PRZY WYGRANEJ
       this.ui.onVictoryScreenOpen = () => {
           if (this.playerController) {
               this.playerController.enabled = false;
@@ -377,21 +379,31 @@ class BlockStarPlanetGame {
           this.ui.toggleMobileControls(false); 
       };
 
+      // --- FIX: ODBLOKOWANIE STEROWANIA + JOYSTICK ---
       this.ui.onReplayParkour = () => {
+          // Najpierw resetujemy pozycję i stan parkoura
           this.parkourManager.restartParkour(); 
-          if (this.playerController) {
-              this.playerController.enabled = true;
-              this.playerController.keys = {}; 
-              this.playerController.velocity.set(0, 0, 0);
-          }
-          if (this.cameraController) {
-              this.cameraController.enabled = true;
-              this.cameraController.isDragging = false;
-              this.cameraController.cameraTouchId = null;
-          }
-          if (this.isMobile) {
-              this.ui.toggleMobileControls(true); 
-          }
+          
+          // Dajemy małe opóźnienie, aby upewnić się, że UI zniknęło i fizyka się nie gryzie
+          setTimeout(() => {
+              if (this.playerController) {
+                  this.playerController.enabled = true;
+                  this.playerController.canJump = true;
+                  this.playerController.keys = {}; 
+                  this.playerController.velocity.set(0, 0, 0);
+              }
+              
+              if (this.cameraController) {
+                  this.cameraController.enabled = true;
+                  this.cameraController.isDragging = false;
+                  this.cameraController.cameraTouchId = null;
+              }
+
+              // Ważne: Przywróć joystick jeśli jesteśmy na mobile
+              if (this.isMobile) {
+                  this.ui.toggleMobileControls(true); 
+              }
+          }, 50);
       };
 
       this.ui.onExitParkour = () => this.stateManager.switchToMainMenu();
@@ -641,7 +653,6 @@ class BlockStarPlanetGame {
       this.previewRenderer.render(this.previewScene, this.previewCamera);
     }
     
-    // --- NOWA METODA AKTUALIZACJI PRZEZROCZYSTOŚCI ---
     if (this.characterManager && this.cameraController && this.cameraController.enabled) {
         this.characterManager.updateTransparency(this.camera);
     }
