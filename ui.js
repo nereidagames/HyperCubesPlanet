@@ -30,7 +30,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki (przypisywane w main.js)
+    // Callbacki
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -55,8 +55,6 @@ export class UIManager {
     this.onExitParkour = null;
     this.onReplayParkour = null;
     this.onOpenOtherProfile = null;
-    
-    // Callback blokady sterowania
     this.onVictoryScreenOpen = null;
     
     // Menedżery
@@ -73,25 +71,22 @@ export class UIManager {
     this.activeZIndex = 20000; 
     this.myProfileData = null;
 
-    // --- SYSTEM RENDEROWANIA (Singleton) ---
+    // Renderer
     this.sharedPreviewRenderer = null;
     this.previewScene = null;
     this.previewCamera = null;
     this.previewCharacter = null;
     this.previewAnimId = null;
 
-    // BINDING
     this.setupOtherProfileButtons = this.setupOtherProfileButtons.bind(this);
   }
   
   initialize(isMobile) {
     this.isMobile = isMobile;
-    console.log("Inicjalizacja UI...");
     try {
         this.renderUI();
         this.initSharedRenderer();
 
-        // Inicjalizacja wszystkich managerów
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
         if (this.newsManager.initialize) this.newsManager.initialize();
@@ -103,14 +98,11 @@ export class UIManager {
         this.setupButtonHandlers();
         this.setupChatSystem(); 
         this.loadFriendsData(); 
-        
-        console.log('UI Manager gotowy.');
     } catch (error) {
         console.error("Błąd UI:", error);
     }
   }
 
-  // --- ZARZĄDZANIE WARSTWAMI ---
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
@@ -127,36 +119,22 @@ export class UIManager {
       if (authLayer) authLayer.innerHTML = AUTH_HTML;
       if (uiLayer) uiLayer.innerHTML = `<div class="ui-overlay">${HUD_HTML}</div>`;
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
-      
-      if (modalsLayer) {
-          // Dodano VICTORY_HTML i REWARD_HTML
-          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + PLAYER_PROFILE_HTML + OTHER_PLAYER_PROFILE_HTML + VICTORY_HTML + REWARD_HTML;
-      }
+      if (modalsLayer) modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + PLAYER_PROFILE_HTML + OTHER_PLAYER_PROFILE_HTML + VICTORY_HTML + REWARD_HTML;
   }
 
-  // --- RENDERER 3D (SINGLETON) ---
   initSharedRenderer() {
       this.sharedPreviewRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
       this.sharedPreviewRenderer.setSize(300, 300);
       this.sharedPreviewRenderer.setPixelRatio(window.devicePixelRatio);
-
       this.previewScene = new THREE.Scene();
       this.previewCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
       this.previewCamera.position.set(0, 1, 6);
       this.previewCamera.lookAt(0, 0.5, 0);
-
-      const amb = new THREE.AmbientLight(0xffffff, 0.9);
-      this.previewScene.add(amb);
-      const dir = new THREE.DirectionalLight(0xffffff, 0.6);
-      dir.position.set(2, 5, 3);
-      this.previewScene.add(dir);
-
+      this.previewScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+      const dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(2, 5, 3); this.previewScene.add(dir);
       this.previewCharacter = new THREE.Group();
-      if (typeof createBaseCharacter !== 'undefined') {
-          createBaseCharacter(this.previewCharacter);
-      }
+      if (typeof createBaseCharacter !== 'undefined') createBaseCharacter(this.previewCharacter);
       this.previewScene.add(this.previewCharacter);
-
       const animate = () => {
           this.previewAnimId = requestAnimationFrame(animate);
           if (this.previewCharacter && this.sharedPreviewRenderer.domElement.parentNode) {
@@ -170,45 +148,32 @@ export class UIManager {
   attachRendererTo(containerId, characterYOffset = 0, scale = 1) {
       const container = document.getElementById(containerId);
       if (!container || !this.sharedPreviewRenderer) return;
-
       container.innerHTML = '';
-      
       const width = container.clientWidth || 300;
       const height = container.clientHeight || 300;
       this.sharedPreviewRenderer.setSize(width, height);
       this.previewCamera.aspect = width / height;
       this.previewCamera.updateProjectionMatrix();
-
       container.appendChild(this.sharedPreviewRenderer.domElement);
-
       this.previewCharacter.position.y = characterYOffset;
       this.previewCharacter.scale.setScalar(scale);
       this.previewCharacter.rotation.y = 0;
-      
-      const children = this.previewCharacter.children;
-      for (let i = children.length - 1; i >= 0; i--) {
-          const child = children[i];
-          if (child.type === 'Group') {
-              this.previewCharacter.remove(child);
-          }
+      for (let i = this.previewCharacter.children.length - 1; i >= 0; i--) {
+          const child = this.previewCharacter.children[i];
+          if (child.type === 'Group') this.previewCharacter.remove(child);
       }
   }
 
   applySkinToPreview(blocksData) {
       for (let i = this.previewCharacter.children.length - 1; i >= 0; i--) {
           const child = this.previewCharacter.children[i];
-          if (child.type === 'Group') {
-              this.previewCharacter.remove(child);
-          }
+          if (child.type === 'Group') this.previewCharacter.remove(child);
       }
-
       if (!blocksData) return;
-
       const loader = new THREE.TextureLoader();
       const blockGroup = new THREE.Group();
       blockGroup.scale.setScalar(0.125);
       blockGroup.position.y = 0.5;
-
       blocksData.forEach(b => {
           const geo = new THREE.BoxGeometry(1, 1, 1);
           const mat = new THREE.MeshLambertMaterial({ map: loader.load(b.texturePath) });
@@ -219,220 +184,86 @@ export class UIManager {
       this.previewCharacter.add(blockGroup);
   }
 
-  disposeCurrentPreview() {
-      // Singleton, nie niszczymy renderera, tylko odpinamy
-  }
+  disposeCurrentPreview() {}
 
-  // --- HUD METHODS ---
-  updatePlayerName(name) { 
-      const nameDisplay = document.getElementById('player-name-display'); 
-      if (nameDisplay) nameDisplay.textContent = name;
-      
-      if (!this.myProfileData) this.myProfileData = {};
-      this.myProfileData.username = name;
-  }
+  updatePlayerName(name) { const n = document.getElementById('player-name-display'); if(n) n.textContent = name; if(!this.myProfileData) this.myProfileData={}; this.myProfileData.username = name; }
   
   updatePlayerAvatar(thumbnail) { 
-      const avatarEl = document.querySelector('#player-avatar-button .player-avatar'); 
-      if (!avatarEl) return; 
-      
+      const el = document.querySelector('#player-avatar-button .player-avatar'); 
+      if (!el) return; 
       if (!this.myProfileData) this.myProfileData = {};
       this.myProfileData.thumbnail = thumbnail;
-
-      // FIX: Tło przezroczyste
-      if (thumbnail) { 
-          avatarEl.textContent = ''; 
-          avatarEl.style.backgroundImage = `url(${thumbnail})`; 
-          avatarEl.style.backgroundSize = 'cover'; 
-          avatarEl.style.backgroundPosition = 'center'; 
-          avatarEl.style.backgroundColor = 'transparent'; 
-      } else { 
-          avatarEl.style.backgroundImage = 'none'; 
-          avatarEl.textContent = '👤'; 
-          avatarEl.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
-      } 
+      if (thumbnail) { el.textContent=''; el.style.backgroundImage=`url(${thumbnail})`; el.style.backgroundSize='cover'; el.style.backgroundColor='transparent'; } 
+      else { el.style.backgroundImage='none'; el.textContent='👤'; el.style.backgroundColor='rgba(255,255,255,0.1)'; } 
   }
 
   updateLevelInfo(level, xp, maxXp) {
-      const lvlVal = document.getElementById('level-value');
-      const lvlText = document.getElementById('level-text');
-      const lvlFill = document.getElementById('level-bar-fill');
-      
-      if (!this.myProfileData) this.myProfileData = {};
-      this.myProfileData.level = level;
-      
-      if (lvlVal) lvlVal.textContent = level;
-      if (lvlText) lvlText.textContent = `${xp}/${maxXp}`;
-      if (lvlFill) { 
-          const percent = Math.min(100, Math.max(0, (xp / maxXp) * 100)); 
-          lvlFill.style.width = `${percent}%`; 
-      }
+      const v = document.getElementById('level-value'); if(v) v.textContent=level;
+      const t = document.getElementById('level-text'); if(t) t.textContent=`${xp}/${maxXp}`;
+      const f = document.getElementById('level-bar-fill'); if(f) f.style.width=`${Math.min(100, Math.max(0, (xp/maxXp)*100))}%`;
+      if(!this.myProfileData) this.myProfileData={}; this.myProfileData.level=level;
   }
 
-  updateCoinCounter(val) { 
-      const e = document.getElementById('coin-value'); 
-      if(e) e.textContent = val; 
-  }
-  
-  updateFPSToggleText(e) { 
-      const f = document.getElementById('fps-status'); 
-      if(f) f.textContent = e ? 'Włączony' : 'Wyłączony'; 
-  }
-
-  toggleMobileControls(s) { 
-      const m = document.getElementById('mobile-game-controls'); 
-      if(m) m.style.display = s ? 'block' : 'none'; 
-  }
-
-  updatePendingRewards(count) {
-      if (this.newsManager) {
-          this.pendingNewsCount = parseInt(count) || 0;
-          const badge = document.getElementById('rewards-badge');
-          if (badge) {
-              if (this.pendingNewsCount > 0) {
-                  badge.textContent = this.pendingNewsCount;
-                  badge.style.display = 'flex'; 
-              } else {
-                  badge.style.display = 'none';
-              }
-          }
-      }
+  updateCoinCounter(val) { const e = document.getElementById('coin-value'); if(e) e.textContent = val; }
+  updateFPSToggleText(e) { const f = document.getElementById('fps-status'); if(f) f.textContent = e ? 'Włączony' : 'Wyłączony'; }
+  toggleMobileControls(s) { const m = document.getElementById('mobile-game-controls'); if(m) m.style.display = s ? 'block' : 'none'; }
+  updatePendingRewards(count) { 
+      if(this.newsManager) { 
+          this.pendingNewsCount=parseInt(count)||0; 
+          const b=document.getElementById('rewards-badge'); 
+          if(b) b.style.display=this.pendingNewsCount>0?'flex':'none'; 
+          if(b) b.textContent=this.pendingNewsCount; 
+      } 
   }
 
   checkAdminPermissions(username) {
       const admins = ['nixox2', 'admin'];
       if (admins.includes(username)) {
-          const checkExist = setInterval(() => {
-              const grid = document.querySelector('#more-options-panel .nav-grid-container');
-              if (grid) {
-                  clearInterval(checkExist);
-                  
-                  if (!document.getElementById('admin-edit-nexus-btn')) {
-                       const adminDiv = document.createElement('div');
-                       adminDiv.className = 'nav-item';
-                       adminDiv.id = 'admin-edit-nexus-btn';
-                       adminDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Edytuj Nexus</span></div>`;
-                       adminDiv.onclick = () => {
-                           this.navigationManager.closePanel('more-options-panel');
-                           if (this.onEditNexusClick) this.onEditNexusClick();
-                       };
-                       grid.insertBefore(adminDiv, grid.firstChild);
-                  }
-
-                  if (!document.getElementById('admin-edit-login-map-btn')) {
-                      const loginEditDiv = document.createElement('div');
-                      loginEditDiv.className = 'nav-item';
-                      loginEditDiv.id = 'admin-edit-login-map-btn';
-                      loginEditDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Login Map</span></div>`;
-                      loginEditDiv.onclick = () => {
-                          this.navigationManager.closePanel('more-options-panel');
-                          if (this.onEditLoginMapClick) this.onEditLoginMapClick();
-                      };
-                      grid.insertBefore(loginEditDiv, grid.firstChild);
-                 }
-        
-                 if (!document.getElementById('admin-add-starter-skin-btn')) {
-                    const starterSkinDiv = document.createElement('div');
-                    starterSkinDiv.className = 'nav-item';
-                    starterSkinDiv.id = 'admin-add-starter-skin-btn';
-                    starterSkinDiv.innerHTML = `<div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" onerror="this.src='icons/icon-build.png'" class="nav-icon"><span class="nav-label">Starter Skin</span></div>`;
-                    starterSkinDiv.onclick = () => {
-                        this.navigationManager.closePanel('more-options-panel');
-                        if (this.onAddStarterSkinClick) this.onAddStarterSkinClick();
-                    };
-                    grid.insertBefore(starterSkinDiv, grid.firstChild);
-                }
+          const i = setInterval(() => {
+              const g = document.querySelector('#more-options-panel .nav-grid-container');
+              if (g) { clearInterval(i); 
+                  if(!document.getElementById('admin-edit-nexus-btn')){ const d=document.createElement('div'); d.className='nav-item'; d.id='admin-edit-nexus-btn'; d.innerHTML=`<div class="nav-btn-box" style="filter: hue-rotate(180deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" class="nav-icon"><span class="nav-label">Edytuj Nexus</span></div>`; d.onclick=()=>{ this.navigationManager.closePanel('more-options-panel'); if(this.onEditNexusClick)this.onEditNexusClick(); }; g.insertBefore(d, g.firstChild); }
+                  if(!document.getElementById('admin-edit-login-map-btn')){ const d=document.createElement('div'); d.className='nav-item'; d.id='admin-edit-login-map-btn'; d.innerHTML=`<div class="nav-btn-box" style="filter: hue-rotate(280deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" class="nav-icon"><span class="nav-label">Login Map</span></div>`; d.onclick=()=>{ this.navigationManager.closePanel('more-options-panel'); if(this.onEditLoginMapClick)this.onEditLoginMapClick(); }; g.insertBefore(d, g.firstChild); }
+                  if(!document.getElementById('admin-add-starter-skin-btn')){ const d=document.createElement('div'); d.className='nav-item'; d.id='admin-add-starter-skin-btn'; d.innerHTML=`<div class="nav-btn-box" style="filter: hue-rotate(90deg) drop-shadow(0 4px 4px rgba(0,0,0,0.3));"><img src="icons/tworzenie.png" class="nav-icon"><span class="nav-label">Starter Skin</span></div>`; d.onclick=()=>{ this.navigationManager.closePanel('more-options-panel'); if(this.onAddStarterSkinClick)this.onAddStarterSkinClick(); }; g.insertBefore(d, g.firstChild); }
               }
           }, 500);
       }
   }
 
-  // --- PROFIL INNEGO GRACZA ---
   async openOtherPlayerProfile(username) {
       const myName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
-      if (username === myName) {
-          this.openPlayerProfile();
-          return;
-      }
-
+      if (username === myName) { this.openPlayerProfile(); return; }
       this.closeAllPanels();
-      
-      const panel = document.getElementById('other-player-profile-panel');
-      if (!panel) return;
-
-      this.bringToFront(panel);
-      panel.style.display = 'flex';
-
+      const p = document.getElementById('other-player-profile-panel'); if(!p) return;
+      this.bringToFront(p); p.style.display='flex';
       this.attachRendererTo('other-player-preview-canvas', -1.2, 1.5);
-
       document.getElementById('other-profile-username').textContent = username;
-      document.getElementById('other-profile-level').textContent = "...";
-      document.getElementById('other-profile-date').textContent = "Ładowanie...";
-      const statusDot = document.getElementById('other-profile-status');
-      if(statusDot) statusDot.classList.remove('offline'); 
-
       const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
       try {
-          const r = await fetch(`${API_BASE_URL}/api/user/profile/${username}`, {
-              headers: { 'Authorization': `Bearer ${t}` }
-          });
-          
+          const r = await fetch(`${API_BASE_URL}/api/user/profile/${username}`, { headers: { 'Authorization': `Bearer ${t}` } });
           if (r.ok) {
-              const user = await r.json();
-              const userId = user.id;
-
-              document.getElementById('other-profile-level').textContent = user.level || 1;
-              document.getElementById('other-profile-date').textContent = this.formatMemberSince(user.created_at);
-
-              this.updateFriendStatusUI(userId);
-              this.setupOtherProfileButtons(userId, username);
-              this.loadSkinForPreview(userId);
-          } else {
-              document.getElementById('other-profile-date').textContent = "Nie znaleziono gracza";
-              document.getElementById('other-profile-status').style.display = 'none';
+              const u = await r.json();
+              document.getElementById('other-profile-level').textContent = u.level||1;
+              document.getElementById('other-profile-date').textContent = this.formatMemberSince(u.created_at);
+              this.updateFriendStatusUI(u.id);
+              this.setupOtherProfileButtons(u.id, username);
+              this.loadSkinForPreview(u.id);
           }
-      } catch (e) {
-          console.error("Błąd profilu:", e);
-          document.getElementById('other-profile-date').textContent = "Błąd sieci";
-      }
+      } catch(e) {}
   }
 
   updateFriendStatusUI(userId) {
-      const { isFriend, isOnline } = this.friendsManager.getFriendStatus(userId);
-      const statusDot = document.getElementById('other-profile-status');
-      const actionBtn = document.getElementById('btn-other-friend-action');
-
-      if (isFriend) {
-          statusDot.style.display = 'block';
-          if (isOnline) {
-              statusDot.classList.remove('offline'); 
-          } else {
-              statusDot.classList.add('offline'); 
-          }
-          
-          actionBtn.style.background = 'linear-gradient(to bottom, #e74c3c, #c0392b)';
-          actionBtn.innerHTML = '<div style="font-size:30px;">🗑️</div>';
-          
-          actionBtn.onclick = () => {
-              if (confirm("Czy na pewno chcesz usunąć tego gracza ze znajomych?")) {
-                  this.friendsManager.removeFriend(userId).then(success => {
-                      if (success) {
-                          this.updateFriendStatusUI(userId);
-                      }
-                  });
-              }
-          };
-
+      const s = this.friendsManager.getFriendStatus(userId);
+      const dot = document.getElementById('other-profile-status');
+      const btn = document.getElementById('btn-other-friend-action');
+      if (s.isFriend) {
+          dot.style.display='block'; if(s.isOnline) dot.classList.remove('offline'); else dot.classList.add('offline');
+          btn.style.background='linear-gradient(to bottom, #e74c3c, #c0392b)'; btn.innerHTML='<div style="font-size:30px;">🗑️</div>';
+          btn.onclick=()=>{ if(confirm("Usunąć?")) this.friendsManager.removeFriend(userId).then(ok=>{ if(ok) this.updateFriendStatusUI(userId); }); };
       } else {
-          statusDot.style.display = 'none'; 
-          
-          actionBtn.style.background = 'linear-gradient(to bottom, #2ecc71, #27ae60)'; 
-          actionBtn.innerHTML = '<div style="font-size:30px; font-weight:bold; color:white;">+</div>';
-          
-          actionBtn.onclick = () => {
-              this.friendsManager.sendFriendRequest(userId);
-              actionBtn.style.opacity = '0.5';
-          };
+          dot.style.display='none';
+          btn.style.background='linear-gradient(to bottom, #2ecc71, #27ae60)'; btn.innerHTML='<div style="font-size:30px; font-weight:bold; color:white;">+</div>';
+          btn.onclick=()=>{ this.friendsManager.sendFriendRequest(userId); btn.style.opacity='0.5'; };
       }
   }
 
@@ -440,587 +271,158 @@ export class UIManager {
       try {
           const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
           const r = await fetch(`${API_BASE_URL}/api/user/${userId}/wall`, { headers: { 'Authorization': `Bearer ${t}` } });
-          if (r.ok) {
-              const wallData = await r.json();
-              if (wallData.skins && wallData.skins.length > 0) {
-                  const skinId = wallData.skins[0].id;
-                  const blocks = await SkinStorage.loadSkinData(skinId);
-                  this.applySkinToPreview(blocks);
-              }
-          }
-      } catch (e) { console.error(e); }
-  }
-
-  // --- PODPIĘCIE PRZYCISKÓW W PROFILU ---
-  setupOtherProfileButtons(userId, username) {
-      const btnWall = document.getElementById('btn-other-wall');
-      if (btnWall) {
-          btnWall.onclick = () => {
-              document.getElementById('other-player-profile-panel').style.display = 'none';
-              this.disposeCurrentPreview();
-              this.wallManager.open(userId, username);
-          };
-      }
-
-      const btnChat = document.getElementById('btn-other-chat');
-      if (btnChat) {
-          btnChat.onclick = () => {
-              document.getElementById('other-player-profile-panel').style.display = 'none';
-              this.disposeCurrentPreview();
-              this.mailManager.open();
-              this.mailManager.openConversation(username);
-          };
-      }
-      
-      const btnClose = document.getElementById('btn-other-profile-close');
-      if(btnClose) {
-          btnClose.onclick = () => {
-              document.getElementById('other-player-profile-panel').style.display = 'none';
-              this.disposeCurrentPreview();
-          };
-      }
-
-      const btnSmile = document.getElementById('btn-other-smile');
-      if (btnSmile) {
-          btnSmile.onclick = async () => {
-              const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-              if (!t) return;
-              
-              btnSmile.style.transform = 'scale(0.95)';
-              setTimeout(() => btnSmile.style.transform = 'scale(1)', 100);
-
-              try {
-                  const r = await fetch(`${API_BASE_URL}/api/user/${userId}/smile`, {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${t}` }
-                  });
-                  const d = await r.json();
-                  
-                  if (r.ok) {
-                      this.showMessage("Wysłano uśmiech!", "success");
-                  } else {
-                      this.showMessage(d.message || "Błąd wysyłania.", "error");
-                  }
-              } catch (e) {
-                  this.showMessage("Błąd sieci.", "error");
-              }
-          };
-      }
-  }
-
-  // --- WŁASNY PROFIL ---
-  async openPlayerProfile() {
-      const panel = document.getElementById('player-profile-panel');
-      if (!panel) return;
-      
-      this.bringToFront(panel);
-      panel.style.display = 'flex';
-
-      this.attachRendererTo('profile-preview-canvas', -1, 1.5);
-
-      const nameEl = document.getElementById('profile-username');
-      const lvlEl = document.getElementById('profile-level-val');
-      const dateEl = document.getElementById('profile-joined-date');
-
-      if (this.myProfileData) {
-          if(nameEl) nameEl.textContent = this.myProfileData.username || "PLAYER";
-          if(lvlEl) lvlEl.textContent = this.myProfileData.level || 1;
-      }
-      
-      const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
-      if(t) {
-          try {
-              const r = await fetch(`${API_BASE_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${t}` } });
+          if(r.ok) {
               const d = await r.json();
-              if (d && d.user && d.user.created_at && dateEl) {
-                  dateEl.textContent = this.formatMemberSince(d.user.created_at);
-              }
-          } catch(e) { console.error(e); }
-      }
-
-      const skinId = SkinStorage.getLastUsedSkinId();
-      if (skinId) {
-          const blocks = await SkinStorage.loadSkinData(skinId);
-          this.applySkinToPreview(blocks);
-      }
+              if(d.skins.length>0) this.applySkinToPreview(await SkinStorage.loadSkinData(d.skins[0].id));
+          }
+      } catch(e) {}
   }
 
-  // --- SKIN DETAILS ---
-  async showItemDetails(item, type, keepOpen = false) { 
-      const modal = document.getElementById('skin-details-modal'); 
-      if (!modal) return; 
-      
-      this.currentDetailsId = item.id; 
-      this.currentDetailsType = type; 
-      
-      this.bringToFront(modal); 
-      if (!keepOpen) this.closeAllPanels();
-      modal.style.display = 'flex';
-
-      const headerName = modal.querySelector('.skin-name-header'); 
-      const creatorName = modal.querySelector('.skin-creator-name'); 
-      const creatorLevel = modal.querySelector('.skin-creator-level-val'); 
-      const likesCount = modal.querySelector('.skin-likes-count'); 
-      const timeInfo = modal.querySelector('.skin-time-info'); 
-      const btnUse = document.getElementById('skin-btn-use'); 
-      const btnLike = document.getElementById('skin-btn-like'); 
-      const btnComment = document.getElementById('skin-btn-comment'); 
-      
-      if(headerName) headerName.textContent = item.name; 
-      if(creatorName) creatorName.textContent = item.creator || "Nieznany"; 
-      if(creatorLevel) creatorLevel.textContent = item.creatorLevel || "?"; 
-      if(likesCount) likesCount.textContent = item.likes || "0"; 
-      if(timeInfo) { let dateStr = "niedawno"; if (item.created_at) { const date = new Date(item.created_at); if (!isNaN(date.getTime())) { const now = new Date(); const diffDays = Math.floor(Math.abs(now - date) / (1000 * 60 * 60 * 24)); dateStr = diffDays === 0 ? "dzisiaj" : `${diffDays} dni temu`; } } timeInfo.textContent = dateStr; } 
-      if (btnComment) { const countSpan = btnComment.querySelector('.skin-btn-label'); if(countSpan) countSpan.textContent = item.comments || "0"; btnComment.onclick = () => { this.openItemComments(item.id, type); }; } 
-      
-      const myId = parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID) || "0"); 
-      const isOwner = item.owner_id === myId; 
-      
-      if (btnUse) { 
-          btnUse.style.display = 'flex'; 
-          if (type === 'skin') { 
-              if (isOwner) { 
-                  btnUse.onclick = () => { 
-                      this.closeAllPanels(); 
-                      if (this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id); 
-                  }; 
-              } else { btnUse.style.display = 'none'; } 
-          } else if (type === 'part') { 
-              btnUse.onclick = () => { this.closeAllPanels(); if (this.onUsePart) this.onUsePart(item); }; 
-          } else if (type === 'prefab') { 
-              btnUse.onclick = () => { this.closeAllPanels(); if (this.onUsePrefab) this.onUsePrefab(item); }; 
-          } 
-      }
-      
-      if (btnLike) { 
-          btnLike.onclick = null; 
-          btnLike.onclick = async () => { 
-              const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN); 
-              if(!t) return; 
-              try { 
-                  const endpointType = type === 'skin' ? 'skins' : (type === 'part' ? 'parts' : 'prefabs'); 
-                  const r = await fetch(`${API_BASE_URL}/api/${endpointType}/${item.id}/like`, { 
-                      method: 'POST', headers: { 'Authorization': `Bearer ${t}` } 
-                  }); 
-                  const d = await r.json(); 
-                  if (d.success && likesCount) likesCount.textContent = d.likes; 
-              } catch(e) { console.error(e); } 
-          }; 
-      } 
-
-      this.attachRendererTo('skin-preview-canvas', type === 'skin' ? -0.8 : 0, 1.5);
-
-      let blocksData = null; 
-      if (type === 'skin') blocksData = await SkinStorage.loadSkinData(item.id); 
-      else if (type === 'prefab') blocksData = await PrefabStorage.loadPrefab(item.id); 
-      else if (type === 'part') blocksData = await HyperCubePartStorage.loadPart(item.id); 
-      
-      this.applySkinToPreview(blocksData);
+  setupOtherProfileButtons(userId, username) {
+      const wall = document.getElementById('btn-other-wall'); if(wall) wall.onclick=()=>{ document.getElementById('other-player-profile-panel').style.display='none'; this.disposeCurrentPreview(); this.wallManager.open(userId, username); };
+      const chat = document.getElementById('btn-other-chat'); if(chat) chat.onclick=()=>{ document.getElementById('other-player-profile-panel').style.display='none'; this.disposeCurrentPreview(); this.mailManager.open(); this.mailManager.openConversation(username); };
+      const cls = document.getElementById('btn-other-profile-close'); if(cls) cls.onclick=()=>{ document.getElementById('other-player-profile-panel').style.display='none'; this.disposeCurrentPreview(); };
+      const sml = document.getElementById('btn-other-smile'); if(sml) sml.onclick=async()=>{
+          const t = localStorage.getItem(STORAGE_KEYS.JWT_TOKEN);
+          try { const r = await fetch(`${API_BASE_URL}/api/user/${userId}/smile`, { method: 'POST', headers: { 'Authorization': `Bearer ${t}` } });
+          if(r.ok) this.showMessage("Wysłano uśmiech!", "success"); else this.showMessage("Błąd", "error"); } catch(e){ this.showMessage("Błąd sieci", "error"); }
+      };
   }
 
-  // --- CZAT ---
+  async openPlayerProfile() {
+      const p = document.getElementById('player-profile-panel'); if(!p) return;
+      this.bringToFront(p); p.style.display='flex';
+      this.attachRendererTo('profile-preview-canvas', -1, 1.5);
+      if(this.myProfileData) { document.getElementById('profile-username').textContent=this.myProfileData.username; document.getElementById('profile-level-val').textContent=this.myProfileData.level; }
+      const sid = SkinStorage.getLastUsedSkinId(); if(sid) this.applySkinToPreview(await SkinStorage.loadSkinData(sid));
+  }
+
+  async showItemDetails(item, type, keepOpen=false) { 
+      const m=document.getElementById('skin-details-modal'); if(!m)return;
+      this.bringToFront(m); if(!keepOpen) this.closeAllPanels(); m.style.display='flex';
+      m.querySelector('.skin-name-header').textContent=item.name;
+      m.querySelector('.skin-creator-name').textContent=item.creator||"Nieznany";
+      m.querySelector('.skin-creator-level-val').textContent=item.creatorLevel||"?";
+      m.querySelector('.skin-likes-count').textContent=item.likes||0;
+      const btnU=document.getElementById('skin-btn-use');
+      const isOwner = item.owner_id === parseInt(localStorage.getItem(STORAGE_KEYS.USER_ID));
+      if(btnU) {
+          btnU.style.display='flex';
+          if(type==='skin') { if(isOwner) btnU.onclick=()=>{ this.closeAllPanels(); if(this.onSkinSelect) this.onSkinSelect(item.id, item.name, item.thumbnail, item.owner_id); }; else btnU.style.display='none'; }
+          else if(type==='part') btnU.onclick=()=>{ this.closeAllPanels(); if(this.onUsePart) this.onUsePart(item); };
+          else if(type==='prefab') btnU.onclick=()=>{ this.closeAllPanels(); if(this.onUsePrefab) this.onUsePrefab(item); };
+      }
+      this.attachRendererTo('skin-preview-canvas', type==='skin'?-0.8:0, 1.5);
+      let d=null;
+      if(type==='skin') d=await SkinStorage.loadSkinData(item.id);
+      else if(type==='prefab') d=await PrefabStorage.loadPrefab(item.id);
+      else if(type==='part') d=await HyperCubePartStorage.loadPart(item.id);
+      this.applySkinToPreview(d);
+  }
+
   setupChatSystem() { this.setupChatInput(); }
-  
-  addChatMessage(m, senderName = null) { 
-      const c = document.querySelector('.chat-area'); 
-      if(c) { 
-          const el = document.createElement('div'); 
-          el.className = 'chat-message text-outline'; 
-          if (senderName && m.startsWith(senderName)) {
-               const parts = m.split(':');
-               const nick = parts[0];
-               const rest = parts.slice(1).join(':');
-               const nickSpan = document.createElement('span');
-               nickSpan.textContent = nick;
-               nickSpan.style.cursor = 'pointer';
-               nickSpan.style.color = '#f1c40f'; 
-               nickSpan.style.textDecoration = 'underline';
-               nickSpan.onclick = () => this.openOtherPlayerProfile(nick);
-               el.appendChild(nickSpan);
-               el.appendChild(document.createTextNode(':' + rest));
-          } else { el.textContent = m; }
-          c.appendChild(el); c.scrollTop = c.scrollHeight; 
-      } 
-  }
+  addChatMessage(m, s=null) { const c=document.querySelector('.chat-area'); if(c) { const e=document.createElement('div'); e.className='chat-message text-outline'; e.textContent=m; c.appendChild(e); c.scrollTop=c.scrollHeight; } }
+  clearChat() { const c=document.querySelector('.chat-area'); if(c) c.innerHTML=''; }
+  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; document.getElementById('chat-input-field').focus(); }
+  setupChatInput() { const f=document.getElementById('chat-form'); if(f) f.onsubmit=e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }; }
 
-  clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
-  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
-  setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
-
-  // --- PARKOUR LOGIC (NEW) ---
+  setParkourTimerVisible(v) { document.getElementById('parkour-timer').style.display=v?'block':'none'; }
+  updateParkourTimer(s) { document.getElementById('parkour-timer').textContent=s; }
   
-  setParkourTimerVisible(visible) {
-      const timer = document.getElementById('parkour-timer');
-      if (timer) timer.style.display = visible ? 'block' : 'none';
-  }
-  
-  updateParkourTimer(timeString) {
-      const timer = document.getElementById('parkour-timer');
-      if (timer) timer.textContent = timeString;
-  }
-
   handleParkourCompletion(timeStr, rewardData) {
-      // 1. Zablokuj sterowanie
-      if (this.onVictoryScreenOpen) this.onVictoryScreenOpen();
-
-      // 2. Pokaż Ekran 1 (Victory)
-      const victoryScreen = document.getElementById('bsp-victory-screen');
-      if (victoryScreen) {
-          this.bringToFront(victoryScreen);
-          victoryScreen.style.display = 'flex';
-
-          // Wypełnij dane (z rewardData od serwera)
-          if (rewardData && rewardData.records) {
+      if(this.onVictoryScreenOpen) this.onVictoryScreenOpen();
+      const v = document.getElementById('bsp-victory-screen');
+      if(v) {
+          this.bringToFront(v); v.style.display='flex';
+          if(rewardData && rewardData.records) {
               document.getElementById('bsp-run-time').textContent = rewardData.records.formattedTime;
               document.getElementById('bsp-rec-all').textContent = rewardData.records.allTime;
               document.getElementById('bsp-rec-day').textContent = rewardData.records.daily;
               document.getElementById('bsp-rec-personal').textContent = rewardData.records.personal;
-              
-              const badge = document.getElementById('bsp-new-record-badge');
-              if (badge) badge.style.display = rewardData.records.isNewPb ? 'block' : 'none';
-          } else {
-              // Fallback
-              document.getElementById('bsp-run-time').textContent = timeStr;
-          }
-          
-          // Mapa
-          if (rewardData && rewardData.map) {
+              const bdg = document.getElementById('bsp-new-record-badge'); if(bdg) bdg.style.display = rewardData.records.isNewPb ? 'block' : 'none';
+          } else { document.getElementById('bsp-run-time').textContent = timeStr; }
+          if(rewardData && rewardData.map) {
                document.getElementById('bsp-map-name').textContent = rewardData.map.name;
-               // Likes logic placeholder
-               if (rewardData.map.thumbnail) {
-                   document.getElementById('bsp-map-thumb').style.backgroundImage = `url(${rewardData.map.thumbnail})`;
-               }
+               if(rewardData.map.thumbnail) document.getElementById('bsp-map-thumb').style.backgroundImage = `url(${rewardData.map.thumbnail})`;
           }
-
-          // Obsługa przycisku "Dalej"
-          const contBtn = document.getElementById('bsp-continue-btn');
-          contBtn.onclick = () => {
-              victoryScreen.style.display = 'none';
-              this.showRewardScreen(rewardData);
-          };
+          const c = document.getElementById('bsp-continue-btn');
+          c.onclick = () => { v.style.display='none'; this.showRewardScreen(rewardData); };
       }
-      
       this.pendingRewardData = rewardData;
   }
 
   showRewardScreen(rewardData) {
-      const rewardScreen = document.getElementById('bsp-reward-screen');
-      if (!rewardScreen) return;
-
-      this.bringToFront(rewardScreen);
-      rewardScreen.style.display = 'flex';
-
-      if (rewardData) {
-          // Nagrody
+      const r = document.getElementById('bsp-reward-screen'); if(!r) return;
+      this.bringToFront(r); r.style.display='flex';
+      if(rewardData) {
           document.getElementById('bsp-rew-xp').textContent = rewardData.rewards.standard.xp;
           document.getElementById('bsp-rew-coins').textContent = rewardData.rewards.standard.coins;
           document.getElementById('bsp-vip-xp').textContent = rewardData.rewards.vip.xp;
           document.getElementById('bsp-vip-coins').textContent = rewardData.rewards.vip.coins;
-
-          // Pasek Levelu
-          const lvl = rewardData.newLevel;
-          const xp = rewardData.newXp;
-          const max = rewardData.maxXp;
           
+          const lvl = rewardData.newLevel; const xp = rewardData.newXp; const max = rewardData.maxXp;
           document.getElementById('bsp-lvl-cur').textContent = lvl;
-          document.getElementById('bsp-lvl-next').textContent = lvl + 1;
+          document.getElementById('bsp-lvl-next').textContent = lvl+1;
           document.getElementById('bsp-xp-text').textContent = `${xp}/${max}`;
-          
-          setTimeout(() => {
-              const percent = Math.min(100, Math.max(0, (xp / max) * 100));
-              document.getElementById('bsp-xp-fill').style.width = `${percent}%`;
-          }, 100);
-          
-          // Aktualizacja HUD w tle
+          setTimeout(() => { document.getElementById('bsp-xp-fill').style.width = `${Math.min(100, (xp/max)*100)}%`; }, 100);
           this.updateCoinCounter(rewardData.newCoins);
           this.updateLevelInfo(lvl, xp, max);
       }
-      
-      // Przyciski nawigacji
-      document.getElementById('bsp-btn-home').onclick = () => {
-          rewardScreen.style.display = 'none';
-          if (this.onExitParkour) this.onExitParkour();
-      };
-      
-      document.getElementById('bsp-btn-replay').onclick = () => {
-          rewardScreen.style.display = 'none';
-          if (this.onReplayParkour) this.onReplayParkour();
-      };
-      
-      document.getElementById('bsp-btn-next').onclick = () => {
-          rewardScreen.style.display = 'none';
-          if (this.onExitParkour) this.onExitParkour();
-      };
+      document.getElementById('bsp-btn-home').onclick = () => { r.style.display='none'; if(this.onExitParkour) this.onExitParkour(); };
+      document.getElementById('bsp-btn-replay').onclick = () => { r.style.display='none'; if(this.onReplayParkour) this.onReplayParkour(); };
+      document.getElementById('bsp-btn-next').onclick = () => { r.style.display='none'; if(this.onExitParkour) this.onExitParkour(); };
   }
-
+  
   hideVictory() { 
-      document.getElementById('bsp-victory-screen').style.display = 'none'; 
-      document.getElementById('bsp-reward-screen').style.display = 'none'; 
-      document.getElementById('victory-panel').style.display = 'none'; 
-      document.getElementById('reward-panel').style.display = 'none'; 
-      this.pendingRewardData = null; 
+      ['bsp-victory-screen','bsp-reward-screen','victory-panel','reward-panel'].forEach(id=>{ const e=document.getElementById(id); if(e)e.style.display='none'; }); 
+      this.pendingRewardData=null; 
   }
 
-  // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
-    document.querySelectorAll('.panel-close-button').forEach(btn => {
-        btn.onclick = () => { 
-            const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
-            if(p) p.style.display = 'none'; 
-            if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel' || p.id === 'other-player-profile-panel')) {
-                this.disposeCurrentPreview();
-            }
-        };
-    });
-    
-    // ZAMYKANIE NA KLIKNIĘCIE W TŁO
-    const moreOptions = document.getElementById('more-options-panel'); 
-    if (moreOptions) { 
-        moreOptions.addEventListener('click', (e) => { if (e.target.id === 'more-options-panel') e.target.style.display = 'none'; }); 
-    }
-    const profilePanel = document.getElementById('player-profile-panel'); 
-    if (profilePanel) { 
-        profilePanel.addEventListener('click', (e) => { if (e.target.id === 'player-profile-panel') { profilePanel.style.display = 'none'; this.disposeCurrentPreview(); } }); 
-    }
-    
-    const playPanel = document.getElementById('play-choice-panel'); 
-    if (playPanel) { 
-        playPanel.addEventListener('click', (e) => { 
-            if (e.target.id === 'play-choice-panel') e.target.style.display = 'none'; 
-        }); 
-    }
-
-    const buildChoicePanel = document.getElementById('build-choice-panel');
-    if (buildChoicePanel) {
-        buildChoicePanel.addEventListener('click', (e) => {
-            if (e.target.id === 'build-choice-panel') e.target.style.display = 'none';
-        });
-    }
-
-    const otherProfilePanel = document.getElementById('other-player-profile-panel');
-    if (otherProfilePanel) {
-        otherProfilePanel.addEventListener('click', (e) => {
-            if (e.target.id === 'other-player-profile-panel') {
-                otherProfilePanel.style.display = 'none';
-                this.disposeCurrentPreview();
-            }
-        });
-    }
-
-    // GŁÓWNE PRZYCISKI HUD (Delegacja do NavigationManager/ShopManager)
-    document.querySelectorAll('.game-btn').forEach(button => { 
-        const type = this.getButtonType(button); 
-        button.addEventListener('click', () => this.handleButtonClick(type, button)); 
-    });
-    
-    const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPlayerProfile(); };
-    const btnWall = document.getElementById('btn-profile-wall'); if (btnWall) { btnWall.onclick = () => { document.getElementById('player-profile-panel').style.display = 'none'; this.disposeCurrentPreview(); const userId = localStorage.getItem(STORAGE_KEYS.USER_ID); const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME); this.wallManager.open(userId, username); }; }
-    const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
-    const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
-    const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
-    
-    // Stare przyciski (fallback)
-    const superBtn = document.getElementById('victory-super-btn'); if (superBtn) superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); };
-    const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
-    const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
-    
-    const btnDiscSkin = document.getElementById('discover-choice-skin'); 
-    const btnDiscPart = document.getElementById('discover-choice-part'); 
-    const btnDiscPrefab = document.getElementById('discover-choice-prefab'); 
-    if(btnDiscSkin) btnDiscSkin.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'skin'); }; 
-    if(btnDiscPart) btnDiscPart.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'part'); }; 
-    if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
-    
-    const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; }; 
-    setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); }); 
-    setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); }); 
-    setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
-    
-    const nameSubmitBtn = document.getElementById('name-submit-btn'); 
-    if (nameSubmitBtn) { 
-        nameSubmitBtn.onclick = () => { 
-            const i = document.getElementById('name-input-field'); 
-            const v = i.value.trim(); 
-            if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } 
-            else alert('Nazwa nie może być pusta!'); 
-        }; 
-    }
-    
-    setClick('btn-open-news', () => { this.newsManager.open(); }); 
-    setClick('btn-open-highscores', () => { if (this.highScoresManager) this.highScoresManager.open(); }); 
-    setClick('btn-nav-options', () => { if(this.onToggleFPS) { this.onToggleFPS(); this.showMessage("Przełączono licznik FPS", "info"); } }); 
-    setClick('logout-btn', () => { localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN); localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME); localStorage.removeItem(STORAGE_KEYS.USER_ID); window.location.reload(); }); 
-    setClick('btn-news-claim-all', () => { this.claimReward(null); });
+      document.querySelectorAll('.panel-close-button').forEach(btn => {
+          btn.onclick = () => { 
+              const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
+              if(p) p.style.display = 'none'; 
+              if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel' || p.id === 'other-player-profile-panel')) this.disposeCurrentPreview();
+          };
+      });
+      ['more-options-panel','player-profile-panel','play-choice-panel','build-choice-panel','other-player-profile-panel'].forEach(id=>{
+          const e=document.getElementById(id); if(e) e.addEventListener('click', ev=>{ if(ev.target.id===id){ e.style.display='none'; if(id.includes('profile')) this.disposeCurrentPreview(); } });
+      });
+      document.querySelectorAll('.game-btn').forEach(btn => { const t=this.getButtonType(btn); btn.onclick=()=>this.handleButtonClick(t, btn); });
+      const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPlayerProfile(); };
+      const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
+      const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
+      const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.onclick = () => this.handleChatClick();
+      const btnDiscSkin = document.getElementById('discover-choice-skin'); if(btnDiscSkin) btnDiscSkin.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'skin'); };
+      const btnDiscPart = document.getElementById('discover-choice-part'); if(btnDiscPart) btnDiscPart.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'part'); };
+      const btnDiscPrefab = document.getElementById('discover-choice-prefab'); if(btnDiscPrefab) btnDiscPrefab.onclick = () => { this.closePanel('discover-choice-panel'); this.showDiscoverPanel('discovery', 'prefab'); };
+      const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; }; 
+      setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); }); 
+      setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); }); 
+      setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
+      setClick('name-submit-btn', () => { const i=document.getElementById('name-input-field'); const v=i.value.trim(); if(v&&this.onNameSubmit){ this.onNameSubmit(v); document.getElementById('name-input-panel').style.display='none'; } else alert('Nazwa!'); });
+      setClick('btn-open-news', () => { this.newsManager.open(); });
+      setClick('btn-open-highscores', () => { this.highScoresManager.open(); });
+      setClick('btn-nav-options', () => { if(this.onToggleFPS) { this.onToggleFPS(); this.showMessage("Przełączono FPS", "info"); } });
+      setClick('logout-btn', () => { localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN); window.location.reload(); });
+      setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
-  getButtonType(button) { 
-      if (button.classList.contains('btn-zagraj')) return 'zagraj'; 
-      if (button.classList.contains('btn-buduj')) return 'buduj'; 
-      if (button.classList.contains('btn-kup')) return 'kup'; 
-      if (button.classList.contains('btn-odkryj')) return 'odkryj'; 
-      if (button.classList.contains('btn-wiecej')) return 'wiecej'; 
-      return 'unknown'; 
-  }
-
-  handleButtonClick(buttonType, buttonElement) { 
-      buttonElement.style.transform = 'translateY(-1px) scale(0.95)'; 
-      setTimeout(() => { buttonElement.style.transform = ''; }, 150); 
-      
-      if (buttonType === 'zagraj') { this.navigationManager.openPanel('play-choice-panel'); return; } 
-      if (buttonType === 'buduj') { this.navigationManager.openPanel('build-choice-panel'); return; } 
-      if (buttonType === 'odkryj') { this.openPanel('discover-choice-panel'); return; } 
-      if (buttonType === 'wiecej') { this.navigationManager.openPanel('more-options-panel'); return; } 
-      if (buttonType === 'kup') { if (this.onShopOpen) this.onShopOpen(); return; } 
+  getButtonType(b) { if(b.classList.contains('btn-zagraj')) return 'zagraj'; if(b.classList.contains('btn-buduj')) return 'buduj'; if(b.classList.contains('btn-kup')) return 'kup'; if(b.classList.contains('btn-odkryj')) return 'odkryj'; if(b.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
+  handleButtonClick(t, b) { 
+      b.style.transform='translateY(-1px) scale(0.95)'; setTimeout(()=>b.style.transform='', 150);
+      if(t==='zagraj') this.navigationManager.openPanel('play-choice-panel');
+      if(t==='buduj') this.navigationManager.openPanel('build-choice-panel');
+      if(t==='odkryj') this.openPanel('discover-choice-panel');
+      if(t==='wiecej') this.navigationManager.openPanel('more-options-panel');
+      if(t==='kup' && this.onShopOpen) this.onShopOpen();
   }
 
   loadFriendsData() { this.friendsManager.loadFriendsData(); }
-  refreshSkinList(mode) { this.refreshDiscoveryList('skin', mode); }
-  
-  openPanel(id) { 
-      const p = document.getElementById(id); 
-      if(p) { 
-          this.bringToFront(p); 
-          p.style.display = 'flex'; 
-          if(id === 'friends-panel') this.friendsManager.loadFriendsData(); 
-      } 
-  }
-
-  closePanel(id) { 
-      const p = document.getElementById(id); 
-      if(p) p.style.display = 'none'; 
-  }
-  
-  closeAllPanels() { 
-      this.disposeCurrentPreview(); 
-      document.querySelectorAll('.panel-modal').forEach(p => p.style.display='none'); 
-      this.newsManager.close(); 
-      this.mailManager.close(); 
-      this.friendsManager.close(); 
-      this.highScoresManager.close(); 
-      this.wallManager.close(); 
-      this.shopManager.close(); 
-  }
-
-  populateShop(allBlocks, isOwnedCallback) { 
-      this.shopManager.open(allBlocks, isOwnedCallback);
-  }
-
-  async showDiscoverPanel(type, category = null) { 
-      const title=document.getElementById('discover-panel-title'); 
-      const tabs=document.getElementById('discover-tabs'); 
-      const list=document.getElementById('discover-list'); 
-      if(!list) return; 
-      this.openPanel('discover-panel'); 
-      list.innerHTML='<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
-      if(type === 'worlds') { 
-          if(title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
-          if(tabs) tabs.style.display='none'; 
-          try { 
-              const allWorlds = await WorldStorage.getAllWorlds(); 
-              let filteredWorlds = allWorlds; 
-              if (category) { filteredWorlds = allWorlds.filter(w => { const wType = w.type || 'creative'; return wType === category; }); } 
-              this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem)=>{ if(this.onWorldSelect) this.onWorldSelect(worldItem); }); 
-          } catch(e) { list.innerHTML='<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; } 
-      } else if (type === 'discovery') { 
-          const labels = { skin: 'Skiny', part: 'Części', prefab: 'Prefabrykaty' }; 
-          if(title) title.textContent = `Wybierz ${labels[category] || 'Element'}`; 
-          if(tabs) { 
-              tabs.style.display = 'flex'; 
-              const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); 
-              const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); 
-              if(tabMine) tabMine.classList.remove('active'); 
-              if(tabAll) { tabAll.classList.add('active'); tabAll.onclick = () => { tabMine.classList.remove('active'); tabAll.classList.add('active'); this.refreshDiscoveryList(category, 'all'); }; } 
-              if(tabMine) { tabMine.onclick = () => { if(tabAll) tabAll.classList.remove('active'); tabMine.classList.add('active'); this.refreshDiscoveryList(category, 'mine'); }; } 
-          } 
-          this.refreshDiscoveryList(category, 'all'); 
-      } 
-  }
-
-  async refreshDiscoveryList(type, mode) { 
-      const list=document.getElementById('discover-list'); 
-      if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Pobieranie...</p>'; 
-      let items = []; 
-      try { 
-          if (type === 'skin') { items = mode === 'mine' ? await SkinStorage.getMySkins() : await SkinStorage.getAllSkins(); } 
-          else if (type === 'prefab') { items = mode === 'mine' ? await PrefabStorage.getSavedPrefabsList() : await PrefabStorage.getAllPrefabs(); } 
-          else if (type === 'part') { items = mode === 'mine' ? await HyperCubePartStorage.getSavedPartsList() : await HyperCubePartStorage.getAllParts(); } 
-          this.populateDiscoverPanel(type, items, (item) => { this.showItemDetails(item, type, true); }); 
-      } catch(e) { console.error(e); if(list) list.innerHTML='<p class="text-outline" style="text-align:center">Błąd połączenia.</p>'; } 
-  }
-
-  populateDiscoverPanel(type, items, onSelect) { 
-      const list=document.getElementById('discover-list'); 
-      if(!list) return; 
-      list.innerHTML=''; 
-      if(!items || items.length===0){ list.innerHTML='<p class="text-outline" style="text-align:center">Brak elementów.</p>'; return; } 
-      items.forEach(item => { 
-          const div=document.createElement('div'); div.className='panel-item skin-list-item'; div.style.display='flex'; div.style.alignItems='center'; div.style.padding='10px'; 
-          const thumbContainer=document.createElement('div'); thumbContainer.style.width='64px'; thumbContainer.style.height='64px'; thumbContainer.style.backgroundColor='#000'; thumbContainer.style.borderRadius='8px'; thumbContainer.style.marginRight='15px'; thumbContainer.style.overflow='hidden'; thumbContainer.style.flexShrink='0'; thumbContainer.style.border='2px solid white'; 
-          let thumbSrc = item.thumbnail; let label = item.name; 
-          if (type === 'worlds' && typeof item === 'object') { if(item.creator) label += ` (od ${item.creator})`; } else if (item.creator) { label += ` (od ${item.creator})`; } 
-          if(thumbSrc){ const img=document.createElement('img'); img.src=thumbSrc; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; thumbContainer.appendChild(img); } else { thumbContainer.textContent='?'; thumbContainer.style.display='flex'; thumbContainer.style.alignItems='center'; thumbContainer.style.justifyContent='center'; thumbContainer.style.color='white'; } 
-          const nameSpan=document.createElement('span'); nameSpan.textContent=label; nameSpan.className='text-outline'; nameSpan.style.fontSize='18px'; 
-          div.appendChild(thumbContainer); div.appendChild(nameSpan); 
-          div.onclick=()=>{ if (type === 'worlds') { this.closeAllPanels(); onSelect(item); } else { onSelect(item); } }; 
-          list.appendChild(div); 
-      }); 
-  }
-  
-  formatMemberSince(dateString) { const date = dateString ? new Date(dateString) : new Date(); const monthNames = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]; return `Członek od ${monthNames[date.getMonth()]}, ${date.getFullYear()}`; }
-
-  showMessage(message, type = 'info') {
-      const div = document.createElement('div');
-      div.textContent = message;
-      
-      div.style.position = 'fixed';
-      div.style.top = '15%'; 
-      div.style.left = '50%';
-      div.style.transform = 'translate(-50%, -50%) scale(0.8)';
-      div.style.padding = '12px 24px';
-      div.style.borderRadius = '12px';
-      div.style.color = 'white';
-      div.style.fontFamily = "'Titan One', cursive";
-      div.style.fontSize = '18px';
-      div.style.textShadow = '1.5px 1.5px 0 #000';
-      div.style.zIndex = '100000'; 
-      div.style.pointerEvents = 'none'; 
-      div.style.boxShadow = '0 5px 15px rgba(0,0,0,0.4)';
-      div.style.border = '3px solid white';
-      div.style.opacity = '0';
-      div.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-
-      if (type === 'error') {
-          div.style.backgroundColor = '#e74c3c'; 
-          div.style.borderColor = '#c0392b';
-      } else if (type === 'success') {
-          div.style.backgroundColor = '#2ecc71'; 
-          div.style.borderColor = '#27ae60';
-      } else {
-          div.style.backgroundColor = '#3498db'; 
-          div.style.borderColor = '#2980b9';
-      }
-
-      document.body.appendChild(div);
-
-      requestAnimationFrame(() => {
-          div.style.opacity = '1';
-          div.style.transform = 'translate(-50%, -50%) scale(1)';
-          div.style.top = '20%'; 
-      });
-
-      setTimeout(() => {
-          div.style.opacity = '0';
-          div.style.top = '15%'; 
-          div.style.transform = 'translate(-50%, -50%) scale(0.8)';
-          
-          setTimeout(() => {
-              if (div.parentNode) div.parentNode.removeChild(div);
-          }, 300);
-      }, 2500);
-  }
-
-  showRewardPanel(data = null) {
-      // Deprecated, użyj showRewardScreen
-      this.showRewardScreen(data);
-  }
+  refreshSkinList(m) { this.refreshDiscoveryList('skin', m); }
+  openPanel(id) { const p=document.getElementById(id); if(p){ this.bringToFront(p); p.style.display='flex'; if(id==='friends-panel') this.friendsManager.loadFriendsData(); } }
+  closePanel(id) { const p=document.getElementById(id); if(p) p.style.display='none'; }
+  closeAllPanels() { this.disposeCurrentPreview(); document.querySelectorAll('.panel-modal').forEach(p=>p.style.display='none'); this.newsManager.close(); this.mailManager.close(); this.friendsManager.close(); this.highScoresManager.close(); this.wallManager.close(); this.shopManager.close(); }
+  populateShop(b, c) { this.shopManager.open(b, c); }
 }
