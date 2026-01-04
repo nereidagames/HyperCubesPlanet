@@ -137,8 +137,8 @@ export class CharacterManager {
     
     // 3. Stwórz obiekt 3D (CSS2D)
     const chatBubble = new CSS2DObject(div);
-    // Pozycja nad głową (Y=2.8 jest optymalne, by nie zasłaniać nicku)
-    chatBubble.position.set(0, 2.8, 0); 
+    // ZMIANA: Obniżono do 1.9 (tuż nad nickiem)
+    chatBubble.position.set(0, 1.9, 0); 
     
     this.character.add(chatBubble);
     this.character.chatBubble = chatBubble;
