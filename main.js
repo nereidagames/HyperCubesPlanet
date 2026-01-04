@@ -28,7 +28,6 @@ import { HyperCubePartBuilderManager } from './HyperCubePartBuilderManager.js';
 import { SkinStorage } from './SkinStorage.js';
 import { WorldStorage } from './WorldStorage.js';
 
-// --- ZOPTYMALIZOWANY SILNIK ---
 class OptimizedGameCore {
     constructor(containerId = 'gameContainer') {
         this.container = document.getElementById(containerId);
@@ -355,7 +354,7 @@ class BlockStarPlanetGame {
       }; 
   }
 
-  // --- POPRAWIONA METODA SETUP UIACTIONS (FIX REPLAY) ---
+  // --- POPRAWIONA METODA SETUP UIACTIONS ---
   setupUIActions() {
       this.ui.onWorldSizeSelected = (size) => this.stateManager.switchToBuildMode(size);
       this.ui.onSkinBuilderClick = () => this.stateManager.switchToSkinBuilder();
@@ -379,31 +378,21 @@ class BlockStarPlanetGame {
           this.ui.toggleMobileControls(false); 
       };
 
-      // --- FIX: ODBLOKOWANIE STEROWANIA + JOYSTICK ---
+      // --- POPRAWKA RESTARTU ---
       this.ui.onReplayParkour = () => {
-          // Najpierw resetujemy pozycję i stan parkoura
           this.parkourManager.restartParkour(); 
           
-          // Dajemy małe opóźnienie, aby upewnić się, że UI zniknęło i fizyka się nie gryzie
-          setTimeout(() => {
-              if (this.playerController) {
-                  this.playerController.enabled = true;
-                  this.playerController.canJump = true;
-                  this.playerController.keys = {}; 
-                  this.playerController.velocity.set(0, 0, 0);
-              }
-              
-              if (this.cameraController) {
-                  this.cameraController.enabled = true;
-                  this.cameraController.isDragging = false;
-                  this.cameraController.cameraTouchId = null;
-              }
+          if (this.playerController) {
+              this.playerController.reset(); // Używamy nowej metody reset
+          }
+          
+          if (this.cameraController) {
+              this.cameraController.reset(); // Używamy nowej metody reset
+          }
 
-              // Ważne: Przywróć joystick jeśli jesteśmy na mobile
-              if (this.isMobile) {
-                  this.ui.toggleMobileControls(true); 
-              }
-          }, 50);
+          if (this.isMobile) {
+              this.ui.toggleMobileControls(true); 
+          }
       };
 
       this.ui.onExitParkour = () => this.stateManager.switchToMainMenu();
