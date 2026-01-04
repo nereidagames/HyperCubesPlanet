@@ -4,7 +4,6 @@ import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // Funkcja tworzy model nóg.
 export function createBaseCharacter(parentContainer) {
-    // Materiały tworzone wewnątrz funkcji, aby każda postać miała unikalne
     const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
     const bootMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
@@ -88,7 +87,7 @@ export class CharacterManager {
             this.materialsCache[blockData.texturePath] = material;
         }
 
-        // Klonujemy materiał, aby móc zmieniać jego przezroczystość tylko dla lokalnego gracza
+        // Klonujemy materiał dla lokalnego zanikania
         const localMaterial = material.clone();
 
         const block = new THREE.Mesh(geometry, localMaterial);
@@ -99,53 +98,51 @@ export class CharacterManager {
     });
   }
 
-  // --- ZMODYFIKOWANA METODA: AGRESYWNE ZANIKANIE ---
+  // --- POPRAWIONA LOGIKA ZANIKANIA ---
   updateTransparency(camera) {
       if (!this.character) return;
 
-      // Liczymy dystans od kamery do "środka ciała" postaci (trochę wyżej niż stopy)
       const charCenter = this.character.position.clone().add(new THREE.Vector3(0, 1.0, 0));
       const dist = camera.position.distanceTo(charCenter);
 
-      // Konfiguracja dystansów
-      const fadeStartDist = 3.5; // Zaczyna znikać, gdy kamera jest 3.5m od postaci
-      const fadeEndDist = 1.8;   // Całkowicie znika, gdy kamera jest bliżej niż 1.8m
+      // --- NOWE WARTOŚCI ---
+      // Startuje dopiero gdy kamera jest bardzo blisko (1.3m)
+      // Całkowicie znika przy 0.6m (tuż przed "wejściem" w model)
+      const fadeStartDist = 1.3; 
+      const fadeEndDist = 0.6;   
 
       let opacity = 1;
       let shouldBeVisible = true;
 
       if (dist < fadeEndDist) {
           opacity = 0;
-          shouldBeVisible = false; // Wyłączamy renderowanie całkowicie
+          shouldBeVisible = false; // Wyłączamy renderowanie
       } else if (dist < fadeStartDist) {
           // Płynne przejście 0 -> 1
           opacity = (dist - fadeEndDist) / (fadeStartDist - fadeEndDist);
       }
 
-      // Aplikujemy zmiany do wszystkich Meshy w postaci
       this.character.traverse((child) => {
           if (child.isMesh && child.material) {
               
-              // 1. Ustawienie widoczności
-              // Jeśli opacity jest 0, po prostu ukrywamy obiekt (najlepsza metoda na "wchodzenie w tekstury")
               child.visible = shouldBeVisible;
 
-              // 2. Jeśli widoczny, ale blisko -> włącz przezroczystość
               if (shouldBeVisible) {
-                  if (opacity < 0.99) {
-                      child.material.transparent = true;
-                      child.material.opacity = opacity;
-                      child.material.depthWrite = false; // Ważne dla poprawnego renderowania duchów
-                  } else {
+                  // Jeśli opacity jest prawie 1, wyłączamy transparentność całkowicie
+                  // To naprawia problem "półprzezroczystej" postaci w normalnym widoku
+                  if (opacity >= 0.99) {
                       child.material.transparent = false;
                       child.material.opacity = 1.0;
                       child.material.depthWrite = true;
+                  } else {
+                      child.material.transparent = true;
+                      child.material.opacity = opacity;
+                      child.material.depthWrite = false;
                   }
               }
           }
       });
       
-      // Ukrywamy cień, gdy postać znika
       if (this.shadow) {
           this.shadow.visible = opacity > 0.2;
       }
