@@ -9,7 +9,8 @@ import { HyperCubePartStorage } from './HyperCubePartStorage.js';
 import { 
     AUTH_HTML, HUD_HTML, BUILD_UI_HTML, MODALS_HTML, 
     SKIN_DETAILS_HTML, SKIN_COMMENTS_HTML, DISCOVER_CHOICE_HTML, 
-    PLAYER_PROFILE_HTML, OTHER_PLAYER_PROFILE_HTML 
+    PLAYER_PROFILE_HTML, OTHER_PLAYER_PROFILE_HTML,
+    VICTORY_HTML, REWARD_HTML 
 } from './UITemplates.js';
 
 import { STORAGE_KEYS } from './Config.js';
@@ -55,7 +56,7 @@ export class UIManager {
     this.onReplayParkour = null;
     this.onOpenOtherProfile = null;
     
-    // Callback otwarcia ekranu wygranej (do blokady sterowania)
+    // Callback blokady sterowania
     this.onVictoryScreenOpen = null;
     
     // Menedżery
@@ -128,7 +129,8 @@ export class UIManager {
       if (buildContainer) buildContainer.innerHTML = BUILD_UI_HTML;
       
       if (modalsLayer) {
-          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + PLAYER_PROFILE_HTML + OTHER_PLAYER_PROFILE_HTML;
+          // Dodano VICTORY_HTML i REWARD_HTML
+          modalsLayer.innerHTML = MODALS_HTML + SKIN_DETAILS_HTML + SKIN_COMMENTS_HTML + DISCOVER_CHOICE_HTML + PLAYER_PROFILE_HTML + OTHER_PLAYER_PROFILE_HTML + VICTORY_HTML + REWARD_HTML;
       }
   }
 
@@ -237,12 +239,12 @@ export class UIManager {
       if (!this.myProfileData) this.myProfileData = {};
       this.myProfileData.thumbnail = thumbnail;
 
+      // FIX: Tło przezroczyste
       if (thumbnail) { 
           avatarEl.textContent = ''; 
           avatarEl.style.backgroundImage = `url(${thumbnail})`; 
           avatarEl.style.backgroundSize = 'cover'; 
           avatarEl.style.backgroundPosition = 'center'; 
-          // FIX: Tło przezroczyste, żeby nie było niebieskiej ramki
           avatarEl.style.backgroundColor = 'transparent'; 
       } else { 
           avatarEl.style.backgroundImage = 'none'; 
@@ -645,29 +647,119 @@ export class UIManager {
   handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
 
-  // --- PARKOUR ---
+  // --- PARKOUR LOGIC (NEW) ---
+  
   setParkourTimerVisible(visible) {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.style.display = visible ? 'block' : 'none';
   }
+  
   updateParkourTimer(timeString) {
       const timer = document.getElementById('parkour-timer');
       if (timer) timer.textContent = timeString;
   }
+
   handleParkourCompletion(timeStr, rewardData) {
-      const victoryPanel = document.getElementById('victory-panel');
-      const timeDisplay = document.getElementById('victory-time-display');
-      if (victoryPanel) {
-          this.bringToFront(victoryPanel);
-          victoryPanel.style.display = 'flex';
+      // 1. Zablokuj sterowanie
+      if (this.onVictoryScreenOpen) this.onVictoryScreenOpen();
+
+      // 2. Pokaż Ekran 1 (Victory)
+      const victoryScreen = document.getElementById('bsp-victory-screen');
+      if (victoryScreen) {
+          this.bringToFront(victoryScreen);
+          victoryScreen.style.display = 'flex';
+
+          // Wypełnij dane (z rewardData od serwera)
+          if (rewardData && rewardData.records) {
+              document.getElementById('bsp-run-time').textContent = rewardData.records.formattedTime;
+              document.getElementById('bsp-rec-all').textContent = rewardData.records.allTime;
+              document.getElementById('bsp-rec-day').textContent = rewardData.records.daily;
+              document.getElementById('bsp-rec-personal').textContent = rewardData.records.personal;
+              
+              const badge = document.getElementById('bsp-new-record-badge');
+              if (badge) badge.style.display = rewardData.records.isNewPb ? 'block' : 'none';
+          } else {
+              // Fallback
+              document.getElementById('bsp-run-time').textContent = timeStr;
+          }
           
-          // --- FIX: Wywołaj callback, by Main.js zablokował sterowanie ---
-          if (this.onVictoryScreenOpen) this.onVictoryScreenOpen();
+          // Mapa
+          if (rewardData && rewardData.map) {
+               document.getElementById('bsp-map-name').textContent = rewardData.map.name;
+               // Likes logic placeholder
+               if (rewardData.map.thumbnail) {
+                   document.getElementById('bsp-map-thumb').style.backgroundImage = `url(${rewardData.map.thumbnail})`;
+               }
+          }
+
+          // Obsługa przycisku "Dalej"
+          const contBtn = document.getElementById('bsp-continue-btn');
+          contBtn.onclick = () => {
+              victoryScreen.style.display = 'none';
+              this.showRewardScreen(rewardData);
+          };
       }
-      if (timeDisplay) timeDisplay.textContent = timeStr;
+      
       this.pendingRewardData = rewardData;
   }
-  hideVictory() { document.getElementById('victory-panel').style.display = 'none'; document.getElementById('reward-panel').style.display = 'none'; this.pendingRewardData = null; }
+
+  showRewardScreen(rewardData) {
+      const rewardScreen = document.getElementById('bsp-reward-screen');
+      if (!rewardScreen) return;
+
+      this.bringToFront(rewardScreen);
+      rewardScreen.style.display = 'flex';
+
+      if (rewardData) {
+          // Nagrody
+          document.getElementById('bsp-rew-xp').textContent = rewardData.rewards.standard.xp;
+          document.getElementById('bsp-rew-coins').textContent = rewardData.rewards.standard.coins;
+          document.getElementById('bsp-vip-xp').textContent = rewardData.rewards.vip.xp;
+          document.getElementById('bsp-vip-coins').textContent = rewardData.rewards.vip.coins;
+
+          // Pasek Levelu
+          const lvl = rewardData.newLevel;
+          const xp = rewardData.newXp;
+          const max = rewardData.maxXp;
+          
+          document.getElementById('bsp-lvl-cur').textContent = lvl;
+          document.getElementById('bsp-lvl-next').textContent = lvl + 1;
+          document.getElementById('bsp-xp-text').textContent = `${xp}/${max}`;
+          
+          setTimeout(() => {
+              const percent = Math.min(100, Math.max(0, (xp / max) * 100));
+              document.getElementById('bsp-xp-fill').style.width = `${percent}%`;
+          }, 100);
+          
+          // Aktualizacja HUD w tle
+          this.updateCoinCounter(rewardData.newCoins);
+          this.updateLevelInfo(lvl, xp, max);
+      }
+      
+      // Przyciski nawigacji
+      document.getElementById('bsp-btn-home').onclick = () => {
+          rewardScreen.style.display = 'none';
+          if (this.onExitParkour) this.onExitParkour();
+      };
+      
+      document.getElementById('bsp-btn-replay').onclick = () => {
+          rewardScreen.style.display = 'none';
+          if (this.onReplayParkour) this.onReplayParkour();
+      };
+      
+      document.getElementById('bsp-btn-next').onclick = () => {
+          rewardScreen.style.display = 'none';
+          if (this.onExitParkour) this.onExitParkour();
+      };
+  }
+
+  hideVictory() { 
+      document.getElementById('bsp-victory-screen').style.display = 'none'; 
+      document.getElementById('bsp-reward-screen').style.display = 'none'; 
+      document.getElementById('victory-panel').style.display = 'none'; 
+      document.getElementById('reward-panel').style.display = 'none'; 
+      this.pendingRewardData = null; 
+  }
 
   // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
@@ -726,14 +818,11 @@ export class UIManager {
     const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
     const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
     const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
+    
+    // Stare przyciski (fallback)
     const superBtn = document.getElementById('victory-super-btn'); if (superBtn) superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); };
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
-    
-    const replayBtn = document.getElementById('reward-btn-replay'); 
-    if (replayBtn) replayBtn.onclick = () => { 
-        this.hideVictory(); 
-        if (this.onReplayParkour) this.onReplayParkour(); 
-    };
+    const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
     
     const btnDiscSkin = document.getElementById('discover-choice-skin'); 
     const btnDiscPart = document.getElementById('discover-choice-part'); 
@@ -931,43 +1020,7 @@ export class UIManager {
   }
 
   showRewardPanel(data = null) {
-      const rewardData = data || this.pendingRewardData;
-      
-      if (!rewardData) return;
-
-      const panel = document.getElementById('reward-panel');
-      if (!panel) return;
-
-      this.bringToFront(panel);
-      panel.style.display = 'flex';
-
-      const earnedXp = (rewardData.totalXp !== undefined) ? rewardData.totalXp : (rewardData.xp !== undefined ? 500 : 500); 
-      const earnedCoins = (rewardData.totalCoins !== undefined) ? rewardData.totalCoins : (rewardData.coins !== undefined ? 100 : 100); 
-
-      const xpVal = document.getElementById('reward-xp-val');
-      const coinsVal = document.getElementById('reward-coins-val');
-      
-      if (xpVal) xpVal.textContent = `+${earnedXp}`;
-      if (coinsVal) coinsVal.textContent = `+${earnedCoins}`;
-
-      const lvl = rewardData.newLevel || 1;
-      const xp = rewardData.newXp || 0;
-      const max = rewardData.maxXp || 100;
-
-      const curLvlEl = document.getElementById('reward-lvl-cur');
-      const nextLvlEl = document.getElementById('reward-lvl-next');
-      const barText = document.getElementById('reward-bar-text');
-      const barFill = document.getElementById('reward-bar-fill');
-
-      if (curLvlEl) curLvlEl.textContent = lvl;
-      if (nextLvlEl) nextLvlEl.textContent = lvl + 1;
-      if (barText) barText.textContent = `${xp}/${max}`;
-      
-      if (barFill) {
-          const percent = Math.min(100, Math.max(0, (xp / max) * 100)); 
-          barFill.style.width = `${percent}%`; 
-      }
-      
-      this.pendingRewardData = null;
+      // Deprecated, użyj showRewardScreen
+      this.showRewardScreen(data);
   }
 }
