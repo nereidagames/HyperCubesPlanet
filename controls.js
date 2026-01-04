@@ -28,7 +28,6 @@ export class PlayerController {
     this.joystickDirection = new THREE.Vector2();
     this.joystick = null;
 
-    // --- NOWOŚĆ: Flaga włączająca/wyłączająca sterowanie ---
     this.enabled = true; 
 
     this.playerBox = new THREE.Box3();
@@ -57,7 +56,6 @@ export class PlayerController {
     this.cleanupInput();
 
     this.handleKeyDown = (e) => {
-      // --- NOWOŚĆ: Blokada inputu ---
       if (!this.enabled || this.isTyping()) return;
 
       this.keys[e.code] = true;
@@ -105,13 +103,9 @@ export class PlayerController {
   }
   
   update(deltaTime, cameraRotation) {
-    // --- NOWOŚĆ: Jeśli wyłączony, zatrzymaj postać i nie licz fizyki ---
     if (!this.enabled) {
         this.velocity.x = 0;
         this.velocity.z = 0;
-        // Opcjonalnie pozwalamy grawitacji działać, żeby nie wisiał w powietrzu,
-        // ale blokujemy input. Tutaj stosujemy pełne zatrzymanie ruchu poziomego.
-        // Grawitację liczymy dalej poniżej, chyba że chcesz zamrozić całkowicie.
     }
 
     const timeStep = Math.min(deltaTime, 0.05);
@@ -123,7 +117,6 @@ export class PlayerController {
     const moveDirection = new THREE.Vector3();
     const isTyping = this.isTyping();
 
-    // Obliczanie inputu TYLKO jeśli enabled i nie piszemy
     if (this.enabled && !this.isMobile && !isTyping) {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
         const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation);
@@ -308,7 +301,7 @@ export class PlayerController {
     if (jumpButton) {
         this.handleMobileJumpStart = (e) => {
             e.preventDefault();
-            if (this.enabled && this.canJump) { // Dodano check this.enabled
+            if (this.enabled && this.canJump) { 
                 this.jump();
                 this.canJump = false;
             }
@@ -334,7 +327,7 @@ export class PlayerController {
         this.joystick = nipplejs.create(options);
 
         this.joystick.on('move', (evt, data) => {
-            if (this.enabled && data.vector) { // Dodano check this.enabled
+            if (this.enabled && data.vector) { 
                 this.joystickDirection.set(data.vector.x, data.vector.y);
             }
         });
@@ -347,10 +340,16 @@ export class PlayerController {
 }
 
 export class ThirdPersonCameraController {
-    constructor(camera, target, domElement, options = {}) {
+    // --- ZMIANA: Dodano collidableObjects do konstruktora ---
+    constructor(camera, target, domElement, collidableObjects, options = {}) {
         this.camera = camera;
         this.target = target;
         this.domElement = domElement;
+        
+        // Obiekty, z którymi kamera może kolidować (bloki, ściany, podłoga)
+        this.collidableObjects = collidableObjects || [];
+        this.raycaster = new THREE.Raycaster();
+
         this.distance = options.distance || 5;
         this.height = options.height || 2;
         this.rotationSpeed = options.rotationSpeed || 0.005;
@@ -375,7 +374,7 @@ export class ThirdPersonCameraController {
 
     setupControls() {
         this.handleMouseDown = (e) => {
-            if (!this.enabled || e.target.closest('.ui-element') || e.target.closest('.panel-modal') || e.target.closest('#victory-panel')) return; // FIX
+            if (!this.enabled || e.target.closest('.ui-element') || e.target.closest('.panel-modal') || e.target.closest('#victory-panel')) return;
             this.isDragging = true;
             this.mousePosition = { x: e.clientX, y: e.clientY };
         };
@@ -458,7 +457,14 @@ export class ThirdPersonCameraController {
         if (!this.enabled || !this.target) return 0;
         
         let currentDistance = this.distance;
-        const targetPosition = new THREE.Vector3(this.target.position.x, this.target.position.y + 1, this.target.position.z);
+        // Podniesienie celu kamery, aby celowała wyżej (np. w głowę)
+        const targetHeight = 1.8; 
+        
+        const targetPosition = new THREE.Vector3(
+            this.target.position.x, 
+            this.target.position.y + targetHeight, 
+            this.target.position.z
+        );
         
         const horizontalDistance = currentDistance * Math.cos(this.pitch);
         const verticalDistance = currentDistance * Math.sin(this.pitch);
@@ -471,18 +477,57 @@ export class ThirdPersonCameraController {
         
         const idealCameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
 
-        const cameraFloorClearance = 0.5;
-        if (idealCameraPosition.y < this.floorY + cameraFloorClearance) {
-            const newVerticalDistance = this.floorY + cameraFloorClearance - targetPosition.y;
-            currentDistance = newVerticalDistance / Math.sin(this.pitch);
-            currentDistance = Math.max(currentDistance, 1.5);
+        // --- KOLIZJA KAMERY Z BLOKAMI (RAYCAST) ---
+        
+        // 1. Kierunek od głowy gracza do kamery
+        const direction = new THREE.Vector3().subVectors(idealCameraPosition, targetPosition).normalize();
+        
+        // 2. Ustawiamy Raycaster
+        this.raycaster.set(targetPosition, direction);
+        
+        // 3. Sprawdzamy tylko do odległości idealnej kamery
+        this.raycaster.far = currentDistance;
+        
+        // 4. Szukamy przecięć z blokami
+        const intersects = this.raycaster.intersectObjects(this.collidableObjects, false);
+        
+        if (intersects.length > 0) {
+            // Jeśli trafiliśmy w blok, skracamy dystans
+            // -0.2 to bufor, żeby kamera nie weszła w ścianę
+            currentDistance = Math.max(0.5, intersects[0].distance - 0.2);
             
-            const newHorizontalDistance = currentDistance * Math.cos(this.pitch);
+            // Przeliczamy offset z nowym, krótszym dystansem
+            const newH = currentDistance * Math.cos(this.pitch);
+            const newV = currentDistance * Math.sin(this.pitch);
+            
             offset.set(
-                Math.sin(this.rotation) * newHorizontalDistance, 
-                newVerticalDistance, 
-                Math.cos(this.rotation) * newHorizontalDistance
+                Math.sin(this.rotation) * newH,
+                newV,
+                Math.cos(this.rotation) * newH
             );
+        }
+
+        // --- KONIEC KOLIZJI ---
+
+        // Zabezpieczenie przed wchodzeniem pod podłogę (stary system, nadal przydatny)
+        const cameraFloorClearance = 0.5;
+        // Sprawdzamy pozycję po ewentualnym skróceniu przez raycast
+        const finalCameraPos = new THREE.Vector3().copy(targetPosition).add(offset);
+        
+        if (finalCameraPos.y < this.floorY + cameraFloorClearance) {
+            const newVerticalDistance = this.floorY + cameraFloorClearance - targetPosition.y;
+            if (Math.abs(Math.sin(this.pitch)) > 0.1) {
+                 // Tutaj nie zmieniamy currentDistance permanentnie, tylko offset
+                 // aby nie psuć logiki raycastu w następnej klatce
+                 const distForFloor = newVerticalDistance / Math.sin(this.pitch);
+                 const hForFloor = distForFloor * Math.cos(this.pitch);
+                 
+                 offset.set(
+                    Math.sin(this.rotation) * hForFloor,
+                    newVerticalDistance,
+                    Math.cos(this.rotation) * hForFloor
+                 );
+            }
         }
         
         this.camera.position.copy(targetPosition).add(offset);
