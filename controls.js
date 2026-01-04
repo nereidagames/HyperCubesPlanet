@@ -340,13 +340,11 @@ export class PlayerController {
 }
 
 export class ThirdPersonCameraController {
-    // --- ZMIANA: Dodano collidableObjects do konstruktora ---
     constructor(camera, target, domElement, collidableObjects, options = {}) {
         this.camera = camera;
         this.target = target;
         this.domElement = domElement;
         
-        // Obiekty, z którymi kamera może kolidować (bloki, ściany, podłoga)
         this.collidableObjects = collidableObjects || [];
         this.raycaster = new THREE.Raycaster();
 
@@ -457,8 +455,9 @@ export class ThirdPersonCameraController {
         if (!this.enabled || !this.target) return 0;
         
         let currentDistance = this.distance;
-        // Podniesienie celu kamery, aby celowała wyżej (np. w głowę)
-        const targetHeight = 1.8; 
+        
+        // --- FIX: Przywrócono Starą Wysokość Celowania ---
+        const targetHeight = 1.0; 
         
         const targetPosition = new THREE.Vector3(
             this.target.position.x, 
@@ -478,25 +477,15 @@ export class ThirdPersonCameraController {
         const idealCameraPosition = new THREE.Vector3().copy(targetPosition).add(offset);
 
         // --- KOLIZJA KAMERY Z BLOKAMI (RAYCAST) ---
-        
-        // 1. Kierunek od głowy gracza do kamery
         const direction = new THREE.Vector3().subVectors(idealCameraPosition, targetPosition).normalize();
-        
-        // 2. Ustawiamy Raycaster
         this.raycaster.set(targetPosition, direction);
-        
-        // 3. Sprawdzamy tylko do odległości idealnej kamery
         this.raycaster.far = currentDistance;
         
-        // 4. Szukamy przecięć z blokami
         const intersects = this.raycaster.intersectObjects(this.collidableObjects, false);
         
         if (intersects.length > 0) {
-            // Jeśli trafiliśmy w blok, skracamy dystans
-            // -0.2 to bufor, żeby kamera nie weszła w ścianę
             currentDistance = Math.max(0.5, intersects[0].distance - 0.2);
             
-            // Przeliczamy offset z nowym, krótszym dystansem
             const newH = currentDistance * Math.cos(this.pitch);
             const newV = currentDistance * Math.sin(this.pitch);
             
@@ -506,19 +495,14 @@ export class ThirdPersonCameraController {
                 Math.cos(this.rotation) * newH
             );
         }
-
         // --- KONIEC KOLIZJI ---
 
-        // Zabezpieczenie przed wchodzeniem pod podłogę (stary system, nadal przydatny)
         const cameraFloorClearance = 0.5;
-        // Sprawdzamy pozycję po ewentualnym skróceniu przez raycast
         const finalCameraPos = new THREE.Vector3().copy(targetPosition).add(offset);
         
         if (finalCameraPos.y < this.floorY + cameraFloorClearance) {
             const newVerticalDistance = this.floorY + cameraFloorClearance - targetPosition.y;
             if (Math.abs(Math.sin(this.pitch)) > 0.1) {
-                 // Tutaj nie zmieniamy currentDistance permanentnie, tylko offset
-                 // aby nie psuć logiki raycastu w następnej klatce
                  const distForFloor = newVerticalDistance / Math.sin(this.pitch);
                  const hForFloor = distForFloor * Math.cos(this.pitch);
                  
