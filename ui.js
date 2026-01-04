@@ -55,7 +55,7 @@ export class UIManager {
     this.onReplayParkour = null;
     this.onOpenOtherProfile = null;
     
-    // --- NOWOŚĆ: Callback otwarcia ekranu wygranej ---
+    // Callback otwarcia ekranu wygranej (do blokady sterowania)
     this.onVictoryScreenOpen = null;
     
     // Menedżery
@@ -242,10 +242,12 @@ export class UIManager {
           avatarEl.style.backgroundImage = `url(${thumbnail})`; 
           avatarEl.style.backgroundSize = 'cover'; 
           avatarEl.style.backgroundPosition = 'center'; 
-          avatarEl.style.backgroundColor = '#4a90e2'; 
+          // FIX: Tło przezroczyste, żeby nie było niebieskiej ramki
+          avatarEl.style.backgroundColor = 'transparent'; 
       } else { 
           avatarEl.style.backgroundImage = 'none'; 
           avatarEl.textContent = '👤'; 
+          avatarEl.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
       } 
   }
 
@@ -726,7 +728,12 @@ export class UIManager {
     const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
     const superBtn = document.getElementById('victory-super-btn'); if (superBtn) superBtn.onclick = () => { document.getElementById('victory-panel').style.display = 'none'; if (this.pendingRewardData) this.showRewardPanel(); else if (this.onExitParkour) this.onExitParkour(); };
     const homeBtn = document.getElementById('reward-btn-home'); if (homeBtn) homeBtn.onclick = () => { this.hideVictory(); if (this.onExitParkour) this.onExitParkour(); };
-    const replayBtn = document.getElementById('reward-btn-replay'); if (replayBtn) replayBtn.onclick = () => { this.hideVictory(); if (this.onReplayParkour) this.onReplayParkour(); };
+    
+    const replayBtn = document.getElementById('reward-btn-replay'); 
+    if (replayBtn) replayBtn.onclick = () => { 
+        this.hideVictory(); 
+        if (this.onReplayParkour) this.onReplayParkour(); 
+    };
     
     const btnDiscSkin = document.getElementById('discover-choice-skin'); 
     const btnDiscPart = document.getElementById('discover-choice-part'); 
