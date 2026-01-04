@@ -124,7 +124,8 @@ export const AUTH_HTML = `
         position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
         width: 300px;
         background: #8ede13;
-        border: 4px solid white; border-radius: 20px;
+        border: 4px solid white;
+        border-radius: 20px;
         padding: 15px; display: flex; flex-direction: column; gap: 8px;
         pointer-events: auto;
         z-index: 101;
@@ -233,13 +234,27 @@ export const AUTH_HTML = `
 </div>
 `;
 
+// --- HUD_HTML ZMODYFIKOWANY DLA TRANSPARENTNYCH IKON ---
 export const HUD_HTML = `
     <div class="top-bar ui-element">
-        <div id="player-avatar-button" class="top-bar-item"><div class="player-avatar">👤</div><div class="player-name text-outline" id="player-name-display">player</div></div>
-        <div class="top-bar-item"><div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 75%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div><div class="player-name text-outline">Poczta</div></div>
-        <div id="btn-friends-open" class="top-bar-item"><div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 75%; background-position: center; background-repeat: no-repeat; background-color: #e67e22;"></div><div class="player-name text-outline">Przyjaciele</div></div>
+        <div id="player-avatar-button" class="top-bar-item">
+            <div class="player-avatar">👤</div>
+            <div class="player-name text-outline" id="player-name-display">player</div>
+        </div>
+        
+        <div class="top-bar-item">
+            <div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 90%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div>
+            <div class="player-name text-outline">Poczta</div>
+        </div>
+        
+        <div id="btn-friends-open" class="top-bar-item">
+            <div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 90%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div>
+            <div class="player-name text-outline">Przyjaciele</div>
+        </div>
+        
         <div id="active-friends-container"></div>
     </div>
+    
     <div id="parkour-timer" class="text-outline">00:00.00</div>
     <div class="chat-container ui-element"><div class="chat-area"></div><div id="chat-toggle-button">💬</div></div>
     <form id="chat-form" class="ui-element"><input type="text" id="chat-input-field" placeholder="Napisz coś..."><button type="submit" id="chat-send-btn">Wyślij</button></form>
@@ -262,8 +277,6 @@ export const HUD_HTML = `
     <div id="mobile-game-controls"><div id="joystick-zone"></div><button id="jump-button"></button></div>
 `;
 
-// UWAGA: Styl dla Build UI został przeniesiony do style.css
-// Tutaj zostaje tylko HTML
 export const BUILD_UI_HTML = `
     <!-- UI BUILDERA -->
     <div class="build-top-left">
