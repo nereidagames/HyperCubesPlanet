@@ -42,7 +42,7 @@ export class MultiplayerManager {
         console.error("Brak tokenu JWT.");
         return;
     }
-    const serverUrl = `wss://hypercubes-nexus-server.onrender.com?token=${token}`; // Pamiętaj o URL z Config.js w finalnej wersji
+    const serverUrl = `wss://hypercubes-nexus-server.onrender.com?token=${token}`;
 
     this.uiManager.addChatMessage('<Łączenie z Nexusem...>');
 
@@ -154,17 +154,13 @@ export class MultiplayerManager {
       case 'chatMessage':
         this.uiManager.addChatMessage(`${msg.nickname}: ${msg.text}`);
         
-        // --- LOGIKA DYMKÓW ---
         if (msg.id === this.myId) {
-            // To jest moja wiadomość - pokaż dymek nad moją głową
             this.displayLocalChatBubble(msg.text);
         } else {
-            // To wiadomość innego gracza
             this.displayChatBubble(msg.id, msg.text);
         }
         break;
         
-      // ... (reszta case'ów bez zmian: friendRequest, coinSpawned itp.) ...
       case 'friendRequestReceived':
         this.uiManager.showMessage(`Zaproszenie od ${msg.from}!`, 'info');
         if(this.uiManager.loadFriendsData) this.uiManager.loadFriendsData();
@@ -199,7 +195,6 @@ export class MultiplayerManager {
   displayLocalChatBubble(message) {
       if (!this.localCharacter) return;
 
-      // Usuń stary dymek
       if (this.localCharacter.chatBubble) {
           this.localCharacter.remove(this.localCharacter.chatBubble);
           if (this.localCharacter.chatBubble.element && this.localCharacter.chatBubble.element.parentNode) {
@@ -208,13 +203,13 @@ export class MultiplayerManager {
           this.localCharacter.chatBubble = null;
       }
 
-      // Stwórz nowy (używamy stylu ze style.css)
       const div = document.createElement('div');
       div.className = 'chat-bubble-styled';
       div.textContent = message;
 
       const bubble = new CSS2DObject(div);
-      bubble.position.set(0, 2.8, 0); // Pozycja nad głową
+      // ZMIANA: Obniżono do 1.9
+      bubble.position.set(0, 1.9, 0); 
       this.localCharacter.add(bubble);
       this.localCharacter.chatBubble = bubble;
 
@@ -228,9 +223,6 @@ export class MultiplayerManager {
           }
       }, 6000);
   }
-
-  // ... (reszta metod: updatePlayersList, sendMyPosition, sendMessage, sendPrivateMessage, createRemotePlayer, updateRemotePlayerTarget, removeRemotePlayer, removeAllRemotePlayers) ...
-  // Upewnij się, że są one w pliku. Poniżej tylko zmodyfikowana funkcja displayChatBubble dla remote
 
   updatePlayersList(playersData) {
       const currentIds = Object.keys(this.remotePlayers).map(Number);
@@ -352,11 +344,12 @@ export class MultiplayerManager {
     }
     
     const div = document.createElement('div');
-    div.className = 'chat-bubble-styled'; // Nowa klasa
+    div.className = 'chat-bubble-styled';
     div.textContent = message;
     
     const bubble = new CSS2DObject(div);
-    bubble.position.set(0, 2.8, 0); // Wyżej nad nickiem
+    // ZMIANA: Obniżono do 1.9
+    bubble.position.set(0, 1.9, 0); 
     p.mesh.add(bubble);
     p.chatBubble = bubble;
     
