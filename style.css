@@ -59,9 +59,8 @@ body {
 .cloud4 { width: 180px; height: 180px; top: 75%; animation-duration: 25s; animation-delay: -10s; } .cloud4::before { width: 110px; height: 110px; top: -70px; left: 30px; } .cloud4::after { width: 130px; height: 130px; top: -40px; right: 15px; }
 @keyframes move-cloud { from { transform: translateX(-250px); } to { transform: translateX(105vw); } }
 
-/* --- EKRAN LOGOWANIA / REJESTRACJI --- */
+/* --- EKRAN LOGOWANIA --- */
 .bsp-interactive { pointer-events: auto !important; }
-
 #bsp-welcome-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; pointer-events: none; }
 .bsp-top-header { text-align: center; margin-top: 10px; text-shadow: 2px 2px 0 #000; color: white; font-size: 24px; pointer-events: auto; }
 .bsp-right-buttons { position: absolute; right: 20px; top: 50%; transform: translateY(-60%); display: flex; flex-direction: column; gap: 20px; align-items: flex-end; z-index: 100; pointer-events: none; }
@@ -121,7 +120,15 @@ canvas { display: block; }
     z-index: 2100;
 }
 .top-bar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
-.player-avatar { width: 45px; height: 45px; background-color: #4a90e2; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; background-size: cover; background-position: center; }
+
+/* ZMIANA: TŁO PRZEZROCZYSTE DLA IKON W TOP BARZE */
+.player-avatar { 
+    width: 45px; height: 45px; 
+    background-color: transparent; /* BYŁO #4a90e2 */
+    border-radius: 8px; 
+    display: flex; align-items: center; justify-content: center; color: white; 
+    background-size: cover; background-position: center; 
+}
 .player-name { color: white; font-size: 10px; }
 
 /* Friends Bar */
@@ -559,10 +566,10 @@ canvas { display: block; }
 #reward-btn-replay { background-image: url('icons/icon-restart.png'); background-color: #f1c40f; }
 #reward-btn-next { background-image: url('icons/icon-next.png'); background-color: #2ecc71; display: none; }
 
-/* --- CHAT BUBBLE STYLE (NOWY) --- */
+/* --- CHAT BUBBLE STYLE --- */
 .chat-bubble-styled {
-    background: linear-gradient(to bottom, #dff9fb 0%, #c7ecee 100%); /* Jasny błękit */
-    border: 2px solid #00a8ff; /* Niebieska ramka */
+    background: linear-gradient(to bottom, #dff9fb 0%, #c7ecee 100%); 
+    border: 2px solid #00a8ff; 
     border-radius: 12px;
     padding: 6px 14px;
     color: #2d3436;
@@ -573,24 +580,22 @@ canvas { display: block; }
     box-shadow: 0 4px 6px rgba(0,0,0,0.15);
     max-width: 200px;
     word-wrap: break-word;
-    pointer-events: none; /* Ważne: pozwala klikać "przez" dymek */
-    margin-bottom: 10px; /* Odstęp od nicku */
+    pointer-events: none; 
+    margin-bottom: 10px; 
     z-index: 1000;
 }
 
-/* Trójkącik (strzałka) pod dymkiem */
 .chat-bubble-styled::after {
     content: '';
     position: absolute;
-    bottom: -8px; /* Wystaje poza dymek */
+    bottom: -8px; 
     left: 50%;
     transform: translateX(-50%);
     border-width: 8px 8px 0;
     border-style: solid;
-    border-color: #00a8ff transparent transparent transparent; /* Kolor ramki */
+    border-color: #00a8ff transparent transparent transparent; 
 }
 
-/* Wewnętrzny trójkącik (żeby strzałka też miała gradient/tło) */
 .chat-bubble-styled::before {
     content: '';
     position: absolute;
@@ -599,6 +604,6 @@ canvas { display: block; }
     transform: translateX(-50%);
     border-width: 6px 6px 0;
     border-style: solid;
-    border-color: #c7ecee transparent transparent transparent; /* Kolor tła */
+    border-color: #c7ecee transparent transparent transparent; 
     z-index: 1;
 }
