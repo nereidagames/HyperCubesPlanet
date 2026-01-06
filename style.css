@@ -121,11 +121,9 @@ canvas { display: block; }
     z-index: 2100;
 }
 .top-bar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
-
-/* ZMIANA: TŁO PRZEZROCZYSTE DLA IKON W TOP BARZE */
 .player-avatar { 
     width: 45px; height: 45px; 
-    background-color: transparent; /* BYŁO #4a90e2 */
+    background-color: transparent; 
     border-radius: 8px; 
     display: flex; align-items: center; justify-content: center; color: white; 
     background-size: cover; background-position: center; 
@@ -469,12 +467,11 @@ canvas { display: block; }
     z-index: 1;
 }
 
-/* --- BSP PARKOUR UI STYLES (NOWE) --- */
+/* --- BSP PARKOUR UI STYLES --- */
 
 .bsp-overlay-bg {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: radial-gradient(circle, rgba(142,68,173,0.9) 0%, rgba(44,62,80,0.95) 100%);
-    /* Opcjonalnie mozna dodac url('checkerboard.png') do background */
     z-index: 10002;
     display: none;
     flex-direction: column;
@@ -537,9 +534,11 @@ canvas { display: block; }
 .bsp-map-card {
     width: 200px; height: 280px;
     background: #74b9ff;
-    border: 4px solid white; border-radius: 15px;
+    border: 4px solid white;
+    border-radius: 15px;
     display: flex; flex-direction: column;
-    overflow: hidden; box-shadow: 10px 10px 0 rgba(0,0,0,0.3);
+    overflow: hidden;
+    box-shadow: 10px 10px 0 rgba(0,0,0,0.3);
 }
 .bsp-map-header { background: #0984e3; color: white; text-align: center; padding: 5px; font-size: 14px; text-shadow: 1px 1px 0 #000; }
 .bsp-map-thumb { flex: 1; background-color: #000; background-size: cover; background-position: center; }
@@ -558,8 +557,10 @@ canvas { display: block; }
 .bsp-reward-boxes { display: flex; gap: 20px; justify-content: center; }
 .bsp-reward-box {
     width: 250px; height: 180px;
-    border-radius: 15px; border: 4px solid white;
-    display: flex; flex-direction: column; overflow: hidden;
+    border-radius: 15px;
+    border: 4px solid white;
+    display: flex; flex-direction: column;
+    overflow: hidden;
     box-shadow: 0 10px 20px rgba(0,0,0,0.3);
 }
 .bsp-reward-box.blue { background: #74b9ff; }
@@ -606,7 +607,8 @@ canvas { display: block; }
 .bsp-nav-row { display: flex; gap: 20px; margin-top: 30px; }
 .bsp-nav-btn {
     width: 90px; height: 90px;
-    border: 4px solid rgba(0,0,0,0.2); border-radius: 15px;
+    border: 4px solid rgba(0,0,0,0.2);
+    border-radius: 15px;
     display: flex; justify-content: center; align-items: center;
     cursor: pointer; transition: transform 0.1s;
     box-shadow: 0 8px 0 rgba(0,0,0,0.3);
@@ -620,7 +622,17 @@ canvas { display: block; }
 #bsp-continue-btn {
     position: absolute; right: 20px; bottom: 20px;
     width: 60px; height: 60px; background: #2ecc71;
-    border: 3px solid white; border-radius: 10px;
+    border: 3px solid white;
+    border-radius: 10px;
     display: flex; justify-content: center; align-items: center;
     cursor: pointer; font-size: 30px; color: white;
+}
+
+/* ZMIANA: Powiększenie ikon w menu nawigacyjnym (GRID) */
+.nav-icon {
+    width: 70%;  /* Zwiększono z 55% */
+    height: 70%; /* Zwiększono z 55% */
+    object-fit: contain;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+    z-index: 1;
 }
