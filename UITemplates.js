@@ -234,6 +234,7 @@ export const AUTH_HTML = `
 </div>
 `;
 
+// --- HUD_HTML ZMODYFIKOWANY DLA TRANSPARENTNYCH IKON ---
 export const HUD_HTML = `
     <div class="top-bar ui-element">
         <div id="player-avatar-button" class="top-bar-item">
@@ -242,11 +243,13 @@ export const HUD_HTML = `
         </div>
         
         <div class="top-bar-item">
+            <!-- Poczta: 90% size, transparent bg -->
             <div class="player-avatar" style="background-image: url('icons/logo-poczta.png'); background-size: 90%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div>
             <div class="player-name text-outline">Poczta</div>
         </div>
         
         <div id="btn-friends-open" class="top-bar-item">
+            <!-- Przyjaciele: 90% size, transparent bg -->
             <div class="player-avatar btn-friends" style="background-image: url('icons/icon-friends.png'); background-size: 90%; background-position: center; background-repeat: no-repeat; background-color: transparent;"></div>
             <div class="player-name text-outline">Przyjaciele</div>
         </div>
@@ -413,25 +416,63 @@ export const SKIN_COMMENTS_HTML = `
     </div>
 `;
 
+// --- NOWY GRID DLA "ODKRYJ" ---
 export const DISCOVER_CHOICE_HTML = `
     <div id="discover-choice-panel" class="panel-modal">
         <div class="panel-content">
-            <h2>Co dziś odkrywamy?</h2>
-            <div class="build-choice-grid">
-                <div id="discover-choice-skin" class="play-choice-item">
-                    <div class="play-choice-icon" style="background-image: url('icons/icon-newhypercube.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #3498db;"></div>
-                    <span class="play-choice-label text-outline">HyperCube</span>
+            <h1 class="text-outline" style="color: white; font-size: 48px; margin-bottom: 30px;">Odkryj</h1>
+            
+            <div class="nav-grid-container" style="grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                
+                <!-- 1. BlockStars -->
+                <div class="nav-item" id="btn-disc-blockstars">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-newhypercube.png" class="nav-icon">
+                        <span class="nav-label">BlockStars</span>
+                    </div>
                 </div>
-                <div id="discover-choice-part" class="play-choice-item">
-                    <div class="play-choice-icon" style="background-image: url('icons/icon-newhypercubepart.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #e67e22;"></div>
-                    <span class="play-choice-label text-outline">Części</span>
+
+                <!-- 2. Światy -->
+                <div class="nav-item" id="btn-disc-worlds">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-newworld.png" class="nav-icon">
+                        <span class="nav-label">Światy</span>
+                    </div>
                 </div>
-                <div id="discover-choice-prefab" class="play-choice-item">
-                    <div class="play-choice-icon" style="background-image: url('icons/icon-newprefab.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; background-color: #9b59b6;"></div>
-                    <span class="play-choice-label text-outline">Prefabrykaty</span>
+
+                <!-- 3. Skórki -->
+                <div class="nav-item" id="btn-disc-parts">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-newhypercubepart.png" class="nav-icon">
+                        <span class="nav-label">Skórki</span>
+                    </div>
                 </div>
+
+                <!-- 4. Prefabrykaty -->
+                <div class="nav-item" id="btn-disc-prefabs">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-newprefab.png" class="nav-icon">
+                        <span class="nav-label">Prefabrykaty</span>
+                    </div>
+                </div>
+
+                <!-- 5. Fotki -->
+                <div class="nav-item" id="btn-disc-photos">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-more.png" class="nav-icon">
+                        <span class="nav-label">Fotki</span>
+                    </div>
+                </div>
+
+                <!-- 6. Domy -->
+                <div class="nav-item" id="btn-disc-homes">
+                    <div class="nav-btn-box">
+                        <img src="icons/icon-home.png" class="nav-icon">
+                        <span class="nav-label">Domy</span>
+                    </div>
+                </div>
+
             </div>
-            <button class="panel-close-button">Anuluj</button>
         </div>
     </div>
 `;
@@ -1011,7 +1052,6 @@ export const MODALS_HTML = `
 
     <div id="explore-exit-button"></div>
     
-    <!-- EKRAN WYGRANEJ (Parkour) -->
     <div id="bsp-victory-screen" class="bsp-overlay-bg">
         <div class="bsp-title-header">
             <div class="bsp-cup-icon"></div>
@@ -1070,7 +1110,6 @@ export const MODALS_HTML = `
         <div id="bsp-continue-btn">➜</div>
     </div>
     
-    <!-- EKRAN NAGRÓD (Parkour) -->
     <div id="bsp-reward-screen" class="bsp-overlay-bg">
         <h1 class="bsp-reward-title">Otrzymujesz:</h1>
         
@@ -1159,24 +1198,32 @@ export const MODALS_HTML = `
             <div class="nav-grid-container">
                 
                 <!-- GÓRNY RZĄD (ZIELONY - NOWE) -->
+                
+                <!-- 1. Nowa HyperCube -->
                 <div class="nav-item" id="build-choice-new-skin">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newhypercube.png" class="nav-icon">
                         <span class="nav-label">Nowa HyperCube</span>
                     </div>
                 </div>
+
+                <!-- 2. Nowa Część -->
                 <div class="nav-item" id="build-choice-new-part">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newhypercubepart.png" class="nav-icon">
                         <span class="nav-label">Nowa Część</span>
                     </div>
                 </div>
+
+                <!-- 3. Nowy Świat -->
                 <div class="nav-item" id="build-choice-new-world">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newworld.png" class="nav-icon">
                         <span class="nav-label">Nowy Świat</span>
                     </div>
                 </div>
+
+                <!-- 4. Nowy Prefabrykat -->
                 <div class="nav-item" id="build-choice-new-prefab">
                     <div class="nav-btn-box-green">
                         <img src="icons/icon-newprefab.png" class="nav-icon">
@@ -1184,25 +1231,34 @@ export const MODALS_HTML = `
                     </div>
                 </div>
 
-                <!-- DOLNY RZĄD (NIEBIESKI - EDYCJA) -->
+                <!-- DOLNY RZĄD (NIEBIESKI - EDYCJA - PLACEHOLDERY) -->
+
+                <!-- 5. Edytuj HyperCube -->
                 <div class="nav-item" id="build-choice-edit-skin">
                     <div class="nav-btn-box">
+                        <!-- Używamy tej samej ikony + klucz (w przyszłości) -->
                         <img src="icons/icon-newhypercube.png" class="nav-icon">
                         <span class="nav-label">Edytuj HyperCube</span>
                     </div>
                 </div>
+
+                <!-- 6. Edytuj Część -->
                 <div class="nav-item" id="build-choice-edit-part">
                     <div class="nav-btn-box">
                         <img src="icons/icon-newhypercubepart.png" class="nav-icon">
                         <span class="nav-label">Edytuj Część</span>
                     </div>
                 </div>
+
+                <!-- 7. Edytuj Świat -->
                 <div class="nav-item" id="build-choice-edit-world">
                     <div class="nav-btn-box">
                         <img src="icons/icon-newworld.png" class="nav-icon">
                         <span class="nav-label">Edytuj Świat</span>
                     </div>
                 </div>
+
+                <!-- 8. Edytuj Prefab -->
                 <div class="nav-item" id="build-choice-edit-prefab">
                     <div class="nav-btn-box">
                         <img src="icons/icon-newprefab.png" class="nav-icon">
@@ -1214,8 +1270,6 @@ export const MODALS_HTML = `
         </div>
     </div>
 
-    <div id="discover-panel" class="panel-modal"><div class="panel-content"><div class="friends-tabs" id="discover-tabs" style="display:none"><div class="friends-tab active" data-tab="all">Wszystkie</div><div class="friends-tab" data-tab="mine">Moje</div></div><h2 id="discover-panel-title">Wybierz</h2><div id="discover-list" class="panel-list"></div><button id="discover-close-button" class="panel-close-button">Zamknij</button></div></div>
-    
     <div id="world-size-panel" class="panel-modal"><div class="panel-content"><h2>Rozmiar</h2><div class="build-choice-grid"><div id="size-choice-new-small" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-smallworld.png');"></div><span>Mały</span></div><div id="size-choice-new-medium" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-mediumworld.png');"></div><span>Średni</span></div><div id="size-choice-new-large" class="build-choice-item"><div class="build-choice-icon" style="background-image: url('icons/icon-bigworld.png');"></div><span>Duży</span></div></div><button class="panel-close-button">Anuluj</button></div></div>
     <div id="add-choice-panel" class="panel-modal"><div class="panel-content"><h2>Dodaj</h2><div class="panel-list"><div id="add-choice-blocks" class="panel-item">Bloki</div><div id="add-choice-prefabs" class="panel-item">Prefabrykaty</div><div id="add-choice-parts" class="panel-item">Części</div></div><button id="add-choice-close" class="panel-close-button">Anuluj</button></div></div>
     <div id="player-preview-panel" class="panel-modal"><div class="panel-content"><h2>Podgląd</h2><div id="player-preview-renderer-container"></div><button class="panel-close-button">Zamknij</button></div></div>
