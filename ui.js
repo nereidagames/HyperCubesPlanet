@@ -30,7 +30,7 @@ export class UIManager {
     this.onSendMessage = onSendMessage;
     this.isMobile = false;
     
-    // Callbacki (przypisywane w main.js)
+    // Callbacki
     this.onWorldSizeSelected = null;
     this.onSkinBuilderClick = null;
     this.onPrefabBuilderClick = null;
@@ -55,8 +55,6 @@ export class UIManager {
     this.onExitParkour = null;
     this.onReplayParkour = null;
     this.onOpenOtherProfile = null;
-    
-    // Callback blokady sterowania
     this.onVictoryScreenOpen = null;
     
     // Menedżery
@@ -73,25 +71,22 @@ export class UIManager {
     this.activeZIndex = 20000; 
     this.myProfileData = null;
 
-    // --- SYSTEM RENDEROWANIA (Singleton) ---
+    // Renderer
     this.sharedPreviewRenderer = null;
     this.previewScene = null;
     this.previewCamera = null;
     this.previewCharacter = null;
     this.previewAnimId = null;
 
-    // BINDING
     this.setupOtherProfileButtons = this.setupOtherProfileButtons.bind(this);
   }
   
   initialize(isMobile) {
     this.isMobile = isMobile;
-    console.log("Inicjalizacja UI...");
     try {
         this.renderUI();
         this.initSharedRenderer();
 
-        // Inicjalizacja wszystkich managerów
         if (this.friendsManager.initialize) this.friendsManager.initialize();
         if (this.mailManager.initialize) this.mailManager.initialize();
         if (this.newsManager.initialize) this.newsManager.initialize();
@@ -103,20 +98,73 @@ export class UIManager {
         this.setupButtonHandlers();
         this.setupChatSystem(); 
         this.loadFriendsData(); 
-        
-        console.log('UI Manager gotowy.');
+        console.log("UI Inicjalizacja zakończona sukcesem.");
     } catch (error) {
         console.error("Błąd UI:", error);
     }
   }
 
-  // --- ZARZĄDZANIE WARSTWAMI ---
+  // --- HELPERY UI ---
+  
+  showMessage(message, type = 'info') {
+      const div = document.createElement('div');
+      div.textContent = message;
+      
+      div.style.position = 'fixed';
+      div.style.top = '15%'; 
+      div.style.left = '50%';
+      div.style.transform = 'translate(-50%, -50%) scale(0.8)';
+      div.style.padding = '12px 24px';
+      div.style.borderRadius = '12px';
+      div.style.color = 'white';
+      div.style.fontFamily = "'Titan One', cursive";
+      div.style.fontSize = '18px';
+      div.style.textShadow = '1.5px 1.5px 0 #000';
+      div.style.zIndex = '100000'; 
+      div.style.pointerEvents = 'none'; 
+      div.style.boxShadow = '0 5px 15px rgba(0,0,0,0.4)';
+      div.style.border = '3px solid white';
+      div.style.opacity = '0';
+      div.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+      if (type === 'error') {
+          div.style.backgroundColor = '#e74c3c'; 
+          div.style.borderColor = '#c0392b';
+      } else if (type === 'success') {
+          div.style.backgroundColor = '#2ecc71'; 
+          div.style.borderColor = '#27ae60';
+      } else {
+          div.style.backgroundColor = '#3498db'; 
+          div.style.borderColor = '#2980b9';
+      }
+
+      document.body.appendChild(div);
+
+      requestAnimationFrame(() => {
+          div.style.opacity = '1';
+          div.style.transform = 'translate(-50%, -50%) scale(1)';
+          div.style.top = '20%'; 
+      });
+
+      setTimeout(() => {
+          div.style.opacity = '0';
+          div.style.top = '15%'; 
+          div.style.transform = 'translate(-50%, -50%) scale(0.8)';
+          
+          setTimeout(() => {
+              if (div.parentNode) div.parentNode.removeChild(div);
+          }, 300);
+      }, 2500);
+  }
+
   bringToFront(element) {
       if (element) {
           this.activeZIndex++;
           element.style.zIndex = this.activeZIndex;
       }
   }
+
+  // --- RENDEROWANIE HTML ---
 
   renderUI() {
       const authLayer = document.getElementById('auth-layer');
@@ -642,10 +690,10 @@ export class UIManager {
   }
 
   clearChat() { const c = document.querySelector('.chat-area'); if(c) c.innerHTML = ''; }
-  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; const i=document.getElementById('chat-input-field'); if(i) i.focus(); }
+  handleChatClick() { const f=document.getElementById('chat-form'); if(f) f.style.display='flex'; document.getElementById('chat-input-field').focus(); }
   setupChatInput() { const f=document.getElementById('chat-form'); if(!f)return; f.addEventListener('submit', e=>{ e.preventDefault(); const i=document.getElementById('chat-input-field'); const v=i.value.trim(); if(v&&this.onSendMessage) this.onSendMessage(v); i.value=''; f.style.display='none'; }); }
 
-  // --- PARKOUR LOGIC (NEW) ---
+  // --- PARKOUR LOGIC ---
   
   setParkourTimerVisible(visible) {
       const timer = document.getElementById('parkour-timer');
@@ -745,228 +793,60 @@ export class UIManager {
       this.pendingRewardData=null; 
   }
 
-  // --- ODKRYJ (SHOW DISCOVER PANEL) ---
-  async showDiscoverPanel(type, category = null) { 
-      const title = document.getElementById('discover-panel-title'); 
-      const tabs = document.getElementById('discover-tabs'); 
-      const list = document.getElementById('discover-list'); 
-      
-      if (!list) return; 
-      
-      this.openPanel('discover-panel'); 
-      list.innerHTML = '<p class="text-outline" style="text-align:center">Ładowanie...</p>'; 
-      
-      if (type === 'worlds') { 
-          if (title) title.textContent = category === 'parkour' ? 'Wybierz Parkour' : 'Wybierz Świat'; 
-          if (tabs) tabs.style.display = 'none'; 
-          try { 
-              const allWorlds = await WorldStorage.getAllWorlds(); 
-              let filteredWorlds = allWorlds; 
-              if (category) { 
-                  filteredWorlds = allWorlds.filter(w => { 
-                      const wType = w.type || 'creative'; 
-                      return wType === category; 
-                  }); 
-              } 
-              this.populateDiscoverPanel('worlds', filteredWorlds, (worldItem) => { 
-                  if (this.onWorldSelect) this.onWorldSelect(worldItem); 
-              }); 
-          } catch (e) { 
-              list.innerHTML = '<p class="text-outline" style="text-align:center">Błąd pobierania.</p>'; 
-          } 
-      } else if (type === 'discovery') { 
-          const labels = { skin: 'Skiny', part: 'Części', prefab: 'Prefabrykaty' }; 
-          if (title) title.textContent = `Wybierz ${labels[category] || 'Element'}`; 
-          if (tabs) { 
-              tabs.style.display = 'flex'; 
-              const tabAll = document.querySelector('#discover-tabs .friends-tab[data-tab="all"]'); 
-              const tabMine = document.querySelector('#discover-tabs .friends-tab[data-tab="mine"]'); 
-              
-              if (tabMine) tabMine.classList.remove('active'); 
-              if (tabAll) { 
-                  tabAll.classList.add('active'); 
-                  tabAll.onclick = () => { 
-                      tabMine.classList.remove('active'); 
-                      tabAll.classList.add('active'); 
-                      this.refreshDiscoveryList(category, 'all'); 
-                  }; 
-              } 
-              if (tabMine) { 
-                  tabMine.onclick = () => { 
-                      if (tabAll) tabAll.classList.remove('active'); 
-                      tabMine.classList.add('active'); 
-                      this.refreshDiscoveryList(category, 'mine'); 
-                  }; 
-              } 
-          } 
-          this.refreshDiscoveryList(category, 'all'); 
-      } 
+  // --- ODKRYJ (HELPERY) ---
+  bindDiscoverButton(id, type) {
+      const btn = document.getElementById(id);
+      if(btn) {
+           btn.onclick = () => {
+               btn.style.transform = 'scale(0.95)';
+               setTimeout(() => btn.style.transform = 'scale(1)', 100);
+               this.closePanel('discover-choice-panel');
+               
+               if (type === 'skin') this.showDiscoverPanel('discovery', 'skin');
+               else if (type === 'world') this.showDiscoverPanel('worlds');
+               else if (type === 'part') this.showDiscoverPanel('discovery', 'part');
+               else if (type === 'prefab') this.showDiscoverPanel('discovery', 'prefab');
+               else this.showMessage("Ta sekcja pojawi się wkrótce!", "info");
+           };
+       }
   }
 
-  async refreshDiscoveryList(type, mode) { 
-      const list = document.getElementById('discover-list'); 
-      if (list) list.innerHTML = '<p class="text-outline" style="text-align:center">Pobieranie...</p>'; 
-      let items = []; 
-      try { 
-          if (type === 'skin') { 
-              items = mode === 'mine' ? await SkinStorage.getMySkins() : await SkinStorage.getAllSkins(); 
-          } else if (type === 'prefab') { 
-              items = mode === 'mine' ? await PrefabStorage.getSavedPrefabsList() : await PrefabStorage.getAllPrefabs(); 
-          } else if (type === 'part') { 
-              items = mode === 'mine' ? await HyperCubePartStorage.getSavedPartsList() : await HyperCubePartStorage.getAllParts(); 
-          } 
-          this.populateDiscoverPanel(type, items, (item) => { 
-              this.showItemDetails(item, type, true); 
-          }); 
-      } catch (e) { 
-          console.error(e); 
-          if (list) list.innerHTML = '<p class="text-outline" style="text-align:center">Błąd połączenia.</p>'; 
-      } 
-  }
-
-  populateDiscoverPanel(type, items, onSelect) { 
-      const list = document.getElementById('discover-list'); 
-      if (!list) return; 
-      list.innerHTML = ''; 
-      
-      if (!items || items.length === 0) { 
-          list.innerHTML = '<p class="text-outline" style="text-align:center">Brak elementów.</p>'; 
-          return; 
-      } 
-      
-      items.forEach(item => { 
-          const div = document.createElement('div'); 
-          div.className = 'panel-item skin-list-item'; 
-          div.style.display = 'flex'; 
-          div.style.alignItems = 'center'; 
-          div.style.padding = '10px'; 
-          
-          const thumbContainer = document.createElement('div'); 
-          thumbContainer.style.width = '64px'; 
-          thumbContainer.style.height = '64px'; 
-          thumbContainer.style.backgroundColor = '#000'; 
-          thumbContainer.style.borderRadius = '8px'; 
-          thumbContainer.style.marginRight = '15px'; 
-          thumbContainer.style.overflow = 'hidden'; 
-          thumbContainer.style.flexShrink = '0'; 
-          thumbContainer.style.border = '2px solid white'; 
-          
-          let thumbSrc = item.thumbnail; 
-          let label = item.name; 
-          
-          if (type === 'worlds' && typeof item === 'object') { 
-              if (item.creator) label += ` (od ${item.creator})`; 
-          } else if (item.creator) { 
-              label += ` (od ${item.creator})`; 
-          } 
-          
-          if (thumbSrc) { 
-              const img = document.createElement('img'); 
-              img.src = thumbSrc; 
-              img.style.width = '100%'; 
-              img.style.height = '100%'; 
-              img.style.objectFit = 'cover'; 
-              thumbContainer.appendChild(img); 
-          } else { 
-              thumbContainer.textContent = '?'; 
-              thumbContainer.style.display = 'flex'; 
-              thumbContainer.style.alignItems = 'center'; 
-              thumbContainer.style.justifyContent = 'center'; 
-              thumbContainer.style.color = 'white'; 
-          } 
-          
-          const nameSpan = document.createElement('span'); 
-          nameSpan.textContent = label; 
-          nameSpan.className = 'text-outline'; 
-          nameSpan.style.fontSize = '18px'; 
-          
-          div.appendChild(thumbContainer); 
-          div.appendChild(nameSpan); 
-          div.onclick = () => { 
-              if (type === 'worlds') { 
-                  this.closeAllPanels(); 
-                  onSelect(item); 
-              } else { 
-                  onSelect(item); 
-              } 
-          }; 
-          list.appendChild(div); 
-      }); 
-  }
-
-  // --- BUTTON HANDLERS ---
   setupButtonHandlers() {
-    document.querySelectorAll('.panel-close-button').forEach(btn => {
-        btn.onclick = () => { 
-            const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
-            if(p) p.style.display = 'none'; 
-            if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel' || p.id === 'other-player-profile-panel')) {
-                this.disposeCurrentPreview();
-            }
-        };
-    });
-    
-    ['more-options-panel','player-profile-panel','play-choice-panel','build-choice-panel','other-player-profile-panel'].forEach(id=>{
+      document.querySelectorAll('.panel-close-button').forEach(btn => {
+          btn.onclick = () => { 
+              const p = btn.closest('.panel-modal') || btn.closest('#skin-comments-panel'); 
+              if(p) p.style.display = 'none'; 
+              if(p && (p.id === 'skin-details-modal' || p.id === 'player-profile-panel' || p.id === 'other-player-profile-panel')) this.disposeCurrentPreview();
+          };
+      });
+      ['more-options-panel','player-profile-panel','play-choice-panel','build-choice-panel','other-player-profile-panel'].forEach(id=>{
           const e=document.getElementById(id); if(e) e.addEventListener('click', ev=>{ if(ev.target.id===id){ e.style.display='none'; if(id.includes('profile')) this.disposeCurrentPreview(); } });
-    });
-    
-    document.querySelectorAll('.game-btn').forEach(btn => { 
-        const t = this.getButtonType(btn); 
-        btn.onclick = () => this.handleButtonClick(t, btn); 
-    });
-    
-    // --- NOWA OBSŁUGA MENU ODKRYJ (GRID) ---
-    const bindDiscover = (id, type) => {
-           const btn = document.getElementById(id);
-           if(btn) {
-               btn.onclick = () => {
-                   btn.style.transform = 'scale(0.95)';
-                   setTimeout(() => btn.style.transform = 'scale(1)', 100);
-                   this.closePanel('discover-choice-panel');
-                   
-                   if (type === 'skin') this.showDiscoverPanel('discovery', 'skin');
-                   else if (type === 'world') this.showDiscoverPanel('worlds');
-                   else if (type === 'part') this.showDiscoverPanel('discovery', 'part');
-                   else if (type === 'prefab') this.showDiscoverPanel('discovery', 'prefab');
-                   else this.showMessage("Ta sekcja pojawi się wkrótce!", "info");
-               };
-           }
-      };
+      });
+      document.querySelectorAll('.game-btn').forEach(btn => { const t=this.getButtonType(btn); btn.onclick=()=>this.handleButtonClick(t, btn); });
+      
+      // Bindowanie przycisków ODKRYJ
+      this.bindDiscoverButton('btn-disc-blockstars', 'skin');
+      this.bindDiscoverButton('btn-disc-worlds', 'world');
+      this.bindDiscoverButton('btn-disc-parts', 'part');
+      this.bindDiscoverButton('btn-disc-prefabs', 'prefab');
+      this.bindDiscoverButton('btn-disc-photos', 'photo');
+      this.bindDiscoverButton('btn-disc-homes', 'home');
 
-      bindDiscover('btn-disc-blockstars', 'skin'); 
-      bindDiscover('btn-disc-worlds', 'world');
-      bindDiscover('btn-disc-parts', 'part');
-      bindDiscover('btn-disc-prefabs', 'prefab');
-      bindDiscover('btn-disc-photos', 'photo'); 
-      bindDiscover('btn-disc-homes', 'home');
-
-    // ... reszta przycisków ...
-    const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPlayerProfile(); };
-    const btnWall = document.getElementById('btn-profile-wall'); if (btnWall) { btnWall.onclick = () => { document.getElementById('player-profile-panel').style.display = 'none'; this.disposeCurrentPreview(); const userId = localStorage.getItem(STORAGE_KEYS.USER_ID); const username = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME); this.wallManager.open(userId, username); }; }
-    const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
-    const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
-    const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
-    
-    const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; }; 
-    setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); }); 
-    setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); }); 
-    setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
-    
-    const nameSubmitBtn = document.getElementById('name-submit-btn'); 
-    if (nameSubmitBtn) { 
-        nameSubmitBtn.onclick = () => { 
-            const i = document.getElementById('name-input-field'); 
-            const v = i.value.trim(); 
-            if(v && this.onNameSubmit) { this.onNameSubmit(v); document.getElementById('name-input-panel').style.display = 'none'; } 
-            else alert('Nazwa nie może być pusta!'); 
-        }; 
-    }
-    
-    setClick('btn-open-news', () => { this.newsManager.open(); }); 
-    setClick('btn-open-highscores', () => { if (this.highScoresManager) this.highScoresManager.open(); }); 
-    setClick('btn-nav-options', () => { if(this.onToggleFPS) { this.onToggleFPS(); this.showMessage("Przełączono licznik FPS", "info"); } }); 
-    setClick('logout-btn', () => { localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN); localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME); localStorage.removeItem(STORAGE_KEYS.USER_ID); window.location.reload(); }); 
-    setClick('btn-news-claim-all', () => { this.claimReward(null); });
+      const pBtn = document.getElementById('player-avatar-button'); if (pBtn) pBtn.onclick = () => { this.openPlayerProfile(); };
+      const friendsBtn = document.getElementById('btn-friends-open'); if (friendsBtn) friendsBtn.onclick = () => { this.friendsManager.open(); }; 
+      const topBarItems = document.querySelectorAll('.top-bar-item'); topBarItems.forEach(item => { if (item.textContent.includes('Poczta')) { item.onclick = () => { this.mailManager.open(); }; } });
+      const chatToggle = document.getElementById('chat-toggle-button'); if (chatToggle) chatToggle.addEventListener('click', () => this.handleChatClick());
+      
+      const setClick = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; }; 
+      setClick('size-choice-new-small', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(64); }); 
+      setClick('size-choice-new-medium', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(128); }); 
+      setClick('size-choice-new-large', () => { this.closePanel('world-size-panel'); if(this.onWorldSizeSelected) this.onWorldSizeSelected(256); });
+      setClick('name-submit-btn', () => { const i=document.getElementById('name-input-field'); const v=i.value.trim(); if(v&&this.onNameSubmit){ this.onNameSubmit(v); document.getElementById('name-input-panel').style.display='none'; } else alert('Nazwa!'); });
+      setClick('btn-open-news', () => { this.newsManager.open(); });
+      setClick('btn-open-highscores', () => { this.highScoresManager.open(); });
+      setClick('btn-nav-options', () => { if(this.onToggleFPS) { this.onToggleFPS(); this.showMessage("Przełączono FPS", "info"); } });
+      setClick('logout-btn', () => { localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN); window.location.reload(); });
+      setClick('btn-news-claim-all', () => { this.claimReward(null); });
   }
 
   getButtonType(b) { if(b.classList.contains('btn-zagraj')) return 'zagraj'; if(b.classList.contains('btn-buduj')) return 'buduj'; if(b.classList.contains('btn-kup')) return 'kup'; if(b.classList.contains('btn-odkryj')) return 'odkryj'; if(b.classList.contains('btn-wiecej')) return 'wiecej'; return 'unknown'; }
